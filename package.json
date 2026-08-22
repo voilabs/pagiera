@@ -1,33 +1,35 @@
 {
-  "name": "pagiera-3",
-  "version": "0.1.0",
+  "name": "pagiera-monorepo",
+  "version": "0.0.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "biome check",
-    "format": "biome format --write"
+  "description": "Pagiera visual website builder monorepo",
+  "homepage": "https://pagiera.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voilabs/pagiera.git"
   },
-  "dependencies": {
-    "next": "16.3.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run package:build && bun run --cwd apps/example dev",
+    "build": "bun run package:build && bun run --cwd apps/example build",
+    "check": "bun run package:check && bun run package:build && bun run --cwd apps/example typecheck",
+    "lint": "bun run --cwd apps/example lint",
+    "format": "bun run --cwd apps/example format",
+    "package:build": "bun run --cwd packages/pagiera build",
+    "package:check": "bun run --cwd packages/pagiera check",
+    "package:pack": "bun run package:build && npm pack --workspace pagiera --ignore-scripts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "tailwindcss": "^4",
     "typescript": "^5"
   },
   "packageManager": "bun@1.3.14",
-  "ignoreScripts": [
-    "sharp",
-    "unrs-resolver"
-  ],
+  "engines": {
+    "node": ">=20"
+  },
   "trustedDependencies": [
     "sharp",
     "unrs-resolver"

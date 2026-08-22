@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/voilabs/pagiera/security/advisories/new
+    about: Report vulnerabilities privately
+  - name: Pagiera website
+    url: https://pagiera.com
+    about: Product information and documentation

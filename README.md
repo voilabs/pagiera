@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <a href="https://pagiera.com">
+    <img src="https://raw.githubusercontent.com/voilabs/pagiera/main/packages/pagiera/thumbnail.png" alt="Pagiera visual website builder" width="100%" />
+  </a>
 
-## Getting Started
+  <h1>Pagiera</h1>
+  <p><strong>Design freely. Publish real websites.</strong></p>
+  <p>A full-stack visual website builder for React and Next.js.</p>
 
-First, run the development server:
+  <p>
+    <a href="https://www.npmjs.com/package/pagiera"><img src="https://img.shields.io/npm/v/pagiera?color=5402E6" alt="npm version" /></a>
+    <a href="https://github.com/voilabs/pagiera/actions/workflows/ci.yml"><img src="https://github.com/voilabs/pagiera/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-111111" alt="MIT license" /></a>
+  </p>
+
+  <p>
+    <a href="https://pagiera.com">Website</a> ·
+    <a href="./packages/pagiera/README.md">Documentation</a> ·
+    <a href="https://github.com/voilabs/pagiera/issues">Issues</a>
+  </p>
+</div>
+
+## Why Pagiera?
+
+- Framer-style responsive canvas with breakpoints, components, variants, and motion
+- Server-rendered publishing with semantic HTML and SEO-friendly API data
+- OpenRouter-powered AI design workflow
+- Dynamic pages such as `/blog/:slug` with Request and Repeat blocks
+- PostgreSQL persistence, Redis caching, templates, preview, and publishing included
+- One package—no separate editor repository or backend service
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/voilabs/pagiera.git
+cd pagiera
+bun install
+cp .env.example apps/example/.env.local
+docker compose up -d
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [localhost:3000/editor](http://localhost:3000/editor).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Monorepo
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```text
+apps/example       Next.js development and integration app
+packages/pagiera   Publishable npm package
+```
 
-## Learn More
+```bash
+bun run check          # type-check everything
+bun run build          # production build
+bun run package:pack   # create the npm tarball
+```
 
-To learn more about Next.js, take a look at the following resources:
+Full installation, font provider, SSR, API, routing, and deployment instructions are in the [package documentation](./packages/pagiera/README.md).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT © [Voi Labs](https://github.com/voilabs)

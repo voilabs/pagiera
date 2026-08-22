@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PAGIERA_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/pagiera
+      PAGIERA_REDIS_URL: redis://127.0.0.1:6379
+      OPENROUTER_API_KEY: ci-placeholder
+      OPENROUTER_MODEL: openai/gpt-4.1-mini
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run build

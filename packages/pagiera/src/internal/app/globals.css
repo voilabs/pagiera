@@ -1,0 +1,177 @@
+@import "../../styles.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@source "../../../dist/full-editor.js";
+
+@custom-variant dark (&:is(.dark *):not(:is(.no-dark, .no-dark *)));
+
+.pg-editor button,
+.pg-editor [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+
+:root {
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.491 0.27 292.581);
+  --primary-foreground: oklch(0.969 0.016 293.756);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --chart-1: oklch(0.811 0.111 293.571);
+  --chart-2: oklch(0.606 0.25 292.717);
+  --chart-3: oklch(0.541 0.281 293.009);
+  --chart-4: oklch(0.491 0.27 292.581);
+  --chart-5: oklch(0.432 0.232 292.759);
+  --radius: 0.875rem;
+  --sidebar: oklch(0.18 0.01 277.72);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.606 0.25 292.717);
+  --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Editor chrome, registered as real utilities so bg-ed-surface and
+     text-ed-text work. The values stay live vars, so the palette can still be
+     swapped at runtime by the .pg-editor block at the end of this file. */
+  --color-ed-canvas: var(--ed-canvas);
+  --color-ed-surface: var(--ed-surface);
+  --color-ed-subtle: var(--ed-subtle);
+  --color-ed-field: var(--ed-field);
+  --color-ed-field-hover: var(--ed-field-hover);
+  --color-ed-border: var(--ed-border);
+  --color-ed-text: var(--ed-text);
+  --color-ed-muted: var(--ed-text-muted);
+  --color-ed-faint: var(--ed-text-faint);
+  --color-ed-accent: var(--ed-accent);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+  }
+}
+/*
+ * Editor chrome palette.
+ *
+ * The editor UI is themed from here alone — every panel, field and menu reads
+ * these variables rather than a hard-coded grey, so changing the look is one
+ * edit instead of a hunt through four component files. Flip the whole editor
+ * dark by putting `data-ed-theme="dark"` on the `.pg-editor` root.
+ */
+/*
+ * Dark is the default: the canvas holds the user's own colours, and a dark
+ * chrome keeps the page being designed as the brightest thing on screen.
+ *
+ * The greys carry a slight blue-violet cast (hue ~265) rather than being
+ * neutral, so the panels read as a deliberate surface instead of default grey,
+ * and the accent sits on the same hue family.
+ */
+.pg-editor {
+  font-family: var(--pagiera-font);
+  /* Three clear planes: the canvas well sits furthest back, panels float above
+     it, and fields are inset into the panels. Earlier the three were within a
+     few points of each other, so nothing read as layered. */
+  --ed-canvas: #090a0d;
+  --ed-surface: #13151a;
+  --ed-subtle: #191c22;
+  --ed-field: #20242c;
+  --ed-field-hover: #292e38;
+  --ed-border: #2a2f39;
+  --ed-text: #f4f4f5;
+  --ed-text-muted: #a5a8b0;
+  --ed-text-faint: #6e737d;
+  --ed-accent: #5402e6;
+  --ed-accent-soft: rgb(84 2 230 / 0.18);
+  /* A hint of structure, not a lattice. */
+  --ed-grid: rgb(255 255 255 / 0.022);
+}
+
+.pg-editor .pg-chrome-panel,
+.pg-editor .pg-chrome-card { box-shadow: none; }
+
+.pg-editor[data-ed-theme="light"] {
+  --ed-canvas: #e8e9ec;
+  --ed-surface: #ffffff;
+  --ed-subtle: #f6f6fa;
+  --ed-field: #eeeef4;
+  --ed-field-hover: #e2e2ea;
+  --ed-border: #e0e0e9;
+  --ed-text: #15141d;
+  --ed-text-muted: #5d5b73;
+  --ed-text-faint: #8d8ba3;
+  --ed-accent: #5402e6;
+  --ed-accent-soft: rgb(84 2 230 / 0.12);
+  --ed-grid: rgb(0 0 0 / 0.045);
+}
+
+@keyframes pg-loop-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.06; } }
+@keyframes pg-loop-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -12px; } }
+@keyframes pg-loop-spin { to { rotate: 360deg; } }

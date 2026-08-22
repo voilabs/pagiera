@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem in Pagiera
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve Pagiera. Do not include secrets or security vulnerabilities here.
+  - type: input
+    id: version
+    attributes:
+      label: Pagiera version
+      placeholder: 0.2.0-alpha.34
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Editor
+        - Published renderer
+        - Data sources
+        - AI generation
+        - Package installation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest reliable set of steps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node, Bun, Next.js, browser, and operating system versions.
+    validations:
+      required: true
