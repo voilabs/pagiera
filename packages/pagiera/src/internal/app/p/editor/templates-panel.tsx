@@ -1,31 +1,130 @@
 "use client";
 
-import { IconArrowRight, IconCheck, IconSparkles } from "@tabler/icons-react";
-import type { SiteTemplateId } from "@/lib/editor/site-templates";
+import { IconArrowUpRight, IconCheck, IconRefresh, IconSearch, IconSparkles, IconTemplate } from "@tabler/icons-react";
+import { motion } from "motion/react";
+import { useEffect, useMemo, useState } from "react";
+import {
+    DEFAULT_TEMPLATE_REGISTRY_URL,
+    FALLBACK_TEMPLATE_REGISTRY,
+    loadTemplateBundle,
+    loadTemplateRegistry,
+    type TemplateInstallInput,
+    type TemplateRegistryEntry,
+} from "@/lib/editor/template-registry";
 
-const templates: Array<{ id: SiteTemplateId; name: string; kind: string; pages: string[]; count: string; accent: string; preview: string; title: string }> = [
-    { id: "editorial-blog", name: "Field Notes", kind: "Dynamic editorial blog", pages: ["Home", "Journal", "Article / :slug", "About"], count: "4 pages + API", accent: "#db4b2d", preview: "bg-[#f3efe6] text-[#171714]", title: "IDEAS FOR A MORE HUMAN WEB." },
-    { id: "orbit-saas", name: "Orbit OS", kind: "Product & SaaS launch", pages: ["Home", "Product", "Pricing"], count: "3 pages", accent: "#7357ff", preview: "bg-[#070914] text-[#f5f7ff]", title: "SHIP THE NEXT VERSION OF YOU." },
-    { id: "nocturne", name: "Nocturne Studio", kind: "Dark editorial portfolio", pages: ["Home", "Work", "Studio", "Contact"], count: "4 pages", accent: "#d7ff3f", preview: "bg-[#0b0b0a] text-[#f1f0ea]", title: "WE DESIGN THE UNEXPECTED." },
-];
+type RegistryState = "loading" | "github" | "cache" | "stale" | "bundled";
 
-export function TemplatesPanel({ busy, onInstall }: { busy: boolean; onInstall: (id: SiteTemplateId) => void }) {
-    return <div className="space-y-3 p-3">
-        <div className="mb-4 rounded-2xl border border-ed-border bg-ed-subtle p-4">
-            <p className="text-xs font-semibold text-ed-text">Site templates</p>
-            <p className="mt-1 text-[10px] leading-relaxed text-ed-muted">Complete editable sites with pages, responsive layouts, motion, tokens and data requests.</p>
+export function TemplatesPanel({
+    busy,
+    registryUrl = DEFAULT_TEMPLATE_REGISTRY_URL,
+    onInstall,
+}: {
+    busy: boolean;
+    registryUrl?: string;
+    onInstall: (template: TemplateInstallInput) => void;
+}) {
+    const [templates, setTemplates] = useState(FALLBACK_TEMPLATE_REGISTRY.templates);
+    const [status, setStatus] = useState<RegistryState>("loading");
+    const [error, setError] = useState("");
+    const [query, setQuery] = useState("");
+    const [category, setCategory] = useState("All");
+    const [installing, setInstalling] = useState<string>();
+
+    const refresh = async (force = false) => {
+        setStatus("loading");
+        setError("");
+        const result = await loadTemplateRegistry(registryUrl, force);
+        setTemplates(result.registry.templates);
+        setStatus(result.source);
+        if (result.error) setError(result.error instanceof Error ? result.error.message : "Could not refresh templates.");
+    };
+
+    useEffect(() => {
+        void refresh();
+    }, [registryUrl]);
+
+    const categories = useMemo(() => ["All", ...new Set(templates.map((template) => template.category))], [templates]);
+    const visible = useMemo(() => {
+        const needle = query.trim().toLowerCase();
+        return templates.filter((template) =>
+            (category === "All" || template.category === category) &&
+            (!needle || [template.name, template.description, template.category, ...template.tags].some((value) => value.toLowerCase().includes(needle))),
+        );
+    }, [templates, category, query]);
+
+    const install = async (template: TemplateRegistryEntry) => {
+        setInstalling(template.id);
+        setError("");
+        try {
+            onInstall(await loadTemplateBundle(template, registryUrl));
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Template download failed.");
+        } finally {
+            setInstalling(undefined);
+        }
+    };
+
+    return (
+        <div className="min-h-full bg-ed-surface">
+            <div className="sticky top-0 z-10 border-b border-ed-border bg-ed-surface/95 p-4 backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="flex size-8 items-center justify-center rounded-xl bg-ed-accent-soft text-ed-accent"><IconTemplate size={16} /></span>
+                            <div><h2 className="text-[13px] font-semibold text-ed-text">Template gallery</h2><p className="text-[9px] text-ed-faint">Complete, editable sites</p></div>
+                        </div>
+                    </div>
+                    <button type="button" onClick={() => void refresh(true)} disabled={status === "loading"} className="flex size-8 items-center justify-center rounded-lg border border-ed-border bg-ed-field text-ed-muted transition hover:border-ed-accent/50 hover:text-ed-text disabled:opacity-40" title="Refresh from GitHub">
+                        <IconRefresh size={14} className={status === "loading" ? "animate-spin" : ""} />
+                    </button>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-ed-border bg-ed-field px-3 py-2.5 focus-within:border-ed-accent/60">
+                    <IconSearch size={14} className="shrink-0 text-ed-faint" />
+                    <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search templates..." className="min-w-0 flex-1 bg-transparent text-[11px] text-ed-text outline-none placeholder:text-ed-faint" />
+                    <span className={`size-1.5 rounded-full ${status === "github" ? "bg-emerald-400" : status === "loading" ? "animate-pulse bg-ed-accent" : "bg-amber-400"}`} title={status} />
+                </div>
+
+                <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {categories.map((item) => <button key={item} type="button" onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-2.5 py-1.5 text-[9px] font-medium transition ${category === item ? "border-ed-accent bg-ed-accent text-white" : "border-ed-border bg-ed-subtle text-ed-muted hover:text-ed-text"}`}>{item}</button>)}
+                </div>
+            </div>
+
+            <div className="space-y-4 p-4">
+                {error && <div className="rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2.5 text-[9px] leading-relaxed text-amber-200">{error} Using the most recent available catalog.</div>}
+                <div className="flex items-center justify-between"><span className="text-[9px] font-medium uppercase tracking-[.14em] text-ed-faint">{visible.length} templates</span><span className="text-[9px] text-ed-faint">{status === "github" ? "Live from GitHub" : status === "cache" ? "Cached catalog" : status === "loading" ? "Refreshing…" : "Offline catalog"}</span></div>
+
+                {visible.map((template, index) => (
+                    <motion.article key={template.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.035, 0.18), duration: 0.3 }} className="group overflow-hidden rounded-[18px] border border-ed-border bg-ed-subtle transition-colors hover:border-ed-accent/45">
+                        <div className="relative h-44 overflow-hidden p-5" style={{ background: template.preview.background, color: template.preview.foreground }}>
+                            <div className="absolute inset-0 opacity-70" style={{ background: `radial-gradient(circle at 88% 10%, ${template.preview.accent}55, transparent 34%)` }} />
+                            <div className="absolute inset-x-5 top-5 flex items-center justify-between border-b pb-3" style={{ borderColor: `${template.preview.foreground}22` }}>
+                                <span className="font-mono text-[7px] font-bold tracking-[.18em]" style={{ color: template.preview.accent }}>{template.preview.eyebrow}</span>
+                                <span className="flex gap-1">{[0, 1, 2].map((dot) => <i key={dot} className="size-1 rounded-full" style={{ background: `${template.preview.foreground}66` }} />)}</span>
+                            </div>
+                            <p className="relative mt-14 max-w-[270px] text-[25px] font-semibold leading-[.88] tracking-[-.065em]">{template.preview.headline}</p>
+                            <div className="absolute bottom-5 left-5 h-1 w-14 rounded-full" style={{ background: template.preview.accent }} />
+                            {template.featured && <span className="absolute bottom-4 right-4 rounded-full px-2 py-1 text-[7px] font-bold uppercase tracking-[.12em]" style={{ color: template.preview.background, background: template.preview.accent }}>Featured</span>}
+                        </div>
+
+                        <div className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0"><h3 className="truncate text-[12px] font-semibold text-ed-text">{template.name}</h3><p className="mt-1 text-[9px] leading-relaxed text-ed-muted">{template.description}</p></div>
+                                <span className="shrink-0 rounded-md bg-ed-field px-2 py-1 font-mono text-[8px] text-ed-faint">v{template.version}</span>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-1.5">{template.tags.map((tag) => <span key={tag} className="rounded-full border border-ed-border px-2 py-1 text-[8px] text-ed-faint">{tag}</span>)}</div>
+                            <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2">{template.pages.slice(0, 6).map((page) => <span key={page} className="flex min-w-0 items-center gap-1.5 text-[8px] text-ed-muted"><IconCheck size={10} className="shrink-0" style={{ color: template.preview.accent }} /><span className="truncate">{page}</span></span>)}</div>
+
+                            <button type="button" disabled={busy || Boolean(installing)} onClick={() => void install(template)} className="mt-4 flex h-10 w-full items-center justify-between rounded-xl px-3.5 text-[10px] font-semibold transition hover:brightness-110 disabled:cursor-wait disabled:opacity-45" style={{ background: template.preview.accent, color: template.preview.background }}>
+                                <span className="flex items-center gap-2"><IconSparkles size={13} />{installing === template.id ? "Downloading template…" : "Use this template"}</span><IconArrowUpRight size={13} />
+                            </button>
+                        </div>
+                    </motion.article>
+                ))}
+
+                {visible.length === 0 && <div className="rounded-2xl border border-dashed border-ed-border px-5 py-12 text-center"><IconTemplate size={22} className="mx-auto text-ed-faint" /><p className="mt-3 text-[10px] font-medium text-ed-muted">No templates match this search.</p></div>}
+            </div>
         </div>
-        {templates.map((template) => <article key={template.id} className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b0c0e] shadow-xl">
-            <div className={`relative h-32 overflow-hidden border-b border-white/10 p-4 ${template.preview}`}>
-                <div className="absolute -right-5 -top-6 size-28 rounded-full blur-3xl opacity-40" style={{ background: template.accent }} />
-                <span className="relative font-mono text-[8px] font-bold tracking-[.2em]" style={{ color: template.accent }}>{template.name.toUpperCase()}</span>
-                <p className="relative mt-8 max-w-[210px] text-[21px] font-semibold leading-[.9] tracking-[-.07em]">{template.title}</p>
-            </div>
-            <div className="p-4">
-                <div className="flex items-start justify-between gap-3"><div><h3 className="text-[12px] font-semibold text-[#f1f0ea]">{template.name}</h3><p className="mt-1 text-[9px] text-[#96958f]">{template.kind}</p></div><span className="rounded-full px-2 py-1 font-mono text-[8px]" style={{ color: template.accent, background: `${template.accent}18` }}>{template.count}</span></div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-[9px] text-[#96958f]">{template.pages.map((page) => <span key={page} className="flex items-center gap-1.5"><IconCheck size={10} style={{ color: template.accent }} />{page}</span>)}</div>
-                <button type="button" disabled={busy} onClick={() => onInstall(template.id)} className="mt-4 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-[10px] font-extrabold text-white transition hover:brightness-110 disabled:opacity-50" style={{ background: template.accent }}><span className="flex items-center gap-2"><IconSparkles size={13} />{busy ? "Installing…" : "Install complete site"}</span><IconArrowRight size={13} /></button>
-            </div>
-        </article>)}
-    </div>;
+    );
 }

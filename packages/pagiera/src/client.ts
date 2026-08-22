@@ -29,7 +29,9 @@ export function createPagieraClient(options: PagieraClientOptions = {}) {
             renamePage: (id: string, name: string, slug: string) => call(`/pages/${id}`, "PATCH", { name, slug }),
             duplicatePage: (id: string, name: string, slug: string) => call(`/pages/${id}/duplicate`, "POST", { name, slug }),
             deletePage: (id: string) => call(`/pages/${id}`, "DELETE"),
-            installTemplate: (id: string) => call(`/templates/${id}`, "POST"),
+            installTemplate: (template: unknown) => typeof template === "string"
+                ? call(`/templates/${template}`, "POST")
+                : call("/templates/install", "POST", { template }),
             publishPage: (id: string) => call(`/pages/${id}/publish`, "POST"),
             unpublishPage: (id: string) => call(`/pages/${id}/unpublish`, "POST"),
             previewSource: (source: unknown, sampleQuery: string) => call("/data/preview", "POST", { source, sampleQuery }),

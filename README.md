@@ -27,6 +27,7 @@
 - OpenRouter-powered AI design workflow
 - Dynamic pages such as `/blog/:slug` with Request and Repeat blocks
 - PostgreSQL persistence, Redis caching, templates, preview, and publishing included
+- GitHub-backed template registry—ship new templates without republishing npm
 - One package—no separate editor repository or backend service
 
 ## Quick start
@@ -47,6 +48,7 @@ Open [localhost:3000/editor](http://localhost:3000/editor).
 ```text
 apps/example       Next.js development and integration app
 packages/pagiera   Publishable npm package
+templates/         CDN-backed community template catalog
 ```
 
 ```bash

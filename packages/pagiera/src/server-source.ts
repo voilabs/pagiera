@@ -223,6 +223,29 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             if (parts[0] === "pages" && parts[1] && parts[2] === "unpublish" && request.method === "POST") {
                 await pages.unpublishPage(parts[1]); await invalidate(); return ok({ status: "ok" });
             }
+            if (path === "/templates/install" && request.method === "POST") {
+                const body = await bodyOf(request);
+                const rawPages = Array.isArray(body.template?.pages) ? body.template.pages.slice(0, 20) : [];
+                if (rawPages.length === 0) return fail("Template must include at least one page.");
+                const slugs = new Set<string>();
+                const templatePages = rawPages.map((raw: Record<string, unknown>) => {
+                    const name = validation.parseName(raw?.name);
+                    const slug = validation.parseSlug(raw?.slug);
+                    if (!name || !slug) throw new Error("Every template page needs a valid name and slug.");
+                    if (slugs.has(slug)) throw new Error(`Template contains the duplicate path '${slug}'.`);
+                    slugs.add(slug);
+                    return {
+                        name,
+                        slug,
+                        elements: validation.parseElements(raw.elements),
+                        rootStyle: validation.parseRootStyle(raw.rootStyle),
+                        dataSources: validation.parseDataSources(raw.dataSources),
+                    };
+                });
+                const pageId = await pages.installTemplatePages(templatePages);
+                await invalidate();
+                return ok({ status: "ok", pageId });
+            }
             if (parts[0] === "templates" && parts[1] && request.method === "POST") {
                 if (!["nocturne", "editorial-blog", "orbit-saas"].includes(parts[1])) return fail("Unknown template", 404);
                 const pageId = await pages.installTemplatePages(templates.createSiteTemplate(parts[1] as "nocturne" | "editorial-blog" | "orbit-saas"));

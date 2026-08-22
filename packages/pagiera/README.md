@@ -26,6 +26,7 @@ Design in the editor and render the same document on the server. Published pages
 - Draft preview and published page rendering
 - PostgreSQL persistence and optimistic revisions
 - Redis-backed publishing cache and AI rate limiting
+- GitHub-backed template catalog with browser caching and offline fallbacks
 - Semantic output including `main`, `section`, `nav`, `header`, `footer`, headings, links, paragraphs, and buttons
 
 ## Requirements
@@ -71,6 +72,8 @@ Pagiera creates its required PostgreSQL tables when the server initializes. Redi
 ```
 
 `full.css` contains the complete studio UI. Use `pagiera/styles.css` only with the smaller `PagieraEditor` API.
+
+Pagiera uses `@fontsource-variable/figtree` for its editor chrome, including Latin and Latin Extended glyphs. The host application does not need to configure an editor font.
 
 ### 2. Add the font provider
 
@@ -313,6 +316,27 @@ export default async function PublishedPage({ params, searchParams }: {
   return renderPublishedPage((await params).path.join("/"), searchParams);
 }
 ```
+
+## Template registry
+
+The editor reads its catalog from the public Pagiera repository by default:
+
+```text
+https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json
+```
+
+This is a static GitHub Raw/CDN request, not the rate-limited GitHub REST API. Registry and template responses are cached in memory and `localStorage` for 15 minutes. The refresh button bypasses the local TTL, and the package keeps bundled fallback entries for offline use.
+
+You may point the studio at a fork, branch, or private proxy:
+
+```tsx
+<PagieraStudio
+  {...props}
+  templateRegistryUrl="https://example.com/pagiera/registry.json"
+/>
+```
+
+New templates live under the repository's `templates/` directory. They can be released independently from npm package versions. See [`templates/README.md`](https://github.com/voilabs/pagiera/blob/main/templates/README.md) for the registry schema and contribution workflow.
 
 ## Dynamic routes and request data
 

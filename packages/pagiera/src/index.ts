@@ -16,4 +16,4 @@ export type {
 export { createPagieraClient, type PagieraClientOptions } from "./client.js";
 export { PagieraProvider, usePagieraFonts, type PagieraFont, type PagieraResolvedFont } from "./provider.js";
 
-export const PAGIERA_VERSION = "0.2.0-alpha.34";
+export const PAGIERA_VERSION = "0.2.0-alpha.37";

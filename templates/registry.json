@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-22T00:00:00.000Z",
+  "templates": [
+    {
+      "id": "editorial-blog",
+      "version": "1.0.0",
+      "name": "Field Notes",
+      "description": "A dynamic editorial journal with API-powered article routes.",
+      "category": "Editorial",
+      "tags": ["Blog", "Dynamic", "Light"],
+      "pages": ["Home", "Journal", "Article / :slug", "About"],
+      "file": "./editorial-blog/template.json",
+      "featured": true,
+      "preview": {
+        "background": "#f3efe6",
+        "foreground": "#171714",
+        "accent": "#db4b2d",
+        "eyebrow": "FIELD NOTES / 04",
+        "headline": "IDEAS FOR A MORE HUMAN WEB."
+      }
+    },
+    {
+      "id": "orbit-saas",
+      "version": "1.0.0",
+      "name": "Orbit OS",
+      "description": "A high-contrast product launch site for modern software teams.",
+      "category": "SaaS",
+      "tags": ["Product", "Dark", "Launch"],
+      "pages": ["Home", "Product", "Pricing"],
+      "file": "./orbit-saas/template.json",
+      "preview": {
+        "background": "#070914",
+        "foreground": "#f5f7ff",
+        "accent": "#7357ff",
+        "eyebrow": "ORBIT / SYSTEM 01",
+        "headline": "SHIP THE NEXT VERSION OF YOU."
+      }
+    },
+    {
+      "id": "nocturne",
+      "version": "1.0.0",
+      "name": "Nocturne Studio",
+      "description": "An art-directed portfolio for independent creative studios.",
+      "category": "Portfolio",
+      "tags": ["Studio", "Dark", "Motion"],
+      "pages": ["Home", "Work", "Studio", "Contact"],
+      "file": "./nocturne/template.json",
+      "preview": {
+        "background": "#0b0b0a",
+        "foreground": "#f1f0ea",
+        "accent": "#d7ff3f",
+        "eyebrow": "NOCTURNE / ISTANBUL",
+        "headline": "WE DESIGN THE UNEXPECTED."
+      }
+    }
+  ]
+}

@@ -33,7 +33,7 @@ export type PagieraStudioAdapters = {
     renamePage?(id: string, name: string, slug: string): Promise<PagieraMutationResult>;
     duplicatePage?(id: string, name: string, slug: string): Promise<PagieraMutationResult>;
     deletePage?(id: string): Promise<PagieraMutationResult>;
-    installTemplate?(id: "nocturne" | "editorial-blog" | "orbit-saas"): Promise<PagieraMutationResult>;
+    installTemplate?(template: string | { schemaVersion: 1; id: string; version: string; pages: unknown[] }): Promise<PagieraMutationResult>;
     publishPage?(id: string): Promise<PagieraMutationResult>;
     unpublishPage?(id: string, slug: string): Promise<PagieraMutationResult>;
     navigate?(pageId: string, options?: { replace?: boolean }): void | Promise<void>;
@@ -47,6 +47,7 @@ export type PagieraStudioProps = {
     pages: Array<{ id: string; name: string; slug: string; published?: boolean }>;
     library: unknown[];
     adapters: PagieraStudioAdapters;
+    templateRegistryUrl?: string;
 };
 
 export const PagieraStudio: ComponentType<PagieraStudioProps>;

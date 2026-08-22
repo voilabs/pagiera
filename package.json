@@ -20,7 +20,9 @@
     "format": "bun run --cwd apps/example format",
     "package:build": "bun run --cwd packages/pagiera build",
     "package:check": "bun run --cwd packages/pagiera check",
-    "package:pack": "bun run package:build && npm pack --workspace pagiera --ignore-scripts"
+    "package:pack": "bun run package:build && npm pack --workspace pagiera --ignore-scripts",
+    "templates:sync": "bun run templates/scripts/export-builtins.ts",
+    "templates:check": "bun run templates/scripts/validate.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.2",

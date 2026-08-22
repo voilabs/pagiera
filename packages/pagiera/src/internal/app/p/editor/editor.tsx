@@ -59,7 +59,7 @@ import type { AiDesignPlan } from "@/lib/editor/ai-types";
 import { bindElement, type Row, rowsFor } from "@/lib/render/bind";
 import { resolveFont } from "@/lib/render/css";
 import { createNocturneShowcase } from "@/lib/editor/showcase";
-import type { SiteTemplateId } from "@/lib/editor/site-templates";
+import type { TemplateInstallInput } from "@/lib/editor/template-registry";
 import { type Guide, snapPosition } from "@/lib/editor/snap";
 import {
     applyStyle,
@@ -146,7 +146,7 @@ export type EditorAdapters = {
     renamePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
     duplicatePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
     deletePage?: (id: string) => Promise<PageMutationResult>;
-    installTemplate?: (id: SiteTemplateId) => Promise<PageMutationResult>;
+    installTemplate?: (template: TemplateInstallInput) => Promise<PageMutationResult>;
     publishPage?: (id: string) => Promise<PageMutationResult>;
     unpublishPage?: (id: string, slug: string) => Promise<PageMutationResult>;
     navigate?: (pageId: string, options?: { replace?: boolean }) => void | Promise<void>;
@@ -198,11 +198,13 @@ export default function Editor({
     pages,
     library,
     adapters,
+    templateRegistryUrl,
 }: {
     page: EditorPage;
     pages: PageEntry[];
     library: LibraryPage[];
     adapters?: EditorAdapters;
+    templateRegistryUrl?: string;
 }) {
     const [isPending, startTransition] = useTransition();
 
@@ -1572,10 +1574,10 @@ export default function Editor({
         [adapters],
     );
 
-    const installSiteTemplate = useCallback((templateId: SiteTemplateId) => {
+    const installSiteTemplate = useCallback((template: TemplateInstallInput) => {
         setPageError(null);
         startTransition(async () => {
-            const result = await (adapters?.installTemplate ?? unavailable)(templateId);
+            const result = await (adapters?.installTemplate ?? unavailable)(template);
             if (result.status === "error") {
                 setPageError(result.message);
                 return;
@@ -2004,7 +2006,7 @@ export default function Editor({
                 {/* Left Panel */}
                 <AnimatePresence initial={false}>
                 {!isLeftCollapsed && (
-                    <motion.aside initial={{ width: 0, opacity: 0, x: -12 }} animate={{ width: 292, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: -12 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="relative z-10 flex w-[292px] shrink-0 flex-col overflow-hidden border-r border-ed-border bg-ed-surface/95 backdrop-blur-xl">
+                    <motion.aside initial={{ width: 0, opacity: 0, x: -12 }} animate={{ width: leftTab === "Templates" ? 380 : 292, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: -12 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="relative z-10 flex shrink-0 flex-col overflow-hidden border-r border-ed-border bg-ed-surface/95 backdrop-blur-xl">
                         <div className="flex h-11 shrink-0 items-center justify-between border-b border-ed-border px-3.5">
                             <span className="text-[11px] font-semibold text-ed-text">{leftTab}</span>
                             <button type="button" onClick={() => setIsLeftCollapsed(true)} className="text-ed-faint hover:text-ed-muted transition-colors p-1 rounded-md hover:bg-ed-field">
@@ -2075,9 +2077,9 @@ export default function Editor({
                                     onInsert={insertFromLibrary}
                                 />
                             ) : leftTab === "Templates" ? (
-                                <TemplatesPanel busy={isPending} onInstall={(id) => {
+                                <TemplatesPanel busy={isPending} registryUrl={templateRegistryUrl} onInstall={(template) => {
                                     if (!window.confirm("Replace this site with the selected template? All existing pages and their revisions will be deleted.")) return;
-                                    installSiteTemplate(id);
+                                    installSiteTemplate(template);
                                 }} />
                             ) : leftTab === "Assets" ? (
                                 <div className="p-3"><div className="mb-3 rounded-xl border border-ed-border bg-ed-subtle p-3"><p className="text-[11px] font-semibold text-ed-text">Project assets</p><p className="mt-1 text-[9px] leading-relaxed text-ed-faint">Open a component to edit its own canvas, or drag a variant directly onto the page.</p></div><div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-semibold text-ed-muted">Components</span><span className="flex gap-1"><button type="button" onClick={createBlankComponent} className="flex items-center gap-1 rounded-md bg-ed-field px-2 py-1 text-[9px] text-ed-muted hover:text-ed-text"><IconPlus size={10} /> New</button><button type="button" onClick={() => setCodeComposerOpen(true)} className="flex items-center gap-1 rounded-md bg-ed-field px-2 py-1 text-[9px] text-ed-muted hover:text-ed-text">Code</button></span></div><div className="space-y-2">{componentMasters.map((master) => <button key={master.id} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData(COMPONENT_MIME, master.id); event.dataTransfer.effectAllowed = "copy"; }} onClick={() => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }} className="group flex w-full cursor-grab items-center gap-3 rounded-xl border border-ed-border bg-ed-subtle p-2.5 text-left hover:border-ed-accent/50 hover:bg-ed-field active:cursor-grabbing"><span className="flex size-9 items-center justify-center rounded-lg bg-ed-field text-ed-accent"><IconComponents size={16} /></span><span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-semibold text-ed-text">{master.name ?? "Component"}</span><span className="block text-[9px] text-ed-faint">{master.variant ?? "Default"} · drag to insert</span></span></button>)}{componentMasters.length === 0 && <p className="rounded-xl border border-dashed border-ed-border p-5 text-center text-[10px] text-ed-faint">Create a component or add one from code.</p>}</div></div>
