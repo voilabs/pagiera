@@ -80,6 +80,7 @@ The provider makes `next/font` fonts available in **Typography → Site font**. 
 // src/app/layout.tsx
 import { Geist, Geist_Mono } from "next/font/google";
 import { PagieraProvider } from "pagiera/provider";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -92,7 +93,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
