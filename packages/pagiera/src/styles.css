@@ -6,7 +6,7 @@
     --pagiera-surface: #17181b;
     --pagiera-border: rgba(255, 255, 255, 0.09);
     --pagiera-text: #f4f4f5;
-    --pagiera-font: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+    --pagiera-font: "Figtree", sans-serif;
 }
 
 .pagiera-root,
@@ -16,6 +16,7 @@
     box-sizing: border-box;
 }
 
+
 .pagiera-editor {
     height: 100vh;
     min-height: 640px;
@@ -24,7 +25,6 @@
     overflow: hidden;
     background: #0e0f11;
     color: var(--pagiera-text);
-    font: 13px/1.4 var(--pagiera-font);
 }
 
 .pagiera-editor button,
