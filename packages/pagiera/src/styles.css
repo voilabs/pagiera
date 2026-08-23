@@ -24,6 +24,7 @@
     overflow: hidden;
     background: #0e0f11;
     color: var(--pagiera-text);
+    font-family: var(--pagiera-font);
 }
 
 .pagiera-editor button,

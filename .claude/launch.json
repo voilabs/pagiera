@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pagiera-example",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--cwd", "apps/example", "dev", "--port", "3100"],
+      "port": 3100
+    }
+  ]
+}

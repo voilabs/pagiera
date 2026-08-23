@@ -134,6 +134,20 @@ function isRegistry(value: unknown): value is TemplateRegistry {
     );
 }
 
+function withRefresh(url: string) {
+    try {
+        const parsed = new URL(url, globalThis.location?.href ?? "http://localhost");
+        parsed.searchParams.set("refresh", "1");
+        // Keep a relative registry URL relative: rewriting it to an absolute
+        // href would pin it to the current origin.
+        return /^[a-z][a-z0-9+.-]*:|^\/\//i.test(url)
+            ? parsed.href
+            : parsed.pathname + parsed.search + parsed.hash;
+    } catch {
+        return url;
+    }
+}
+
 async function fetchJson(url: string) {
     const response = await fetch(url, { cache: "no-cache", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`Template registry returned ${response.status}.`);
@@ -151,7 +165,10 @@ export async function loadTemplateRegistry(url = DEFAULT_TEMPLATE_REGISTRY_URL, 
         if (cached && isRegistry(cached)) return { registry: cached, source: "cache" as const };
     }
     try {
-        const response = await fetchJson(url);
+        // Skipping the local cache is not enough: the catalog is also cached on
+        // the server and behind whatever proxy fronts the upstream registry, so
+        // a refresh has to be asked for explicitly all the way down.
+        const response = await fetchJson(force ? withRefresh(url) : url);
         const value = response.value;
         if (!isRegistry(value)) throw new Error("Template registry has an unsupported format.");
         if (cacheable) writeCache(key, value);

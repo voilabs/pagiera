@@ -13,6 +13,7 @@ import {
     loadTemplateRegistry,
     type TemplateRegistryEntry,
 } from "@/lib/editor/template-registry";
+import { TemplatePreview, useTemplatePreview } from "./template-preview";
 
 type RegistryState = "loading" | "local" | "network" | "cache" | "stale" | "bundled";
 type InstallStage = "fetching" | "replacing" | "creating" | "opening";
@@ -58,6 +59,7 @@ export function TemplatesPanel({
     const [selectedFont, setSelectedFont] = useState("");
     const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
     const providerFonts = usePagieraFonts();
+    const preview = useTemplatePreview(pendingTemplate?.id);
     const fontOptions = useMemo(() => {
         const options = [
             ...(pendingTemplate?.font?.url ? [{ label: `${pendingTemplate.font.title} · Template`, value: pendingTemplate.font.family }] : []),
@@ -216,22 +218,24 @@ export function TemplatesPanel({
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 6, scale: 0.98 }}
                                 transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                                className="w-full max-w-[560px] rounded-3xl bg-ed-surface p-2 text-ed-text shadow-2xl"
+                                className="flex max-h-[min(880px,94vh)] w-full max-w-[1180px] flex-col rounded-3xl bg-ed-surface p-2 text-ed-text shadow-2xl"
                             >
-                                <div className="flex items-center gap-3 px-4 py-3.5">
+                                <div className="flex shrink-0 items-center gap-3 px-4 py-3.5">
                                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ed-field text-ed-accent"><IconTemplate size={17} /></span>
                                     <div className="min-w-0 flex-1"><h3 id="template-install-title" className="truncate text-[14px] font-semibold">{installing ? "Installing" : "Install"} {pendingTemplate.name}</h3><p className="mt-1 text-[10px] text-ed-faint">{pendingTemplate.pages.length} editable pages · v{pendingTemplate.version} · ID {pendingTemplate.id}</p></div>
                                     <button type="button" aria-label="Close template confirmation" disabled={Boolean(installing)} onClick={() => setPendingTemplate(undefined)} className="flex size-8 select-none items-center justify-center rounded-xl text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40"><IconX size={15} /></button>
                                 </div>
 
-                                <div className="relative mx-1 aspect-[16/7] min-h-[190px] overflow-hidden rounded-2xl px-6 py-6" style={{ background: pendingTemplate.preview.background, color: pendingTemplate.preview.foreground }}>
-                                    <div className="absolute inset-0 opacity-75" style={{ background: `radial-gradient(circle at 88% 0%, ${pendingTemplate.preview.accent}66, transparent 48%)` }} />
-                                    <span className="relative font-mono text-[7px] font-bold uppercase tracking-[.16em]" style={{ color: pendingTemplate.preview.accent }}>{pendingTemplate.preview.eyebrow}</span>
-                                    <p className="relative mt-7 max-w-[420px] text-[30px] font-semibold leading-[.92] tracking-[-.05em]">{pendingTemplate.preview.headline}</p>
-                                    {pendingTemplate.thumbnail && <img src={templateThumbnailUrl(pendingTemplate, registryUrl)} alt={`${pendingTemplate.name} template preview`} className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.hidden = true; }} />}
-                                </div>
+                                <div className="grid min-h-0 flex-1 gap-2 px-1 pb-1 lg:grid-cols-[minmax(0,1fr)_380px]">
+                                    <TemplatePreview
+                                        pages={preview.pages}
+                                        loading={preview.loading}
+                                        error={preview.error}
+                                        className="min-h-[320px] lg:min-h-0"
+                                        controlsClassName="px-1"
+                                    />
 
-                                <div className="p-4">
+                                <div className="min-h-0 overflow-y-auto p-3 scrollbar-none lg:pl-2">
                                     <AnimatePresence mode="wait" initial={false}>
                                         {installing && installStage ? (
                                             <motion.div key="progress" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} aria-live="polite">
@@ -291,6 +295,7 @@ export function TemplatesPanel({
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
+                                </div>
                                 </div>
                             </motion.div>
                         </motion.div>

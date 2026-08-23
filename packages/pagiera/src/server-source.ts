@@ -77,6 +77,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const templateThumbnails = await import("@/lib/editor/template-thumbnail");
     const ai = await import("@/app/api/ai-design/route");
     const renderData = await import("@/lib/render/load-data");
+    const { cascadeOf } = await import("@/lib/editor/cascade");
     const basePath = (config.basePath ?? "/api/pagiera").replace(/\/$/, "");
 
     const invalidate = async () => {
@@ -87,7 +88,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const ok = (value: unknown, status = 200) => Response.json(value, { status });
     const fail = (error: unknown, status = 400) => ok({ error: error instanceof Error ? error.message : String(error) }, status);
 
-    const cachedTemplateJson = async (cacheKey: string, url: string) => {
+    const cachedTemplateJson = async (cacheKey: string, url: string, force = false) => {
         const parsedUrl = new URL(url);
         if (parsedUrl.protocol === "file:") {
             // Local development intentionally bypasses Redis: saving a
@@ -96,10 +97,19 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             if (text.length > 15_000_000) throw new Error("Template bundle is too large.");
             return JSON.parse(text) as unknown;
         }
-        const cached = await redis.get(cacheKey);
-        if (cached) return JSON.parse(cached) as unknown;
-        const response = await fetch(url, {
+        if (!force) {
+            const cached = await redis.get(cacheKey);
+            if (cached) return JSON.parse(cached) as unknown;
+        }
+        // A forced read has to reach the origin, so it skips Redis, opts out of
+        // the host framework's own fetch cache and carries `refresh` for any
+        // proxy in between — a catalog that just gained a template is useless
+        // if three layers keep serving yesterday's copy.
+        const target = new URL(url);
+        if (force) target.searchParams.set("refresh", "1");
+        const response = await fetch(target, {
             headers: { Accept: "application/json" },
+            cache: force ? "no-store" : undefined,
             signal: AbortSignal.timeout(15_000),
         });
         if (!response.ok) throw new Error(`Template source returned ${response.status}.`);
@@ -136,7 +146,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         return undefined;
     };
 
-    const templateRegistryFor = async (requestUrl: string) => {
+    const templateRegistryFor = async (requestUrl: string, force = false) => {
         const configuredSource = config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL;
         const localPath = configuredSource === LOCAL_TEMPLATE_REGISTRY
             ? await findLocalTemplateRegistry()
@@ -154,7 +164,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             if (upstream.origin === current.origin && upstream.pathname === `${basePath}/templates/registry.json`) {
                 throw new Error("The package catalog cannot use itself as its upstream registry.");
             }
-            registry = await cachedTemplateJson(`pagiera:templates:registry:v${TEMPLATE_CACHE_REVISION}:${registryUrl}`, registryUrl) as typeof registry;
+            registry = await cachedTemplateJson(`pagiera:templates:registry:v${TEMPLATE_CACHE_REVISION}:${registryUrl}`, registryUrl, force) as typeof registry;
         } catch {
             registry = templateCatalog.FALLBACK_TEMPLATE_REGISTRY;
             bundled = true;
@@ -198,11 +208,18 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             if (!name || !slug) throw new Error("Every template page needs a valid name and slug.");
             if (slugs.has(slug)) throw new Error(`Template contains the duplicate path '${slug}'.`);
             slugs.add(slug);
+            // The root style decides which breakpoint owns the shared values,
+            // so it has to be narrowed before the elements are — otherwise a
+            // template whose main breakpoint is not "desktop" loses overrides.
+            const rootStyle = validation.parseRootStyle(page.rootStyle);
             return {
                 name,
                 slug,
-                elements: validation.parseElements(page.elements),
-                rootStyle: validation.parseRootStyle(page.rootStyle),
+                elements: validation.parseElements(
+                    page.elements,
+                    cascadeOf(rootStyle.breakpoints, rootStyle.baseBreakpointId).baseId,
+                ),
+                rootStyle,
                 dataSources: validation.parseDataSources(page.dataSources),
             };
         });
@@ -343,12 +360,38 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 });
             }
             if (request.method === "GET" && path === "/templates/registry.json") {
-                const { registry, bundled, local } = await templateRegistryFor(request.url);
+                const { registry, bundled, local } = await templateRegistryFor(
+                    request.url,
+                    url.searchParams.get("refresh") === "1",
+                );
                 return new Response(JSON.stringify(registry), {
                     headers: {
                         "Content-Type": "application/json; charset=utf-8",
                         "Cache-Control": local || bundled ? "no-store" : "public, max-age=300, stale-while-revalidate=900",
                         "X-Pagiera-Template-Source": local ? "local" : bundled ? "bundled" : "network",
+                    },
+                });
+            }
+            // Must precede the asset branch below, which would otherwise claim
+            // this three-segment path.
+            if (request.method === "GET" && parts[0] === "templates" && parts[2] === "preview" && parts.length === 3) {
+                const bundle = await templateBundleById(parts[1], request.url);
+                if (!bundle) return fail("Unknown template", 404);
+                // Read-only projection for the preview surface: the same pages
+                // install would write, minus anything the renderer never reads.
+                // Data sources are deliberately left unresolved — a Repeat with
+                // no rows renders its authored placeholder, which is what a
+                // preview should show rather than live third-party content.
+                const previewPages = validateTemplatePages(bundle.pages).map((page) => ({
+                    name: page.name,
+                    slug: page.slug,
+                    elements: page.elements,
+                    rootStyle: page.rootStyle,
+                }));
+                return new Response(JSON.stringify({ templateId: parts[1], pages: previewPages }), {
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8",
+                        "Cache-Control": "private, max-age=300",
                     },
                 });
             }
