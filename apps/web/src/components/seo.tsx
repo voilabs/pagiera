@@ -32,8 +32,10 @@ export function Seo({
   const url = absoluteUrl(path);
   const imageUrl = absoluteUrl(image);
   const blocked = noindex || !IS_INDEXABLE_DEPLOYMENT;
+  // `follow` even when blocked: keeping the page out of the index is the goal,
+  // and a 404 or a preview build still links to pages worth discovering.
   const robots = blocked
-    ? "noindex,nofollow"
+    ? "noindex,follow"
     : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
   const structured = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 
@@ -43,7 +45,8 @@ export function Seo({
         <title>{title}</title>
         <meta content={description} name="description" />
         <meta content={robots} name="robots" />
-        <link href={url} rel="canonical" />
+        {/* A page that asks not to be indexed has no canonical to point at. */}
+        {!noindex && <link href={url} rel="canonical" />}
 
         <meta content={SITE_NAME} property="og:site_name" />
         <meta content={type} property="og:type" />

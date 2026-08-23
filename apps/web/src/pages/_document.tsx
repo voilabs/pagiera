@@ -1,5 +1,9 @@
 import { Head, Html, Main, NextScript } from "next/document";
 
+/** Set this to the token Search Console hands out to verify the domain. */
+const GOOGLE_VERIFICATION =
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+
 export default function Document() {
   return (
     <Html lang="en">
@@ -9,6 +13,9 @@ export default function Document() {
         <link href="/logo.png" rel="apple-touch-icon" />
         <link href="/site.webmanifest" rel="manifest" />
         <meta content="#f5f3ff" name="theme-color" />
+        {GOOGLE_VERIFICATION && (
+          <meta content={GOOGLE_VERIFICATION} name="google-site-verification" />
+        )}
 
         <link href="https://fonts.googleapis.com" rel="preconnect" />
         {/* Font files are fetched with CORS, so this preconnect only saves the
