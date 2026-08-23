@@ -59,7 +59,8 @@ export function TemplatesPanel({
     const [selectedFont, setSelectedFont] = useState("");
     const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
     const providerFonts = usePagieraFonts();
-    const preview = useTemplatePreview(pendingTemplate?.id);
+    const [catalogRevision, setCatalogRevision] = useState(0);
+    const preview = useTemplatePreview(pendingTemplate?.id, catalogRevision);
     const fontOptions = useMemo(() => {
         const options = [
             ...(pendingTemplate?.font?.url ? [{ label: `${pendingTemplate.font.title} · Template`, value: pendingTemplate.font.family }] : []),
@@ -72,6 +73,9 @@ export function TemplatesPanel({
     const refresh = async (force = false) => {
         setStatus("loading");
         setError("");
+        // Refreshing the catalog has to invalidate the previews too, or the
+        // panel shows a new listing beside stale artwork.
+        if (force) setCatalogRevision((current) => current + 1);
         const result = await loadTemplateRegistry(registryUrl, force);
         setTemplates(result.registry.templates);
         setStatus(result.source);

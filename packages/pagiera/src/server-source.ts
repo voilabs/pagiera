@@ -174,10 +174,10 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         return { registry, registryUrl, bundled, local };
     };
 
-    const templateBundleById = async (templateId: string, requestUrl: string) => {
+    const templateBundleById = async (templateId: string, requestUrl: string, force = false) => {
         if (!/^[a-z0-9][a-z0-9._-]{0,99}$/i.test(templateId)) return undefined;
         const builtin = BUILTIN_TEMPLATE_IDS.includes(templateId as BuiltinTemplateId);
-        const { registry, registryUrl, bundled } = await templateRegistryFor(requestUrl);
+        const { registry, registryUrl, bundled } = await templateRegistryFor(requestUrl, force);
         const entry = registry.templates.find((candidate) => candidate?.id === templateId);
         if (!entry) return undefined;
         if (bundled || typeof entry.file !== "string" || !entry.file) {
@@ -185,7 +185,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         }
         const bundleUrl = new URL(entry.file, registryUrl).href;
         if (!/^(https?|file):$/.test(new URL(bundleUrl).protocol)) throw new Error("Template bundle URL must use HTTP, HTTPS or a local development file.");
-        const bundle = await cachedTemplateJson(`pagiera:templates:bundle:${templateId}:${String(entry.version ?? "latest")}:${bundleUrl}`, bundleUrl) as {
+        const bundle = await cachedTemplateJson(`pagiera:templates:bundle:${templateId}:${String(entry.version ?? "latest")}:${bundleUrl}`, bundleUrl, force) as {
             schemaVersion?: unknown;
             id?: unknown;
             pages?: unknown;
@@ -225,8 +225,13 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         });
     };
 
-    const installTemplateById = async (templateId: string, requestUrl: string, fontFamily?: string) => {
-        const rawBundle = await templateBundleById(templateId, requestUrl);
+    const installTemplateById = async (
+        templateId: string,
+        requestUrl: string,
+        fontFamily?: string,
+        force = false,
+    ) => {
+        const rawBundle = await templateBundleById(templateId, requestUrl, force);
         if (!rawBundle) return undefined;
         const safeFontFamily = fontFamily
             ? validation.parseRootStyle({ fontFamily }).fontFamily
@@ -360,10 +365,16 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 });
             }
             if (request.method === "GET" && path === "/templates/registry.json") {
-                const { registry, bundled, local } = await templateRegistryFor(
-                    request.url,
-                    url.searchParams.get("refresh") === "1",
-                );
+                const refresh = url.searchParams.get("refresh") === "1";
+                if (refresh) {
+                    // Bundles are keyed by version, so editing a template
+                    // without bumping it would keep serving the old pages to
+                    // both preview and install. Refresh has to mean the whole
+                    // catalog, not just the index.
+                    const stale = await redis.keys("pagiera:templates:bundle:*");
+                    if (stale.length) await redis.del(stale);
+                }
+                const { registry, bundled, local } = await templateRegistryFor(request.url, refresh);
                 return new Response(JSON.stringify(registry), {
                     headers: {
                         "Content-Type": "application/json; charset=utf-8",
@@ -375,7 +386,11 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             // Must precede the asset branch below, which would otherwise claim
             // this three-segment path.
             if (request.method === "GET" && parts[0] === "templates" && parts[2] === "preview" && parts.length === 3) {
-                const bundle = await templateBundleById(parts[1], request.url);
+                const bundle = await templateBundleById(
+                    parts[1],
+                    request.url,
+                    url.searchParams.get("refresh") === "1",
+                );
                 if (!bundle) return fail("Unknown template", 404);
                 // Read-only projection for the preview surface: the same pages
                 // install would write, minus anything the renderer never reads.
@@ -505,7 +520,14 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 const templateId = typeof body.templateId === "string" ? body.templateId.trim() : "";
                 if (!templateId) return fail("A template ID is required.");
                 const fontFamily = typeof body.fontFamily === "string" ? body.fontFamily.trim().slice(0, 300) : undefined;
-                const installed = await installTemplateById(templateId, request.url, fontFamily);
+                // Installing what the author just previewed matters more than a
+                // cache hit, so `refresh` reaches the bundle too.
+                const installed = await installTemplateById(
+                    templateId,
+                    request.url,
+                    fontFamily,
+                    body.refresh === true || url.searchParams.get("refresh") === "1",
+                );
                 return installed ? ok({ status: "ok", templateId, ...installed }) : fail("Unknown template", 404);
             }
             if (parts[0] === "templates" && parts[1] && parts[1] !== "install" && request.method === "POST") {

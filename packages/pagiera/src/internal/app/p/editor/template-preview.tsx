@@ -22,8 +22,9 @@ const FALLBACK_DEVICES: PreviewDevice[] = [
 ];
 
 /** The preview endpoint sits beside the registry on the package's own API. */
-function previewUrlFor(templateId: string) {
-    return `${DEFAULT_TEMPLATE_REGISTRY_URL.replace(/registry\.json$/, "")}${encodeURIComponent(templateId)}/preview`;
+function previewUrlFor(templateId: string, force: boolean) {
+    const base = `${DEFAULT_TEMPLATE_REGISTRY_URL.replace(/registry\.json$/, "")}${encodeURIComponent(templateId)}/preview`;
+    return force ? `${base}?refresh=1` : base;
 }
 
 /**
@@ -33,14 +34,25 @@ function previewUrlFor(templateId: string) {
  * fetch per opened template is cheap; results are kept for the session so
  * flicking between devices and pages never refetches.
  */
-export function useTemplatePreview(templateId: string | undefined) {
+export function useTemplatePreview(
+    templateId: string | undefined,
+    /** Bumped by the catalog's Refresh so a stale preview cannot survive it. */
+    revision = 0,
+) {
     const [pages, setPages] = useState<TemplatePreviewPage[]>();
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const cache = useRef(new Map<string, TemplatePreviewPage[]>());
+    const lastRevision = useRef(revision);
 
     useEffect(() => {
         if (!templateId) return;
+        const force = revision !== lastRevision.current;
+        if (force) {
+            cache.current.clear();
+            lastRevision.current = revision;
+        }
+
         const cached = cache.current.get(templateId);
         if (cached) {
             setPages(cached);
@@ -53,7 +65,10 @@ export function useTemplatePreview(templateId: string | undefined) {
         setError("");
         setPages(undefined);
 
-        fetch(previewUrlFor(templateId), { headers: { Accept: "application/json" } })
+        fetch(previewUrlFor(templateId, force), {
+            headers: { Accept: "application/json" },
+            cache: force ? "no-store" : "default",
+        })
             .then(async (response) => {
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok) throw new Error(payload?.error ?? `Preview returned ${response.status}.`);
@@ -78,7 +93,7 @@ export function useTemplatePreview(templateId: string | undefined) {
         return () => {
             active = false;
         };
-    }, [templateId]);
+    }, [templateId, revision]);
 
     return { pages, loading, error };
 }
