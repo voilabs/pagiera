@@ -2,7 +2,8 @@
 
 import { IconDatabase, IconPlus, IconTrash } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { newId } from "@/lib/editor/tree";
 import type { DataSource } from "@/lib/editor/types";
 import { DataSourceModal, type SourcePreviewer } from "./data-modal";
@@ -27,7 +28,12 @@ export function DataPanel({
     preview: SourcePreviewer;
 }) {
     const [openId, setOpenId] = useState<string | null>(null);
+    const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
     const open = sources.find((source) => source.id === openId);
+
+    useEffect(() => {
+        setPortalContainer(document.querySelector<HTMLElement>(".pg-editor"));
+    }, []);
 
     const add = () => {
         const source: DataSource = {
@@ -112,23 +118,26 @@ export function DataPanel({
                 Add a data source
             </button>
 
-            <AnimatePresence>
-                {open && (
-                    <DataSourceModal
-                        key={open.id}
-                        source={open}
-                        sample={samples[open.id]}
-                        onChange={(changes) =>
-                            onChange((prev) =>
-                                prev.map((s) => (s.id === open.id ? { ...s, ...changes } : s)),
-                            )
-                        }
-                        onSample={(sample) => onSample(open.id, sample)}
-                        onClose={() => setOpenId(null)}
-                        preview={preview}
-                    />
-                )}
-            </AnimatePresence>
+            {portalContainer && createPortal(
+                <AnimatePresence>
+                    {open && (
+                        <DataSourceModal
+                            key={open.id}
+                            source={open}
+                            sample={samples[open.id]}
+                            onChange={(changes) =>
+                                onChange((prev) =>
+                                    prev.map((s) => (s.id === open.id ? { ...s, ...changes } : s)),
+                                )
+                            }
+                            onSample={(sample) => onSample(open.id, sample)}
+                            onClose={() => setOpenId(null)}
+                            preview={preview}
+                        />
+                    )}
+                </AnimatePresence>,
+                portalContainer,
+            )}
         </div>
     );
 }

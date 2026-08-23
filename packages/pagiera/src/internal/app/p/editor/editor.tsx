@@ -10,15 +10,14 @@ import {
     IconChevronLeft,
     IconChevronRight,
     IconDatabase,
-    IconExternalLink,
     IconFocusCentered,
     IconLayoutSidebarLeftCollapse,
     IconLayoutSidebarRightCollapse,
     IconMinus,
     IconPlayerPlay,
     IconPlus,
-    IconPointer,
     IconSearch,
+    IconSettings,
     IconSparkles,
     IconTrash,
     IconWorld,
@@ -36,11 +35,12 @@ import {
     IconTemplate,
     IconX,
 } from "@tabler/icons-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type React from "react";
 import {
     useCallback,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
@@ -58,8 +58,6 @@ import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import type { AiDesignPlan } from "@/lib/editor/ai-types";
 import { bindElement, type Row, rowsFor } from "@/lib/render/bind";
 import { resolveFont } from "@/lib/render/css";
-import { createNocturneShowcase } from "@/lib/editor/showcase";
-import type { TemplateInstallInput } from "@/lib/editor/template-registry";
 import { type Guide, snapPosition } from "@/lib/editor/snap";
 import {
     applyStyle,
@@ -127,6 +125,98 @@ import { TemplatesPanel } from "./templates-panel";
 
 const MIN_SIZE = 10;
 const COMPONENT_MIME = "application/pagiera-component";
+const EDITOR_TABS_STORAGE_KEY = "pagiera:editor-tabs";
+
+const LEFT_EDITOR_TABS = [
+    "Layers",
+    "Elements",
+    "Components",
+    "Assets",
+    "Library",
+    "Icons",
+    "Templates",
+    "Variables",
+    "AI",
+    "Data",
+    "Pages",
+    "Settings",
+] as const;
+const RIGHT_EDITOR_TABS = ["Design", "Content", "Hover", "Interact"] as const;
+
+type LeftEditorTab = (typeof LEFT_EDITOR_TABS)[number];
+type RightEditorTab = (typeof RIGHT_EDITOR_TABS)[number];
+
+type ComponentAsset = {
+    id: string;
+    name: string;
+    variants: CanvasElement[];
+};
+
+function ComponentAssetCards({
+    assets,
+    activeMasterId,
+    onOpen,
+}: {
+    assets: ComponentAsset[];
+    activeMasterId?: string;
+    onOpen: (master: CanvasElement) => void;
+}) {
+    if (assets.length === 0) return <p className="rounded-2xl border border-dashed border-ed-border p-5 text-center text-[10px] text-ed-faint">Create a shared asset or add one from code.</p>;
+    return (
+        <div className="space-y-3">
+            {assets.map((asset) => (
+                <section key={asset.id} className="overflow-hidden rounded-2xl border border-ed-border bg-ed-subtle">
+                    <button type="button" onClick={() => onOpen(asset.variants[0])} className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-ed-field">
+                        <span className="flex size-9 items-center justify-center rounded-xl bg-ed-field text-ed-accent"><IconComponents size={16} /></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-ed-text">{asset.name}</span><span className="block text-[9px] text-ed-faint">{asset.variants.length} variant{asset.variants.length === 1 ? "" : "s"} · shared across pages</span></span>
+                        <IconChevronRight size={14} className="text-ed-faint" />
+                    </button>
+                    <div className="grid grid-cols-2 gap-1.5 border-t border-ed-border p-2">
+                        {asset.variants.map((variant) => (
+                            <button
+                                key={variant.id}
+                                type="button"
+                                draggable
+                                onDragStart={(event) => { event.dataTransfer.setData(COMPONENT_MIME, variant.id); event.dataTransfer.effectAllowed = "copy"; }}
+                                onClick={() => onOpen(variant)}
+                                className={`group min-w-0 cursor-grab rounded-xl border p-1.5 text-left active:cursor-grabbing ${activeMasterId === variant.id ? "border-ed-accent bg-[var(--ed-accent-soft)]" : "border-transparent bg-ed-field hover:border-ed-border"}`}
+                            >
+                                <span className="mb-1.5 flex h-12 items-center justify-center overflow-hidden rounded-lg border border-ed-border" style={{ background: variant.base.gradient || variant.base.bg || "var(--ed-surface)" }}>
+                                    <span className="rounded-full bg-black/35 px-2 py-1 font-mono text-[8px] text-white/80">{Math.round(variant.base.w)}×{Math.round(variant.base.h)}</span>
+                                </span>
+                                <span className="block truncate px-1 text-[9px] font-semibold text-ed-text">{variant.variant ?? "Default"}</span>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </div>
+    );
+}
+
+function isEditorTab<T extends string>(value: unknown, tabs: readonly T[]): value is T {
+    return typeof value === "string" && tabs.includes(value as T);
+}
+
+function leftTabFromValue(value: string | null): LeftEditorTab | undefined {
+    if (!value) return undefined;
+    const normalized = value.trim().toLowerCase();
+    return LEFT_EDITOR_TABS.find((tab) => tab.toLowerCase() === normalized);
+}
+
+function leftTabFromPath(pathname: string): LeftEditorTab | undefined {
+    const segment = pathname.split("/").filter(Boolean).at(-1);
+    return leftTabFromValue(segment ? decodeURIComponent(segment) : null);
+}
+
+function tabForDocumentMode(tab: LeftEditorTab, componentMode: boolean): LeftEditorTab {
+    if (componentMode) {
+        if (tab === "Assets") return "Components";
+        if (tab === "Pages" || tab === "Templates" || tab === "Settings") return "Layers";
+        return tab;
+    }
+    return tab === "Components" ? "Assets" : tab;
+}
 
 export type EditorPage = {
     id: string;
@@ -146,17 +236,20 @@ export type EditorAdapters = {
     renamePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
     duplicatePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
     deletePage?: (id: string) => Promise<PageMutationResult>;
-    installTemplate?: (template: TemplateInstallInput) => Promise<PageMutationResult>;
+    installTemplate?: (templateId: string, fontFamily?: string) => Promise<PageMutationResult>;
+    setSiteFont?: (fontFamily: string, customFonts?: RootStyle["customFonts"]) => Promise<unknown>;
+    setSiteTransition?: (pageTransition: RootStyle["pageTransition"], pageTransitionDuration: number) => Promise<unknown>;
     publishPage?: (id: string) => Promise<PageMutationResult>;
     unpublishPage?: (id: string, slug: string) => Promise<PageMutationResult>;
     navigate?: (pageId: string, options?: { replace?: boolean }) => void | Promise<void>;
+    editorHref?: (pageId: string, panel?: string) => string;
     refresh?: () => void;
     previewHref?: (pageId: string) => string;
     publishedHref?: (slug: string) => string;
     previewSource?: SourcePreviewer;
 };
 
-const defaultEditorHref = (pageId: string) => `/editor/${encodeURIComponent(pageId)}`;
+const defaultEditorHref = (pageId: string, panel?: string) => `/editor/${encodeURIComponent(pageId)}${panel ? `/${encodeURIComponent(panel)}` : ""}`;
 const defaultPublishedHref = (slug: string) => slug === "home" || slug === "" ? "/" : `/${slug.split("/").map((part) => part.startsWith(":") ? part : encodeURIComponent(part)).join("/")}`;
 
 export type PageMutationResult =
@@ -199,14 +292,17 @@ export default function Editor({
     library,
     adapters,
     templateRegistryUrl,
+    initialPanel,
 }: {
     page: EditorPage;
     pages: PageEntry[];
     library: LibraryPage[];
     adapters?: EditorAdapters;
     templateRegistryUrl?: string;
+    initialPanel?: string;
 }) {
     const [isPending, startTransition] = useTransition();
+    const reduceMotion = useReducedMotion();
 
     const {
         elements,
@@ -265,6 +361,16 @@ export default function Editor({
     const [breakpointPanel, setBreakpointPanel] = useState(false);
     const componentMode = rootStyle.documentMode === "component";
     const componentMasters = elements.filter((element) => element.componentRole === "master");
+    const componentAssets = useMemo<ComponentAsset[]>(() => {
+        const grouped = new Map<string, ComponentAsset>();
+        for (const master of componentMasters) {
+            const id = master.componentId ?? master.id;
+            const current = grouped.get(id);
+            if (current) current.variants.push(master);
+            else grouped.set(id, { id, name: master.name?.trim() || "Untitled asset", variants: [master] });
+        }
+        return [...grouped.values()];
+    }, [elements]);
     const [activeComponentMasterId, setActiveComponentMasterId] = useState<string | null>(null);
     const activeComponentMaster = componentMasters.find((element) => element.id === activeComponentMasterId) ?? componentMasters[0];
     const activeComponentVariants = activeComponentMaster
@@ -281,9 +387,11 @@ export default function Editor({
         breakpointDefs.find((item) => item.id === breakpoint) ?? breakpointDefs[0];
     const frameWidthForBreakpoint = selectedBreakpoint.width;
 
-    const frames = useMemo<Array<{ bp: Breakpoint; width: number }>>(
-        () => componentMode ? [{ bp: "desktop", width: Math.max(1, activeComponentMaster?.base.w ?? 320) }] : breakpointDefs.map((item) => ({ bp: item.id, width: item.width })),
-        [activeComponentMaster?.base.w, breakpointDefs, componentMode],
+    const frames = useMemo<Array<{ bp: Breakpoint; width: number; masterId?: string }>>(
+        () => componentMode
+            ? activeComponentVariants.map((variant) => ({ bp: "desktop", width: Math.max(1, variant.base.w), masterId: variant.id }))
+            : breakpointDefs.map((item) => ({ bp: item.id, width: item.width })),
+        [activeComponentVariants, breakpointDefs, componentMode],
     );
 
     /** Widest frame on screen; the zoom fits against this. */
@@ -303,15 +411,81 @@ export default function Editor({
         recenter,
     } = useCanvasView(fitWidth);
 
-    const [leftTab, setLeftTab] = useState("Layers");
-    const [rightTab, setRightTab] = useState<"Design" | "Content" | "Hover" | "Interact">("Design");
-    const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
-    const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+    const serverLeftTab = tabForDocumentMode(leftTabFromValue(initialPanel ?? null) ?? "Layers", componentMode);
+    const [leftTab, setLeftTab] = useState<LeftEditorTab>(serverLeftTab);
+    const [rightTab, setRightTab] = useState<RightEditorTab>("Design");
+    const [tabsRestored, setTabsRestored] = useState(false);
+    const [isLeftCollapsed, setIsLeftCollapsed] = useState(serverLeftTab === "Templates");
+    const [isRightCollapsed, setIsRightCollapsed] = useState(true);
     const [search, setSearch] = useState("");
 
+    useLayoutEffect(() => {
+        try {
+            const routed = leftTabFromValue(initialPanel ?? null) ?? leftTabFromPath(window.location.pathname);
+            const queried = leftTabFromValue(new URLSearchParams(window.location.search).get("tab"));
+            const stored = JSON.parse(localStorage.getItem(EDITOR_TABS_STORAGE_KEY) ?? "null") as {
+                left?: unknown;
+                right?: unknown;
+            } | null;
+            if (routed) {
+                setLeftTab(tabForDocumentMode(routed, componentMode));
+            } else if (queried) {
+                setLeftTab(tabForDocumentMode(queried, componentMode));
+            } else if (isEditorTab(stored?.left, LEFT_EDITOR_TABS)) {
+                setLeftTab(tabForDocumentMode(stored.left, componentMode));
+            }
+            if (isEditorTab(stored?.right, RIGHT_EDITOR_TABS)) setRightTab(stored.right);
+        } catch {
+            // Storage can be unavailable or contain data from an older editor build.
+        } finally {
+            setTabsRestored(true);
+        }
+    }, [initialPanel]);
+
+    useEffect(() => {
+        setLeftTab((current) => tabForDocumentMode(current, componentMode));
+    }, [componentMode]);
+
+    useEffect(() => {
+        if (!tabsRestored) return;
+        try {
+            localStorage.setItem(EDITOR_TABS_STORAGE_KEY, JSON.stringify({ left: leftTab, right: rightTab }));
+            const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, leftTab.toLowerCase());
+            const url = new URL(href, window.location.href);
+            const current = new URL(window.location.href);
+            current.searchParams.delete("tab");
+            url.search = current.search;
+            url.hash = current.hash;
+            if (`${url.pathname}${url.search}${url.hash}` !== `${current.pathname}${current.search}${current.hash}`) {
+                window.history.replaceState(window.history.state, "", url);
+            }
+        } catch {
+            // A private-mode storage failure must not interrupt editing.
+        }
+    }, [adapters?.editorHref, leftTab, page.id, rightTab, tabsRestored]);
+
+    useEffect(() => {
+        const restoreTabFromHistory = () => {
+            const routed = leftTabFromPath(window.location.pathname);
+            const queried = leftTabFromValue(new URLSearchParams(window.location.search).get("tab"));
+            const restored = routed ?? queried;
+            if (restored) {
+                const next = tabForDocumentMode(restored, componentMode);
+                setLeftTab(next);
+                setIsLeftCollapsed(next === "Templates");
+            }
+        };
+        window.addEventListener("popstate", restoreTabFromHistory);
+        return () => window.removeEventListener("popstate", restoreTabFromHistory);
+    }, [componentMode]);
+
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const hasElementSelection = selectedIds.length > 0;
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [hoveredEffectId, setHoveredEffectId] = useState<string | null>(null);
+    // Keep the complete hovered ancestry. A component root and a nested button
+    // may both own hover states; a single ID made the parent snap back as soon
+    // as the pointer crossed into its child.
+    const [hoveredEffectIds, setHoveredEffectIds] = useState<Set<string>>(() => new Set());
     const [pressedEffectId, setPressedEffectId] = useState<string | null>(null);
     const [effectsPreview, setEffectsPreview] = useState(false);
     const [previewVisibility, setPreviewVisibility] = useState<Record<string, boolean>>({});
@@ -330,6 +504,10 @@ export default function Editor({
         canvasX?: number;
         canvasY?: number;
     } | null>(null);
+
+    useEffect(() => {
+        setIsRightCollapsed(!hasElementSelection);
+    }, [hasElementSelection]);
 
     const updateBreakpoints = (next: BreakpointDefinition[]) =>
         setRootStyle({
@@ -472,15 +650,43 @@ export default function Editor({
         event.stopPropagation();
         const startY = event.clientY;
         const initial = canvasHeight;
+        const componentMasterId = componentMode ? activeComponentMaster?.id : undefined;
+        let latestHeight = initial;
+        let animationFrame = 0;
+
+        beginTransaction();
+
+        const heightAt = (clientY: number) =>
+            Math.round(Math.max(1, Math.min(12000, initial + (clientY - startY) / scale)));
+
         const move = (pointer: MouseEvent) => {
-            const height = Math.round(Math.max(1, Math.min(12000, initial + (pointer.clientY - startY) / scale)));
-            setCanvasHeight(height);
-            if (componentMode && activeComponentMaster) setElements((current) => current.map((element) => element.id === activeComponentMaster.id ? { ...element, base: { ...element.base, h: height, heightMode: "fixed" } } : element));
+            latestHeight = heightAt(pointer.clientY);
+            // Mousemove can fire much faster than the browser can paint. One
+            // local update per frame keeps resize fluid without recursively
+            // driving document state, ResizeObserver and autosave.
+            if (animationFrame) return;
+            animationFrame = window.requestAnimationFrame(() => {
+                animationFrame = 0;
+                setCanvasHeight((current) => current === latestHeight ? current : latestHeight);
+            });
         };
         const up = (pointer: MouseEvent) => {
-            const height = Math.round(Math.max(1, Math.min(12000, initial + (pointer.clientY - startY) / scale)));
-            setCanvasHeight(height);
-            setRootStyle({ ...rootStyle, canvasHeight: height });
+            latestHeight = heightAt(pointer.clientY);
+            if (animationFrame) window.cancelAnimationFrame(animationFrame);
+            setCanvasHeight((current) => current === latestHeight ? current : latestHeight);
+
+            if (componentMasterId) {
+                setElements((current) => {
+                    const master = current.find((element) => element.id === componentMasterId);
+                    if (!master || (master.base.h === latestHeight && master.base.heightMode === "fixed")) return current;
+                    return current.map((element) => element.id === componentMasterId
+                        ? { ...element, base: { ...element.base, h: latestHeight, heightMode: "fixed" } }
+                        : element);
+                });
+            } else {
+                setRootStyle({ canvasHeight: latestHeight });
+            }
+            endTransaction();
             window.removeEventListener("mousemove", move);
             window.removeEventListener("mouseup", up);
         };
@@ -488,14 +694,14 @@ export default function Editor({
         window.addEventListener("mouseup", up);
     };
 
-    const beginComponentWidthResize = (event: React.MouseEvent) => {
+    const beginComponentWidthResize = (event: React.MouseEvent, master = activeComponentMaster) => {
         event.preventDefault();
         event.stopPropagation();
         const startX = event.clientX;
-        const initial = activeComponentMaster?.base.w ?? 320;
+        const initial = master?.base.w ?? 320;
         const move = (pointer: MouseEvent) => {
             const width = Math.round(Math.max(1, Math.min(4000, initial + (pointer.clientX - startX) / scale)));
-            if (activeComponentMaster) setElements((current) => current.map((element) => element.id === activeComponentMaster.id ? { ...element, base: { ...element.base, w: width, widthMode: "fixed" } } : element));
+            if (master) setElements((current) => current.map((element) => element.id === master.id ? { ...element, base: { ...element.base, w: width, widthMode: "fixed" } } : element));
         };
         const up = () => {
             window.removeEventListener("mousemove", move);
@@ -669,19 +875,21 @@ export default function Editor({
     const [clipboard, setClipboard] = useState<Clipboard | null>(null);
     /** Rows fetched by the Data panel, used to preview Repeat blocks. */
     const [samples, setSamples] = useState<Record<string, SourceSample>>({});
+    const [pageError, setPageError] = useState<string | null>(null);
+    const [pageSwitchTarget, setPageSwitchTarget] = useState<string | null>(null);
 
     useEffect(() => {
         // Page-local state must not leak into the next document. Chrome state
         // such as leftTab/rightTab intentionally remains untouched.
         setSelectedIds([]);
         setEditingId(null);
-        setHoveredEffectId(null);
+        setHoveredEffectIds(new Set());
         setPressedEffectId(null);
         setPreviewVisibility({});
         setSamples({});
         setContextMenu(null);
+        setPageSwitchTarget(null);
     }, [page.id]);
-    const [pageError, setPageError] = useState<string | null>(null);
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const [canvasHeight, setCanvasHeight] = useState(rootStyle.canvasHeight);
@@ -699,6 +907,17 @@ export default function Editor({
         [activeComponentMaster, elements],
     );
     const visibleEditorElements = useMemo(() => elements.filter((element) => componentMode ? activeComponentIds.has(element.id) : !componentAssetIds.has(element.id)), [activeComponentIds, componentAssetIds, componentMode, elements]);
+    const componentInstanceFor = useCallback((element: CanvasElement) => {
+        if (componentMode) return undefined;
+        let cursor: CanvasElement | undefined = element;
+        const visited = new Set<string>();
+        while (cursor && !visited.has(cursor.id)) {
+            visited.add(cursor.id);
+            if (cursor.componentRole === "instance") return cursor;
+            cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+        }
+        return undefined;
+    }, [byId, componentMode]);
     const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
     const selectedElement = selectedId ? byId.get(selectedId) : undefined;
     const deviceWidth = frameWidthForBreakpoint;
@@ -715,7 +934,10 @@ export default function Editor({
     useEffect(() => {
         const node = canvasRef.current;
         if (!node) return;
-        const observer = new ResizeObserver(([entry]) => setContentHeight(Math.ceil(entry.contentRect.height)));
+        const observer = new ResizeObserver(([entry]) => {
+            const height = Math.ceil(entry.contentRect.height);
+            setContentHeight((current) => current === height ? current : height);
+        });
         observer.observe(node);
         return () => observer.disconnect();
     }, [breakpoint, componentMode]);
@@ -728,9 +950,10 @@ export default function Editor({
             return {
                 parentLayout: parentStyle?.layout ?? rootStyle.layout,
                 parentDirection: parentStyle?.direction ?? rootStyle.direction,
+                parentAlign: parentStyle?.align ?? rootStyle.align,
             };
         },
-        [byId, breakpoint, rootStyle.direction, rootStyle.layout],
+        [byId, breakpoint, rootStyle.align, rootStyle.direction, rootStyle.layout],
     );
 
     /* ---------------------------------------------------------------- edits */
@@ -748,9 +971,13 @@ export default function Editor({
 
     const patchProps = useCallback(
         (id: string, patch: Partial<CanvasElement>) => {
-            setElements((els) =>
-                els.map((el) => (el.id === id ? { ...el, ...patch } : el)),
-            );
+            setElements((els) => {
+                const target = els.find((element) => element.id === id);
+                if (target?.componentRole === "master" && target.componentId && patch.name !== undefined) {
+                    return els.map((element) => element.id === id ? { ...element, ...patch } : element.componentRole === "master" && element.componentId === target.componentId ? { ...element, name: patch.name } : element);
+                }
+                return els.map((element) => (element.id === id ? { ...element, ...patch } : element));
+            });
         },
         [setElements],
     );
@@ -872,6 +1099,11 @@ export default function Editor({
                 parentId,
             });
             Object.assign(element, props);
+            let componentParent = parentId ? byId.get(parentId) : undefined;
+            while (componentParent && componentParent.componentRole !== "master") {
+                componentParent = componentParent.parentId ? byId.get(componentParent.parentId) : undefined;
+            }
+            if (componentParent?.componentRole === "master") element.componentSourceId = element.id;
             setElements((current) => [...current, element]);
             setSelectedIds([element.id]);
         },
@@ -897,7 +1129,7 @@ export default function Editor({
 
     const createBlankComponent = () => {
         const master = createElement("Frame", { x: 0, y: 0, z: nextZ(elements) });
-        master.name = `Component ${componentMasters.length + 1}`;
+        master.name = `Component ${componentAssets.length + 1}`;
         master.componentRole = "master";
         master.componentId = master.id;
         master.componentSourceId = master.id;
@@ -910,6 +1142,21 @@ export default function Editor({
         setBreakpoint("desktop");
         setLeftTab("Components");
     };
+
+    const openComponentEditor = useCallback((instance: CanvasElement) => {
+        if (!instance.componentId) return;
+        const master = componentMasters.find((candidate) =>
+            candidate.componentId === instance.componentId &&
+            (candidate.variant ?? "Default") === (instance.variant ?? "Default"),
+        ) ?? componentMasters.find((candidate) => candidate.componentId === instance.componentId);
+        if (!master) return;
+        setRootStyle({ documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
+        setActiveComponentMasterId(master.id);
+        setSelectedIds([master.id]);
+        setBreakpoint("desktop");
+        setLeftTab("Components");
+        setEditingId(null);
+    }, [componentMasters, rootStyle.maxWidth, setRootStyle]);
 
     const createComponentInstance = useCallback(() => {
         if (!selectedElement?.componentId || selectedElement.componentRole !== "master")
@@ -927,19 +1174,19 @@ export default function Editor({
     }, [elements, selectedElement, setElements]);
 
     const createComponentVariant = useCallback(() => {
-        if (!selectedElement?.componentId || selectedElement.componentRole !== "master")
-            return;
+        const sourceMaster = selectedElement?.componentRole === "master" ? selectedElement : activeComponentMaster;
+        if (!sourceMaster?.componentId) return;
         const siblings = elements.filter(
             (element) =>
                 element.componentRole === "master" &&
-                element.componentId === selectedElement.componentId,
+                element.componentId === sourceMaster.componentId,
         );
-        const clone = cloneSubtree(elements, selectedElement.id, { x: 0, y: 0 });
+        const clone = cloneSubtree(elements, sourceMaster.id, { x: 0, y: 0 });
         if (!clone) return;
         const copies = clone.elements.map((element) => ({
             ...element,
             componentRole: element.id === clone.rootId ? ("master" as const) : undefined,
-            componentId: selectedElement.componentId,
+            componentId: sourceMaster.componentId,
             variant:
                 element.id === clone.rootId
                     ? `Variant ${siblings.length + 1}`
@@ -948,7 +1195,7 @@ export default function Editor({
         setElements((current) => [...current, ...copies]);
         setActiveComponentMasterId(clone.rootId);
         setSelectedIds([clone.rootId]);
-    }, [elements, selectedElement, setElements]);
+    }, [activeComponentMaster, elements, selectedElement, setElements]);
 
     const switchInstanceVariant = useCallback(
         (variant: string) => {
@@ -1030,10 +1277,11 @@ export default function Editor({
 
     const doReparent = useCallback(
         (id: string, parentId: string | undefined, beforeId?: string) => {
-            if (!componentMode && parentId && componentAssetIds.has(parentId)) return;
+            const parent = parentId ? byId.get(parentId) : undefined;
+            if (!componentMode && parent && (componentAssetIds.has(parent.id) || componentInstanceFor(parent))) return;
             setElements((els) => reparent(els, id, parentId, breakpoint, beforeId));
         },
-        [breakpoint, componentAssetIds, componentMode, setElements],
+        [breakpoint, byId, componentAssetIds, componentInstanceFor, componentMode, setElements],
     );
 
     const switchPageLayout = (layout: "stack" | "absolute") => {
@@ -1057,43 +1305,6 @@ export default function Editor({
             setElements((current) => current.map((element) => rootIds.has(element.id) ? applyStyleIsolated(element, breakpoint, { x: 0, y: 0 }, breakpointDefs.map((definition) => definition.id), cascade) : element));
             setRootStyle({ ...rootStyle, layout: "stack" });
         }
-    };
-
-    const applyStyleKit = (kit: "midnight" | "editorial" | "cobalt" | "warm") => {
-        const palette = {
-            midnight: { bg: "#090b10", surface: "#121620", text: "#f8fafc", muted: "#94a3b8", accent: "#7c5cff", border: "#252b38" },
-            editorial: { bg: "#f3efe7", surface: "#fffdf8", text: "#171512", muted: "#746f66", accent: "#e14b32", border: "#d8d0c2" },
-            cobalt: { bg: "#071425", surface: "#0d2038", text: "#f0f7ff", muted: "#91a9c2", accent: "#2f80ff", border: "#1d3a59" },
-            warm: { bg: "#18110f", surface: "#251916", text: "#fff7ed", muted: "#c6a99b", accent: "#f97316", border: "#44302a" },
-        }[kit];
-        setRootStyle({ ...rootStyle, bg: palette.bg, variables: [
-            { id: "kit-bg", name: "Background", type: "color", value: palette.bg },
-            { id: "kit-surface", name: "Surface", type: "color", value: palette.surface },
-            { id: "kit-text", name: "Text", type: "color", value: palette.text },
-            { id: "kit-muted", name: "Muted", type: "color", value: palette.muted },
-            { id: "kit-accent", name: "Accent", type: "color", value: palette.accent },
-        ] });
-        setElements((current) => current.map((element) => {
-            if (componentAssetIds.has(element.id)) return element;
-            const base = { ...element.base };
-            if (element.type === "Button") { base.bg = palette.accent; base.color = "#ffffff"; base.borderC = palette.accent; }
-            else if (isTextual(element.type)) base.color = element.type === "Text" ? palette.muted : palette.text;
-            else if (base.bg && base.bg !== "transparent") { base.bg = palette.surface; base.borderC = palette.border; }
-            return { ...element, base };
-        }));
-    };
-
-    const loadNocturneShowcase = () => {
-        if (elements.some((element) => !componentAssetIds.has(element.id)) && !window.confirm("This replaces the current page canvas with the Nocturne showcase. Continue?")) return;
-        const showcase = createNocturneShowcase();
-        beginTransaction();
-        setElements((current) => [...current.filter((element) => componentAssetIds.has(element.id)), ...showcase.elements]);
-        setRootStyle(showcase.rootStyle);
-        setSelectedIds([]);
-        setBreakpoint("desktop");
-        setLeftTab("Layers");
-        endTransaction();
-        window.setTimeout(() => zoomToFit(), 80);
     };
 
     const select = useCallback((id: string, additive: boolean) => {
@@ -1420,6 +1631,11 @@ export default function Editor({
         });
         element.base.x = Math.max(0, x - element.base.w / 2);
         element.base.y = Math.max(0, y - element.base.h / 2);
+        let componentParent = parentId ? byId.get(parentId) : undefined;
+        while (componentParent && componentParent.componentRole !== "master") {
+            componentParent = componentParent.parentId ? byId.get(componentParent.parentId) : undefined;
+        }
+        if (componentParent?.componentRole === "master") element.componentSourceId = element.id;
 
         setElements((els) => [...els, element]);
         setSelectedIds([element.id]);
@@ -1481,6 +1697,13 @@ export default function Editor({
 
             // Everything below would fight with normal text entry.
             if (typing) return;
+
+            if (!mod && key === "a") {
+                event.preventDefault();
+                setLeftTab("Elements");
+                setIsLeftCollapsed(false);
+                return;
+            }
 
             if (mod && key === "a") {
                 event.preventDefault();
@@ -1553,6 +1776,19 @@ export default function Editor({
 
     /* -------------------------------------------------------- page actions */
 
+    const navigateEditorPage = useCallback(async (id: string, options?: { replace?: boolean }) => {
+        if (id === page.id || pageSwitchTarget) return;
+        setPageError(null);
+        setPageSwitchTarget(id);
+        try {
+            if (adapters?.navigate) await adapters.navigate(id, options);
+            else window.location.href = `${(adapters?.editorHref ?? defaultEditorHref)(id, leftTab.toLowerCase())}${window.location.search}`;
+        } catch (error) {
+            setPageSwitchTarget(null);
+            setPageError(error instanceof Error ? error.message : "Could not open the page.");
+        }
+    }, [adapters?.editorHref, adapters?.navigate, leftTab, page.id, pageSwitchTarget]);
+
     const runPageAction = useCallback(
         (
             action: () => Promise<
@@ -1567,25 +1803,27 @@ export default function Editor({
                     setPageError(result.message);
                     return;
                 }
-                if (navigate && result.pageId) adapters?.navigate?.(result.pageId, { replace: navigate === "replace" });
+                if (navigate && result.pageId) await navigateEditorPage(result.pageId, { replace: navigate === "replace" });
                 else adapters?.refresh?.();
             });
         },
-        [adapters],
+        [adapters, navigateEditorPage],
     );
 
-    const installSiteTemplate = useCallback((template: TemplateInstallInput) => {
+    const installSiteTemplate = useCallback(async (templateId: string, fontFamily: string) => {
         setPageError(null);
-        startTransition(async () => {
-            const result = await (adapters?.installTemplate ?? unavailable)(template);
+        try {
+            const result = await (adapters?.installTemplate ?? unavailable)(templateId, fontFamily);
             if (result.status === "error") {
                 setPageError(result.message);
-                return;
+                throw new Error(result.message);
             }
-            // A template can replace the currently open page document. A hard
-            // navigation guarantees stale editor state cannot autosave over it.
-            if (result.pageId) adapters?.navigate?.(result.pageId, { replace: true });
-        });
+            return { pageId: result.pageId };
+        } catch (error) {
+            const reason = error instanceof Error ? error : new Error("Template installation failed.");
+            setPageError(reason.message);
+            throw reason;
+        }
     }, [adapters]);
 
     const publish = useCallback(() => {
@@ -1628,7 +1866,7 @@ export default function Editor({
         [samples],
     );
 
-    type Frame = { bp: Breakpoint; width: number };
+    type Frame = { bp: Breakpoint; width: number; masterId?: string };
 
     const renderNode = (
         raw: CanvasElement,
@@ -1644,14 +1882,16 @@ export default function Editor({
         if (previewVisible !== undefined) resolvedStyle.hidden = !previewVisible;
         const style = {
             ...resolvedStyle,
-            ...(isActiveFrame && hoveredEffectId === el.id ? el.hover : undefined),
+            ...(isActiveFrame && hoveredEffectIds.has(el.id) ? el.hover : undefined),
             ...(isActiveFrame && pressedEffectId === el.id ? el.press : undefined),
         };
         if (style.hidden) return null;
 
         const children = childrenOf(elements, el.id);
-        const container = isContainer(el.type);
-        const isSelected = isActiveFrame && selectedIds.includes(el.id);
+        const componentInstance = componentInstanceFor(raw);
+        const interactionElement = componentInstance ?? el;
+        const container = !componentInstance && isContainer(el.type);
+        const isSelected = isActiveFrame && selectedIds.includes(interactionElement.id) && interactionElement.id === el.id;
         const isEditing = isActiveFrame && editingId === el.id;
         const isDropTarget = isActiveFrame && dropTargetId === el.id;
         const isGhosting = ghost !== null && dragInfo?.id === el.id && dragInfo.breakpoint === frame.bp;
@@ -1660,7 +1900,6 @@ export default function Editor({
         const band = isBand(el.type, style, rootStyle);
         const css = styleToCss(style, contextFor(el, frame.bp), el);
         if (el.hover || el.press) css.transition = "transform .42s cubic-bezier(.16,1,.3,1), scale .42s cubic-bezier(.16,1,.3,1), rotate .42s cubic-bezier(.16,1,.3,1), background-color .32s ease, color .32s ease, border-color .32s ease, box-shadow .42s cubic-bezier(.16,1,.3,1), opacity .32s ease, filter .42s ease";
-        css.zIndex = el.z;
         if (el.loop) css.animation = `pg-loop-${el.loop.type} ${el.loop.duration}ms ease-in-out infinite`;
         css.cursor = el.locked ? "default" : isEditing ? "text" : "move";
         css.outline = isSelected
@@ -1704,22 +1943,28 @@ export default function Editor({
                 key={`${keyPrefix}${el.id}`}
                 data-canvas-element={el.id}
                 style={split ? split.shell : css}
-                onMouseDown={(event) => handleElementMouseDown(event, el, frame.bp)}
-                onMouseEnter={() => effectsPreview && el.hover && setHoveredEffectId(el.id)}
+                onMouseDown={(event) => handleElementMouseDown(event, interactionElement, frame.bp)}
+                onMouseEnter={() => effectsPreview && el.hover && setHoveredEffectIds((current) => {
+                    if (current.has(el.id)) return current;
+                    const next = new Set(current);
+                    next.add(el.id);
+                    return next;
+                })}
                 onMouseUp={() => effectsPreview && setPressedEffectId((id) => id === el.id ? null : id)}
-                onMouseLeave={() => { setHoveredEffectId((id) => id === el.id ? null : id); setPressedEffectId((id) => id === el.id ? null : id); }}
+                onMouseLeave={() => { setHoveredEffectIds((current) => { if (!current.has(el.id)) return current; const next = new Set(current); next.delete(el.id); return next; }); setPressedEffectId((id) => id === el.id ? null : id); }}
                 onDoubleClick={(event) => {
                     event.stopPropagation();
-                    if (isTextual(el.type) && !el.locked) setEditingId(el.id);
+                    if (componentInstance) openComponentEditor(componentInstance);
+                    else if (isTextual(el.type) && !el.locked) setEditingId(el.id);
                 }}
                 onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    if (!selectedIds.includes(el.id)) setSelectedIds([el.id]);
+                    if (!selectedIds.includes(interactionElement.id)) setSelectedIds([interactionElement.id]);
                     setContextMenu({
                         x: event.clientX,
                         y: event.clientY,
-                        elementId: el.id,
+                        elementId: interactionElement.id,
                     });
                 }}
                 onDragOver={
@@ -1819,24 +2064,105 @@ export default function Editor({
     }, [byId, contextFor, selectedIds]);
 
     const menuElementId = contextMenu?.elementId;
+    const updatePageSettings = (patch: Partial<RootStyle>) => {
+        if (patch.layout) switchPageLayout(patch.layout);
+        else setRootStyle(patch);
+        if (patch.fontFamily && adapters?.setSiteFont) {
+            void adapters.setSiteFont(patch.fontFamily, patch.customFonts ?? rootStyle.customFonts ?? []).catch((error) => {
+                setPageError(error instanceof Error ? error.message : "Could not update the site font.");
+            });
+        }
+        if ((patch.pageTransition || patch.pageTransitionDuration !== undefined) && adapters?.setSiteTransition) {
+            void adapters.setSiteTransition(
+                patch.pageTransition ?? rootStyle.pageTransition,
+                patch.pageTransitionDuration ?? rootStyle.pageTransitionDuration,
+            ).catch((error) => {
+                setPageError(error instanceof Error ? error.message : "Could not update page transitions.");
+            });
+        }
+    };
+    const projectRailTabs: LeftEditorTab[] = [
+        "Layers",
+        ...(componentMode ? [] : ["Pages" as const]),
+        componentMode ? "Components" : "Assets",
+        "Library",
+        "Icons",
+        ...(componentMode ? [] : ["Templates" as const]),
+    ];
+    const utilityRailTabs: LeftEditorTab[] = ["Variables", "AI", "Data"];
+    const iconForRailTab = (tab: LeftEditorTab) => tab === "Layers"
+            ? IconLayersLinked
+            : tab === "Library"
+                ? IconLibrary
+                : tab === "Icons"
+                    ? IconIcons
+                    : tab === "Templates"
+                        ? IconTemplate
+                        : tab === "Variables"
+                            ? IconPalette
+                            : tab === "AI"
+                                ? IconSparkles
+                                : tab === "Components" || tab === "Assets"
+                                    ? IconComponents
+                                    : tab === "Data"
+                                        ? IconDatabase
+                                        : tab === "Settings"
+                                            ? IconSettings
+                                            : IconFile;
+    const openLeftPanel = (tab: LeftEditorTab) => {
+        const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, tab.toLowerCase());
+        const url = new URL(href, window.location.href);
+        const current = new URL(window.location.href);
+        current.searchParams.delete("tab");
+        url.search = current.search;
+        url.hash = current.hash;
+        window.history.pushState(window.history.state, "", url);
+        setLeftTab(tab);
+        setIsLeftCollapsed(tab === "Templates");
+    };
+    const renderRailTab = (tab: LeftEditorTab) => {
+        const Icon = iconForRailTab(tab);
+        const active = leftTab === tab && (tab === "Templates" || !isLeftCollapsed);
+        return (
+            <button
+                type="button"
+                key={tab}
+                onClick={() => openLeftPanel(tab)}
+                className={`group relative flex size-8 items-center justify-center rounded-full transition-colors ${active
+                    ? "bg-ed-accent text-white"
+                    : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"
+                }`}
+                title={tab}
+                aria-label={tab}
+                aria-pressed={active}
+            >
+                <Icon size={15} stroke={1.65} />
+                <span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{tab}</span>
+            </button>
+        );
+    };
+    const ActiveLeftIcon = iconForRailTab(leftTab);
 
     return (
         <div
             className="pg-editor flex h-screen w-full flex-col overflow-hidden bg-ed-surface font-sans text-xs text-ed-text selection:bg-blue-500/30"
             data-ed-theme={chromeTheme === "light" ? "light" : undefined}
         >
-            <header className="relative z-30 grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-ed-border bg-ed-surface/90 px-3 backdrop-blur-2xl">
-                <button type="button" onClick={() => setIsLeftCollapsed((current) => !current)} title="Toggle sidebar" className="w-fit text-[13px] font-semibold tracking-tight text-ed-text">Pagiera</button>
+            <header className="relative z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-ed-border bg-ed-surface/95 px-2.5 backdrop-blur-xl">
+                <button type="button" onClick={() => setIsLeftCollapsed((current) => !current)} title="Toggle sidebar" className="w-fit select-none rounded-full px-2 py-1 text-[12px] font-semibold tracking-[-.02em] text-ed-text transition-colors hover:bg-ed-field">Pagiera</button>
 
-                <div className="pg-chrome-card flex items-center gap-2 rounded-2xl border border-ed-border bg-ed-subtle/90 p-1.5 backdrop-blur-xl">
-                    <div className="flex items-center gap-2 text-[11px] font-medium text-ed-muted">
-                        {componentMode && <><Select value={activeComponentMaster?.id} onValueChange={(id) => { setActiveComponentMasterId(id); setSelectedIds([id]); }}><SelectTrigger aria-label="Variant"><SelectValue placeholder="Select variant" /></SelectTrigger><SelectContent>{activeComponentVariants.map((master) => <SelectItem key={master.id} value={master.id}>{master.variant ?? "Default"}</SelectItem>)}</SelectContent></Select><button type="button" onClick={createComponentVariant} disabled={selectedElement?.componentRole !== "master"} title="Add variant" className="flex size-7 items-center justify-center rounded-lg bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30"><IconPlus size={13} /></button></>}
+                <div className="flex h-8 items-center gap-1 rounded-full bg-ed-subtle p-0.5">
+                    {leftTab === "Templates" ? (
+                        <div className="flex items-center gap-2 px-3 text-[10px] font-semibold text-ed-text"><IconTemplate size={13} className="text-ed-accent" /><span>Template marketplace</span><span className="rounded-full bg-ed-field px-2 py-0.5 text-[8px] font-medium text-ed-faint">Discover</span></div>
+                    ) : <>
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-ed-muted">
+                        {componentMode && <><Select value={activeComponentMaster?.id} onValueChange={(id) => { setActiveComponentMasterId(id); setSelectedIds([id]); }}><SelectTrigger aria-label="Variant"><SelectValue placeholder="Select variant" /></SelectTrigger><SelectContent>{activeComponentVariants.map((master) => <SelectItem key={master.id} value={master.id}>{master.variant ?? "Default"}</SelectItem>)}</SelectContent></Select><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} title="Add variant" className="flex size-6 items-center justify-center rounded-full text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30"><IconPlus size={12} /></button></>}
                         <div className="flex items-center gap-0.5">
                             <button
                                 type="button"
                                 title="Zoom out (Ctrl -)"
                                 onClick={() => stepZoom(-1)}
-                                className="rounded p-1 transition-colors hover:bg-ed-field hover:text-ed-text"
+                                className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text"
                             >
                                 <IconMinus size={12} />
                             </button>
@@ -1844,7 +2170,7 @@ export default function Editor({
                                 type="button"
                                 title="Reset zoom (Ctrl 0)"
                                 onClick={() => zoomTo(100)}
-                                className="w-10 select-none text-center tabular-nums transition-colors hover:text-ed-text"
+                                className="w-9 select-none rounded-full text-center text-[10px] tabular-nums transition-colors hover:bg-ed-field-hover hover:text-ed-text"
                             >
                                 {zoom}%
                             </button>
@@ -1852,46 +2178,66 @@ export default function Editor({
                                 type="button"
                                 title="Zoom in (Ctrl +)"
                                 onClick={() => stepZoom(1)}
-                                className="rounded p-1 transition-colors hover:bg-ed-field hover:text-ed-text"
+                                className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text"
                             >
                                 <IconPlus size={12} />
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 border-l border-ed-border pl-2 text-ed-muted">
+                    <div className="flex items-center gap-0.5 border-l border-ed-border pl-1 text-ed-muted">
                         <button
                             type="button"
                             title="Undo (Ctrl Z)"
                             onClick={undo}
                             disabled={!canUndo}
-                            className="transition-colors hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-ed-muted"
+                            className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-ed-muted"
                         >
-                            <IconArrowBackUp size={16} />
+                            <IconArrowBackUp size={14} />
                         </button>
                         <button
                             type="button"
                             title="Redo (Ctrl Shift Z)"
                             onClick={redo}
                             disabled={!canRedo}
-                            className="transition-colors hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-ed-muted"
+                            className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-ed-muted"
                         >
-                            <IconArrowForwardUp size={16} />
+                            <IconArrowForwardUp size={14} />
                         </button>
                     </div>
+                    </>}
                 </div>
 
-                <div className="flex min-w-0 items-center justify-end gap-2">
+                <div className="flex min-w-0 items-center justify-end gap-1">
+                    {leftTab === "Templates" ? <>
+                        <span className="hidden text-[9px] text-ed-faint lg:block">Curated responsive starting points</span>
+                        <button type="button" onClick={() => openLeftPanel("Layers")} className="h-7 select-none rounded-full bg-ed-field px-3 text-[9px] font-semibold text-ed-text transition-colors hover:bg-ed-field-hover">Back to canvas</button>
+                        <button type="button" title={chromeTheme === "dark" ? "Switch to light editor" : "Switch to dark editor"} aria-label="Toggle editor theme" onClick={toggleChromeTheme} className="flex size-7 items-center justify-center rounded-full text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text">{chromeTheme === "dark" ? <IconSun size={14} /> : <IconMoon size={14} />}</button>
+                    </> : <>
+                    <span className="mr-1 hidden lg:block"><SaveIndicator status={saveStatus} error={saveError} /></span>
+                    {componentMode ? (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setRootStyle({ documentMode: "page" });
+                                setSelectedIds([]);
+                                setEditingId(null);
+                                openLeftPanel("Pages");
+                            }}
+                            className="h-7 select-none rounded-full bg-ed-field px-3 text-[10px] font-semibold text-ed-text transition-colors hover:bg-ed-field-hover"
+                        >
+                            Back to pages
+                        </button>
+                    ) : <>
                     {page.publishedAt && (
                         <a
                             href={(adapters?.publishedHref ?? defaultPublishedHref)(page.slug)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hidden items-center gap-1.5 text-[11px] text-emerald-500 transition-colors hover:text-emerald-400 xl:flex"
+                            className="hidden size-7 items-center justify-center rounded-full text-emerald-500 transition-colors hover:bg-emerald-500/10 hover:text-emerald-400 xl:flex"
+                            title={(adapters?.publishedHref ?? defaultPublishedHref)(page.slug)}
                         >
                             <IconWorld size={14} />
-                            {(adapters?.publishedHref ?? defaultPublishedHref)(page.slug)}
-                            <IconExternalLink size={11} />
                         </a>
                     )}
                     <button
@@ -1899,7 +2245,7 @@ export default function Editor({
                         onClick={publish}
                         disabled={isPending || isDirty}
                         title={isDirty ? "Waiting for the draft to save…" : undefined}
-                        className="rounded-lg bg-ed-accent px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-50"
+                        className="h-7 select-none rounded-full bg-ed-accent px-3 text-[10px] font-semibold text-white transition-colors hover:bg-ed-accent/90 disabled:opacity-50"
                     >
                         {isPending ? "Working…" : page.publishedAt ? "Republish" : "Publish"}
                     </button>
@@ -1909,112 +2255,67 @@ export default function Editor({
                             onClick={() =>
                                 runPageAction(() => (adapters?.unpublishPage ?? unavailable)(page.id, page.slug))
                             }
-                            className="text-[11px] text-ed-muted transition-colors hover:text-ed-text"
+                            className="hidden h-7 select-none rounded-full px-2.5 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text xl:block"
                         >
                             Unpublish
                         </button>
                     )}
+                    </>}
                     <button
                         type="button"
                         title={chromeTheme === "dark" ? "Switch to light editor" : "Switch to dark editor"}
                         aria-label="Toggle editor theme"
                         onClick={toggleChromeTheme}
-                        className="rounded-md p-1.5 text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
+                        className="flex size-7 items-center justify-center rounded-full text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
                     >
-                        {chromeTheme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+                        {chromeTheme === "dark" ? <IconSun size={14} /> : <IconMoon size={14} />}
                     </button>
                     <button
                         type="button"
                         onClick={() => setIsRightCollapsed((c) => !c)}
-                        className="text-ed-faint transition-colors hover:text-ed-text"
+                        disabled={!hasElementSelection}
+                        title={hasElementSelection ? "Toggle properties panel" : "Select an element to open properties"}
+                        aria-label="Toggle properties panel"
+                        className="flex size-7 items-center justify-center rounded-full text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent"
                     >
                         {isRightCollapsed ? (
-                            <IconLayoutSidebarLeftCollapse size={18} />
+                            <IconLayoutSidebarLeftCollapse size={15} />
                         ) : (
-                            <IconLayoutSidebarRightCollapse size={18} />
+                            <IconLayoutSidebarRightCollapse size={15} />
                         )}
                     </button>
+                    </>}
                 </div>
             </header>
 
             <div className="flex flex-1 overflow-hidden bg-ed-canvas">
                 {/* Thin Toolbar */}
-                <aside className="z-20 flex w-12 shrink-0 flex-col items-center border-r border-ed-border bg-ed-surface/95 py-2 backdrop-blur-xl">
-                    <button
-                        type="button"
-                        title="Select (V)"
-                        className="mb-1 flex size-8 items-center justify-center rounded-xl bg-ed-accent/15 text-ed-accent ring-1 ring-inset ring-ed-accent/20 transition-all hover:scale-105 hover:bg-ed-accent/20"
-                    >
-                        <IconPointer size={17} stroke={1.7} />
-                    </button>
-                    <button
-                        type="button"
-                        title="Insert (A)"
-                        className="flex size-8 items-center justify-center rounded-lg text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
-                        onClick={() => {
-                            setLeftTab("Elements");
-                            setIsLeftCollapsed(false);
-                        }}
-                    >
-                        <IconPlus size={18} stroke={1.8} />
-                    </button>
-                    <div className="my-2 h-px w-5 bg-ed-border" />
-                    <div className="flex w-full flex-col items-center gap-1 px-1.5">
-                        {["Layers", componentMode ? "Components" : "Assets", "Library", "Icons", ...(componentMode ? [] : ["Templates"]), "Variables", "AI", "Data", ...(componentMode ? [] : ["Pages"])].map((tab) => {
-                            const Icon =
-                                tab === "Layers"
-                                    ? IconLayersLinked
-                                    : tab === "Elements"
-                                      ? IconBox
-                                      : tab === "Library"
-                                      ? IconLibrary
-                                      : tab === "Icons"
-                                        ? IconIcons
-                                      : tab === "Templates"
-                                        ? IconTemplate
-                                      : tab === "Variables"
-                                        ? IconPalette
-                                        : tab === "AI"
-                                          ? IconSparkles
-                                        : tab === "Components" || tab === "Assets"
-                                          ? IconComponents
-                                        : tab === "Data"
-                                          ? IconDatabase
-                                          : IconFile;
-                            return (
-                                <button
-                                    type="button"
-                                    key={tab}
-                                    onClick={() => {
-                                        setLeftTab(tab);
-                                        if (isLeftCollapsed) setIsLeftCollapsed(false);
-                                    }}
-                                    className={`flex size-8 items-center justify-center rounded-xl transition-all hover:scale-105 ${
-                                        leftTab === tab && !isLeftCollapsed
-                                            ? "bg-ed-field text-ed-accent"
-                                            : "text-ed-muted hover:bg-ed-subtle hover:text-ed-text"
-                                    }`}
-                                    title={tab}
-                                >
-                                    <Icon size={17} stroke={1.6} />
-                                </button>
-                            );
-                        })}
+                <aside className="z-20 flex w-12 shrink-0 flex-col items-center border-r border-ed-border bg-ed-surface p-1.5">
+                    <div className="flex w-full items-center justify-center">
+                        <button type="button" title="Insert elements (A)" aria-label="Insert elements" aria-pressed={leftTab === "Elements" && !isLeftCollapsed} className={`group relative flex size-8 items-center justify-center rounded-full transition-colors ${leftTab === "Elements" && !isLeftCollapsed ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`} onClick={() => { setLeftTab("Elements"); setIsLeftCollapsed(false); }}><IconPlus size={14} stroke={1.8} /><span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">Insert · A</span></button>
                     </div>
+
+                    <div className="my-1.5 h-px w-5 bg-ed-border" />
+                    <nav aria-label="Project panels" className="flex w-full flex-col items-center gap-1 rounded-full bg-ed-subtle p-0.5">{projectRailTabs.map(renderRailTab)}</nav>
+                    <div className="my-1.5 h-px w-5 bg-ed-border" />
+                    <nav aria-label="Editor tools" className="flex w-full flex-col items-center gap-1 rounded-full bg-ed-subtle p-0.5">{utilityRailTabs.map(renderRailTab)}</nav>
+
+                    {!componentMode && <nav aria-label="Site settings" className="mt-auto flex w-full justify-center rounded-full bg-ed-subtle p-0.5">{renderRailTab("Settings")}</nav>}
+
                 </aside>
 
                 {/* Left Panel */}
                 <AnimatePresence initial={false}>
-                {!isLeftCollapsed && (
-                    <motion.aside initial={{ width: 0, opacity: 0, x: -12 }} animate={{ width: leftTab === "Templates" ? 380 : 292, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: -12 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="relative z-10 flex shrink-0 flex-col overflow-hidden border-r border-ed-border bg-ed-surface/95 backdrop-blur-xl">
-                        <div className="flex h-11 shrink-0 items-center justify-between border-b border-ed-border px-3.5">
-                            <span className="text-[11px] font-semibold text-ed-text">{leftTab}</span>
-                            <button type="button" onClick={() => setIsLeftCollapsed(true)} className="text-ed-faint hover:text-ed-muted transition-colors p-1 rounded-md hover:bg-ed-field">
+                {!isLeftCollapsed && leftTab !== "Templates" && (
+                    <motion.aside initial={{ width: 0, opacity: 0, x: -12 }} animate={{ width: leftTab === "AI" ? 380 : 292, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: -12 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="relative z-10 flex shrink-0 flex-col overflow-hidden border-r border-ed-border bg-ed-surface/95 backdrop-blur-xl">
+                        <div className="flex h-12 shrink-0 items-center justify-between border-b border-ed-border px-3.5">
+                            <span className="flex min-w-0 items-center gap-2.5"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ed-accent-soft text-ed-accent"><ActiveLeftIcon size={13} stroke={1.7} /></span><span className="truncate text-[11px] font-semibold text-ed-text">{leftTab}</span></span>
+                            <button type="button" onClick={() => setIsLeftCollapsed(true)} className="rounded-full p-1 text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-muted">
                                 <IconX size={16} />
                             </button>
                         </div>
 
-                        {leftTab !== "Pages" && leftTab !== "Components" && leftTab !== "Assets" && leftTab !== "Library" && leftTab !== "Templates" && leftTab !== "Variables" && leftTab !== "Data" && leftTab !== "AI" && (
+                        {leftTab !== "Pages" && leftTab !== "Components" && leftTab !== "Assets" && leftTab !== "Library" && leftTab !== "Variables" && leftTab !== "Data" && leftTab !== "AI" && (
                             <div className="border-b border-ed-border p-3 bg-ed-subtle">
                                 <div className="flex items-center gap-2 rounded-md border border-ed-border bg-ed-surface px-2.5 py-1.5 transition-all focus-within:border-ed-accent/50 focus-within:ring-1 focus-within:ring-blue-500/20">
                                     <IconSearch size={14} className="text-ed-faint" />
@@ -2035,6 +2336,7 @@ export default function Editor({
                                 <LayersPanel
                                     elements={visibleEditorElements}
                                     breakpoint={breakpoint}
+                                    componentMode={componentMode}
                                     search={search}
                                     selectedIds={selectedIds}
                                     onSelect={select}
@@ -2055,6 +2357,7 @@ export default function Editor({
                                     }
                                     onDelete={(id) => deleteElements([id])}
                                     onReparent={doReparent}
+                                    onOpenComponent={openComponentEditor}
                                 />
                             ) : leftTab === "Elements" ? (
                                 <ElementsPanel search={search} onInsert={insertElement} />
@@ -2076,13 +2379,8 @@ export default function Editor({
                                     currentPageId={page.id}
                                     onInsert={insertFromLibrary}
                                 />
-                            ) : leftTab === "Templates" ? (
-                                <TemplatesPanel busy={isPending} registryUrl={templateRegistryUrl} onInstall={(template) => {
-                                    if (!window.confirm("Replace this site with the selected template? All existing pages and their revisions will be deleted.")) return;
-                                    installSiteTemplate(template);
-                                }} />
                             ) : leftTab === "Assets" ? (
-                                <div className="p-3"><div className="mb-3 rounded-xl border border-ed-border bg-ed-subtle p-3"><p className="text-[11px] font-semibold text-ed-text">Project assets</p><p className="mt-1 text-[9px] leading-relaxed text-ed-faint">Open a component to edit its own canvas, or drag a variant directly onto the page.</p></div><div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-semibold text-ed-muted">Components</span><span className="flex gap-1"><button type="button" onClick={createBlankComponent} className="flex items-center gap-1 rounded-md bg-ed-field px-2 py-1 text-[9px] text-ed-muted hover:text-ed-text"><IconPlus size={10} /> New</button><button type="button" onClick={() => setCodeComposerOpen(true)} className="flex items-center gap-1 rounded-md bg-ed-field px-2 py-1 text-[9px] text-ed-muted hover:text-ed-text">Code</button></span></div><div className="space-y-2">{componentMasters.map((master) => <button key={master.id} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData(COMPONENT_MIME, master.id); event.dataTransfer.effectAllowed = "copy"; }} onClick={() => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }} className="group flex w-full cursor-grab items-center gap-3 rounded-xl border border-ed-border bg-ed-subtle p-2.5 text-left hover:border-ed-accent/50 hover:bg-ed-field active:cursor-grabbing"><span className="flex size-9 items-center justify-center rounded-lg bg-ed-field text-ed-accent"><IconComponents size={16} /></span><span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-semibold text-ed-text">{master.name ?? "Component"}</span><span className="block text-[9px] text-ed-faint">{master.variant ?? "Default"} · drag to insert</span></span></button>)}{componentMasters.length === 0 && <p className="rounded-xl border border-dashed border-ed-border p-5 text-center text-[10px] text-ed-faint">Create a component or add one from code.</p>}</div></div>
+                                <div className="p-3"><div className="mb-3 rounded-2xl border border-ed-border bg-ed-subtle p-3"><p className="text-[11px] font-semibold text-ed-text">Assets</p><p className="mt-1 text-[9px] leading-relaxed text-ed-faint">Navbar, sidebar, footer and reusable components live here once. Drag the exact variant you need onto any page.</p></div><div className="mb-2.5 flex items-center justify-between"><span className="text-[10px] font-semibold text-ed-muted">{componentAssets.length} shared asset{componentAssets.length === 1 ? "" : "s"}</span><span className="flex gap-1"><button type="button" onClick={createBlankComponent} className="flex items-center gap-1 rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text"><IconPlus size={10} /> New</button><button type="button" onClick={() => setCodeComposerOpen(true)} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Code</button></span></div><ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }} /></div>
                             ) : leftTab === "Variables" ? (
                                 <VariablesPanel
                                     rootStyle={rootStyle}
@@ -2100,12 +2398,15 @@ export default function Editor({
                                     generate={adapters?.generate}
                                 />
                             ) : leftTab === "Components" ? (
-                                <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Component canvas</p><p className="mt-1 text-[9px] text-ed-faint">Every variant opens in its own resizable canvas.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Layers"); }} className="rounded-lg bg-ed-field px-2 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Page mode</button></div>{selectedElement?.componentRole === "master" && <div className="mb-3 space-y-2 rounded-xl border border-ed-border bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Name</span><input value={selectedElement.name ?? ""} placeholder="Component name" onChange={(event) => patchProps(selectedElement.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-lg bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Variant</span><input value={selectedElement.variant ?? "Default"} onChange={(event) => patchProps(selectedElement.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-lg bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<div className="space-y-2">{componentMasters.map((master) => <button key={master.id} type="button" onClick={() => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left ${activeComponentMaster?.id === master.id ? "border-ed-accent bg-ed-accent/10" : "border-ed-border bg-ed-subtle hover:bg-ed-field"}`}><span className="flex size-8 items-center justify-center rounded-lg bg-ed-field text-ed-accent"><IconComponents size={15} /></span><span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-semibold text-ed-text">{master.name ?? "Component"}</span><span className="block text-[9px] text-ed-faint">{master.variant ?? "Default"}</span></span><span className="font-mono text-[9px] text-ed-faint">{Math.round(master.base.w)}×{Math.round(master.base.h)}</span></button>)}{componentMasters.length === 0 && <p className="rounded-xl border border-dashed border-ed-border p-5 text-center text-[10px] text-ed-faint">Create a new component canvas.</p>}</div><button type="button" onClick={createComponentVariant} disabled={selectedElement?.componentRole !== "master"} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant</button></div>
+                                <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Asset canvas</p><p className="mt-1 text-[9px] text-ed-faint">One asset, multiple variants—similar to its own breakpoint set.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Assets"); }} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Back to page</button></div>{activeComponentMaster && <div className="mb-3 space-y-2 rounded-2xl border border-ed-border bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Asset</span><input value={activeComponentMaster.name ?? ""} placeholder="Asset name" onChange={(event) => patchProps(activeComponentMaster.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Variant</span><input value={activeComponentMaster.variant ?? "Default"} onChange={(event) => patchProps(activeComponentMaster.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} /><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant to {activeComponentMaster?.name ?? "asset"}</button></div>
+                            ) : leftTab === "Settings" ? (
+                                <div className="px-4 py-3"><PageInspector rootStyle={rootStyle} onChange={updatePageSettings} /></div>
                             ) : (
                                 <PagesPanel
                                     pages={pages}
                                     currentId={page.id}
-                                    busy={isPending}
+                                    busy={isPending || Boolean(pageSwitchTarget)}
+                                    navigatingId={pageSwitchTarget}
                                     error={pageError}
                                     onCreate={(name) =>
                                         runPageAction(() => (adapters?.createPage ?? unavailable)(name, name), "push")
@@ -2122,13 +2423,13 @@ export default function Editor({
                                     onDelete={(id) =>
                                         runPageAction(() => (adapters?.deletePage ?? unavailable)(id), id === page.id ? "replace" : false)
                                     }
-                                    onNavigate={(id) => (adapters?.navigate ?? ((pageId) => { window.location.href = defaultEditorHref(pageId); }))(id)}
+                                    onNavigate={(id) => void navigateEditorPage(id)}
                                     publishedHref={adapters?.publishedHref ?? defaultPublishedHref}
                                 />
                             )}
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-ed-border p-2 px-3 text-ed-muted">
+                        {leftTab === "Layers" && <div className="flex items-center justify-between border-t border-ed-border p-2 px-3 text-ed-muted">
                             <span className="text-[10px] tabular-nums">
                                 {elements.length} element{elements.length === 1 ? "" : "s"}
                             </span>
@@ -2138,7 +2439,7 @@ export default function Editor({
                                     title="Duplicate (Ctrl D)"
                                     disabled={selectedIds.length === 0}
                                     onClick={() => duplicateElements(selectedIds)}
-                                    className="rounded p-1.5 transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
+                                    className="rounded-full p-1.5 transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
                                 >
                                     <IconCopy size={16} />
                                 </button>
@@ -2147,12 +2448,12 @@ export default function Editor({
                                     title="Delete (Del)"
                                     disabled={selectedIds.length === 0}
                                     onClick={() => deleteElements(selectedIds)}
-                                    className="rounded p-1.5 transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
+                                    className="rounded-full p-1.5 transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
                                 >
                                     <IconTrash size={16} />
                                 </button>
                             </div>
-                        </div>
+                        </div>}
                     </motion.aside>
                 )}
                 </AnimatePresence>
@@ -2171,6 +2472,19 @@ export default function Editor({
                         if (event.target === event.currentTarget) setSelectedIds([]);
                     }}
                 >
+                    {leftTab === "Templates" && (
+                        <div className="absolute inset-0 z-50 overflow-y-auto bg-ed-surface">
+                            <TemplatesPanel
+                                busy={isPending}
+                                registryUrl={templateRegistryUrl}
+                                onInstall={installSiteTemplate}
+                                onInstalled={async (pageId) => {
+                                    if (pageId) await navigateEditorPage(pageId, { replace: true });
+                                    else adapters?.refresh?.();
+                                }}
+                            />
+                        </div>
+                    )}
                     {/* biome-ignore lint/a11y/noStaticElementInteractions: pan surface; Ctrl +/-/0 cover the same ground from the keyboard */}
                     <div
                         ref={viewportRef}
@@ -2199,23 +2513,49 @@ export default function Editor({
                             rather than viewport units: the canvas area is
                             narrower than the window by however much the panels
                             take, so vw/vh under-measured it. */}
-                        <div className="flex min-w-max items-start justify-center gap-10 px-[900px] py-[560px]">
+                        <AnimatePresence initial={false} mode="wait">
+                        <motion.div
+                            key={page.id}
+                            initial={reduceMotion ? false : { opacity: 0, y: 12, filter: "blur(5px)" }}
+                            animate={reduceMotion
+                                ? { opacity: 1, y: 0, filter: "blur(0px)" }
+                                : pageSwitchTarget
+                                ? { opacity: 0.28, y: -8, filter: "blur(4px)" }
+                                : { opacity: 1, y: 0, filter: "blur(0px)" }}
+                            exit={reduceMotion ? undefined : { opacity: 0, y: -8, filter: "blur(4px)" }}
+                            transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+                            className="flex min-w-max items-start justify-center gap-10 px-[900px] py-[560px]"
+                        >
                             {frames.map((frame) => {
-                                const primary = frame.bp === breakpoint;
+                                const frameMaster = frame.masterId ? componentMasters.find((master) => master.id === frame.masterId) : undefined;
+                                const primary = componentMode ? frame.masterId === activeComponentMaster?.id : frame.bp === breakpoint;
+                                const frameElementIds = componentMode && frame.masterId ? subtreeIds(elements, frame.masterId) : undefined;
+                                const frameElements = frameElementIds
+                                    ? elements.filter((element) => frameElementIds.has(element.id))
+                                    : visibleEditorElements;
+                                const frameCanvasHeight = componentMode
+                                    ? Math.max(1, primary ? canvasHeight : frameMaster?.base.h ?? canvasHeight)
+                                    : canvasHeight;
+                                const frameDisplayHeight = componentMode ? frameCanvasHeight : displayCanvasHeight;
                                 const definition = breakpointDefs.find(
                                     (item) => item.id === frame.bp,
                                 );
                                 const isBaseFrame = !componentMode && frame.bp === cascade.baseId;
+                                const frameHeaderWidth = frame.width * scale;
+                                const showFrameWidth = frameHeaderWidth >= 160;
+                                const showFrameRange = frameHeaderWidth >= 330;
+                                const showFrameActions = frameHeaderWidth >= 210;
                                 return (
-                                    <div key={frame.bp} className="flex flex-col gap-2">
+                                    <div key={frame.masterId ?? frame.bp} className="flex flex-col gap-2">
                                         <div
                                             draggable={!componentMode}
                                             onDragStart={(event) => { if (componentMode) return; setDraggedBreakpointId(frame.bp); event.dataTransfer.effectAllowed = "move"; }}
                                             onDragEnd={() => setDraggedBreakpointId(null)}
                                             onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
                                             onDrop={(event) => { event.preventDefault(); if (draggedBreakpointId) moveBreakpoint(draggedBreakpointId, frame.bp); setDraggedBreakpointId(null); }}
-                                            className={`flex h-8 cursor-grab items-center gap-2 rounded-lg border px-2 active:cursor-grabbing ${draggedBreakpointId === frame.bp ? "border-ed-accent bg-ed-accent/10 opacity-60" : "border-ed-border bg-ed-subtle"}`}
-                                            style={{ width: frame.width * scale }}
+                                            title={!componentMode ? `${definition?.name ?? frame.bp} · ${frame.width}px · governs ${breakpointRange(frame.bp)}px` : undefined}
+                                            className={`flex h-8 min-w-0 cursor-grab items-center gap-2 overflow-hidden rounded-lg border px-2 active:cursor-grabbing ${draggedBreakpointId === frame.bp ? "border-ed-accent bg-ed-accent/10 opacity-60" : "border-ed-border bg-ed-subtle"}`}
+                                            style={{ width: frameHeaderWidth }}
                                         >
                                             {editingBreakpointId === frame.bp && !componentMode ? (
                                                 <input
@@ -2227,27 +2567,27 @@ export default function Editor({
                                                         if (event.key === "Enter") event.currentTarget.blur();
                                                         if (event.key === "Escape") setEditingBreakpointId(null);
                                                     }}
-                                                    className="w-24 rounded bg-ed-field px-1 text-[11px] font-medium text-ed-text outline-none ring-1 ring-ed-accent"
+                                                    className="min-w-0 flex-1 rounded bg-ed-field px-1 text-[11px] font-medium text-ed-text outline-none ring-1 ring-ed-accent"
                                                 />
                                             ) : (
                                                 <button
                                                     type="button"
-                                                    onClick={() => setBreakpoint(frame.bp)}
+                                                    onClick={() => { if (frameMaster) { setActiveComponentMasterId(frameMaster.id); setSelectedIds([frameMaster.id]); } else setBreakpoint(frame.bp); }}
                                                     onDoubleClick={() => { if (!componentMode) setEditingBreakpointId(frame.bp); }}
                                                     title={componentMode ? undefined : "Double-click to rename"}
-                                                    className={`text-[11px] font-medium capitalize transition-colors ${
+                                                    className={`min-w-0 flex-1 truncate text-left text-[11px] font-medium capitalize transition-colors ${
                                                         primary
                                                             ? "text-ed-text"
                                                             : "text-ed-faint hover:text-ed-muted"
                                                     }`}
                                                 >
-                                                    {componentMode ? activeComponentMaster?.name ?? "Component" : definition?.name ?? frame.bp}
+                                                    {componentMode ? `${frameMaster?.name ?? "Asset"} / ${frameMaster?.variant ?? "Default"}` : definition?.name ?? frame.bp}
                                                 </button>
                                             )}
 
-                                            {componentMode ? (
-                                                <span className="font-mono text-[10px] text-ed-faint">{`${frame.width} × ${canvasHeight}`}</span>
-                                            ) : (
+                                            {componentMode && showFrameWidth ? (
+                                                <span className="font-mono text-[10px] text-ed-faint">{`${frame.width} × ${frameCanvasHeight}`}</span>
+                                            ) : !componentMode && showFrameWidth ? (
                                                 <input
                                                     type="number"
                                                     value={frame.width}
@@ -2256,12 +2596,12 @@ export default function Editor({
                                                     title={`Governs ${breakpointRange(frame.bp)}px`}
                                                     className="w-12 bg-transparent font-mono text-[10px] text-ed-faint outline-none hover:text-ed-muted focus:text-ed-text [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
-                                            )}
-                                            {!componentMode && (
-                                                <span className="font-mono text-[10px] text-ed-faint/60">{breakpointRange(frame.bp)}</span>
+                                            ) : null}
+                                            {!componentMode && showFrameRange && (
+                                                <span className="shrink-0 font-mono text-[10px] text-ed-faint/60">{breakpointRange(frame.bp)}</span>
                                             )}
 
-                                            <div className="ml-auto flex items-center gap-1">
+                                            {showFrameActions && <div className="ml-auto flex shrink-0 items-center gap-1">
                                                 {!componentMode && (
                                                     <button
                                                         type="button"
@@ -2283,8 +2623,8 @@ export default function Editor({
                                                         <IconTrash size={11} />
                                                     </button>
                                                 )}
-                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (componentMode) createComponentVariant(); else addBreakpoint(); }} disabled={componentMode && selectedElement?.componentRole !== "master"} className="flex size-5 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30" title={componentMode ? "Add variant" : "Add breakpoint"}><IconPlus size={12} /></button>
-                                            </div>
+                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (componentMode) createComponentVariant(); else addBreakpoint(); }} disabled={componentMode && !activeComponentMaster} className="flex size-5 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30" title={componentMode ? "Add variant" : "Add breakpoint"}><IconPlus size={12} /></button>
+                                            </div>}
                                         </div>
 
                                         {/* Reserves the scaled footprint so the
@@ -2293,7 +2633,7 @@ export default function Editor({
                                             className="group/frame relative"
                                             style={{
                                                 width: frame.width * scale,
-                                                height: displayCanvasHeight * scale,
+                                                height: frameDisplayHeight * scale,
                                                 flexShrink: 0,
                                             }}
                                         >
@@ -2304,7 +2644,7 @@ export default function Editor({
                                                 className="shadow-2xl"
                                                 style={{
                                                     width: frame.width,
-                                                    minHeight: canvasHeight,
+                                                    minHeight: frameCanvasHeight,
                                                     background: rootStyle.bg,
                                                     transform: `scale(${scale})`,
                                                     transformOrigin: "top left",
@@ -2315,6 +2655,7 @@ export default function Editor({
                                                     outlineOffset: 3,
                                                 }}
                                                 onMouseDown={(event) => {
+                                                    if (frameMaster && frameMaster.id !== activeComponentMaster?.id) setActiveComponentMasterId(frameMaster.id);
                                                     if (event.target === event.currentTarget)
                                                         beginMarquee(event, frame.bp);
                                                 }}
@@ -2332,26 +2673,26 @@ export default function Editor({
                                                         // The shell spans the frame; the
                                                         // content width comes from bands.
                                                         maxWidth: "none",
-                                                        minHeight: canvasHeight,
+                                                        minHeight: frameCanvasHeight,
                                                     }}
                                                     onDragOver={(event) => {
                                                         event.preventDefault();
                                                         event.dataTransfer.dropEffect = "copy";
                                                         setDropTargetId(null);
                                                     }}
-                                                    onDrop={(event) => handleDrop(event, null)}
+                                                    onDrop={(event) => { if (frameMaster) setActiveComponentMasterId(frameMaster.id); handleDrop(event, componentMode ? frame.masterId ?? null : null); }}
                                                     onMouseDown={(event) => {
                                                         if (event.target === event.currentTarget)
                                                             beginMarquee(event, frame.bp);
                                                     }}
                                                 >
-                                                    {visibleEditorElements.length === 0 && (
+                                                    {frameElements.length === 0 && (
                                                         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium text-ed-muted">
                                                             Drag an element here to start
                                                         </div>
                                                     )}
 
-                                                    {childrenOf(visibleEditorElements, undefined).map((el) =>
+                                                    {childrenOf(frameElements, undefined).map((el) =>
                                                         renderNode(
                                                             el,
                                                             frame,
@@ -2396,13 +2737,14 @@ export default function Editor({
                                                         ))}
                                                 </div>
                                             </div>
-                                            {componentMode && <button type="button" aria-label="Resize component width" onMouseDown={beginComponentWidthResize} className="absolute -right-1.5 inset-y-0 z-30 w-3 cursor-ew-resize opacity-0 transition-opacity group-hover/frame:opacity-100"><span className="absolute inset-y-1/2 left-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ed-accent shadow-[0_0_0_3px_var(--ed-accent-soft)]" /></button>}
+                                            {componentMode && <button type="button" aria-label="Resize component width" onMouseDown={(event) => { if (frameMaster && frameMaster.id !== activeComponentMaster?.id) { setActiveComponentMasterId(frameMaster.id); setSelectedIds([frameMaster.id]); } beginComponentWidthResize(event, frameMaster); }} className="absolute -right-1.5 inset-y-0 z-30 w-3 cursor-ew-resize opacity-0 transition-opacity group-hover/frame:opacity-100"><span className="absolute inset-y-1/2 left-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ed-accent shadow-[0_0_0_3px_var(--ed-accent-soft)]" /></button>}
                                             {primary && <button type="button" aria-label={`Resize ${componentMode ? "component" : "page"} canvas height`} onMouseDown={beginCanvasResize} className="absolute -bottom-1.5 inset-x-0 z-30 h-3 cursor-ns-resize opacity-0 transition-opacity group-hover/frame:opacity-100"><span className="absolute left-1/2 top-1/2 h-1 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ed-accent shadow-[0_0_0_3px_var(--ed-accent-soft)]" /></button>}
                                         </div>
                                     </div>
                                 );
                             })}
-                        </div>
+                        </motion.div>
+                        </AnimatePresence>
                     </div>
 
                     <div className="absolute bottom-0 left-0 z-20 flex h-8 w-full items-center gap-2 border-t border-ed-border bg-ed-surface px-4 text-[11px] text-ed-muted shadow-sm">
@@ -2413,15 +2755,8 @@ export default function Editor({
                         />
                     </div>
 
-                    <div className="absolute bottom-12 right-6 z-20 flex items-center gap-0.5 rounded-lg border border-ed-border bg-ed-surface/90 p-1 shadow-md backdrop-blur">
-                        <button type="button" title={effectsPreview ? "Stop interaction preview" : "Preview hover, press and layer actions"} onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectId(null); setPressedEffectId(null); setPreviewVisibility({}); }} className={`rounded-md p-1.5 transition-colors ${effectsPreview ? "bg-ed-accent text-white" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}><IconPlayerPlay size={16} stroke={1.5} /></button>
-                        <button
-                            type="button"
-                            title="Select"
-                            className="rounded-md bg-[var(--ed-accent-soft)] p-1.5 text-ed-accent"
-                        >
-                            <IconPointer size={16} stroke={1.5} />
-                        </button>
+                    <div className="absolute bottom-12 right-6 z-20 flex items-center gap-0.5 rounded-lg border border-ed-border bg-ed-surface/90 p-1 backdrop-blur">
+                        <button type="button" title={effectsPreview ? "Stop interaction preview" : "Preview hover, press and layer actions"} onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }} className={`rounded-md p-1.5 transition-colors ${effectsPreview ? "bg-ed-accent text-white" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}><IconPlayerPlay size={14} stroke={1.5} /></button>
                         <button
                             type="button"
                             title="Recentre the canvas"
@@ -2450,7 +2785,7 @@ export default function Editor({
                 </main>
 
                 <AnimatePresence initial={false}>
-                {!isRightCollapsed && (
+                {leftTab !== "Templates" && !isRightCollapsed && hasElementSelection && (
                     <motion.aside initial={{ width: 0, opacity: 0, x: 14 }} animate={{ width: 312, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: 14 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="z-10 flex w-[312px] shrink-0 flex-col overflow-hidden border-l border-ed-border bg-ed-surface/95 backdrop-blur-xl">
                         <div className="flex h-11 shrink-0 items-end gap-0.5 border-b border-ed-border px-2">
                             {(["Design", "Content", "Hover", "Interact"] as const).map((tab) => (
@@ -2571,9 +2906,7 @@ export default function Editor({
                                         )
                                     }
                                 />
-                            ) : (
-                                <PageInspector rootStyle={rootStyle} onChange={(patch) => patch.layout ? switchPageLayout(patch.layout) : setRootStyle(patch)} onApplyStyleKit={applyStyleKit} onLoadShowcase={loadNocturneShowcase} />
-                            )}
+                            ) : null}
                         </div>
                     </motion.aside>
                 )}
@@ -2685,7 +3018,7 @@ export default function Editor({
                         </button>
                     ))}
                     <div className="my-1 h-px bg-ed-border" />
-                    {componentMode ? <button type="button" onClick={() => { createComponentVariant(); setContextMenu(null); }} disabled={selectedElement?.componentRole !== "master"} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-ed-muted hover:bg-ed-field hover:text-ed-text disabled:opacity-30"><IconComponents size={13} /> Add variant</button> : <><button type="button" onClick={() => {
+                    {componentMode ? <button type="button" onClick={() => { createComponentVariant(); setContextMenu(null); }} disabled={!activeComponentMaster} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-ed-muted hover:bg-ed-field hover:text-ed-text disabled:opacity-30"><IconComponents size={13} /> Add variant</button> : <><button type="button" onClick={() => {
                         addBreakpoint();
                         setBreakpointPanel(true);
                         setContextMenu(null);

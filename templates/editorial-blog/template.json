@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "editorial-blog",
-  "version": "1.0.0",
+  "version": "1.3.1",
   "pages": [
     {
       "name": "Home",
       "slug": "home",
       "elements": [
         {
-          "id": "9c7b7732-437b-4caf-8fb9-bed30f7c155e",
+          "id": "c23f1c14-3c64-41c5-bf82-3f9fa817dfe1",
           "type": "Section",
           "z": 0,
           "base": {
@@ -69,13 +69,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial navigation"
+          "name": "Editorial navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "componentSourceId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "variant": "Default"
         },
         {
-          "id": "41c8d956-f014-43e6-a0e1-a623427009fd",
+          "id": "942beed5-d43a-4a4d-9ff5-73707d38224e",
           "type": "Container",
           "z": 0,
-          "parentId": "9c7b7732-437b-4caf-8fb9-bed30f7c155e",
+          "parentId": "c23f1c14-3c64-41c5-bf82-3f9fa817dfe1",
           "base": {
             "x": 0,
             "y": 0,
@@ -137,19 +153,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181"
         },
         {
-          "id": "f419e98f-c5d2-4059-a975-d48345c065bf",
+          "id": "a9020416-58a5-42e7-85cd-6029184b7f1e",
           "type": "Heading",
           "z": 0,
-          "parentId": "41c8d956-f014-43e6-a0e1-a623427009fd",
+          "parentId": "942beed5-d43a-4a4d-9ff5-73707d38224e",
           "content": "FIELD NOTES",
           "base": {
             "x": 0,
@@ -209,13 +225,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial wordmark"
+          "name": "Editorial wordmark",
+          "componentSourceId": "79cd838c-1903-4273-abd4-cb7b6b1200aa"
         },
         {
-          "id": "bbefc2f2-32b4-49c3-8354-4070a6379cee",
+          "id": "2cfb3896-0124-456d-b2da-05f2b90e0d34",
           "type": "Container",
           "z": 0,
-          "parentId": "41c8d956-f014-43e6-a0e1-a623427009fd",
+          "parentId": "942beed5-d43a-4a4d-9ff5-73707d38224e",
           "base": {
             "x": 0,
             "y": 0,
@@ -279,16 +296,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c"
         },
         {
-          "id": "24d92dd4-b219-4644-8dc1-ac6f5c05a02c",
+          "id": "d3cfede0-52b6-48d3-a4d9-388ff024c27b",
           "type": "Button",
           "z": 0,
-          "parentId": "bbefc2f2-32b4-49c3-8354-4070a6379cee",
+          "parentId": "2cfb3896-0124-456d-b2da-05f2b90e0d34",
           "content": "Journal",
           "href": "/blog",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -350,16 +369,18 @@
           "name": "Journal link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "168a246d-c4a4-4a2d-b53e-858878ed2e0c"
         },
         {
-          "id": "79e79add-cb10-4834-8578-d412a9ffbb80",
+          "id": "da1d35ee-bd5b-48f6-bca6-fa331702b2d6",
           "type": "Button",
           "z": 0,
-          "parentId": "bbefc2f2-32b4-49c3-8354-4070a6379cee",
+          "parentId": "2cfb3896-0124-456d-b2da-05f2b90e0d34",
           "content": "About",
           "href": "/about",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -421,10 +442,11 @@
           "name": "About link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "3f6f108f-f044-4760-b10a-b6b2075867f4"
         },
         {
-          "id": "6379d0b5-d090-41c3-82ea-b1acdb4877c2",
+          "id": "f9d4a148-012a-43a6-b217-9169e9ba9a54",
           "type": "Section",
           "z": 0,
           "base": {
@@ -485,13 +507,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Journal hero"
+          "name": "Journal hero",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 63,
+              "padR": 20,
+              "padB": 63,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "id": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "type": "Container",
           "z": 0,
-          "parentId": "6379d0b5-d090-41c3-82ea-b1acdb4877c2",
+          "parentId": "f9d4a148-012a-43a6-b217-9169e9ba9a54",
           "base": {
             "x": 0,
             "y": 0,
@@ -553,7 +587,7 @@
           "name": "Journal hero inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -561,10 +595,10 @@
           }
         },
         {
-          "id": "355d3b1a-0ecb-4079-9e94-c127311dbb07",
+          "id": "2f0e290d-bb5f-4bfb-9f75-0e0f5d10ce29",
           "type": "Text",
           "z": 0,
-          "parentId": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "parentId": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "content": "Independent journal / Vol. 04",
           "base": {
             "x": 0,
@@ -627,10 +661,10 @@
           "name": "Issue label"
         },
         {
-          "id": "ee77f2bc-9e00-45ce-a169-032ddbbaadde",
+          "id": "5e46ca62-75a6-4372-930c-74ca2ab7bcea",
           "type": "Heading",
           "z": 0,
-          "parentId": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "parentId": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "content": "IDEAS FOR A\nMORE HUMAN WEB.",
           "base": {
             "x": 0,
@@ -702,10 +736,10 @@
           }
         },
         {
-          "id": "d2add54c-2817-4ea9-b690-533652d73fdc",
+          "id": "6f34b6ab-b245-48d1-85e9-7364af671b30",
           "type": "Text",
           "z": 0,
-          "parentId": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "parentId": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "content": "Essays on design, technology and the quiet decisions that shape products people choose to keep.",
           "base": {
             "x": 0,
@@ -765,10 +799,19 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Journal intro"
+          "name": "Journal intro",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 15
+            }
+          }
         },
         {
-          "id": "02dd11a7-b5e8-4e34-9b67-2c3a44ad34e5",
+          "id": "1ec06651-5d9e-44d3-b54f-f35be0550b59",
           "type": "Section",
           "z": 0,
           "base": {
@@ -829,13 +872,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Latest writing"
+          "name": "Latest writing",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 63,
+              "padR": 20,
+              "padB": 63,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "d685756e-8374-472c-bea1-368c0b5e68b0",
+          "id": "219125a7-82d0-40a2-8d0a-195ff8713bf6",
           "type": "Container",
           "z": 0,
-          "parentId": "02dd11a7-b5e8-4e34-9b67-2c3a44ad34e5",
+          "parentId": "1ec06651-5d9e-44d3-b54f-f35be0550b59",
           "base": {
             "x": 0,
             "y": 0,
@@ -897,7 +952,7 @@
           "name": "Feed inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -905,10 +960,10 @@
           }
         },
         {
-          "id": "456012b5-dc7b-49ff-b2e3-b05d91e3ebc6",
+          "id": "c88df856-3cff-439a-b078-b17b9f0d7f20",
           "type": "Heading",
           "z": 0,
-          "parentId": "d685756e-8374-472c-bea1-368c0b5e68b0",
+          "parentId": "219125a7-82d0-40a2-8d0a-195ff8713bf6",
           "content": "Latest writing",
           "base": {
             "x": 0,
@@ -971,10 +1026,10 @@
           "name": "Feed title"
         },
         {
-          "id": "ea5e4ff8-3d19-495c-8c0b-7069a2898918",
+          "id": "df45eefc-cc89-40c9-abcb-a6089b4d6806",
           "type": "Repeat",
           "z": 0,
-          "parentId": "d685756e-8374-472c-bea1-368c0b5e68b0",
+          "parentId": "219125a7-82d0-40a2-8d0a-195ff8713bf6",
           "sourceId": "editorial-posts",
           "base": {
             "x": 0,
@@ -1037,15 +1092,17 @@
           "name": "Posts request grid",
           "overrides": {
             "mobile": {
-              "columns": 1
+              "direction": "column",
+              "columns": 1,
+              "wrap": false
             }
           }
         },
         {
-          "id": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "id": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "type": "Container",
           "z": 0,
-          "parentId": "ea5e4ff8-3d19-495c-8c0b-7069a2898918",
+          "parentId": "df45eefc-cc89-40c9-abcb-a6089b4d6806",
           "base": {
             "x": 0,
             "y": 0,
@@ -1101,20 +1158,31 @@
             "entranceBezier": "0.16, 1, 0.3, 1",
             "springStiffness": 300,
             "springDamping": 30,
-            "cursor": "auto",
+            "cursor": "pointer",
             "hidden": false
           },
           "name": "Post card",
+          "overrides": {
+            "mobile": {
+              "gap": 16,
+              "padT": 22,
+              "padR": 22,
+              "padB": 24,
+              "padL": 22
+            }
+          },
+          "href": "/blog/{{id}}",
+          "target": "_self",
           "hover": {
             "scale": 101.5,
             "shadow": "0 24px 70px rgba(0,0,0,.28)"
           }
         },
         {
-          "id": "1ef110bf-62d3-4d27-9b52-a7bd40c63d8f",
+          "id": "d11fa463-cbbd-41e0-8cd2-b9cbd94e05c8",
           "type": "Text",
           "z": 0,
-          "parentId": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "parentId": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "content": "01",
           "base": {
             "x": 0,
@@ -1178,10 +1246,10 @@
           "binding": "id"
         },
         {
-          "id": "db98578d-5b7a-4749-a455-358c88b6d705",
+          "id": "6e696dee-9289-4302-a1c0-7c170fd8d834",
           "type": "Heading",
           "z": 0,
-          "parentId": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "parentId": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "content": "Article title",
           "base": {
             "x": 0,
@@ -1245,10 +1313,10 @@
           "binding": "title"
         },
         {
-          "id": "3e94eb9a-a5fc-4146-b4d7-95aee694a1b4",
+          "id": "5830b5bd-7269-4645-ae41-70b4a2dd5b56",
           "type": "Text",
           "z": 0,
-          "parentId": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "parentId": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "content": "Article excerpt",
           "base": {
             "x": 0,
@@ -1327,6 +1395,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -1378,7 +1448,7 @@
       "slug": "blog",
       "elements": [
         {
-          "id": "9c7b7732-437b-4caf-8fb9-bed30f7c155e",
+          "id": "fd677ab4-917c-492c-bf73-9790690c12fd",
           "type": "Section",
           "z": 0,
           "base": {
@@ -1439,13 +1509,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial navigation"
+          "name": "Editorial navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "componentSourceId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "variant": "Default"
         },
         {
-          "id": "41c8d956-f014-43e6-a0e1-a623427009fd",
+          "id": "4cc57b22-300b-4f16-b40d-e13f1ccea762",
           "type": "Container",
           "z": 0,
-          "parentId": "9c7b7732-437b-4caf-8fb9-bed30f7c155e",
+          "parentId": "fd677ab4-917c-492c-bf73-9790690c12fd",
           "base": {
             "x": 0,
             "y": 0,
@@ -1507,19 +1593,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181"
         },
         {
-          "id": "f419e98f-c5d2-4059-a975-d48345c065bf",
+          "id": "146b1fb1-83c3-425f-8ee2-444473b48672",
           "type": "Heading",
           "z": 0,
-          "parentId": "41c8d956-f014-43e6-a0e1-a623427009fd",
+          "parentId": "4cc57b22-300b-4f16-b40d-e13f1ccea762",
           "content": "FIELD NOTES",
           "base": {
             "x": 0,
@@ -1579,13 +1665,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial wordmark"
+          "name": "Editorial wordmark",
+          "componentSourceId": "79cd838c-1903-4273-abd4-cb7b6b1200aa"
         },
         {
-          "id": "bbefc2f2-32b4-49c3-8354-4070a6379cee",
+          "id": "d3a35516-f4db-4094-b2b4-3caafed63f2d",
           "type": "Container",
           "z": 0,
-          "parentId": "41c8d956-f014-43e6-a0e1-a623427009fd",
+          "parentId": "4cc57b22-300b-4f16-b40d-e13f1ccea762",
           "base": {
             "x": 0,
             "y": 0,
@@ -1649,16 +1736,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c"
         },
         {
-          "id": "24d92dd4-b219-4644-8dc1-ac6f5c05a02c",
+          "id": "c8f9663f-4035-4ed2-a557-2174d889c4ab",
           "type": "Button",
           "z": 0,
-          "parentId": "bbefc2f2-32b4-49c3-8354-4070a6379cee",
+          "parentId": "d3a35516-f4db-4094-b2b4-3caafed63f2d",
           "content": "Journal",
           "href": "/blog",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -1720,16 +1809,18 @@
           "name": "Journal link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "168a246d-c4a4-4a2d-b53e-858878ed2e0c"
         },
         {
-          "id": "79e79add-cb10-4834-8578-d412a9ffbb80",
+          "id": "fef835e0-f67d-4782-849d-8125f6e486f7",
           "type": "Button",
           "z": 0,
-          "parentId": "bbefc2f2-32b4-49c3-8354-4070a6379cee",
+          "parentId": "d3a35516-f4db-4094-b2b4-3caafed63f2d",
           "content": "About",
           "href": "/about",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -1791,10 +1882,11 @@
           "name": "About link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "3f6f108f-f044-4760-b10a-b6b2075867f4"
         },
         {
-          "id": "6379d0b5-d090-41c3-82ea-b1acdb4877c2",
+          "id": "f9d4a148-012a-43a6-b217-9169e9ba9a54",
           "type": "Section",
           "z": 0,
           "base": {
@@ -1855,13 +1947,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Journal hero"
+          "name": "Journal hero",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 63,
+              "padR": 20,
+              "padB": 63,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "id": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "type": "Container",
           "z": 0,
-          "parentId": "6379d0b5-d090-41c3-82ea-b1acdb4877c2",
+          "parentId": "f9d4a148-012a-43a6-b217-9169e9ba9a54",
           "base": {
             "x": 0,
             "y": 0,
@@ -1923,7 +2027,7 @@
           "name": "Journal hero inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -1931,10 +2035,10 @@
           }
         },
         {
-          "id": "355d3b1a-0ecb-4079-9e94-c127311dbb07",
+          "id": "2f0e290d-bb5f-4bfb-9f75-0e0f5d10ce29",
           "type": "Text",
           "z": 0,
-          "parentId": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "parentId": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "content": "Independent journal / Vol. 04",
           "base": {
             "x": 0,
@@ -1997,10 +2101,10 @@
           "name": "Issue label"
         },
         {
-          "id": "ee77f2bc-9e00-45ce-a169-032ddbbaadde",
+          "id": "5e46ca62-75a6-4372-930c-74ca2ab7bcea",
           "type": "Heading",
           "z": 0,
-          "parentId": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "parentId": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "content": "IDEAS FOR A\nMORE HUMAN WEB.",
           "base": {
             "x": 0,
@@ -2072,10 +2176,10 @@
           }
         },
         {
-          "id": "d2add54c-2817-4ea9-b690-533652d73fdc",
+          "id": "6f34b6ab-b245-48d1-85e9-7364af671b30",
           "type": "Text",
           "z": 0,
-          "parentId": "38b3a14f-be0b-442d-972e-27abd5519770",
+          "parentId": "838bcc49-39f0-4225-80ba-a88d54546c0e",
           "content": "Essays on design, technology and the quiet decisions that shape products people choose to keep.",
           "base": {
             "x": 0,
@@ -2135,10 +2239,19 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Journal intro"
+          "name": "Journal intro",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 15
+            }
+          }
         },
         {
-          "id": "02dd11a7-b5e8-4e34-9b67-2c3a44ad34e5",
+          "id": "1ec06651-5d9e-44d3-b54f-f35be0550b59",
           "type": "Section",
           "z": 0,
           "base": {
@@ -2199,13 +2312,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Latest writing"
+          "name": "Latest writing",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 63,
+              "padR": 20,
+              "padB": 63,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "d685756e-8374-472c-bea1-368c0b5e68b0",
+          "id": "219125a7-82d0-40a2-8d0a-195ff8713bf6",
           "type": "Container",
           "z": 0,
-          "parentId": "02dd11a7-b5e8-4e34-9b67-2c3a44ad34e5",
+          "parentId": "1ec06651-5d9e-44d3-b54f-f35be0550b59",
           "base": {
             "x": 0,
             "y": 0,
@@ -2267,7 +2392,7 @@
           "name": "Feed inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -2275,10 +2400,10 @@
           }
         },
         {
-          "id": "456012b5-dc7b-49ff-b2e3-b05d91e3ebc6",
+          "id": "c88df856-3cff-439a-b078-b17b9f0d7f20",
           "type": "Heading",
           "z": 0,
-          "parentId": "d685756e-8374-472c-bea1-368c0b5e68b0",
+          "parentId": "219125a7-82d0-40a2-8d0a-195ff8713bf6",
           "content": "Latest writing",
           "base": {
             "x": 0,
@@ -2341,10 +2466,10 @@
           "name": "Feed title"
         },
         {
-          "id": "ea5e4ff8-3d19-495c-8c0b-7069a2898918",
+          "id": "df45eefc-cc89-40c9-abcb-a6089b4d6806",
           "type": "Repeat",
           "z": 0,
-          "parentId": "d685756e-8374-472c-bea1-368c0b5e68b0",
+          "parentId": "219125a7-82d0-40a2-8d0a-195ff8713bf6",
           "sourceId": "editorial-posts",
           "base": {
             "x": 0,
@@ -2407,15 +2532,17 @@
           "name": "Posts request grid",
           "overrides": {
             "mobile": {
-              "columns": 1
+              "direction": "column",
+              "columns": 1,
+              "wrap": false
             }
           }
         },
         {
-          "id": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "id": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "type": "Container",
           "z": 0,
-          "parentId": "ea5e4ff8-3d19-495c-8c0b-7069a2898918",
+          "parentId": "df45eefc-cc89-40c9-abcb-a6089b4d6806",
           "base": {
             "x": 0,
             "y": 0,
@@ -2471,20 +2598,31 @@
             "entranceBezier": "0.16, 1, 0.3, 1",
             "springStiffness": 300,
             "springDamping": 30,
-            "cursor": "auto",
+            "cursor": "pointer",
             "hidden": false
           },
           "name": "Post card",
+          "overrides": {
+            "mobile": {
+              "gap": 16,
+              "padT": 22,
+              "padR": 22,
+              "padB": 24,
+              "padL": 22
+            }
+          },
+          "href": "/blog/{{id}}",
+          "target": "_self",
           "hover": {
             "scale": 101.5,
             "shadow": "0 24px 70px rgba(0,0,0,.28)"
           }
         },
         {
-          "id": "1ef110bf-62d3-4d27-9b52-a7bd40c63d8f",
+          "id": "d11fa463-cbbd-41e0-8cd2-b9cbd94e05c8",
           "type": "Text",
           "z": 0,
-          "parentId": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "parentId": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "content": "01",
           "base": {
             "x": 0,
@@ -2548,10 +2686,10 @@
           "binding": "id"
         },
         {
-          "id": "db98578d-5b7a-4749-a455-358c88b6d705",
+          "id": "6e696dee-9289-4302-a1c0-7c170fd8d834",
           "type": "Heading",
           "z": 0,
-          "parentId": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "parentId": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "content": "Article title",
           "base": {
             "x": 0,
@@ -2615,10 +2753,10 @@
           "binding": "title"
         },
         {
-          "id": "3e94eb9a-a5fc-4146-b4d7-95aee694a1b4",
+          "id": "5830b5bd-7269-4645-ae41-70b4a2dd5b56",
           "type": "Text",
           "z": 0,
-          "parentId": "87c8e398-8df7-4cb6-8b52-00a20fa9ed3b",
+          "parentId": "c37867e9-e149-47b3-bf35-a6e546c0b2cb",
           "content": "Article excerpt",
           "base": {
             "x": 0,
@@ -2697,6 +2835,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -2748,7 +2888,7 @@
       "slug": "blog/:slug",
       "elements": [
         {
-          "id": "f1ab753f-16bf-45ff-ab3c-509f5f3927fa",
+          "id": "e219d4cc-1499-4cc2-891e-7bdf6857d627",
           "type": "Section",
           "z": 0,
           "base": {
@@ -2809,13 +2949,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial navigation"
+          "name": "Editorial navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "componentSourceId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "variant": "Default"
         },
         {
-          "id": "6c4ebdeb-9fa2-4ce1-9a8a-a17338b8d3f8",
+          "id": "9e9f0fb8-a907-4c7a-889a-80a4796d0f5f",
           "type": "Container",
           "z": 0,
-          "parentId": "f1ab753f-16bf-45ff-ab3c-509f5f3927fa",
+          "parentId": "e219d4cc-1499-4cc2-891e-7bdf6857d627",
           "base": {
             "x": 0,
             "y": 0,
@@ -2877,19 +3033,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181"
         },
         {
-          "id": "2de99f41-9097-4270-a0a5-f3e269857592",
+          "id": "08bcfa37-f5f6-4b5c-941c-8d0d33c54a1a",
           "type": "Heading",
           "z": 0,
-          "parentId": "6c4ebdeb-9fa2-4ce1-9a8a-a17338b8d3f8",
+          "parentId": "9e9f0fb8-a907-4c7a-889a-80a4796d0f5f",
           "content": "FIELD NOTES",
           "base": {
             "x": 0,
@@ -2949,13 +3105,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial wordmark"
+          "name": "Editorial wordmark",
+          "componentSourceId": "79cd838c-1903-4273-abd4-cb7b6b1200aa"
         },
         {
-          "id": "bf2e1e3f-ba56-4806-a5b1-7037bae5efc7",
+          "id": "dc3acfd5-9cda-4e67-b916-ac6c1c78f73e",
           "type": "Container",
           "z": 0,
-          "parentId": "6c4ebdeb-9fa2-4ce1-9a8a-a17338b8d3f8",
+          "parentId": "9e9f0fb8-a907-4c7a-889a-80a4796d0f5f",
           "base": {
             "x": 0,
             "y": 0,
@@ -3019,16 +3176,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c"
         },
         {
-          "id": "a4b9d4a1-56de-46aa-a333-6336f46f88b6",
+          "id": "742eea75-b7dd-41f9-aa09-dd321b7881d4",
           "type": "Button",
           "z": 0,
-          "parentId": "bf2e1e3f-ba56-4806-a5b1-7037bae5efc7",
+          "parentId": "dc3acfd5-9cda-4e67-b916-ac6c1c78f73e",
           "content": "Journal",
           "href": "/blog",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -3090,16 +3249,18 @@
           "name": "Journal link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "168a246d-c4a4-4a2d-b53e-858878ed2e0c"
         },
         {
-          "id": "30b92142-bd40-4375-9adf-a8fe9a7bcd9c",
+          "id": "12b456ad-4079-48e7-832a-b8bcaa2b4d15",
           "type": "Button",
           "z": 0,
-          "parentId": "bf2e1e3f-ba56-4806-a5b1-7037bae5efc7",
+          "parentId": "dc3acfd5-9cda-4e67-b916-ac6c1c78f73e",
           "content": "About",
           "href": "/about",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -3161,10 +3322,11 @@
           "name": "About link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "3f6f108f-f044-4760-b10a-b6b2075867f4"
         },
         {
-          "id": "217f258a-b8c9-46e9-9827-d88fd7688a37",
+          "id": "36d23e9a-5748-4411-ba79-0be4b0735b2c",
           "type": "Section",
           "z": 0,
           "base": {
@@ -3225,13 +3387,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Article"
+          "name": "Article",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 70,
+              "padR": 20,
+              "padB": 70,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "556fa7f8-7fc9-45aa-aba4-06fe49e6c238",
+          "id": "8985d010-1f83-41b6-8f27-566c31fc9b6d",
           "type": "Container",
           "z": 0,
-          "parentId": "217f258a-b8c9-46e9-9827-d88fd7688a37",
+          "parentId": "36d23e9a-5748-4411-ba79-0be4b0735b2c",
           "base": {
             "x": 0,
             "y": 0,
@@ -3293,7 +3467,7 @@
           "name": "Article inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -3301,10 +3475,10 @@
           }
         },
         {
-          "id": "d04e98c2-7f94-4cf7-8a85-d81f4458795d",
+          "id": "a4c17097-9fb3-4840-972e-42a647689fe2",
           "type": "Text",
           "z": 0,
-          "parentId": "556fa7f8-7fc9-45aa-aba4-06fe49e6c238",
+          "parentId": "8985d010-1f83-41b6-8f27-566c31fc9b6d",
           "content": "Journal / Dynamic article",
           "base": {
             "x": 0,
@@ -3367,10 +3541,10 @@
           "name": "Dynamic route"
         },
         {
-          "id": "6f20100d-6509-44e6-80e6-d241c62d9381",
+          "id": "2403d9d1-74a5-4015-aace-41d272079498",
           "type": "Request",
           "z": 0,
-          "parentId": "556fa7f8-7fc9-45aa-aba4-06fe49e6c238",
+          "parentId": "8985d010-1f83-41b6-8f27-566c31fc9b6d",
           "sourceId": "editorial-post",
           "base": {
             "x": 0,
@@ -3433,10 +3607,10 @@
           "name": "Current post request"
         },
         {
-          "id": "4e652f13-a4bd-4cfe-84df-a42dd7106c10",
+          "id": "acdc01f0-e522-4e07-af3e-a1d8bb6a67ef",
           "type": "Heading",
           "z": 0,
-          "parentId": "6f20100d-6509-44e6-80e6-d241c62d9381",
+          "parentId": "2403d9d1-74a5-4015-aace-41d272079498",
           "content": "Article title",
           "base": {
             "x": 0,
@@ -3497,13 +3671,23 @@
             "hidden": false
           },
           "name": "Dynamic title",
+          "overrides": {
+            "tablet": {
+              "fontSize": 54,
+              "letterSpacing": -3
+            },
+            "mobile": {
+              "fontSize": 40,
+              "letterSpacing": -2
+            }
+          },
           "binding": "title"
         },
         {
-          "id": "39d53401-1827-40b0-be14-ad3a7d1bc5d8",
+          "id": "46035830-440a-4556-a27d-f27b1d9257a6",
           "type": "Text",
           "z": 0,
-          "parentId": "6f20100d-6509-44e6-80e6-d241c62d9381",
+          "parentId": "2403d9d1-74a5-4015-aace-41d272079498",
           "content": "Article body",
           "base": {
             "x": 0,
@@ -3564,6 +3748,12 @@
             "hidden": false
           },
           "name": "Article body",
+          "overrides": {
+            "mobile": {
+              "fontSize": 17,
+              "lineHeight": 1.75
+            }
+          },
           "binding": "body"
         }
       ],
@@ -3582,6 +3772,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -3628,7 +3820,7 @@
       "slug": "about",
       "elements": [
         {
-          "id": "08288d5c-df01-4bee-bc0a-a7c53ddee5c7",
+          "id": "86309759-56b2-44cc-8ef8-9a3ef22724d7",
           "type": "Section",
           "z": 0,
           "base": {
@@ -3689,13 +3881,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial navigation"
+          "name": "Editorial navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "componentSourceId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+          "variant": "Default"
         },
         {
-          "id": "40d6667a-aa12-40ad-bd64-08f7ad3f34b1",
+          "id": "143940ef-709f-405f-b009-704550bbeed8",
           "type": "Container",
           "z": 0,
-          "parentId": "08288d5c-df01-4bee-bc0a-a7c53ddee5c7",
+          "parentId": "86309759-56b2-44cc-8ef8-9a3ef22724d7",
           "base": {
             "x": 0,
             "y": 0,
@@ -3757,19 +3965,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181"
         },
         {
-          "id": "31faf049-a80e-4404-a098-76dbda45b168",
+          "id": "6e40ac5b-604c-43c6-8efa-e42a2abd4863",
           "type": "Heading",
           "z": 0,
-          "parentId": "40d6667a-aa12-40ad-bd64-08f7ad3f34b1",
+          "parentId": "143940ef-709f-405f-b009-704550bbeed8",
           "content": "FIELD NOTES",
           "base": {
             "x": 0,
@@ -3829,13 +4037,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Editorial wordmark"
+          "name": "Editorial wordmark",
+          "componentSourceId": "79cd838c-1903-4273-abd4-cb7b6b1200aa"
         },
         {
-          "id": "3be52596-276a-4432-bcf0-d2f63fe2cff0",
+          "id": "2d33e9b1-9d01-4f09-bf75-969f5d8a90ee",
           "type": "Container",
           "z": 0,
-          "parentId": "40d6667a-aa12-40ad-bd64-08f7ad3f34b1",
+          "parentId": "143940ef-709f-405f-b009-704550bbeed8",
           "base": {
             "x": 0,
             "y": 0,
@@ -3899,16 +4108,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c"
         },
         {
-          "id": "25ecdaa7-3e5a-4a22-822c-cb89470d2e3c",
+          "id": "10869761-8128-4f48-ae03-1677a80d5bb0",
           "type": "Button",
           "z": 0,
-          "parentId": "3be52596-276a-4432-bcf0-d2f63fe2cff0",
+          "parentId": "2d33e9b1-9d01-4f09-bf75-969f5d8a90ee",
           "content": "Journal",
           "href": "/blog",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -3970,16 +4181,18 @@
           "name": "Journal link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "168a246d-c4a4-4a2d-b53e-858878ed2e0c"
         },
         {
-          "id": "fe40d034-f2dd-4d8a-9686-c781ab3e709b",
+          "id": "df0dae6e-5eba-483e-b791-f02c488ed7b4",
           "type": "Button",
           "z": 0,
-          "parentId": "3be52596-276a-4432-bcf0-d2f63fe2cff0",
+          "parentId": "2d33e9b1-9d01-4f09-bf75-969f5d8a90ee",
           "content": "About",
           "href": "/about",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -4041,10 +4254,11 @@
           "name": "About link",
           "hover": {
             "color": "#db4b2d"
-          }
+          },
+          "componentSourceId": "3f6f108f-f044-4760-b10a-b6b2075867f4"
         },
         {
-          "id": "253a3e9e-77a5-442b-b0e3-26e70a50ff15",
+          "id": "4825fd6a-7ce4-4588-b3fd-33fdb9445154",
           "type": "Section",
           "z": 0,
           "base": {
@@ -4105,13 +4319,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "About Field Notes"
+          "name": "About Field Notes",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 84,
+              "padR": 20,
+              "padB": 84,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "cf0001ab-1db0-43ea-9c6e-7a374baed523",
+          "id": "8726313b-50e3-4d48-a606-90355685c067",
           "type": "Container",
           "z": 0,
-          "parentId": "253a3e9e-77a5-442b-b0e3-26e70a50ff15",
+          "parentId": "4825fd6a-7ce4-4588-b3fd-33fdb9445154",
           "base": {
             "x": 0,
             "y": 0,
@@ -4173,7 +4399,7 @@
           "name": "About inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -4181,10 +4407,10 @@
           }
         },
         {
-          "id": "8c818264-0e6c-4528-a7b8-ad1ecd8f4861",
+          "id": "473e0eac-cedd-4b1c-8f5d-ee39c4952215",
           "type": "Heading",
           "z": 0,
-          "parentId": "cf0001ab-1db0-43ea-9c6e-7a374baed523",
+          "parentId": "8726313b-50e3-4d48-a606-90355685c067",
           "content": "WE WRITE TO\nNOTICE BETTER.",
           "base": {
             "x": 0,
@@ -4244,13 +4470,23 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "About title"
+          "name": "About title",
+          "overrides": {
+            "tablet": {
+              "fontSize": 62,
+              "letterSpacing": -3.5
+            },
+            "mobile": {
+              "fontSize": 44,
+              "letterSpacing": -2.4
+            }
+          }
         },
         {
-          "id": "707951a4-2525-466b-bd62-fda3984545d8",
+          "id": "18ca5836-fb64-418f-9b1c-dc842cdfca64",
           "type": "Text",
           "z": 0,
-          "parentId": "cf0001ab-1db0-43ea-9c6e-7a374baed523",
+          "parentId": "8726313b-50e3-4d48-a606-90355685c067",
           "content": "Field Notes is an independent publication exploring how thoughtful digital work gets made—and why restraint is often the boldest decision.",
           "base": {
             "x": 0,
@@ -4310,7 +4546,16 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "About copy"
+          "name": "About copy",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 16
+            }
+          }
         }
       ],
       "rootStyle": {
@@ -4328,6 +4573,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -4359,6 +4606,446 @@
         ]
       },
       "dataSources": []
+    }
+  ],
+  "components": [
+    {
+      "id": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+      "type": "Section",
+      "z": 0,
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1280,
+        "h": 480,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "column",
+        "gap": 24,
+        "padT": 22,
+        "padR": 32,
+        "padB": 22,
+        "padL": 32,
+        "justify": "start",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#f3efe6",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Editorial navigation",
+      "overrides": {
+        "tablet": {
+          "padR": 28,
+          "padL": 28
+        },
+        "mobile": {
+          "padT": 20,
+          "padR": 20,
+          "padB": 20,
+          "padL": 20
+        }
+      },
+      "componentRole": "master",
+      "componentId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+      "componentSourceId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+      "variant": "Default"
+    },
+    {
+      "id": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181",
+      "type": "Container",
+      "z": 0,
+      "parentId": "61b64be8-8018-4bc7-ac72-f18c61dfd48a",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1120,
+        "h": 240,
+        "widthMode": "fixed",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 24,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "between",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 12,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "#e4e4e7",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Navigation inner",
+      "overrides": {
+        "tablet": {
+          "widthMode": "fill"
+        },
+        "mobile": {
+          "widthMode": "fill"
+        }
+      },
+      "componentSourceId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181"
+    },
+    {
+      "id": "79cd838c-1903-4273-abd4-cb7b6b1200aa",
+      "type": "Heading",
+      "z": 0,
+      "parentId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181",
+      "content": "FIELD NOTES",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 480,
+        "h": 48,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "absolute",
+        "direction": "column",
+        "gap": 0,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "start",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#171714",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 20,
+        "fontWeight": "800",
+        "lineHeight": 1.2,
+        "letterSpacing": -1,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Editorial wordmark",
+      "componentSourceId": "79cd838c-1903-4273-abd4-cb7b6b1200aa"
+    },
+    {
+      "id": "d6f948cc-178a-4aed-a63d-4a77ba6f030c",
+      "type": "Container",
+      "z": 0,
+      "parentId": "ed6855b4-40ea-4497-bcdb-a4ff02cf1181",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 600,
+        "h": 240,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 24,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "stretch",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 12,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "#e4e4e7",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Navigation links",
+      "overrides": {
+        "mobile": {
+          "hidden": true
+        }
+      },
+      "componentSourceId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c"
+    },
+    {
+      "id": "168a246d-c4a4-4a2d-b53e-858878ed2e0c",
+      "type": "Button",
+      "z": 0,
+      "parentId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c",
+      "content": "Journal",
+      "href": "/blog",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 4,
+        "padR": 0,
+        "padB": 4,
+        "padL": 0,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#58564f",
+        "radius": 8,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Journal link",
+      "hover": {
+        "color": "#db4b2d"
+      },
+      "componentSourceId": "168a246d-c4a4-4a2d-b53e-858878ed2e0c"
+    },
+    {
+      "id": "3f6f108f-f044-4760-b10a-b6b2075867f4",
+      "type": "Button",
+      "z": 0,
+      "parentId": "d6f948cc-178a-4aed-a63d-4a77ba6f030c",
+      "content": "About",
+      "href": "/about",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 4,
+        "padR": 0,
+        "padB": 4,
+        "padL": 0,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#58564f",
+        "radius": 8,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "About link",
+      "hover": {
+        "color": "#db4b2d"
+      },
+      "componentSourceId": "3f6f108f-f044-4760-b10a-b6b2075867f4"
     }
   ]
 }

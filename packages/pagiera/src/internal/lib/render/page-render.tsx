@@ -54,6 +54,7 @@ export function RenderedPage({
             )}
             {elements.some((element) => element.draggable) && <script dangerouslySetInnerHTML={{ __html: DRAG_SCRIPT }} />}
             {elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <script dangerouslySetInnerHTML={{ __html: ACTION_SCRIPT }} />}
+            {elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <script dangerouslySetInnerHTML={{ __html: FORM_SCRIPT }} />}
         </>
     );
 }
@@ -120,6 +121,7 @@ function RenderedNode({
         <>
             <ElementContent element={element} />
             {renderChildren()}
+            {element.type === "Form" && <span className="pg-form-status" data-pg-form-status aria-live="polite" />}
         </>
     );
 
@@ -132,6 +134,32 @@ function RenderedNode({
             : element.interaction?.action === "navigate" ? element.interaction.value : undefined;
     const href = interactionHref || element.href;
     const target = element.interaction?.target || element.target;
+
+    if (element.type === "Input") {
+        return (
+            <input
+                id={classFor(element.id)}
+                className={className}
+                type={element.inputType ?? "text"}
+                name={element.fieldName}
+                placeholder={element.placeholder}
+                required={element.required}
+            />
+        );
+    }
+
+    if (element.type === "Textarea") {
+        return (
+            <textarea
+                id={classFor(element.id)}
+                className={className}
+                name={element.fieldName}
+                placeholder={element.placeholder}
+                required={element.required}
+                defaultValue={element.content}
+            />
+        );
+    }
 
     // A link wraps rather than replaces the box, so styling stays on one node.
     if (href) {
@@ -154,18 +182,29 @@ function RenderedNode({
     const tag = semanticTag(element);
     return React.createElement(tag, {
         id: classFor(element.id),
-        type: tag === "button" ? "button" : undefined,
+        type: tag === "button" ? (element.buttonType ?? "button") : undefined,
         "data-pg-drag": element.draggable ? "true" : undefined,
         "data-pg-action": element.interaction?.action,
         "data-pg-target": element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined,
-        "data-pg-display": element.type === "Grid" ? "grid" : isContainerType(element.type) || element.type === "Section" ? "flex" : "block",
+        "data-pg-display": element.type === "Grid" || element.type === "Repeat" ? "grid" : isContainerType(element.type) || element.type === "Section" ? "flex" : "block",
         className,
+        action: tag === "form" ? element.formAction : undefined,
+        method: tag === "form" ? ((element.formMethod === "GET" ? "get" : "post")) : undefined,
+        "data-pg-form-mode": tag === "form" ? (element.formSubmitMode ?? "request") : undefined,
+        "data-pg-form-method": tag === "form" ? (element.formMethod ?? "POST") : undefined,
+        "data-pg-form-content": tag === "form" ? (element.formContentType ?? "json") : undefined,
+        "data-pg-form-body": tag === "form" ? element.formBody : undefined,
+        "data-pg-form-headers": tag === "form" ? element.formHeaders : undefined,
+        "data-pg-form-success": tag === "form" ? (element.formSuccessMessage ?? "Sent successfully.") : undefined,
+        "data-pg-form-error": tag === "form" ? (element.formErrorMessage ?? "Something went wrong.") : undefined,
+        "data-pg-form-reset": tag === "form" && element.formResetOnSuccess ? "true" : undefined,
     }, body);
 }
 
 function semanticTag(element: CanvasElement) {
     const name = (element.name ?? "").toLowerCase();
     if (element.type === "Button") return "button";
+    if (element.type === "Form") return "form";
     if (element.type === "Heading") {
         const level = name.match(/(?:^|\s)h([1-6])(?:\s|$)/)?.[1] ?? "2";
         return `h${level}` as const;
@@ -182,8 +221,10 @@ const DRAG_SCRIPT = `(function(){document.querySelectorAll('[data-pg-drag]').for
 
 const ACTION_SCRIPT = `(function(){document.querySelectorAll('[data-pg-target]').forEach(function(trigger){trigger.style.cursor='pointer';trigger.addEventListener('click',function(event){var target=document.getElementById(trigger.dataset.pgTarget);if(!target)return;event.preventDefault();var action=trigger.dataset.pgAction;var open=target.dataset.pgOpen==='true';var next=action==='show-layer'?true:action==='hide-layer'?false:!open;target.dataset.pgOpen=next?'true':'false';target.style.setProperty('display',next?(target.dataset.pgDisplay||'flex'):'none','important');trigger.setAttribute('aria-expanded',String(next));target.setAttribute('aria-hidden',String(!next))})})})();`;
 
+const FORM_SCRIPT = `(function(){function headers(raw){var out={};String(raw||'').split(/\\r?\\n/).forEach(function(line){var at=line.indexOf(':');if(at>0)out[line.slice(0,at).trim()]=line.slice(at+1).trim()});return out}function fields(data){var out={};data.forEach(function(value,key){var next=value instanceof File?value.name:String(value);if(out[key]===undefined)out[key]=next;else if(Array.isArray(out[key]))out[key].push(next);else out[key]=[out[key],next]});return out}function tokens(value,map){return String(value||'').replace(/{{\\s*form\\.([A-Za-z0-9_.-]+)\\s*}}/g,function(_,key){var found=map[key];return found==null?'':Array.isArray(found)?found.join(','):String(found)})}document.querySelectorAll('form[data-pg-form-mode="request"]').forEach(function(form){if(form.dataset.pgFormBound)return;form.dataset.pgFormBound='true';form.addEventListener('submit',async function(event){event.preventDefault();var status=form.querySelector('[data-pg-form-status]');var submit=form.querySelector('[type="submit"]');var data=new FormData(form),map=fields(data),method=form.dataset.pgFormMethod||'POST',kind=form.dataset.pgFormContent||'json',url=form.getAttribute('action')||location.href,custom=tokens(form.dataset.pgFormBody,map),requestHeaders=headers(tokens(form.dataset.pgFormHeaders,map)),options={method:method,headers:requestHeaders};if(method==='GET'){var query=new URLSearchParams(custom||Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] }));var target=new URL(url,location.href);query.forEach(function(value,key){target.searchParams.append(key,value)});url=target.href}else if(kind==='form-data'){if(custom){try{var parsed=JSON.parse(custom);Object.keys(parsed).forEach(function(key){data.set(key,String(parsed[key]))})}catch(_){data.set('_body',custom)}}options.body=data}else if(kind==='urlencoded'){options.body=custom||new URLSearchParams(Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] })).toString();if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/x-www-form-urlencoded;charset=UTF-8'}else{options.body=custom||JSON.stringify(map);if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/json'}form.setAttribute('aria-busy','true');form.dataset.pgState='loading';if(submit)submit.disabled=true;if(status)status.textContent='';try{var response=await fetch(url,options);if(!response.ok)throw new Error('HTTP '+response.status);form.dataset.pgState='success';if(status)status.textContent=form.dataset.pgFormSuccess||'Sent successfully.';if(form.dataset.pgFormReset==='true')form.reset();form.dispatchEvent(new CustomEvent('pagiera:form-success',{bubbles:true,detail:{response:response}}))}catch(error){form.dataset.pgState='error';if(status)status.textContent=form.dataset.pgFormError||'Something went wrong.';form.dispatchEvent(new CustomEvent('pagiera:form-error',{bubbles:true,detail:{error:error}}))}finally{form.removeAttribute('aria-busy');if(submit)submit.disabled=false}})})})();`;
+
 function isContainerType(type: CanvasElement["type"]) {
-    return ["Frame", "Stack", "Container", "Request", "Repeat"].includes(type);
+    return ["Frame", "Stack", "Container", "Form", "Request", "Repeat"].includes(type);
 }
 
 export function ElementContent({ element }: { element: CanvasElement }) {

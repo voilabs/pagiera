@@ -18,7 +18,21 @@ export type PagieraElement = {
     target?: "_self" | "_blank";
     alt?: string;
     objectFit?: "cover" | "contain" | "fill" | "none";
-    iconName?: "star" | "heart" | "arrow-right" | "check" | "menu" | "search";
+    iconName?: PagieraIconName;
+    placeholder?: string;
+    fieldName?: string;
+    inputType?: "text" | "email" | "password" | "number" | "tel" | "url" | "search";
+    required?: boolean;
+    formAction?: string;
+    formMethod?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    formSubmitMode?: "request" | "native";
+    formContentType?: "json" | "form-data" | "urlencoded";
+    formBody?: string;
+    formHeaders?: string;
+    formSuccessMessage?: string;
+    formErrorMessage?: string;
+    formResetOnSuccess?: boolean;
+    buttonType?: "button" | "submit" | "reset";
     code?: string;
     hover?: Record<string, unknown>;
     press?: Record<string, unknown>;
@@ -40,6 +54,8 @@ export type PagieraRootStyle = {
     direction: "row" | "column";
     gap: number;
     fontFamily: string;
+    pageTransition?: "smooth" | "fade" | "slide" | "none";
+    pageTransitionDuration?: number;
     breakpoints: PagieraBreakpoint[];
     customFonts?: Array<{ id: string; name: string; url: string; weight: number; style: "normal" | "italic" }>;
     variables?: Array<{ id: string; name: string; type: "color" | "number"; value: string | number }>;
@@ -67,6 +83,8 @@ export function createDocument(patch: Partial<PagieraDocument> = {}): PagieraDoc
             direction: "column",
             gap: 0,
             fontFamily: "Inter, ui-sans-serif, sans-serif",
+            pageTransition: "smooth",
+            pageTransitionDuration: 380,
             breakpoints: [
                 { id: "desktop", name: "Desktop", width: 1280 },
                 { id: "tablet", name: "Tablet", width: 810 },
@@ -76,3 +94,4 @@ export function createDocument(patch: Partial<PagieraDocument> = {}): PagieraDoc
         ...patch,
     };
 }
+import type { PagieraIconName } from "./icon-names.js";

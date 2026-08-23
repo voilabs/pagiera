@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createPagieraClient } from "pagiera";
+import { createPagieraClient, editorPanel, editorPath } from "pagiera";
 import type { PagieraStudioProps } from "pagiera/full";
 import PagieraStudio from "pagiera/full";
 import { useEffect, useMemo, useState } from "react";
@@ -12,14 +12,18 @@ export type EditorBootstrap = {
   library: PagieraStudioProps["library"];
 };
 
-export function PagieraExampleEditor({
+export function PagieraEditor({
   initial,
+  initialPanel,
 }: {
   initial: EditorBootstrap;
+  initialPanel: string;
 }) {
   const router = useRouter();
   const client = useMemo(() => createPagieraClient(), []);
   const [bootstrap, setBootstrap] = useState(initial);
+  const editorHref = (id: string, panel?: string) =>
+    editorPath(id, editorPanel(panel) ?? "layers");
 
   useEffect(() => setBootstrap(initial), [initial]);
 
@@ -28,13 +32,16 @@ export function PagieraExampleEditor({
       page={bootstrap.page}
       pages={bootstrap.pages}
       library={bootstrap.library}
+      initialPanel={initialPanel}
       adapters={{
         ...client.adapters,
+        editorHref,
         navigate: async (id, options) => {
-          if (id === bootstrap.page.id) return;
           const next = (await client.bootstrap(id)) as EditorBootstrap;
           setBootstrap(next);
-          const href = `/editor/${encodeURIComponent(id)}`;
+          const candidate = window.location.pathname.split("/").filter(Boolean).at(-1);
+          const panel = candidate ? editorPanel(candidate) : undefined;
+          const href = `${editorHref(id, panel)}${window.location.search}`;
           if (options?.replace) router.replace(href);
           else router.push(href);
         },
@@ -48,11 +55,11 @@ export function PagieraExampleEditor({
           slug === "home"
             ? "/"
             : `/${slug
-                .split("/")
-                .map((part) =>
-                  part.startsWith(":") ? part : encodeURIComponent(part),
-                )
-                .join("/")}`,
+              .split("/")
+              .map((part) =>
+                part.startsWith(":") ? part : encodeURIComponent(part),
+              )
+              .join("/")}`,
       }}
     />
   );

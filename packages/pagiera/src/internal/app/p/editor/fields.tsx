@@ -225,6 +225,13 @@ function SelectShell<T extends string>({
     ariaLabel?: string;
     id?: string;
 }) {
+    // Provider-defined fonts and dynamic data can legitimately contain the
+    // same value more than once. Radix expects one item per value, so collapse
+    // duplicates here instead of leaking unstable React keys into every field.
+    const uniqueOptions = Array.from(
+        new Map(options.map((option) => [option.value, option])).values(),
+    );
+
     return (
         <Select value={value} onValueChange={(next) => onChange(next as T)}>
             <SelectTrigger
@@ -235,7 +242,7 @@ function SelectShell<T extends string>({
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
-                {options.map((option) => (
+                {uniqueOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                         {option.label}
                     </SelectItem>

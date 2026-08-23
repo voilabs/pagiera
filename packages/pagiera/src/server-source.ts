@@ -9,13 +9,27 @@ export type PagieraServerConfig = {
     openRouterModel: string;
     basePath?: string;
     aiRateLimitPerMinute?: number;
+    templateRegistryUrl?: string;
 };
+
+const DEFAULT_TEMPLATE_REGISTRY_URL = "https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json";
+const TEMPLATE_CACHE_SECONDS = 15 * 60;
+const TEMPLATE_CACHE_REVISION = 3;
+const BUILTIN_TEMPLATE_IDS = ["nocturne", "editorial-blog", "orbit-saas", "pulse-social"] as const;
+type BuiltinTemplateId = (typeof BUILTIN_TEMPLATE_IDS)[number];
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sites (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, slug text NOT NULL UNIQUE,
+  font_family text, custom_fonts jsonb, page_transition text, page_transition_duration integer, components jsonb NOT NULL DEFAULT '[]', published_components jsonb NOT NULL DEFAULT '[]',
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS font_family text;
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS custom_fonts jsonb;
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS page_transition text;
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS page_transition_duration integer;
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS components jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS published_components jsonb NOT NULL DEFAULT '[]';
 CREATE TABLE IF NOT EXISTS pages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), site_id uuid NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   name text NOT NULL, slug text NOT NULL, elements jsonb NOT NULL DEFAULT '[]', root_style jsonb NOT NULL DEFAULT '{}',
@@ -55,6 +69,8 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const validation = await import("@/lib/editor/validate");
     const sourceRuntime = await import("@/lib/data/source");
     const templates = await import("@/lib/editor/site-templates");
+    const templateCatalog = await import("@/lib/editor/template-registry");
+    const templateThumbnails = await import("@/lib/editor/template-thumbnail");
     const ai = await import("@/app/api/ai-design/route");
     const renderData = await import("@/lib/render/load-data");
     const basePath = (config.basePath ?? "/api/pagiera").replace(/\/$/, "");
@@ -66,6 +82,119 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const bodyOf = async (request: Request) => request.json().catch(() => ({})) as Promise<Record<string, any>>;
     const ok = (value: unknown, status = 200) => Response.json(value, { status });
     const fail = (error: unknown, status = 400) => ok({ error: error instanceof Error ? error.message : String(error) }, status);
+
+    const cachedTemplateJson = async (cacheKey: string, url: string) => {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached) as unknown;
+        const response = await fetch(url, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(15_000),
+        });
+        if (!response.ok) throw new Error(`Template source returned ${response.status}.`);
+        const text = await response.text();
+        if (text.length > 15_000_000) throw new Error("Template bundle is too large.");
+        const value = JSON.parse(text) as unknown;
+        await redis.set(cacheKey, text, { EX: TEMPLATE_CACHE_SECONDS });
+        return value;
+    };
+
+    type RegistryEntry = {
+        id?: unknown;
+        version?: unknown;
+        file?: unknown;
+        thumbnail?: unknown;
+        name?: unknown;
+        category?: unknown;
+        preview?: unknown;
+    };
+
+    const templateRegistryFor = async (requestUrl: string) => {
+        const registryUrl = new URL(config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL, requestUrl).href;
+        let registry: { schemaVersion?: unknown; templates?: RegistryEntry[] };
+        let bundled = false;
+        try {
+            // Pointing the upstream URL at this package endpoint would recurse.
+            const current = new URL(requestUrl);
+            const upstream = new URL(registryUrl);
+            if (upstream.origin === current.origin && upstream.pathname === `${basePath}/templates/registry.json`) {
+                throw new Error("The package catalog cannot use itself as its upstream registry.");
+            }
+            registry = await cachedTemplateJson(`pagiera:templates:registry:v${TEMPLATE_CACHE_REVISION}:${registryUrl}`, registryUrl) as typeof registry;
+        } catch {
+            registry = templateCatalog.FALLBACK_TEMPLATE_REGISTRY;
+            bundled = true;
+        }
+        if (registry.schemaVersion !== 1 || !Array.isArray(registry.templates)) throw new Error("Template registry has an unsupported format.");
+        return { registry, registryUrl, bundled };
+    };
+
+    const templateBundleById = async (templateId: string, requestUrl: string) => {
+        if (!/^[a-z0-9][a-z0-9._-]{0,99}$/i.test(templateId)) return undefined;
+        const builtin = BUILTIN_TEMPLATE_IDS.includes(templateId as BuiltinTemplateId);
+        const { registry, registryUrl, bundled } = await templateRegistryFor(requestUrl);
+        const entry = registry.templates.find((candidate) => candidate?.id === templateId);
+        if (!entry) return undefined;
+        if (bundled || typeof entry.file !== "string" || !entry.file) {
+            return builtin ? templates.createSiteTemplateBundle(templateId as BuiltinTemplateId) : undefined;
+        }
+        const bundleUrl = new URL(entry.file, registryUrl).href;
+        if (!/^https?:$/.test(new URL(bundleUrl).protocol)) throw new Error("Template bundle URL must use HTTP or HTTPS.");
+        const bundle = await cachedTemplateJson(`pagiera:templates:bundle:${templateId}:${String(entry.version ?? "latest")}:${bundleUrl}`, bundleUrl) as {
+            schemaVersion?: unknown;
+            id?: unknown;
+            pages?: unknown;
+            components?: unknown;
+        };
+        if (bundle.schemaVersion !== 1 || bundle.id !== templateId || !Array.isArray(bundle.pages)) {
+            throw new Error(`Template '${templateId}' has an unsupported bundle format.`);
+        }
+        return { pages: bundle.pages, components: Array.isArray(bundle.components) ? bundle.components : [] };
+    };
+
+    const validateTemplatePages = (raw: unknown) => {
+        const rawPages = Array.isArray(raw) ? raw.slice(0, 20) : [];
+        if (rawPages.length === 0) throw new Error("Template must include at least one page.");
+        const slugs = new Set<string>();
+        return rawPages.map((candidate) => {
+            const page = candidate && typeof candidate === "object" ? candidate as Record<string, unknown> : {};
+            const name = validation.parseName(page.name);
+            const slug = validation.parseSlug(page.slug);
+            if (!name || !slug) throw new Error("Every template page needs a valid name and slug.");
+            if (slugs.has(slug)) throw new Error(`Template contains the duplicate path '${slug}'.`);
+            slugs.add(slug);
+            return {
+                name,
+                slug,
+                elements: validation.parseElements(page.elements),
+                rootStyle: validation.parseRootStyle(page.rootStyle),
+                dataSources: validation.parseDataSources(page.dataSources),
+            };
+        });
+    };
+
+    const installTemplateById = async (templateId: string, requestUrl: string, fontFamily?: string) => {
+        const rawBundle = await templateBundleById(templateId, requestUrl);
+        if (!rawBundle) return undefined;
+        const safeFontFamily = fontFamily
+            ? validation.parseRootStyle({ fontFamily }).fontFamily
+            : undefined;
+        const templatePages = validateTemplatePages(rawBundle.pages).map((page) => {
+            if (!safeFontFamily) return page;
+            const usesBundledTemplateFont = safeFontFamily === page.rootStyle.fontFamily;
+            return {
+                ...page,
+                rootStyle: {
+                    ...page.rootStyle,
+                    fontFamily: safeFontFamily,
+                    customFonts: usesBundledTemplateFont ? page.rootStyle.customFonts : [],
+                },
+            };
+        });
+        const templateComponents = validation.parseElements(rawBundle.components);
+        const pageId = await pages.installTemplatePages(templatePages, templateComponents);
+        await invalidate();
+        return { pageId, pageCount: templatePages.length };
+    };
 
     function matchPagePath(pattern: string, pathname: string) {
         const patternParts = pattern.split("/").filter(Boolean);
@@ -177,9 +306,75 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                     },
                 });
             }
+            if (request.method === "GET" && path === "/templates/registry.json") {
+                const { registry } = await templateRegistryFor(request.url);
+                return new Response(JSON.stringify(registry), {
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8",
+                        "Cache-Control": "public, max-age=300, stale-while-revalidate=900",
+                    },
+                });
+            }
+            if (request.method === "GET" && parts[0] === "templates" && parts.length > 2) {
+                const requestedAsset = parts.slice(1).join("/");
+                const { registry, registryUrl, bundled } = await templateRegistryFor(request.url);
+                const entry = registry.templates.find((candidate) => {
+                    const thumbnail = typeof candidate.thumbnail === "string" ? candidate.thumbnail.replace(/^\.\//, "") : "";
+                    const file = typeof candidate.file === "string" ? candidate.file.replace(/^\.\//, "") : "";
+                    return thumbnail === requestedAsset || file === requestedAsset;
+                });
+                if (!entry) return fail("Template asset not found", 404);
+
+                const thumbnail = typeof entry.thumbnail === "string" ? entry.thumbnail.replace(/^\.\//, "") : "";
+                if (thumbnail === requestedAsset && requestedAsset.endsWith(".svg") && entry.preview && typeof entry.preview === "object" && typeof entry.name === "string" && typeof entry.category === "string") {
+                    return new Response(templateThumbnails.templateThumbnailSvg(entry as Parameters<typeof templateThumbnails.templateThumbnailSvg>[0]), {
+                        headers: {
+                            "Content-Type": "image/svg+xml; charset=utf-8",
+                            "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+                        },
+                    });
+                }
+
+                if (bundled) return fail("Template asset not found", 404);
+                const source = thumbnail === requestedAsset ? entry.thumbnail : entry.file;
+                if (typeof source !== "string") return fail("Template asset not found", 404);
+                const assetUrl = new URL(source, registryUrl);
+                if (!/^https?:$/.test(assetUrl.protocol)) return fail("Template asset URL must use HTTP or HTTPS", 400);
+                const response = await fetch(assetUrl, { signal: AbortSignal.timeout(15_000) });
+                if (!response.ok) return fail(`Template source returned ${response.status}`, 502);
+                return new Response(response.body, {
+                    headers: {
+                        "Content-Type": response.headers.get("content-type") ?? "application/octet-stream",
+                        "Cache-Control": "public, max-age=900, stale-while-revalidate=3600",
+                    },
+                });
+            }
             if (request.method === "GET" && path === "/bootstrap") {
                 const bootstrap = await getEditorBootstrap(url.searchParams.get("pageId") ?? undefined);
                 return bootstrap ? ok(bootstrap) : fail("Page not found", 404);
+            }
+            if (request.method === "POST" && path === "/settings/font") {
+                const body = await bodyOf(request);
+                const parsed = validation.parseRootStyle({
+                    fontFamily: body.fontFamily,
+                    customFonts: body.customFonts,
+                });
+                const font = await pages.setSiteFont(parsed.fontFamily, parsed.customFonts ?? []);
+                await invalidate();
+                return ok({ status: "ok", font });
+            }
+            if (request.method === "POST" && path === "/settings/transition") {
+                const body = await bodyOf(request);
+                const parsed = validation.parseRootStyle({
+                    pageTransition: body.pageTransition,
+                    pageTransitionDuration: body.pageTransitionDuration,
+                });
+                const transition = await pages.setSiteTransition(
+                    parsed.pageTransition,
+                    parsed.pageTransitionDuration,
+                );
+                await invalidate();
+                return ok({ status: "ok", transition });
             }
             if (request.method === "GET" && parts[0] === "published" && parts[1]) {
                 const page = await getPublishedDocument(parts.slice(1).join("/"));
@@ -223,34 +418,17 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             if (parts[0] === "pages" && parts[1] && parts[2] === "unpublish" && request.method === "POST") {
                 await pages.unpublishPage(parts[1]); await invalidate(); return ok({ status: "ok" });
             }
-            if (path === "/templates/install" && request.method === "POST") {
+            if (parts[0] === "templates" && parts[1] === "install" && parts.length === 2 && request.method === "POST") {
                 const body = await bodyOf(request);
-                const rawPages = Array.isArray(body.template?.pages) ? body.template.pages.slice(0, 20) : [];
-                if (rawPages.length === 0) return fail("Template must include at least one page.");
-                const slugs = new Set<string>();
-                const templatePages = rawPages.map((raw: Record<string, unknown>) => {
-                    const name = validation.parseName(raw?.name);
-                    const slug = validation.parseSlug(raw?.slug);
-                    if (!name || !slug) throw new Error("Every template page needs a valid name and slug.");
-                    if (slugs.has(slug)) throw new Error(`Template contains the duplicate path '${slug}'.`);
-                    slugs.add(slug);
-                    return {
-                        name,
-                        slug,
-                        elements: validation.parseElements(raw.elements),
-                        rootStyle: validation.parseRootStyle(raw.rootStyle),
-                        dataSources: validation.parseDataSources(raw.dataSources),
-                    };
-                });
-                const pageId = await pages.installTemplatePages(templatePages);
-                await invalidate();
-                return ok({ status: "ok", pageId });
+                const templateId = typeof body.templateId === "string" ? body.templateId.trim() : "";
+                if (!templateId) return fail("A template ID is required.");
+                const fontFamily = typeof body.fontFamily === "string" ? body.fontFamily.trim().slice(0, 300) : undefined;
+                const installed = await installTemplateById(templateId, request.url, fontFamily);
+                return installed ? ok({ status: "ok", templateId, ...installed }) : fail("Unknown template", 404);
             }
-            if (parts[0] === "templates" && parts[1] && request.method === "POST") {
-                if (!["nocturne", "editorial-blog", "orbit-saas"].includes(parts[1])) return fail("Unknown template", 404);
-                const pageId = await pages.installTemplatePages(templates.createSiteTemplate(parts[1] as "nocturne" | "editorial-blog" | "orbit-saas"));
-                await invalidate();
-                return ok({ status: "ok", pageId });
+            if (parts[0] === "templates" && parts[1] && parts[1] !== "install" && request.method === "POST") {
+                const installed = await installTemplateById(parts[1], request.url);
+                return installed ? ok({ status: "ok", templateId: parts[1], ...installed }) : fail("Unknown template", 404);
             }
             if (path === "/data/preview" && request.method === "POST") {
                 const body = await bodyOf(request); const [source] = validation.parseDataSources([body.source]);
@@ -282,6 +460,7 @@ export function pagieraConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Pagi
         redisUrl: env.PAGIERA_REDIS_URL ?? env.REDIS_URL ?? "",
         openRouterApiKey: env.OPENROUTER_API_KEY ?? "",
         openRouterModel: env.OPENROUTER_MODEL ?? "",
+        templateRegistryUrl: env.PAGIERA_TEMPLATE_REGISTRY_URL ?? DEFAULT_TEMPLATE_REGISTRY_URL,
     };
 }
 
@@ -303,13 +482,13 @@ export function createPagieraRouteHandlers(config: PagieraServerConfig) {
 }
 
 const globalServers = globalThis as typeof globalThis & { __pagieraServers?: Map<string, ReturnType<typeof createPagieraServer>> };
-const SERVER_RUNTIME_REVISION = 4;
+const SERVER_RUNTIME_REVISION = 12;
 
 /** Reuses pools and Redis connections across API routes, SSR and development reloads. */
 export function getPagieraServer(config: PagieraServerConfig) {
     // Include the runtime shape so a Turbopack hot reload cannot hand a newer
     // package an older server object that is missing recently added methods.
-    const key = `${SERVER_RUNTIME_REVISION}\n${config.postgresUrl}\n${config.redisUrl}\n${config.openRouterModel}`;
+    const key = `${SERVER_RUNTIME_REVISION}\n${config.postgresUrl}\n${config.redisUrl}\n${config.openRouterModel}\n${config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL}`;
     const servers = globalServers.__pagieraServers ??= new Map();
     let server = servers.get(key);
     if (!server) {

@@ -15,6 +15,127 @@ export const DEFAULT_PAGE_SLUG = "home";
 /** How many autosave snapshots to retain per page before pruning the oldest. */
 const REVISION_LIMIT = 50;
 
+function subtreeIds(elements: CanvasElement[], rootId: string) {
+    const ids = new Set([rootId]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const element of elements) {
+            if (element.parentId && ids.has(element.parentId) && !ids.has(element.id)) {
+                ids.add(element.id);
+                changed = true;
+            }
+        }
+    }
+    return ids;
+}
+
+/** Extracts and normalises the component source slots used to sync instances. */
+function componentMastersFrom(elements: CanvasElement[]) {
+    const roots = elements.filter((element) => element.componentRole === "master");
+    const assetNames = new Map<string, string | undefined>();
+    for (const root of roots) {
+        const componentId = root.componentId ?? root.id;
+        if (!assetNames.has(componentId)) assetNames.set(componentId, root.name);
+    }
+    const ids = new Set<string>();
+    for (const root of roots) for (const id of subtreeIds(elements, root.id)) ids.add(id);
+    return elements.filter((element) => ids.has(element.id)).map((element) => ({
+        ...element,
+        name: element.componentRole === "master" ? assetNames.get(element.componentId ?? element.id) : element.name,
+        componentSourceId: element.componentSourceId ?? element.id,
+    }));
+}
+
+function withoutComponentMasters(elements: CanvasElement[]) {
+    const ids = new Set<string>();
+    for (const root of elements.filter((element) => element.componentRole === "master")) {
+        for (const id of subtreeIds(elements, root.id)) ids.add(id);
+    }
+    return elements.filter((element) => !ids.has(element.id));
+}
+
+function withSharedComponents(elements: CanvasElement[], components: CanvasElement[]) {
+    const page = withoutComponentMasters(elements);
+    const occupied = new Set(page.map((element) => element.id));
+    return [...page, ...components.filter((element) => !occupied.has(element.id))];
+}
+
+function variantKey(element: CanvasElement) {
+    return `${element.componentId ?? element.id}\u0000${element.variant ?? "Default"}`;
+}
+
+/** Rebuilds every instance from its site-level master while preserving placement. */
+function syncComponentInstances(elements: CanvasElement[], components: CanvasElement[]) {
+    const masters = components.filter((element) => element.componentRole === "master");
+    const masterByVariant = new Map(masters.map((master) => [variantKey(master), master]));
+    const firstMaster = new Map<string, CanvasElement>();
+    for (const master of masters) if (!firstMaster.has(master.componentId ?? master.id)) firstMaster.set(master.componentId ?? master.id, master);
+
+    let result = withoutComponentMasters(elements);
+    for (const instance of result.filter((element) => element.componentRole === "instance")) {
+        const componentId = instance.componentId;
+        if (!componentId) continue;
+        const master = masterByVariant.get(variantKey(instance)) ?? firstMaster.get(componentId);
+        if (!master) continue;
+
+        const oldIds = subtreeIds(result, instance.id);
+        const oldNodes = result.filter((element) => oldIds.has(element.id));
+        const existingBySource = new Map(oldNodes.flatMap((node) => node.componentSourceId ? [[node.componentSourceId, node] as const] : []));
+        const sourceIds = subtreeIds(components, master.id);
+        const sourceNodes = components.filter((element) => sourceIds.has(element.id));
+        const idBySource = new Map<string, string>();
+        for (const source of sourceNodes) {
+            const slot = source.componentSourceId ?? source.id;
+            idBySource.set(slot, source.id === master.id ? instance.id : existingBySource.get(slot)?.id ?? globalThis.crypto.randomUUID());
+        }
+
+        const clones = sourceNodes.map((source) => {
+            const slot = source.componentSourceId ?? source.id;
+            const isRoot = source.id === master.id;
+            const parent = source.parentId ? components.find((candidate) => candidate.id === source.parentId) : undefined;
+            const parentSlot = parent?.componentSourceId ?? parent?.id;
+            const clone: CanvasElement = {
+                ...source,
+                id: idBySource.get(slot)!,
+                parentId: isRoot ? instance.parentId : parentSlot ? idBySource.get(parentSlot) : undefined,
+                z: isRoot ? instance.z : source.z,
+                componentRole: isRoot ? "instance" : undefined,
+                componentId: isRoot ? componentId : undefined,
+                componentSourceId: slot,
+                variant: isRoot ? (instance.variant ?? master.variant) : undefined,
+                interaction: source.interaction && source.interaction.action !== "navigate"
+                    ? { ...source.interaction, value: idBySource.get(source.interaction.value) ?? source.interaction.value }
+                    : source.interaction,
+            };
+            if (isRoot) {
+                clone.base = {
+                    ...source.base,
+                    x: instance.base.x,
+                    y: instance.base.y,
+                    constraintX: instance.base.constraintX,
+                    constraintY: instance.base.constraintY,
+                };
+                const placementKeys = ["x", "y", "constraintX", "constraintY"] as const;
+                const overrides: CanvasElement["overrides"] = { ...(source.overrides ?? {}) };
+                for (const [breakpoint, values] of Object.entries(instance.overrides ?? {})) {
+                    const placement = Object.fromEntries(placementKeys.flatMap((key) => values[key] === undefined ? [] : [[key, values[key]]])) as Partial<CanvasElement["base"]>;
+                    if (Object.keys(placement).length) overrides[breakpoint] = { ...(overrides[breakpoint] ?? {}), ...placement };
+                }
+                clone.overrides = Object.keys(overrides).length ? overrides : undefined;
+            }
+            return clone;
+        });
+        result = [...result.filter((element) => !oldIds.has(element.id)), ...clones];
+    }
+    return result;
+}
+
+async function getSiteComponents(siteId: string, published = false) {
+    const [site] = await db.select({ components: sites.components, publishedComponents: sites.publishedComponents }).from(sites).where(eq(sites.id, siteId)).limit(1);
+    return componentMastersFrom((published ? site?.publishedComponents : site?.components) ?? []);
+}
+
 export type PageSummary = {
     id: string;
     name: string;
@@ -43,6 +164,99 @@ async function getDefaultSiteId() {
         .limit(1);
     if (!created) throw new Error("Failed to create the default site");
     return created.id;
+}
+
+export type SiteFont = {
+    fontFamily: string;
+    customFonts: NonNullable<RootStyle["customFonts"]>;
+};
+
+export type SiteTransition = Pick<RootStyle, "pageTransition" | "pageTransitionDuration">;
+
+function withSiteFont(rootStyle: RootStyle, font: SiteFont): RootStyle {
+    return { ...rootStyle, fontFamily: font.fontFamily, customFonts: font.customFonts };
+}
+
+function withSiteTransition(rootStyle: RootStyle, transition: SiteTransition): RootStyle {
+    return { ...rootStyle, ...transition };
+}
+
+async function getSiteFont(siteId: string): Promise<SiteFont> {
+    const [site] = await db
+        .select({ fontFamily: sites.fontFamily, customFonts: sites.customFonts })
+        .from(sites)
+        .where(eq(sites.id, siteId))
+        .limit(1);
+    if (site?.fontFamily) {
+        return { fontFamily: site.fontFamily, customFonts: site.customFonts ?? [] };
+    }
+
+    const [home] = await db
+        .select({ rootStyle: pages.rootStyle })
+        .from(pages)
+        .where(and(eq(pages.siteId, siteId), eq(pages.slug, DEFAULT_PAGE_SLUG)))
+        .limit(1);
+    const inferred = {
+        fontFamily: home?.rootStyle?.fontFamily ?? DEFAULT_ROOT_STYLE.fontFamily,
+        customFonts: home?.rootStyle?.customFonts ?? [],
+    };
+    await db.update(sites).set({ ...inferred, updatedAt: new Date() }).where(eq(sites.id, siteId));
+    return inferred;
+}
+
+export async function setSiteFont(fontFamily: string, customFonts: NonNullable<RootStyle["customFonts"]> = []) {
+    const siteId = await getDefaultSiteId();
+    const font = { fontFamily, customFonts };
+    await db.transaction(async (tx) => {
+        await tx.update(sites).set({ ...font, updatedAt: new Date() }).where(eq(sites.id, siteId));
+        const documents = await tx
+            .select({ id: pages.id, rootStyle: pages.rootStyle, publishedRootStyle: pages.publishedRootStyle })
+            .from(pages)
+            .where(eq(pages.siteId, siteId));
+        for (const document of documents) {
+            await tx.update(pages).set({
+                rootStyle: withSiteFont(document.rootStyle ?? DEFAULT_ROOT_STYLE, font),
+                publishedRootStyle: document.publishedRootStyle
+                    ? withSiteFont(document.publishedRootStyle, font)
+                    : null,
+                updatedAt: new Date(),
+            }).where(eq(pages.id, document.id));
+        }
+    });
+    return font;
+}
+
+async function getSiteTransition(siteId: string): Promise<SiteTransition> {
+    const [site] = await db
+        .select({ pageTransition: sites.pageTransition, pageTransitionDuration: sites.pageTransitionDuration })
+        .from(sites)
+        .where(eq(sites.id, siteId))
+        .limit(1);
+    if (site?.pageTransition && site.pageTransitionDuration) {
+        return {
+            pageTransition: site.pageTransition,
+            pageTransitionDuration: site.pageTransitionDuration,
+        };
+    }
+
+    const [home] = await db
+        .select({ rootStyle: pages.rootStyle })
+        .from(pages)
+        .where(and(eq(pages.siteId, siteId), eq(pages.slug, DEFAULT_PAGE_SLUG)))
+        .limit(1);
+    const transition = {
+        pageTransition: home?.rootStyle?.pageTransition ?? DEFAULT_ROOT_STYLE.pageTransition,
+        pageTransitionDuration: home?.rootStyle?.pageTransitionDuration ?? DEFAULT_ROOT_STYLE.pageTransitionDuration,
+    };
+    await db.update(sites).set({ ...transition, updatedAt: new Date() }).where(eq(sites.id, siteId));
+    return transition;
+}
+
+export async function setSiteTransition(pageTransition: RootStyle["pageTransition"], pageTransitionDuration: number) {
+    const siteId = await getDefaultSiteId();
+    const transition = { pageTransition, pageTransitionDuration };
+    await db.update(sites).set({ ...transition, updatedAt: new Date() }).where(eq(sites.id, siteId));
+    return transition;
 }
 
 export async function listPages(): Promise<PageSummary[]> {
@@ -80,7 +294,18 @@ export async function getPage(pageId: string): Promise<Page | undefined> {
         .from(pages)
         .where(eq(pages.id, pageId))
         .limit(1);
-    return page;
+    if (!page) return undefined;
+    const font = await getSiteFont(page.siteId);
+    const transition = await getSiteTransition(page.siteId);
+    const storedComponents = await getSiteComponents(page.siteId);
+    const components = storedComponents.length ? storedComponents : componentMastersFrom(page.elements);
+    return {
+        ...page,
+        elements: withSharedComponents(syncComponentInstances(page.elements, components), components),
+        publishedElements: page.publishedElements ? syncComponentInstances(page.publishedElements, components) : null,
+        rootStyle: withSiteTransition(withSiteFont(page.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition),
+        publishedRootStyle: page.publishedRootStyle ? withSiteTransition(withSiteFont(page.publishedRootStyle, font), transition) : null,
+    };
 }
 
 /** The published snapshot for a public URL, or undefined when unpublished. */
@@ -105,10 +330,14 @@ export async function getPublishedPage(slug: string) {
         .limit(1);
 
     if (!page?.elements) return undefined;
+    const font = await getSiteFont(siteId);
+    const transition = await getSiteTransition(siteId);
+    const storedComponents = await getSiteComponents(siteId, true);
+    const components = storedComponents.length ? storedComponents : componentMastersFrom(page.elements);
     return {
         name: page.name,
-        elements: page.elements,
-        rootStyle: page.rootStyle ?? DEFAULT_ROOT_STYLE,
+        elements: syncComponentInstances(page.elements, components),
+        rootStyle: withSiteTransition(withSiteFont(page.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition),
         dataSources: page.dataSources ?? [],
         publishedAt: page.publishedAt,
     };
@@ -128,13 +357,19 @@ export async function listPublishedSlugs() {
  */
 export async function getOrCreateDefaultPage(): Promise<Page> {
     const siteId = await getDefaultSiteId();
+    const font = await getSiteFont(siteId);
+    const transition = await getSiteTransition(siteId);
 
     const [existing] = await db
         .select()
         .from(pages)
         .where(and(eq(pages.siteId, siteId), eq(pages.slug, DEFAULT_PAGE_SLUG)))
         .limit(1);
-    if (existing) return existing;
+    if (existing) {
+        const storedComponents = await getSiteComponents(siteId);
+        const components = storedComponents.length ? storedComponents : componentMastersFrom(existing.elements);
+        return { ...existing, elements: withSharedComponents(syncComponentInstances(existing.elements, components), components), rootStyle: withSiteTransition(withSiteFont(existing.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition) };
+    }
 
     await db
         .insert(pages)
@@ -143,7 +378,7 @@ export async function getOrCreateDefaultPage(): Promise<Page> {
             name: "Home",
             slug: DEFAULT_PAGE_SLUG,
             elements: [],
-            rootStyle: DEFAULT_ROOT_STYLE,
+            rootStyle: withSiteTransition(withSiteFont(DEFAULT_ROOT_STYLE, font), transition),
         })
         .onConflictDoNothing({ target: [pages.siteId, pages.slug] });
 
@@ -153,7 +388,8 @@ export async function getOrCreateDefaultPage(): Promise<Page> {
         .where(and(eq(pages.siteId, siteId), eq(pages.slug, DEFAULT_PAGE_SLUG)))
         .limit(1);
     if (!page) throw new Error("Failed to create the default page");
-    return page;
+    const components = await getSiteComponents(siteId);
+    return { ...page, elements: withSharedComponents(page.elements, components), rootStyle: withSiteTransition(withSiteFont(page.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition) };
 }
 
 /* ------------------------------------------------------------------- writes */
@@ -176,17 +412,28 @@ export async function savePageDocument(
     dataSources: DataSource[],
     expectedVersion: number,
 ): Promise<SaveResult> {
-    const [updated] = await db
-        .update(pages)
-        .set({
-            elements,
-            rootStyle,
-            dataSources,
-            version: sql`${pages.version} + 1`,
-            updatedAt: new Date(),
-        })
-        .where(and(eq(pages.id, pageId), eq(pages.version, expectedVersion)))
-        .returning({ version: pages.version });
+    const currentPage = await getPage(pageId);
+    if (!currentPage) throw new Error(`Page ${pageId} no longer exists`);
+    const siteFont = await getSiteFont(currentPage.siteId);
+    const siteTransition = await getSiteTransition(currentPage.siteId);
+    const components = componentMastersFrom(elements);
+    const pageElements = syncComponentInstances(withoutComponentMasters(elements), components);
+    const normalizedRootStyle = withSiteTransition(withSiteFont(rootStyle, siteFont), siteTransition);
+    const [updated] = await db.transaction(async (tx) => {
+        const saved = await tx
+            .update(pages)
+            .set({
+                elements: pageElements,
+                rootStyle: normalizedRootStyle,
+                dataSources,
+                version: sql`${pages.version} + 1`,
+                updatedAt: new Date(),
+            })
+            .where(and(eq(pages.id, pageId), eq(pages.version, expectedVersion)))
+            .returning({ version: pages.version });
+        if (saved[0]) await tx.update(sites).set({ components, updatedAt: new Date() }).where(eq(sites.id, currentPage.siteId));
+        return saved;
+    });
 
     if (!updated) {
         const [current] = await db
@@ -201,10 +448,11 @@ export async function savePageDocument(
             .limit(1);
 
         if (!current) throw new Error(`Page ${pageId} no longer exists`);
+        const currentComponents = await getSiteComponents(currentPage.siteId);
         return {
             status: "conflict",
             version: current.version,
-            elements: current.elements,
+            elements: withSharedComponents(syncComponentInstances(current.elements, currentComponents), currentComponents),
             rootStyle: current.rootStyle ?? DEFAULT_ROOT_STYLE,
             dataSources: current.dataSources ?? [],
         };
@@ -212,7 +460,7 @@ export async function savePageDocument(
 
     await db
         .insert(pageRevisions)
-        .values({ pageId, version: updated.version, elements, rootStyle });
+        .values({ pageId, version: updated.version, elements: pageElements, rootStyle: normalizedRootStyle });
     await pruneRevisions(pageId);
 
     return { status: "saved", version: updated.version };
@@ -220,16 +468,20 @@ export async function savePageDocument(
 
 /** Copies the current draft into the published columns. */
 export async function publishPage(pageId: string) {
-    const [updated] = await db
-        .update(pages)
-        .set({
-            publishedElements: sql`${pages.elements}`,
-            publishedRootStyle: sql`${pages.rootStyle}`,
-            publishedDataSources: sql`${pages.dataSources}`,
-            publishedAt: new Date(),
-        })
-        .where(eq(pages.id, pageId))
-        .returning({ slug: pages.slug, publishedAt: pages.publishedAt });
+    const [updated] = await db.transaction(async (tx) => {
+        const result = await tx
+            .update(pages)
+            .set({
+                publishedElements: sql`${pages.elements}`,
+                publishedRootStyle: sql`${pages.rootStyle}`,
+                publishedDataSources: sql`${pages.dataSources}`,
+                publishedAt: new Date(),
+            })
+            .where(eq(pages.id, pageId))
+            .returning({ slug: pages.slug, publishedAt: pages.publishedAt, siteId: pages.siteId });
+        if (result[0]) await tx.update(sites).set({ publishedComponents: sql`${sites.components}`, updatedAt: new Date() }).where(eq(sites.id, result[0].siteId));
+        return result;
+    });
 
     return updated;
 }
@@ -248,6 +500,8 @@ export async function unpublishPage(pageId: string) {
 
 export async function createPage(name: string, slug: string) {
     const siteId = await getDefaultSiteId();
+    const font = await getSiteFont(siteId);
+    const transition = await getSiteTransition(siteId);
     const [created] = await db
         .insert(pages)
         .values({
@@ -255,7 +509,7 @@ export async function createPage(name: string, slug: string) {
             name,
             slug,
             elements: [],
-            rootStyle: DEFAULT_ROOT_STYLE,
+            rootStyle: withSiteTransition(withSiteFont(DEFAULT_ROOT_STYLE, font), transition),
         })
         .onConflictDoNothing({ target: [pages.siteId, pages.slug] })
         .returning({ id: pages.id });
@@ -264,23 +518,33 @@ export async function createPage(name: string, slug: string) {
 }
 
 /** Atomically replaces the current site's pages with a complete template. */
-export async function installTemplatePages(templatePages: SiteTemplatePage[]) {
+export async function installTemplatePages(templatePages: SiteTemplatePage[], templateComponents: CanvasElement[] = []) {
     const siteId = await getDefaultSiteId();
     if (templatePages.length === 0) return undefined;
     if (!templatePages.some((template) => template.slug === DEFAULT_PAGE_SLUG)) {
         throw new Error("Every site template must include a home page.");
     }
+    const components = componentMastersFrom(templateComponents);
     return db.transaction(async (tx) => {
         // Revisions are removed by the FK cascade. If insertion fails, the
         // transaction restores every previous page instead of leaving an
         // empty project behind.
         await tx.delete(pages).where(eq(pages.siteId, siteId));
+        const templateFont = {
+            fontFamily: templatePages[0].rootStyle.fontFamily,
+            customFonts: templatePages[0].rootStyle.customFonts ?? [],
+        };
+        const templateTransition = {
+            pageTransition: templatePages[0].rootStyle.pageTransition ?? DEFAULT_ROOT_STYLE.pageTransition,
+            pageTransitionDuration: templatePages[0].rootStyle.pageTransitionDuration ?? DEFAULT_ROOT_STYLE.pageTransitionDuration,
+        };
+        await tx.update(sites).set({ ...templateFont, ...templateTransition, components, publishedComponents: [], updatedAt: new Date() }).where(eq(sites.id, siteId));
         const created = await tx.insert(pages).values(templatePages.map((template) => ({
             siteId,
             name: template.name,
             slug: template.slug,
-            elements: template.elements,
-            rootStyle: template.rootStyle,
+            elements: syncComponentInstances(withoutComponentMasters(template.elements), components),
+            rootStyle: withSiteTransition(withSiteFont(template.rootStyle, templateFont), templateTransition),
             dataSources: template.dataSources ?? [],
         }))).returning({ id: pages.id, slug: pages.slug });
         return created.find((page) => page.slug === templatePages[0].slug)?.id;
@@ -297,7 +561,7 @@ export async function duplicatePage(pageId: string, name: string, slug: string) 
             siteId: source.siteId,
             name,
             slug,
-            elements: source.elements,
+            elements: withoutComponentMasters(source.elements),
             rootStyle: source.rootStyle ?? DEFAULT_ROOT_STYLE,
         })
         .onConflictDoNothing({ target: [pages.siteId, pages.slug] })

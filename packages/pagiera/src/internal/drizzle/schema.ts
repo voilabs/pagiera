@@ -21,6 +21,13 @@ export const sites = pgTable(
         id: uuid("id").primaryKey().defaultRandom(),
         name: text("name").notNull(),
         slug: text("slug").notNull(),
+        fontFamily: text("font_family"),
+        customFonts: jsonb("custom_fonts").$type<NonNullable<RootStyle["customFonts"]>>(),
+        pageTransition: text("page_transition").$type<RootStyle["pageTransition"]>(),
+        pageTransitionDuration: integer("page_transition_duration"),
+        /** Reusable component masters shared by every page in the site. */
+        components: jsonb("components").$type<CanvasElement[]>().notNull().default([]),
+        publishedComponents: jsonb("published_components").$type<CanvasElement[]>().notNull().default([]),
         createdAt: timestamp("created_at", { withTimezone: true })
             .notNull()
             .defaultNow(),

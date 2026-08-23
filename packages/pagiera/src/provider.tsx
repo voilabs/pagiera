@@ -15,19 +15,29 @@ const FontContext = createContext<PagieraResolvedFont[]>([]);
 
 function variableName(className: string) {
     if (className.startsWith("--")) return className;
+    const baseline = document.createElement("span");
     const probe = document.createElement("span");
     probe.className = className;
+    baseline.hidden = true;
     probe.hidden = true;
+    document.body.appendChild(baseline);
     document.body.appendChild(probe);
+    const baselineStyle = getComputedStyle(baseline);
     const style = getComputedStyle(probe);
     let match = "";
     for (let index = 0; index < style.length; index += 1) {
         const property = style.item(index);
-        if (property.startsWith("--font-") && style.getPropertyValue(property).trim()) {
+        const value = style.getPropertyValue(property).trim();
+        if (
+            property.startsWith("--font-") &&
+            value &&
+            value !== baselineStyle.getPropertyValue(property).trim()
+        ) {
             match = property;
             break;
         }
     }
+    baseline.remove();
     probe.remove();
     return match;
 }

@@ -10,6 +10,9 @@ export const ELEMENT_TYPES = [
     "Button",
     "Video",
     "Icon",
+    "Form",
+    "Input",
+    "Textarea",
     "Request",
     "Repeat",
 ] as const;
@@ -181,6 +184,8 @@ export type ElementStyle = {
     // stacked: clipping, sticky rails, imagery, glass and blend effects.
     overflow: Overflow;
     position: PositionMode;
+    /** CSS stacking order, independent from the internal document order. */
+    zIndex: number;
     /** Distance from the top edge while stuck; only read when position is sticky. */
     stickyOffset: number;
     /** Background image URL, or "" for none. Painted over `gradient`. */
@@ -251,6 +256,7 @@ export const STYLE_KEYS = [
     "textTransform",
     "overflow",
     "position",
+    "zIndex",
     "stickyOffset",
     "bgImage",
     "bgSize",
@@ -294,7 +300,23 @@ export type CanvasElement = {
     src?: string;
     alt?: string;
     objectFit?: ObjectFit;
-    iconName?: "star" | "heart" | "arrow-right" | "check" | "menu" | "search";
+    iconName?: PagieraIconName;
+    placeholder?: string;
+    fieldName?: string;
+    inputType?: "text" | "email" | "password" | "number" | "tel" | "url" | "search";
+    required?: boolean;
+    formAction?: string;
+    formMethod?: HttpMethod;
+    formSubmitMode?: "request" | "native";
+    formContentType?: "json" | "form-data" | "urlencoded";
+    /** Optional request body. `{{form.email}}` tokens read submitted fields. */
+    formBody?: string;
+    /** One `Header: value` pair per line. */
+    formHeaders?: string;
+    formSuccessMessage?: string;
+    formErrorMessage?: string;
+    formResetOnSuccess?: boolean;
+    buttonType?: "button" | "submit" | "reset";
     href?: string;
     target?: "_self" | "_blank";
     interaction?: {
@@ -369,6 +391,7 @@ export const BASE_STYLE: ElementStyle = {
 
     overflow: "visible",
     position: "static",
+    zIndex: 0,
     stickyOffset: 0,
     bgImage: "",
     bgSize: "cover",
@@ -535,7 +558,7 @@ export const ELEMENT_DEFAULTS: Record<
             fontWeight: "500",
             textAlign: "center",
         },
-        props: { content: "Button", href: "", target: "_self" },
+        props: { content: "Button", href: "", target: "_self", buttonType: "button" },
     },
     Video: {
         style: { w: 640, h: 360, widthMode: "fill", bg: "#18181b", radius: 12 },
@@ -544,6 +567,64 @@ export const ELEMENT_DEFAULTS: Record<
     Icon: {
         style: { w: 24, h: 24, widthMode: "fixed", heightMode: "fixed", color: "#5402E6" },
         props: { iconName: "star" },
+    },
+    Form: {
+        style: {
+            w: 560,
+            h: 240,
+            widthMode: "fill",
+            heightMode: "auto",
+            layout: "stack",
+            direction: "column",
+            gap: 14,
+            align: "stretch",
+        },
+        props: {
+            formAction: "",
+            formMethod: "POST",
+            formSubmitMode: "request",
+            formContentType: "json",
+            formSuccessMessage: "Sent successfully.",
+            formErrorMessage: "Something went wrong.",
+        },
+    },
+    Input: {
+        style: {
+            w: 320,
+            h: 46,
+            widthMode: "fill",
+            heightMode: "fixed",
+            padT: 0,
+            padR: 14,
+            padB: 0,
+            padL: 14,
+            bg: "#ffffff",
+            color: "#18181b",
+            borderW: 1,
+            borderC: "#d4d4d8",
+            radius: 10,
+            fontSize: 15,
+        },
+        props: { placeholder: "Enter a value…", fieldName: "field", inputType: "text" },
+    },
+    Textarea: {
+        style: {
+            w: 320,
+            h: 120,
+            widthMode: "fill",
+            heightMode: "fixed",
+            padT: 12,
+            padR: 14,
+            padB: 12,
+            padL: 14,
+            bg: "#ffffff",
+            color: "#18181b",
+            borderW: 1,
+            borderC: "#d4d4d8",
+            radius: 10,
+            fontSize: 15,
+        },
+        props: { placeholder: "Write your message…", fieldName: "message" },
     },
     Request: {
         style: {
@@ -583,6 +664,7 @@ const CONTAINER_TYPES: ReadonlySet<ElementType> = new Set([
     "Container",
     "Grid",
     "Button",
+    "Form",
     "Request",
     "Repeat",
 ]);
@@ -622,6 +704,10 @@ export type RootStyle = {
     padL: number;
     align: Align;
     fontFamily: string;
+    /** Cross-document animation used by links on the published site. */
+    pageTransition: "smooth" | "fade" | "slide" | "none";
+    /** Duration of the incoming published-page animation in milliseconds. */
+    pageTransitionDuration: number;
     /** User-defined viewport previews, ordered from widest to narrowest. */
     breakpoints?: BreakpointDefinition[];
     /** The breakpoint whose values live in every element's `base` style. */
@@ -654,6 +740,8 @@ export const DEFAULT_ROOT_STYLE: RootStyle = {
     padL: 0,
     align: "stretch",
     fontFamily: "inherit",
+    pageTransition: "smooth",
+    pageTransitionDuration: 380,
 };
 
 export const FONT_STACKS: Array<{ label: string; value: string }> = [
@@ -693,3 +781,4 @@ export const ENTRANCES: Array<{ label: string; value: Entrance }> = [
 export const DRAG_MIME = "application/pagiera-element-type";
 /** Set when dragging an element that already exists on the canvas. */
 export const MOVE_MIME = "application/pagiera-element-id";
+import type { PagieraIconName } from "../../../icon-names";

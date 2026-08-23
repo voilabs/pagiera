@@ -8,6 +8,7 @@ export type PagieraServerConfig = {
     openRouterModel: string;
     basePath?: string;
     aiRateLimitPerMinute?: number;
+    templateRegistryUrl?: string;
 };
 
 export function pagieraConfigFromEnv(env?: NodeJS.ProcessEnv): PagieraServerConfig;

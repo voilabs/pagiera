@@ -7,12 +7,14 @@ import {
     IconChevronRight,
     IconCopy,
     IconCloudDownload,
+    IconComponents,
     IconEye,
     IconEyeOff,
+    IconExternalLink,
     IconFile,
     IconGridDots,
     IconHandClick,
-    IconHeart,
+    IconHome,
     IconHeading,
     IconLock,
     IconLockOpen,
@@ -25,19 +27,17 @@ import {
     IconSection,
     IconSearch,
     IconSparkles,
-    IconStar,
-    IconArrowRight,
-    IconCheck,
-    IconMenu2,
+    IconDots,
     IconTrash,
     IconTypography,
     IconVideo,
-    IconWorld,
 } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { resolveStyle } from "@/lib/editor/style";
-import { IconGlyph } from "@/lib/editor/icon";
+import { ICON_CATALOG, IconGlyph } from "@/lib/editor/icon";
 import { childrenOf, displayName } from "@/lib/editor/tree";
 import {
     type Breakpoint,
@@ -53,7 +53,7 @@ import type { SaveStatus } from "./use-editor";
 
 const TYPE_ICONS: Record<
     ElementType,
-    React.ComponentType<{ size?: number; stroke?: number }>
+    React.ComponentType<{ size?: number; stroke?: number; className?: string }>
 > = {
     Frame: IconBox,
     Stack: IconLayoutRows,
@@ -66,6 +66,9 @@ const TYPE_ICONS: Record<
     Button: IconHandClick,
     Video: IconVideo,
     Icon: IconSparkles,
+    Form: IconLayoutRows,
+    Input: IconPencil,
+    Textarea: IconTypography,
     Request: IconCloudDownload,
     Repeat: IconRepeat,
 };
@@ -109,6 +112,10 @@ export function ElementBody({ element }: { element: CanvasElement }) {
     }
 
     if (element.type === "Icon") return <span className="pointer-events-none block size-full"><IconGlyph element={element} /></span>;
+
+    if (element.type === "Input" || element.type === "Textarea") {
+        return <span className="pointer-events-none block w-full select-none truncate opacity-65">{element.placeholder || (element.type === "Input" ? "Input" : "Textarea")}</span>;
+    }
 
     if (!element.content) return null;
     return (
@@ -250,6 +257,7 @@ export function SaveIndicator({
 const ELEMENT_GROUPS: Array<{ title: string; types: ElementType[] }> = [
     { title: "Layout", types: ["Frame", "Stack", "Grid", "Section", "Container"] },
     { title: "Basic", types: ["Heading", "Text", "Image", "Button", "Video"] },
+    { title: "Forms", types: ["Form", "Input", "Textarea"] },
     { title: "Data", types: ["Request", "Repeat"] },
 ];
 
@@ -308,22 +316,59 @@ export function ElementsPanel({
     );
 }
 
-const ICON_CHOICES = [
-    { name: "Star", value: "star", icon: IconStar },
-    { name: "Heart", value: "heart", icon: IconHeart },
-    { name: "Arrow right", value: "arrow-right", icon: IconArrowRight },
-    { name: "Check", value: "check", icon: IconCheck },
-    { name: "Menu", value: "menu", icon: IconMenu2 },
-    { name: "Search", value: "search", icon: IconSearch },
-] as const;
-
 export function IconsPanel({ search, onInsert }: {
     search: string;
     onInsert: (iconName: CanvasElement["iconName"]) => void;
 }) {
     const query = search.trim().toLowerCase();
-    const icons = ICON_CHOICES.filter((item) => item.name.toLowerCase().includes(query));
-    return <div className="grid grid-cols-3 gap-2 p-3">{icons.map(({ name, value, icon: Icon }) => <button key={value} type="button" title={name} onClick={() => onInsert(value)} className="group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border border-ed-border bg-ed-subtle text-ed-muted transition-all hover:-translate-y-0.5 hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-accent active:scale-95"><Icon size={22} stroke={1.7} /><span className="max-w-full truncate px-1 text-[8px] text-ed-faint group-hover:text-ed-muted">{name}</span></button>)}</div>;
+    const icons = ICON_CATALOG.filter((item) =>
+        `${item.name} ${item.value} ${item.category}`.toLowerCase().includes(query),
+    );
+    const categories = Array.from(new Set(icons.map((item) => item.category)));
+
+    return (
+        <div className="space-y-5 p-3">
+            <div className="flex items-center justify-between px-1">
+                <p className="text-[10px] text-ed-faint">
+                    {query ? `${icons.length} results` : `${ICON_CATALOG.length} icons`}
+                </p>
+                <span className="rounded-full bg-ed-field px-2 py-0.5 text-[8px] font-semibold text-ed-muted">
+                    Tabler
+                </span>
+            </div>
+            {categories.map((category) => (
+                <section key={category}>
+                    <div className="mb-2 flex items-center gap-2 px-1">
+                        <h3 className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">
+                            {category}
+                        </h3>
+                        <span className="h-px flex-1 bg-ed-border" />
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                        {icons.filter((item) => item.category === category).map(({ name, value, icon: Icon }) => (
+                            <button
+                                key={value}
+                                type="button"
+                                title={name}
+                                onClick={() => onInsert(value)}
+                                className="group flex aspect-square min-w-0 select-none flex-col items-center justify-center gap-1.5 rounded-xl bg-ed-subtle text-ed-muted transition-all hover:-translate-y-0.5 hover:bg-ed-field hover:text-ed-accent active:scale-95"
+                            >
+                                <Icon size={20} stroke={1.7} />
+                                <span className="w-full truncate px-1 text-center text-[7px] text-ed-faint group-hover:text-ed-muted">
+                                    {name}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            ))}
+            {icons.length === 0 && (
+                <div className="rounded-2xl bg-ed-subtle px-4 py-10 text-center text-[10px] text-ed-faint">
+                    No icons match “{search}”.
+                </div>
+            )}
+        </div>
+    );
 }
 
 export function LayersPanel({
@@ -337,6 +382,8 @@ export function LayersPanel({
     onReorder,
     onDelete,
     onReparent,
+    componentMode = false,
+    onOpenComponent,
 }: {
     elements: CanvasElement[];
     breakpoint: Breakpoint;
@@ -348,8 +395,15 @@ export function LayersPanel({
     onReorder: (id: string, direction: "up" | "down") => void;
     onDelete: (id: string) => void;
     onReparent: (id: string, parentId: string | undefined, beforeId?: string) => void;
+    componentMode?: boolean;
+    onOpenComponent?: (element: CanvasElement) => void;
 }) {
     const [dropTarget, setDropTarget] = useState<string | null>(null);
+    const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+    const [layerMenu, setLayerMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+    useEffect(() => setPortalTarget(document.body), []);
 
     if (elements.length === 0) {
         return (
@@ -363,13 +417,21 @@ export function LayersPanel({
     const matches = (el: CanvasElement) =>
         !query || displayName(el).toLowerCase().includes(query);
 
-    // Layers are listed top-most first, the reverse of paint order.
+    // Follow document/canvas flow from top to bottom. This keeps a stack page
+    // readable as Navigation → Hero → Sections → Footer instead of presenting
+    // the entire page backwards.
     const rows = (parentId: string | undefined, depth: number): React.ReactNode[] =>
         childrenOf(elements, parentId)
-            .slice()
-            .reverse()
             .flatMap((el) => {
-                const nested = rows(el.id, depth + 1);
+                // On a page, a component instance is one atomic layer. Its
+                // implementation belongs to the component canvas and opens on
+                // double-click instead of leaking dozens of internal rows.
+                const componentInstance = !componentMode && el.componentRole === "instance";
+                const canCollapse = !componentInstance && childrenOf(elements, el.id).length > 0;
+                // Searching temporarily expands every branch so a collapsed
+                // parent can never hide a matching descendant.
+                const collapsed = canCollapse && !query && collapsedIds.has(el.id);
+                const nested = componentInstance || collapsed ? [] : rows(el.id, depth + 1);
                 // Keep a branch visible when a descendant matches the search.
                 if (!matches(el) && nested.length === 0) return [];
 
@@ -382,12 +444,28 @@ export function LayersPanel({
                         isSelected={selectedIds.includes(el.id)}
                         isDropTarget={dropTarget === el.id}
                         onSelect={onSelect}
-                        onToggleHidden={onToggleHidden}
-                        onToggleLocked={onToggleLocked}
-                        onReorder={onReorder}
-                        onDelete={onDelete}
                         onDropTargetChange={setDropTarget}
                         onReparent={onReparent}
+                        isComponentInstance={componentInstance}
+                        onOpenComponent={onOpenComponent}
+                        canCollapse={canCollapse}
+                        collapsed={collapsed}
+                        onToggleCollapsed={() => setCollapsedIds((current) => {
+                            const next = new Set(current);
+                            if (next.has(el.id)) next.delete(el.id);
+                            else next.add(el.id);
+                            return next;
+                        })}
+                        onContextMenu={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onSelect(el.id, false);
+                            setLayerMenu({
+                                id: el.id,
+                                x: Math.max(8, Math.min(event.clientX, window.innerWidth - 222)),
+                                y: Math.max(8, Math.min(event.clientY, window.innerHeight - 250)),
+                            });
+                        }}
                     />,
                     ...nested,
                 ];
@@ -419,6 +497,62 @@ export function LayersPanel({
             }}
         >
             {list}
+            {portalTarget && createPortal(
+                <div
+                    className="pg-editor pointer-events-none fixed inset-0 z-[1000]"
+                    data-ed-theme={document.querySelector<HTMLElement>(".pg-editor")?.dataset.edTheme ?? "dark"}
+                >
+                    <AnimatePresence>
+                        {layerMenu && (() => {
+                            const element = elements.find((candidate) => candidate.id === layerMenu.id);
+                            if (!element) return null;
+                            const style = resolveStyle(element, breakpoint);
+                            const close = () => setLayerMenu(null);
+                            return (
+                                // Portalling to body keeps viewport coordinates
+                                // independent from the animated/clipped sidebar.
+                                // biome-ignore lint/a11y/noStaticElementInteractions: dismiss surface for a context menu
+                                <motion.div
+                                    key="layer-context-menu"
+                                    className="pointer-events-auto fixed inset-0"
+                                    onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}
+                                    onContextMenu={(event) => { if (event.target === event.currentTarget) { event.preventDefault(); close(); } }}
+                                >
+                                    <motion.div
+                                        role="menu"
+                                        aria-label={`${displayName(element)} layer actions`}
+                                        initial={{ opacity: 0, scale: 0.94, y: -6 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                                        transition={{ type: "spring", stiffness: 520, damping: 34, mass: 0.7 }}
+                                        className="absolute flex w-[214px] origin-top-left flex-col rounded-xl border border-ed-border bg-ed-surface/95 p-1.5 shadow-2xl backdrop-blur-md"
+                                        style={{ left: layerMenu.x, top: layerMenu.y }}
+                                        onMouseDown={(event) => event.stopPropagation()}
+                                    >
+                                        <p className="truncate px-3 pb-1.5 pt-1 text-[9px] font-semibold text-ed-faint">{displayName(element)}</p>
+                                        <MenuItem icon={<IconArrowUp size={14} className="text-ed-muted" />} label="Move up" onClick={() => { onReorder(element.id, "down"); close(); }} />
+                                        <MenuItem icon={<IconArrowDown size={14} className="text-ed-muted" />} label="Move down" onClick={() => { onReorder(element.id, "up"); close(); }} />
+                                        <div className="mx-1 my-1 h-px bg-ed-field" />
+                                        <MenuItem
+                                            icon={style.hidden ? <IconEye size={14} className="text-ed-muted" /> : <IconEyeOff size={14} className="text-ed-muted" />}
+                                            label={style.hidden ? "Show layer" : "Hide layer"}
+                                            onClick={() => { onToggleHidden(element.id); close(); }}
+                                        />
+                                        <MenuItem
+                                            icon={element.locked ? <IconLockOpen size={14} className="text-ed-muted" /> : <IconLock size={14} className="text-ed-muted" />}
+                                            label={element.locked ? "Unlock layer" : "Lock layer"}
+                                            onClick={() => { onToggleLocked(element.id); close(); }}
+                                        />
+                                        <div className="mx-1 my-1 h-px bg-ed-field" />
+                                        <MenuItem icon={<IconTrash size={14} className="text-red-400/80" />} label="Delete" shortcut="Del" destructive onClick={() => { onDelete(element.id); close(); }} />
+                                    </motion.div>
+                                </motion.div>
+                            );
+                        })()}
+                    </AnimatePresence>
+                </div>,
+                portalTarget,
+            )}
         </div>
     );
 }
@@ -430,12 +564,14 @@ function LayerRow({
     isSelected,
     isDropTarget,
     onSelect,
-    onToggleHidden,
-    onToggleLocked,
-    onReorder,
-    onDelete,
     onDropTargetChange,
     onReparent,
+    isComponentInstance,
+    onOpenComponent,
+    canCollapse,
+    collapsed,
+    onToggleCollapsed,
+    onContextMenu,
 }: {
     element: CanvasElement;
     style: ElementStyle;
@@ -443,15 +579,17 @@ function LayerRow({
     isSelected: boolean;
     isDropTarget: boolean;
     onSelect: (id: string, additive: boolean) => void;
-    onToggleHidden: (id: string) => void;
-    onToggleLocked: (id: string) => void;
-    onReorder: (id: string, direction: "up" | "down") => void;
-    onDelete: (id: string) => void;
     onDropTargetChange: (id: string | null) => void;
     onReparent: (id: string, parentId: string | undefined, beforeId?: string) => void;
+    isComponentInstance: boolean;
+    onOpenComponent?: (element: CanvasElement) => void;
+    canCollapse: boolean;
+    collapsed: boolean;
+    onToggleCollapsed: () => void;
+    onContextMenu: (event: React.MouseEvent) => void;
 }) {
-    const Icon = TYPE_ICONS[element.type];
-    const container = isContainer(element.type);
+    const Icon = isComponentInstance ? IconComponents : TYPE_ICONS[element.type];
+    const container = !isComponentInstance && isContainer(element.type);
 
     return (
         // A container row accepts dropped layers; selection and every action
@@ -465,6 +603,7 @@ function LayerRow({
                         : "text-ed-muted hover:bg-ed-field hover:text-ed-text"
                 }`}
             style={{ paddingLeft: 12 + depth * 14 }}
+            onContextMenu={onContextMenu}
             onDragOver={
                 container
                     ? (event) => {
@@ -490,8 +629,24 @@ function LayerRow({
                     : undefined
             }
         >
-            {/* The row's own button selects; the action buttons sit beside it so
-                the markup stays valid (buttons cannot nest). */}
+            {canCollapse ? (
+                <button
+                    type="button"
+                    aria-label={collapsed ? "Expand layer" : "Collapse layer"}
+                    aria-expanded={!collapsed}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onToggleCollapsed();
+                    }}
+                    className="flex size-4 shrink-0 items-center justify-center rounded text-ed-faint hover:bg-ed-field-hover hover:text-ed-text"
+                >
+                    <IconChevronRight size={12} className={`transition-transform ${collapsed ? "" : "rotate-90"}`} />
+                </button>
+            ) : (
+                <span className="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {/* Selection stays lightweight; secondary actions live in the
+                row's context menu so layer names retain the available width. */}
             <button
                 type="button"
                 draggable
@@ -500,74 +655,36 @@ function LayerRow({
                     event.dataTransfer.effectAllowed = "move";
                 }}
                 onClick={(event) => onSelect(element.id, event.shiftKey || event.metaKey)}
+                onDoubleClick={(event) => {
+                    if (!isComponentInstance || !onOpenComponent) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onOpenComponent(element);
+                }}
                 aria-pressed={isSelected}
                 className="flex min-w-0 flex-1 cursor-grab items-center gap-2 text-left active:cursor-grabbing"
             >
-                <Icon size={13} stroke={1.5} />
+                <Icon size={13} stroke={1.5} className={isComponentInstance ? "text-ed-accent" : undefined} />
                 <span
                     className={`flex-1 truncate ${style.hidden ? "text-ed-faint line-through" : ""}`}
                 >
                     {displayName(element)}
                 </span>
+                {Number.isFinite(style.zIndex) && style.zIndex !== 0 && (
+                    <span
+                        className="shrink-0 rounded-full bg-[var(--ed-accent-soft)] px-1.5 py-0.5 font-mono text-[8px] text-ed-accent"
+                        title={`z-index: ${style.zIndex}`}
+                    >
+                        z{style.zIndex}
+                    </span>
+                )}
+                {isComponentInstance && (
+                    <span className="shrink-0 rounded-full bg-[var(--ed-accent-soft)] px-2 py-0.5 text-[8px] font-semibold text-ed-accent">
+                        {element.variant ?? "Component"}
+                    </span>
+                )}
             </button>
-
-            <span className="flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-                <LayerAction
-                    label="Move up"
-                    onClick={() => onReorder(element.id, "up")}
-                    icon={<IconArrowUp size={12} />}
-                />
-                <LayerAction
-                    label="Move down"
-                    onClick={() => onReorder(element.id, "down")}
-                    icon={<IconArrowDown size={12} />}
-                />
-                <LayerAction
-                    label={element.locked ? "Unlock" : "Lock"}
-                    onClick={() => onToggleLocked(element.id)}
-                    icon={element.locked ? <IconLock size={12} /> : <IconLockOpen size={12} />}
-                />
-                <LayerAction
-                    label="Delete"
-                    onClick={() => onDelete(element.id)}
-                    icon={<IconTrash size={12} />}
-                />
-            </span>
-
-            <LayerAction
-                label={style.hidden ? "Show" : "Hide"}
-                onClick={() => onToggleHidden(element.id)}
-                icon={style.hidden ? <IconEyeOff size={12} /> : <IconEye size={12} />}
-                className={style.hidden ? "" : "opacity-0 group-hover:opacity-100"}
-            />
         </div>
-    );
-}
-
-function LayerAction({
-    label,
-    onClick,
-    icon,
-    className = "",
-}: {
-    label: string;
-    onClick: () => void;
-    icon: React.ReactNode;
-    className?: string;
-}) {
-    return (
-        <button
-            type="button"
-            title={label}
-            aria-label={label}
-            onClick={(event) => {
-                event.stopPropagation();
-                onClick();
-            }}
-            className={`rounded p-1 text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text ${className}`}
-        >
-            {icon}
-        </button>
     );
 }
 
@@ -583,6 +700,7 @@ export type PageEntry = {
 export function PagesPanel({
     pages,
     currentId,
+    navigatingId,
     busy,
     error,
     onCreate,
@@ -594,6 +712,7 @@ export function PagesPanel({
 }: {
     pages: PageEntry[];
     currentId: string;
+    navigatingId?: string | null;
     busy: boolean;
     error: string | null;
     onCreate: (name: string) => void;
@@ -604,51 +723,100 @@ export function PagesPanel({
     publishedHref: (slug: string) => string;
 }) {
     const [newName, setNewName] = useState("");
+    const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<string | null>(null);
+    const [menuPage, setMenuPage] = useState<string | null>(null);
     const [draft, setDraft] = useState({ name: "", slug: "" });
+    const publishedCount = pages.filter((page) => page.published).length;
 
     return (
-        <div className="flex flex-col gap-3 p-3">
-            <form
-                className="flex gap-1"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    if (!newName.trim()) return;
-                    onCreate(newName.trim());
-                    setNewName("");
-                }}
-            >
-                <input
-                    type="text"
-                    value={newName}
-                    placeholder="New page name"
-                    onChange={(event) => setNewName(event.target.value)}
-                    className="min-w-0 flex-1 rounded border border-ed-border bg-ed-surface px-2 py-1.5 text-xs text-ed-text outline-none placeholder:text-ed-faint focus:border-ed-accent/50 focus:ring-1 focus:ring-blue-500/20"
-                />
-                <button
-                    type="submit"
-                    disabled={busy || !newName.trim()}
-                    className="rounded bg-ed-accent px-2 text-ed-text transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
-                >
-                    <IconPlus size={14} />
-                </button>
-            </form>
+        <div className="flex min-h-0 flex-1 flex-col">
+            <div className="border-b border-ed-border p-3">
+                <div className="rounded-2xl bg-ed-subtle p-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-[12px] font-semibold tracking-[-.02em] text-ed-text">Project pages</p>
+                            <p className="mt-1 text-[9px] leading-relaxed text-ed-faint">
+                                {pages.length} page{pages.length === 1 ? "" : "s"} · {publishedCount} published
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setCreating((value) => !value)}
+                            aria-expanded={creating}
+                            className={`flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[10px] font-semibold transition-colors ${creating ? "bg-ed-field text-ed-text" : "bg-ed-accent text-white hover:opacity-90"}`}
+                        >
+                            <IconPlus size={12} className={`transition-transform ${creating ? "rotate-45" : ""}`} />
+                            {creating ? "Close" : "New page"}
+                        </button>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                        {creating && (
+                            <motion.form
+                                initial={{ height: 0, opacity: 0, y: -4 }}
+                                animate={{ height: "auto", opacity: 1, y: 0 }}
+                                exit={{ height: 0, opacity: 0, y: -4 }}
+                                transition={{ duration: 0.16 }}
+                                className="overflow-hidden"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    if (!newName.trim()) return;
+                                    onCreate(newName.trim());
+                                    setNewName("");
+                                    setCreating(false);
+                                }}
+                            >
+                                <div className="mt-3 flex gap-1.5">
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={newName}
+                                        placeholder="Page name"
+                                        onChange={(event) => setNewName(event.target.value)}
+                                        className="h-8 min-w-0 flex-1 rounded-full bg-ed-field px-3 text-[11px] text-ed-text outline-none placeholder:text-ed-faint focus:ring-1 focus:ring-ed-accent"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={busy || !newName.trim()}
+                                        className="h-8 rounded-full bg-ed-text px-3 text-[10px] font-semibold text-ed-surface transition-opacity hover:opacity-85 disabled:pointer-events-none disabled:opacity-35"
+                                    >
+                                        Create
+                                    </button>
+                                </div>
+                            </motion.form>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
 
             {error && (
-                <p className="rounded border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-300">
+                <p className="mx-3 mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-[10px] leading-relaxed text-red-400">
                     {error}
                 </p>
             )}
 
-            <div className="flex flex-col gap-1">
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
+                <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">Pages</span>
+                    <span className="rounded-full bg-ed-field px-2 py-0.5 font-mono text-[9px] text-ed-faint">{pages.length}</span>
+                </div>
+                <motion.div layout className="flex flex-col gap-1.5">
                 {pages.map((page) => {
                     const isCurrent = page.id === currentId;
+                    const isNavigating = page.id === navigatingId;
+                    const isHome = page.slug === "home";
+                    const menuOpen = menuPage === page.id;
+                    const PageIcon = isHome ? IconHome : IconFile;
 
                     if (editing === page.id) {
                         return (
-                            <form
+                            <motion.form
+                                layout
                                 key={page.id}
-                                className="flex flex-col gap-1 rounded border border-ed-accent/40 bg-black/30 p-2"
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex flex-col gap-2 rounded-2xl bg-ed-subtle p-2.5 ring-1 ring-inset ring-ed-accent/35"
                                 onSubmit={(event) => {
                                     event.preventDefault();
                                     onRename(page.id, draft.name, draft.slug);
@@ -662,12 +830,10 @@ export function PagesPanel({
                                     onChange={(e) =>
                                         setDraft((d) => ({ ...d, name: e.target.value }))
                                     }
-                                    className="rounded bg-ed-surface px-2 py-1 text-xs text-ed-text outline-none"
+                                    className="h-8 rounded-full bg-ed-field px-3 text-[11px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent"
                                 />
-                                <div className="flex items-center gap-1 rounded bg-ed-surface px-2 py-1">
-                                    <span className="max-w-24 truncate text-[10px] text-ed-faint">
-                                        {publishedHref("").replace(/\/$/, "") || "/"}
-                                    </span>
+                                <div className="flex h-8 items-center gap-1.5 rounded-full bg-ed-field px-3">
+                                    <span className="text-[10px] text-ed-faint">/</span>
                                     <input
                                         type="text"
                                         value={draft.slug}
@@ -675,76 +841,110 @@ export function PagesPanel({
                                         onChange={(e) =>
                                             setDraft((d) => ({ ...d, slug: e.target.value }))
                                         }
-                                        className="min-w-0 flex-1 bg-transparent text-xs text-ed-text outline-none"
+                                        className="min-w-0 flex-1 bg-transparent text-[11px] text-ed-text outline-none"
                                     />
                                 </div>
-                                <div className="flex gap-1">
-                                    <button
-                                        type="submit"
-                                        className="flex-1 rounded bg-ed-accent py-1 text-[10px] text-ed-text hover:opacity-90"
-                                    >
-                                        Save
-                                    </button>
+                                <div className="flex justify-end gap-1.5">
                                     <button
                                         type="button"
                                         onClick={() => setEditing(null)}
-                                        className="flex-1 rounded bg-ed-field py-1 text-[10px] text-ed-muted hover:text-ed-text"
+                                        className="rounded-full px-3 py-1.5 text-[10px] text-ed-muted hover:bg-ed-field hover:text-ed-text"
                                     >
                                         Cancel
                                     </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-full bg-ed-accent px-3 py-1.5 text-[10px] font-semibold text-white hover:opacity-90"
+                                    >
+                                        Save changes
+                                    </button>
                                 </div>
-                            </form>
+                            </motion.form>
                         );
                     }
 
                     return (
-                        <div
+                        <motion.div
+                            layout
                             key={page.id}
-                            className={`group flex items-center gap-1.5 rounded px-2 py-1.5 transition-colors ${isCurrent
-                                    ? "bg-[var(--ed-accent-soft)] text-ed-text"
-                                    : "text-ed-muted hover:bg-ed-field"
+                            className={`overflow-hidden rounded-2xl transition-colors ${isCurrent
+                                    ? "bg-[var(--ed-accent-soft)] ring-1 ring-inset ring-ed-accent/25"
+                                    : isNavigating ? "bg-ed-subtle ring-1 ring-inset ring-ed-accent/20" : "bg-ed-subtle/65 hover:bg-ed-subtle"
                                 }`}
                         >
-                            <button
-                                type="button"
-                                onClick={() => onNavigate(page.id)}
-                                className="flex min-w-0 flex-1 items-center gap-2"
-                            >
-                                <IconFile size={13} stroke={1.5} />
-                                <span className="min-w-0 flex-1 truncate text-[11px] text-left">
-                                    {page.name}
-                                </span>
-                                {page.published && (
-                                    <IconWorld
-                                        size={11}
-                                        className="shrink-0 text-emerald-500"
-                                        title="Published"
-                                    />
+                            <div className="flex items-center gap-1.5 p-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => onNavigate(page.id)}
+                                    disabled={busy || isCurrent}
+                                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1 text-left"
+                                >
+                                    <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${isCurrent ? "bg-ed-accent text-white" : "bg-ed-field text-ed-muted"}`}>
+                                        <PageIcon size={14} stroke={1.6} />
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="flex items-center gap-1.5">
+                                            <span className="truncate text-[11px] font-semibold text-ed-text">{page.name}</span>
+                                            {page.published && <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" title="Published" />}
+                                        </span>
+                                        <span className="mt-0.5 block truncate font-mono text-[9px] text-ed-faint">{isHome ? "/" : `/${page.slug}`}</span>
+                                    </span>
+                                    {isNavigating && (
+                                        <motion.span
+                                            aria-label="Opening page"
+                                            className="mr-1 size-1.5 shrink-0 rounded-full bg-ed-accent"
+                                            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+                                            transition={{ duration: 0.9, repeat: Infinity }}
+                                        />
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-label={`Page actions for ${page.name}`}
+                                    aria-expanded={menuOpen}
+                                    onClick={() => setMenuPage(menuOpen ? null : page.id)}
+                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full transition-colors ${menuOpen ? "bg-ed-field-hover text-ed-text" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}
+                                >
+                                    <IconDots size={15} />
+                                </button>
+                            </div>
+
+                            <AnimatePresence initial={false}>
+                                {menuOpen && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.14 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="flex items-center gap-1 border-t border-ed-border/70 px-2 py-1.5">
+                                            {!isHome && (
+                                                <button type="button" onClick={() => { setDraft({ name: page.name, slug: page.slug }); setEditing(page.id); setMenuPage(null); }} className="flex h-7 items-center gap-1.5 rounded-full px-2 text-[9px] text-ed-muted hover:bg-ed-field hover:text-ed-text">
+                                                    <IconPencil size={11} /> Rename
+                                                </button>
+                                            )}
+                                            <button type="button" onClick={() => { onDuplicate(page.id, `${page.name} copy`); setMenuPage(null); }} className="flex h-7 items-center gap-1.5 rounded-full px-2 text-[9px] text-ed-muted hover:bg-ed-field hover:text-ed-text">
+                                                <IconCopy size={11} /> Duplicate
+                                            </button>
+                                            {page.published && (
+                                                <a href={publishedHref(page.slug)} target="_blank" rel="noopener noreferrer" aria-label={`Open published ${page.name}`} className="ml-auto flex size-7 items-center justify-center rounded-full text-ed-faint hover:bg-ed-field hover:text-ed-text">
+                                                    <IconExternalLink size={11} />
+                                                </a>
+                                            )}
+                                            {!isHome && (
+                                                <button type="button" onClick={() => { onDelete(page.id); setMenuPage(null); }} aria-label={`Delete ${page.name}`} className="ml-auto flex size-7 items-center justify-center rounded-full text-ed-faint hover:bg-red-500/10 hover:text-red-400">
+                                                    <IconTrash size={11} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </motion.div>
                                 )}
-                            </button>
-                            <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                                {page.slug !== "home" && <LayerAction
-                                    label="Rename"
-                                    onClick={() => {
-                                        setDraft({ name: page.name, slug: page.slug });
-                                        setEditing(page.id);
-                                    }}
-                                    icon={<IconPencil size={12} />}
-                                />}
-                                <LayerAction
-                                    label="Duplicate"
-                                    onClick={() => onDuplicate(page.id, `${page.name} copy`)}
-                                    icon={<IconCopy size={12} />}
-                                />
-                                {page.slug !== "home" && <LayerAction
-                                    label="Delete"
-                                    onClick={() => onDelete(page.id)}
-                                    icon={<IconTrash size={12} />}
-                                />}
-                            </span>
-                        </div>
+                            </AnimatePresence>
+                        </motion.div>
                     );
                 })}
+                </motion.div>
             </div>
         </div>
     );

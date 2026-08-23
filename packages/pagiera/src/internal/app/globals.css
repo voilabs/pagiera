@@ -136,6 +136,7 @@
  */
 .pg-editor {
   font-family: var(--pagiera-font);
+  font-size: 13px;
   font-optical-sizing: auto;
   font-kerning: normal;
   font-synthesis: none;
@@ -154,8 +155,10 @@
   --ed-text: #f4f4f5;
   --ed-text-muted: #a5a8b0;
   --ed-text-faint: #6e737d;
-  --ed-accent: #5402e6;
-  --ed-accent-soft: rgb(84 2 230 / 0.18);
+  --ed-accent: #7c3aed;
+  --ed-accent-soft: rgb(124 58 237 / 0.22);
+  --ed-tooltip: #ffffff;
+  --ed-tooltip-text: #171717;
   /* A hint of structure, not a lattice. */
   --ed-grid: rgb(255 255 255 / 0.022);
 }
@@ -165,6 +168,34 @@
 .pg-editor textarea,
 .pg-editor select {
   font-family: inherit;
+}
+
+/*
+ * Editor controls used to lean on 7–10px utility sizes to keep the chrome
+ * dense. At real desktop scaling that makes labels and actions needlessly
+ * difficult to scan. Keep these overrides scoped to the editor chrome: page
+ * typography is rendered from node styles and remains completely untouched.
+ */
+.pg-editor [class~="text-[7px]"],
+.pg-editor [class~="text-[8px]"],
+.pg-editor [class~="text-[9px]"] {
+  font-size: 10px !important;
+}
+
+.pg-editor [class~="text-[10px]"] {
+  font-size: 11px !important;
+}
+
+.pg-editor [class~="text-[11px]"] {
+  font-size: 12px !important;
+}
+
+.pg-editor :where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"]), summary) {
+  cursor: pointer;
+}
+
+.pg-editor :where(button:disabled, [role="button"][aria-disabled="true"]) {
+  cursor: not-allowed;
 }
 
 .pg-editor .pg-chrome-panel,
@@ -182,6 +213,8 @@
   --ed-text-faint: #8d8ba3;
   --ed-accent: #5402e6;
   --ed-accent-soft: rgb(84 2 230 / 0.12);
+  --ed-tooltip: #171717;
+  --ed-tooltip-text: #ffffff;
   --ed-grid: rgb(0 0 0 / 0.045);
 }
 

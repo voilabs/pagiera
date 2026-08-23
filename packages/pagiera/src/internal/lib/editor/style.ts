@@ -158,6 +158,7 @@ export type BoxContext = {
     /** How the parent arranges this element; drives positioning vs flex sizing. */
     parentLayout: "absolute" | "stack";
     parentDirection: "row" | "column";
+    parentAlign?: Align;
 };
 
 /**
@@ -196,6 +197,7 @@ export function styleToCss(
         backgroundRepeat: style.bgImage ? "no-repeat" : undefined,
 
         overflow: style.overflow === "visible" ? undefined : style.overflow,
+        zIndex: style.zIndex,
         aspectRatio: style.aspectRatio || undefined,
         cursor: style.cursor === "auto" ? undefined : style.cursor,
         mixBlendMode: style.blendMode === "normal" ? undefined : style.blendMode,
@@ -227,8 +229,10 @@ export function styleToCss(
         textTransform: style.textTransform,
     };
 
-    // A Grid ignores the flex axis and lays its children out in columns.
-    if (element?.type === "Grid" && style.layout === "stack") {
+    // Grid and Repeat ignore the flex axis and lay their children out in
+    // explicit columns. Repeat renders the same child template once per row,
+    // so treating it as a grid is what makes its Columns control meaningful.
+    if ((element?.type === "Grid" || element?.type === "Repeat") && style.layout === "stack") {
         css.display = "grid";
         css.gridTemplateColumns = `repeat(${Math.max(1, style.columns)}, minmax(0, 1fr))`;
         css.alignItems = ALIGN_MAP[style.align];
@@ -284,8 +288,8 @@ export function styleToCss(
 
     const mainAxisIsWidth = context.parentDirection === "row";
 
-    applySize(css, "width", style.widthMode, style.w, mainAxisIsWidth);
-    applySize(css, "height", style.heightMode, style.h, !mainAxisIsWidth);
+    applySize(css, "width", style.widthMode, style.w, mainAxisIsWidth, context.parentAlign);
+    applySize(css, "height", style.heightMode, style.h, !mainAxisIsWidth, context.parentAlign);
 
     return css;
 }
@@ -296,6 +300,7 @@ function applySize(
     mode: ElementStyle["widthMode"],
     value: number,
     isMainAxis: boolean,
+    parentAlign: Align = "start",
 ) {
     if (mode === "fixed") {
         css[axis] = value;
@@ -307,9 +312,14 @@ function applySize(
     if (mode === "auto") {
         css[axis] = "auto";
         if (isMainAxis) css.flexGrow = 0;
-        // Without this the parent's `align-items: stretch` would blow an
-        // auto-sized element out to the full cross axis instead of hugging.
-        else css.alignSelf = "flex-start";
+        // Hug content must opt out of stretch, but it should still respect a
+        // parent's centre/end alignment. Forcing flex-start here used to make
+        // centred eyebrows and buttons appear left-aligned.
+        else css.alignSelf = parentAlign === "center"
+            ? "center"
+            : parentAlign === "end"
+                ? "flex-end"
+                : "flex-start";
         return;
     }
 

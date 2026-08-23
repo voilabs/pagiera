@@ -57,9 +57,11 @@ PAGIERA_POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pagiera
 PAGIERA_REDIS_URL=redis://localhost:6379
 OPENROUTER_API_KEY=sk-or-v1-your-key
 OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+# Optional upstream override; the editor-facing endpoint is created by Pagiera
+PAGIERA_TEMPLATE_REGISTRY_URL=https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json
 ```
 
-Pagiera creates its required PostgreSQL tables when the server initializes. Redis is used for published-page caching and AI rate limiting.
+Pagiera creates its required PostgreSQL tables when the server initializes. Redis is used for published-page caching, template bundle caching, and AI rate limiting. Template installation sends only the selected template ID to your backend; the backend downloads and validates the configured registry bundle before replacing the project atomically.
 
 ## Next.js setup
 
@@ -165,7 +167,7 @@ The initial document is server-rendered. A client wrapper handles editing and in
 // src/app/editor/pagiera-editor.tsx
 "use client";
 
-import { createPagieraClient } from "pagiera";
+import { createPagieraClient, editorPanel, editorPath } from "pagiera";
 import PagieraStudio from "pagiera/full";
 import type { PagieraStudioProps } from "pagiera/full";
 import { useRouter } from "next/navigation";
@@ -177,23 +179,30 @@ type Bootstrap = {
   library: PagieraStudioProps["library"];
 };
 
-export function PagieraEditorClient({ initial }: { initial: Bootstrap }) {
+export function PagieraEditorClient({ initial, initialPanel }: {
+  initial: Bootstrap;
+  initialPanel: string;
+}) {
   const router = useRouter();
   const client = useMemo(() => createPagieraClient(), []);
   const [bootstrap, setBootstrap] = useState(initial);
+  const editorHref = (pageId: string, panel?: string) =>
+    editorPath(pageId, editorPanel(panel) ?? "layers");
 
   return (
     <PagieraStudio
       page={bootstrap.page}
       pages={bootstrap.pages}
       library={bootstrap.library}
+      initialPanel={initialPanel}
       adapters={{
         ...client.adapters,
+        editorHref,
         navigate: async (pageId, options) => {
-          if (pageId === bootstrap.page.id) return;
           const next = await client.bootstrap(pageId) as Bootstrap;
           setBootstrap(next);
-          const href = `/editor/${encodeURIComponent(pageId)}`;
+          const panel = window.location.pathname.split("/").filter(Boolean).at(-1);
+          const href = editorHref(pageId, panel);
           options?.replace ? router.replace(href) : router.push(href);
         },
         refresh: () => {
@@ -212,32 +221,42 @@ export function PagieraEditorClient({ initial }: { initial: Bootstrap }) {
 ```tsx
 // src/app/editor/page.tsx
 import { editorBootstrap } from "@/lib/editor-bootstrap";
-import { PagieraEditorClient } from "./pagiera-editor";
+import { editorPath } from "pagiera";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditorPage() {
-  return <PagieraEditorClient initial={await editorBootstrap()} />;
+  const initial = await editorBootstrap();
+  redirect(editorPath(initial.page.id));
 }
 ```
 
 ```tsx
-// src/app/editor/[pageId]/page.tsx
+// src/app/editor/[pageId]/[panel]/page.tsx
 import { editorBootstrap } from "@/lib/editor-bootstrap";
-import { PagieraEditorClient } from "../pagiera-editor";
+import { editorPanel, editorPath } from "pagiera";
+import { redirect } from "next/navigation";
+import { PagieraEditorClient } from "../../pagiera-editor";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditorDocumentPage({ params }: {
-  params: Promise<{ pageId: string }>;
+  params: Promise<{ pageId: string; panel: string }>;
 }) {
+  const { pageId, panel: rawPanel } = await params;
+  const panel = editorPanel(rawPanel);
+  if (!panel) redirect(editorPath(pageId));
   return (
     <PagieraEditorClient
-      initial={await editorBootstrap((await params).pageId)}
+      initial={await editorBootstrap(pageId)}
+      initialPanel={panel}
     />
   );
 }
 ```
+
+Place this server page at `src/app/editor/[pageId]/[panel]/page.tsx`. Passing `initialPanel` makes the selected surface part of the server render, so direct links do not flash Layers before opening their requested panel. Pagiera then keeps editor surfaces in shareable paths such as `/editor/{pageId}/layers`, `/editor/{pageId}/pages`, and `/editor/{pageId}/templates`; the old `?tab=` form is migrated automatically.
 
 ## Publishing pages
 
@@ -319,15 +338,15 @@ export default async function PublishedPage({ params, searchParams }: {
 
 ## Template registry
 
-The editor reads its catalog from the public Pagiera repository by default:
+The existing Pagiera catch-all handler automatically exposes the editor catalog at:
 
 ```text
-https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json
+/api/pagiera/templates/registry.json
 ```
 
-This is a static GitHub Raw/CDN request, not the rate-limited GitHub REST API. Registry and template responses are cached in memory and `localStorage` for 15 minutes. The refresh button bypasses the local TTL, and the package keeps bundled fallback entries for offline use.
+No second API route, copied JSON, or filesystem setup is required. The package endpoint fetches the public GitHub Raw/CDN registry, caches it through Redis and HTTP caching, serves package-generated thumbnails, and falls back to bundled templates when the upstream catalog is unavailable.
 
-You may point the studio at a fork, branch, or private proxy:
+You may still point the studio at a custom browser-facing catalog:
 
 ```tsx
 <PagieraStudio
@@ -429,6 +448,7 @@ type PagieraServerConfig = {
   openRouterModel: string;
   basePath?: string;
   aiRateLimitPerMinute?: number;
+  templateRegistryUrl?: string;
 };
 ```
 

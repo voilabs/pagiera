@@ -95,7 +95,7 @@ export function DataSourceModal({
 
     return (
         <motion.div
-            className="fixed inset-0 z-[200] flex items-center justify-center p-8"
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -115,7 +115,7 @@ export function DataSourceModal({
                 role="dialog"
                 aria-modal="true"
                 aria-label={`Data source: ${source.name}`}
-                className="relative flex h-full max-h-[680px] w-full max-w-[860px] flex-col overflow-hidden rounded-2xl border border-ed-border bg-ed-surface shadow-2xl"
+                className="relative flex h-[min(760px,calc(100vh-32px))] w-full max-w-[920px] flex-col overflow-hidden rounded-3xl bg-ed-surface"
                 initial={{ opacity: 0, scale: 0.97, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 12 }}
@@ -139,7 +139,7 @@ export function DataSourceModal({
                     </button>
                 </header>
 
-                <div className="flex shrink-0 items-center gap-2 border-b border-ed-border px-5 py-3">
+                <div className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-ed-border px-5 py-3 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
                     <select
                         aria-label="HTTP method"
                         value={method}
@@ -176,14 +176,14 @@ export function DataSourceModal({
                             onNotFound: event.target.value as DataSource["onNotFound"],
                         })}
                         title="Choose what the published page does when this API returns 404"
-                        className="shrink-0 cursor-pointer rounded-md bg-ed-field px-2 py-1.5 text-[11px] font-medium text-ed-muted outline-none [&>option]:bg-ed-surface"
+                        className="col-span-3 min-w-0 cursor-pointer rounded-md bg-ed-field px-2 py-1.5 text-[11px] font-medium text-ed-muted outline-none lg:col-span-1 [&>option]:bg-ed-surface"
                     >
                         <option value="empty">404: Keep page</option>
                         <option value="page-404">404: Page not found</option>
                     </select>
                 </div>
 
-                <nav className="flex shrink-0 gap-1 border-b border-ed-border px-5">
+                <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-ed-border px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {(
                         [
                             ["params", `Query${source.params?.length ? ` (${source.params.length})` : ""}`],
@@ -342,7 +342,7 @@ function PairTable({
                 // Rows are appended and deleted, never reordered, so position is
                 // a stable identity here.
                 // biome-ignore lint/suspicious/noArrayIndexKey: positional identity is stable for this list
-                <div key={index} className="flex items-center gap-2">
+                <div key={index} className="grid grid-cols-[minmax(100px,.7fr)_minmax(0,1fr)_auto] items-center gap-2">
                     <input
                         type="text"
                         value={pair.key}
@@ -355,7 +355,7 @@ function PairTable({
                                 ),
                             )
                         }
-                        className="w-[240px] shrink-0 rounded-md bg-ed-field px-3 py-2 font-mono text-[12px] text-ed-text outline-none transition-colors focus:bg-ed-field-hover placeholder:text-ed-faint"
+                        className="min-w-0 rounded-md bg-ed-field px-3 py-2 font-mono text-[12px] text-ed-text outline-none transition-colors focus:bg-ed-field-hover placeholder:text-ed-faint"
                     />
                     <input
                         type="text"

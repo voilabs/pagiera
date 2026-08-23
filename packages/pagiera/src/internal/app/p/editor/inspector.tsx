@@ -11,13 +11,13 @@ import {
     IconChevronRight,
     IconPlus,
     IconPlayerPlay,
-    IconSparkles,
     IconTrash,
     IconX,
 } from "@tabler/icons-react";
 import type React from "react";
 import { useState } from "react";
 import { usePagieraFonts } from "pagiera/provider";
+import { ICON_CATALOG } from "@/lib/editor/icon";
 import { hasOverride } from "@/lib/editor/style";
 import {
     type Align,
@@ -233,7 +233,7 @@ function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
 
 function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle, element } = ctx;
-    const isGrid = element.type === "Grid";
+    const isGrid = element.type === "Grid" || element.type === "Repeat";
 
     return (
         <Group title="Layout">
@@ -695,6 +695,18 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     return (
         <Group title="Composition" defaultOpen={false}>
             {ov(
+                ["zIndex"],
+                <NumberInput
+                    label="Z-index"
+                    value={style.zIndex}
+                    min={-9999}
+                    max={9999}
+                    onChange={(zIndex) => onStyle({ zIndex: Math.round(zIndex) })}
+                    onCommitStart={onCommitStart}
+                    onCommitEnd={onCommitEnd}
+                />,
+            )}
+            {ov(
                 ["overflow"],
                 <SelectInput
                     label="Overflow"
@@ -983,6 +995,101 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
                 </Group>
             )}
 
+            {element.type === "Button" && (
+                <Group title="Button behavior" defaultOpen={false}>
+                    <SelectInput
+                        label="Type"
+                        value={element.buttonType ?? "button"}
+                        options={[
+                            { label: "Regular button", value: "button" as const },
+                            { label: "Submit form", value: "submit" as const },
+                            { label: "Reset form", value: "reset" as const },
+                        ]}
+                        onChange={(buttonType) => onProps({ buttonType })}
+                    />
+                </Group>
+            )}
+
+            {(element.type === "Input" || element.type === "Textarea") && (
+                <Group title="Field">
+                    {element.type === "Input" && (
+                        <SelectInput
+                            label="Type"
+                            value={element.inputType ?? "text"}
+                            options={[
+                                { label: "Text", value: "text" as const },
+                                { label: "Email", value: "email" as const },
+                                { label: "Password", value: "password" as const },
+                                { label: "Number", value: "number" as const },
+                                { label: "Telephone", value: "tel" as const },
+                                { label: "URL", value: "url" as const },
+                                { label: "Search", value: "search" as const },
+                            ]}
+                            onChange={(inputType) => onProps({ inputType })}
+                        />
+                    )}
+                    <TextInput label="Name" value={element.fieldName ?? ""} placeholder="email" onChange={(fieldName) => onProps({ fieldName })} />
+                    <TextInput label="Placeholder" value={element.placeholder ?? ""} placeholder="Enter a value…" onChange={(placeholder) => onProps({ placeholder })} />
+                    <Segmented
+                        label="Required"
+                        value={element.required ? "yes" : "no"}
+                        options={[{ label: "No", value: "no" as const }, { label: "Yes", value: "yes" as const }]}
+                        onChange={(value) => onProps({ required: value === "yes" })}
+                    />
+                </Group>
+            )}
+
+            {element.type === "Form" && (
+                <Group title="Form">
+                    <Segmented
+                        label="Submit"
+                        value={element.formSubmitMode ?? "request"}
+                        options={[{ label: "Background", value: "request" as const }, { label: "Native", value: "native" as const }]}
+                        onChange={(formSubmitMode) => onProps({ formSubmitMode })}
+                    />
+                    <TextInput label="Endpoint" value={element.formAction ?? ""} placeholder="https://api.example.com/contact" onChange={(formAction) => onProps({ formAction })} />
+                    <SelectInput
+                        label="Method"
+                        value={element.formMethod ?? "POST"}
+                        options={[
+                            { label: "GET", value: "GET" as const },
+                            { label: "POST", value: "POST" as const },
+                            { label: "PUT", value: "PUT" as const },
+                            { label: "PATCH", value: "PATCH" as const },
+                            { label: "DELETE", value: "DELETE" as const },
+                        ]}
+                        onChange={(formMethod) => onProps({ formMethod })}
+                    />
+                    {element.formSubmitMode !== "native" && (
+                        <>
+                            <SelectInput
+                                label="Payload"
+                                value={element.formContentType ?? "json"}
+                                options={[
+                                    { label: "JSON", value: "json" as const },
+                                    { label: "Form data", value: "form-data" as const },
+                                    { label: "URL encoded", value: "urlencoded" as const },
+                                ]}
+                                onChange={(formContentType) => onProps({ formContentType })}
+                            />
+                            <TextArea label="Body" value={element.formBody ?? ""} onChange={(formBody) => onProps({ formBody })} />
+                            <p className="text-[10px] leading-relaxed text-ed-faint">Leave body empty to send every field automatically. Custom bodies can use tokens such as {"{{form.email}}"}.</p>
+                            <TextArea label="Headers" value={element.formHeaders ?? ""} onChange={(formHeaders) => onProps({ formHeaders })} />
+                            <p className="text-[10px] leading-relaxed text-ed-faint">One header per line. These are visible in the browser, so private API keys must stay behind your own server endpoint.</p>
+                            <TextInput label="Success" value={element.formSuccessMessage ?? ""} placeholder="Sent successfully." onChange={(formSuccessMessage) => onProps({ formSuccessMessage })} />
+                            <TextInput label="Error" value={element.formErrorMessage ?? ""} placeholder="Something went wrong." onChange={(formErrorMessage) => onProps({ formErrorMessage })} />
+                            <Segmented
+                                label="On success"
+                                value={element.formResetOnSuccess ? "reset" : "keep"}
+                                options={[{ label: "Keep", value: "keep" as const }, { label: "Reset", value: "reset" as const }]}
+                                onChange={(value) => onProps({ formResetOnSuccess: value === "reset" })}
+                            />
+                        </>
+                    )}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">Background mode sends with fetch and keeps the visitor on the page. Native mode uses regular browser form navigation.</p>
+                </Group>
+            )}
+
             {element.type === "Image" && (
                 <Group title="Image">
                     <TextInput
@@ -1031,14 +1138,10 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
                     <SelectInput
                         label="Glyph"
                         value={element.iconName ?? "star"}
-                        options={[
-                            { label: "Star", value: "star" as const },
-                            { label: "Heart", value: "heart" as const },
-                            { label: "Arrow right", value: "arrow-right" as const },
-                            { label: "Check", value: "check" as const },
-                            { label: "Menu", value: "menu" as const },
-                            { label: "Search", value: "search" as const },
-                        ]}
+                        options={ICON_CATALOG.map((icon) => ({
+                            label: `${icon.category} · ${icon.name}`,
+                            value: icon.value,
+                        }))}
                         onChange={(iconName) => onProps({ iconName })}
                     />
                 </Group>
@@ -1213,19 +1316,21 @@ function HoverTab({ element, style, onProps, onStyle }: Ctx) {
 export function PageInspector({
     rootStyle,
     onChange,
-    onApplyStyleKit,
-    onLoadShowcase,
 }: {
     rootStyle: RootStyle;
     onChange: (patch: Partial<RootStyle>) => void;
-    onApplyStyleKit: (kit: "midnight" | "editorial" | "cobalt" | "warm") => void;
-    onLoadShowcase: () => void;
 }) {
     const providerFonts = usePagieraFonts();
+    const customFontOptions = (rootStyle.customFonts ?? []).map((font) => ({
+        label: font.name,
+        value: `"${font.name}", sans-serif`,
+    }));
+    const siteFontOptions = [...customFontOptions, ...providerFonts.map((font) => ({ label: font.title, value: font.family })), ...FONT_STACKS]
+        .filter((font, index, options) => options.findIndex((candidate) => candidate.value === font.value) === index);
     return (
         <div className="flex flex-col divide-y divide-ed-border">
             <p className="pb-3 text-[10px] leading-relaxed text-ed-muted">
-                Nothing is selected, so these settings apply to the page itself.
+                Global canvas, typography and layout settings for every breakpoint.
             </p>
 
             <Group title="Canvas">
@@ -1264,27 +1369,45 @@ export function PageInspector({
                 <SelectInput
                     label="Site font"
                     value={rootStyle.fontFamily}
-                    options={[...providerFonts.map((font) => ({ label: font.title, value: font.family })), ...FONT_STACKS]}
-                    onChange={(fontFamily) => onChange({ fontFamily })}
+                    options={siteFontOptions}
+                    onChange={(fontFamily) => onChange({
+                        fontFamily,
+                        customFonts: customFontOptions.some((font) => font.value === fontFamily)
+                            ? rootStyle.customFonts
+                            : [],
+                    })}
                 />
                 <p className="text-[10px] leading-relaxed text-ed-faint">
                     Applied to the whole site. Individual layers inherit this font automatically.
                 </p>
             </Group>
 
-            <Group title="Style kits">
-                <button type="button" onClick={onLoadShowcase} className="group mb-3 w-full overflow-hidden rounded-xl border border-lime-300/25 bg-[#10110d] p-3 text-left transition hover:border-lime-300/60">
-                    <span className="mb-3 flex items-center justify-between"><span className="flex size-8 items-center justify-center rounded-lg bg-[#d7ff3f] text-[#0b0b0a]"><IconSparkles size={15} /></span><span className="font-mono text-[8px] uppercase tracking-[.18em] text-lime-200/60">Full site</span></span>
-                    <span className="block text-[11px] font-semibold text-[#f1f0ea]">Load Nocturne showcase</span>
-                    <span className="mt-1 block text-[9px] leading-relaxed text-[#96958f]">Custom font, editorial composition and polished motion.</span>
-                </button>
-                <p className="text-[10px] leading-relaxed text-ed-faint">Apply a coherent background, surface, typography and accent palette to the whole page.</p>
-                <div className="grid grid-cols-2 gap-2">{([
-                    ["midnight", "Midnight", ["#090b10", "#7c5cff"]],
-                    ["editorial", "Editorial", ["#f3efe7", "#e14b32"]],
-                    ["cobalt", "Cobalt", ["#071425", "#2f80ff"]],
-                    ["warm", "Warm", ["#18110f", "#f97316"]],
-                ] as const).map(([id, label, colors]) => <button key={id} type="button" onClick={() => onApplyStyleKit(id)} className="rounded-xl border border-ed-border bg-ed-subtle p-2 text-left hover:border-ed-accent/50 hover:bg-ed-field"><span className="mb-2 flex h-8 overflow-hidden rounded-lg">{colors.map((color) => <span key={color} className="flex-1" style={{ background: color }} />)}</span><span className="text-[9px] font-semibold text-ed-text">{label}</span></button>)}</div>
+            <Group title="Page transitions">
+                <SelectInput
+                    label="Style"
+                    value={rootStyle.pageTransition ?? "smooth"}
+                    options={[
+                        { label: "Smooth", value: "smooth" },
+                        { label: "Fade", value: "fade" },
+                        { label: "Slide", value: "slide" },
+                        { label: "Instant", value: "none" },
+                    ]}
+                    onChange={(pageTransition) => onChange({ pageTransition })}
+                />
+                {(rootStyle.pageTransition ?? "smooth") !== "none" && (
+                    <SliderInput
+                        label="Duration"
+                        suffix="ms"
+                        min={120}
+                        max={1200}
+                        step={20}
+                        value={rootStyle.pageTransitionDuration ?? 380}
+                        onChange={(pageTransitionDuration) => onChange({ pageTransitionDuration })}
+                    />
+                )}
+                <p className="text-[10px] leading-relaxed text-ed-faint">
+                    Used for navigation between every published page. Reduced-motion preferences are always respected.
+                </p>
             </Group>
 
             <Group title="Layout" defaultOpen={false}>

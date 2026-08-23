@@ -15,6 +15,7 @@ import {
     STYLE_KEYS,
     type StyleKey,
 } from "./types";
+import { PAGIERA_ICON_NAMES } from "../../../icon-names";
 
 export const MAX_ELEMENTS = 2000;
 const MAX_CONTENT = 10_000;
@@ -166,6 +167,7 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
 
         overflow: oneOf(raw.overflow, ["visible", "hidden", "auto", "scroll"] as const, base.overflow),
         position: oneOf(raw.position, ["static", "sticky"] as const, base.position),
+        zIndex: num(raw.zIndex, base.zIndex, -9999, 9999),
         stickyOffset: num(raw.stickyOffset, base.stickyOffset, -9999, 9999),
         bgImage: raw.bgImage === undefined ? base.bgImage : imageUrl(raw.bgImage),
         bgSize: oneOf(raw.bgSize, ["cover", "contain", "auto"] as const, base.bgSize),
@@ -308,7 +310,21 @@ export function parseElements(
             src: safeUrl(el.src),
             alt: str(el.alt, MAX_SHORT_STRING),
             objectFit: oneOf(el.objectFit, ["cover", "contain", "fill", "none"] as const, "cover"),
-            iconName: oneOf(el.iconName, ["star", "heart", "arrow-right", "check", "menu", "search"] as const, "star"),
+            iconName: oneOf(el.iconName, PAGIERA_ICON_NAMES, "star"),
+            placeholder: str(el.placeholder, MAX_SHORT_STRING),
+            fieldName: str(el.fieldName, MAX_SHORT_STRING),
+            inputType: oneOf(el.inputType, ["text", "email", "password", "number", "tel", "url", "search"] as const, "text"),
+            required: el.required === true ? true : undefined,
+            formAction: safeUrl(el.formAction),
+            formMethod: oneOf(el.formMethod, HTTP_METHODS, "POST"),
+            formSubmitMode: oneOf(el.formSubmitMode, ["request", "native"] as const, "request"),
+            formContentType: oneOf(el.formContentType, ["json", "form-data", "urlencoded"] as const, "json"),
+            formBody: str(el.formBody, MAX_CONTENT),
+            formHeaders: str(el.formHeaders, MAX_CONTENT),
+            formSuccessMessage: str(el.formSuccessMessage, MAX_SHORT_STRING),
+            formErrorMessage: str(el.formErrorMessage, MAX_SHORT_STRING),
+            formResetOnSuccess: el.formResetOnSuccess === true ? true : undefined,
+            buttonType: oneOf(el.buttonType, ["button", "submit", "reset"] as const, "button"),
             href: safeUrl(el.href),
             sourceId: str(el.sourceId, MAX_SHORT_STRING),
             binding: bindingPath(el.binding),
@@ -473,6 +489,8 @@ export function parseRootStyle(input: unknown): RootStyle {
         padL: num(raw.padL, base.padL, 0, 9999),
         align: oneOf(raw.align, ["start", "center", "end", "stretch"], base.align),
         fontFamily: cssValue(raw.fontFamily, base.fontFamily),
+        pageTransition: oneOf(raw.pageTransition, ["smooth", "fade", "slide", "none"], base.pageTransition),
+        pageTransitionDuration: num(raw.pageTransitionDuration, base.pageTransitionDuration, 120, 1200),
         // A page may define any set of artboards, so the stored list is kept as
         // it comes; only an empty one falls back to the defaults.
         breakpoints: breakpoints?.length ? breakpoints : undefined,

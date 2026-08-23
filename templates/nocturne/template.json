@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "nocturne",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "pages": [
     {
       "name": "Home",
       "slug": "home",
       "elements": [
         {
-          "id": "ec902fb4-82e6-4e78-b89b-cd0d1f164931",
+          "id": "804d1735-e762-4418-9cef-786bc0093dac",
           "type": "Section",
           "z": 0,
           "base": {
@@ -69,13 +69,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation"
+          "name": "Nocturne navigation",
+          "overrides": {
+            "tablet": {
+              "padT": 18,
+              "padR": 32,
+              "padB": 18,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 16,
+              "padR": 20,
+              "padB": 16,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "componentSourceId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "variant": "Default"
         },
         {
-          "id": "118eeeb9-d0b1-415f-9308-42c766bb9fe6",
+          "id": "bb584abf-c75c-442b-8fbc-e820427edcb5",
           "type": "Container",
           "z": 0,
-          "parentId": "ec902fb4-82e6-4e78-b89b-cd0d1f164931",
+          "parentId": "804d1735-e762-4418-9cef-786bc0093dac",
           "base": {
             "x": 0,
             "y": 0,
@@ -137,18 +155,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "50de2731-ce67-4525-8de6-b897b6ec93df"
         },
         {
-          "id": "01734a05-ce76-4ebe-880d-f92470ee8869",
+          "id": "5f500a2d-5698-4260-b1e9-322f7cc61db4",
           "type": "Heading",
           "z": 0,
-          "parentId": "118eeeb9-d0b1-415f-9308-42c766bb9fe6",
+          "parentId": "bb584abf-c75c-442b-8fbc-e820427edcb5",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -208,13 +227,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Wordmark"
+          "name": "Wordmark",
+          "componentSourceId": "597e7c0b-1fd1-4ed0-a0b8-8a90d1936055"
         },
         {
-          "id": "e14cdcd1-7942-4392-b340-c16ac0cc23ce",
+          "id": "0169a667-d0df-4eb5-bbfc-76af04f8c8aa",
           "type": "Container",
           "z": 0,
-          "parentId": "118eeeb9-d0b1-415f-9308-42c766bb9fe6",
+          "parentId": "bb584abf-c75c-442b-8fbc-e820427edcb5",
           "base": {
             "x": 0,
             "y": 0,
@@ -279,16 +299,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "f965be1b-c3b2-4122-8365-2912f0418518"
         },
         {
-          "id": "5775d141-1111-44d7-95c1-797baad4dfca",
+          "id": "5073ee33-34d5-403f-b651-25a86ddfd8af",
           "type": "Button",
           "z": 0,
-          "parentId": "e14cdcd1-7942-4392-b340-c16ac0cc23ce",
+          "parentId": "0169a667-d0df-4eb5-bbfc-76af04f8c8aa",
           "content": "Work",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -351,21 +373,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4b6c4c41-bc2f-4a92-9350-b689869ed587"
         },
         {
-          "id": "ea33baa0-173a-4ce9-972a-ee0101895534",
+          "id": "8dc5755e-313f-4a7f-b0f4-82b2aef7b368",
           "type": "Button",
           "z": 0,
-          "parentId": "e14cdcd1-7942-4392-b340-c16ac0cc23ce",
+          "parentId": "0169a667-d0df-4eb5-bbfc-76af04f8c8aa",
           "content": "Studio",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -428,21 +452,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4515d25d-d21e-42ff-8b2b-2ca97091da2b"
         },
         {
-          "id": "7aebc614-54f8-4b88-bece-0fb8459a431e",
+          "id": "c73aa2df-b96a-48a2-a458-3b0d521a1e46",
           "type": "Button",
           "z": 0,
-          "parentId": "e14cdcd1-7942-4392-b340-c16ac0cc23ce",
+          "parentId": "0169a667-d0df-4eb5-bbfc-76af04f8c8aa",
           "content": "Contact",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -505,21 +531,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "8bfbc09a-3e9d-4ef4-b951-dfed1183aa91"
         },
         {
-          "id": "b4bf339f-e5dc-44d4-bd62-598edda18f1a",
+          "id": "0d6f8aaf-043f-4b23-8bbe-2cc0ab84168c",
           "type": "Button",
           "z": 0,
-          "parentId": "118eeeb9-d0b1-415f-9308-42c766bb9fe6",
+          "parentId": "bb584abf-c75c-442b-8fbc-e820427edcb5",
           "content": "Start a project ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -591,16 +619,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "6fe55f38-11cc-4f8d-9685-7d749dac5fcd"
         },
         {
-          "id": "4eb77132-7514-41cb-be75-c775869a760a",
+          "id": "1eca24c0-8f2a-4748-ac51-8754109bb2e9",
           "type": "Button",
           "z": 0,
-          "parentId": "118eeeb9-d0b1-415f-9308-42c766bb9fe6",
+          "parentId": "bb584abf-c75c-442b-8fbc-e820427edcb5",
           "content": "MENU +",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -671,14 +701,15 @@
           "interaction": {
             "trigger": "click",
             "action": "toggle-layer",
-            "value": "9f765e30-309d-4eb7-bd24-51d5c44e2c60"
-          }
+            "value": "a11653d1-529f-4937-8919-4dfa27fc34d5"
+          },
+          "componentSourceId": "182a1659-ccc9-4418-b65d-2f6597d7f1a1"
         },
         {
-          "id": "9f765e30-309d-4eb7-bd24-51d5c44e2c60",
+          "id": "a11653d1-529f-4937-8919-4dfa27fc34d5",
           "type": "Container",
           "z": 0,
-          "parentId": "ec902fb4-82e6-4e78-b89b-cd0d1f164931",
+          "parentId": "804d1735-e762-4418-9cef-786bc0093dac",
           "base": {
             "x": 0,
             "y": 0,
@@ -737,16 +768,18 @@
             "cursor": "auto",
             "hidden": true
           },
-          "name": "Mobile navigation menu"
+          "name": "Mobile navigation menu",
+          "componentSourceId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541"
         },
         {
-          "id": "3fbfe765-a95a-4dfe-9ea1-2750c8918635",
+          "id": "f2f28b50-42ee-468d-8ffd-620729eb1769",
           "type": "Button",
           "z": 0,
-          "parentId": "9f765e30-309d-4eb7-bd24-51d5c44e2c60",
+          "parentId": "a11653d1-529f-4937-8919-4dfa27fc34d5",
           "content": "Work  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -809,21 +842,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b2767fe2-3d72-4b9e-8652-8e6f00567847"
         },
         {
-          "id": "a83526ca-c855-48ee-a65f-1c6077b456b9",
+          "id": "8e629fa8-7470-4307-959f-66da2803406a",
           "type": "Button",
           "z": 0,
-          "parentId": "9f765e30-309d-4eb7-bd24-51d5c44e2c60",
+          "parentId": "a11653d1-529f-4937-8919-4dfa27fc34d5",
           "content": "Studio  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -886,21 +921,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b61ea1ad-1669-4889-bf10-45dcbf85ac75"
         },
         {
-          "id": "e0c47102-52cb-40fc-8b50-b46f00946d45",
+          "id": "240830f9-579f-45a5-b6b5-e3830ab7e731",
           "type": "Button",
           "z": 0,
-          "parentId": "9f765e30-309d-4eb7-bd24-51d5c44e2c60",
+          "parentId": "a11653d1-529f-4937-8919-4dfa27fc34d5",
           "content": "Contact  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -963,15 +1000,16 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "d1324095-9157-4e64-b7b8-0e04b40dd1f4"
         },
         {
-          "id": "b1bf3d4c-f090-435e-be3b-fb2d398247fe",
+          "id": "3a34aba7-31f0-4311-8d9e-c05f1573f1fe",
           "type": "Section",
           "z": 0,
           "base": {
@@ -1032,13 +1070,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Hero"
+          "name": "Hero",
+          "overrides": {
+            "tablet": {
+              "padT": 71,
+              "padR": 32,
+              "padB": 59,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 58,
+              "padR": 20,
+              "padB": 49,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "7d5c985e-98c8-48af-ae4c-e62b32eacfea",
+          "id": "6426ad20-bb14-47e4-906b-d4d7c9efc225",
           "type": "Container",
           "z": 0,
-          "parentId": "b1bf3d4c-f090-435e-be3b-fb2d398247fe",
+          "parentId": "3a34aba7-31f0-4311-8d9e-c05f1573f1fe",
           "base": {
             "x": 0,
             "y": 0,
@@ -1100,22 +1152,24 @@
           "name": "Hero composition",
           "overrides": {
             "tablet": {
-              "w": 860,
-              "gap": 36
+              "widthMode": "fill",
+              "direction": "column",
+              "align": "stretch",
+              "gap": 48
             },
             "mobile": {
               "widthMode": "fill",
               "direction": "column",
               "align": "stretch",
-              "gap": 44
+              "gap": 40
             }
           }
         },
         {
-          "id": "298441a9-d491-4c4e-bf2f-6a63dd8fcdbc",
+          "id": "a2806d62-c568-4a9b-8569-989a4592891e",
           "type": "Container",
           "z": 0,
-          "parentId": "7d5c985e-98c8-48af-ae4c-e62b32eacfea",
+          "parentId": "6426ad20-bb14-47e4-906b-d4d7c9efc225",
           "base": {
             "x": 0,
             "y": 0,
@@ -1177,18 +1231,19 @@
           "name": "Hero copy",
           "overrides": {
             "tablet": {
-              "w": 500
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill"
+              "widthMode": "fill",
+              "gap": 22
             }
           }
         },
         {
-          "id": "ab98e1a0-83c6-44d9-8e28-f11a55edef38",
+          "id": "6b476486-aa61-4a88-95e6-04dff533c3e6",
           "type": "Text",
           "z": 0,
-          "parentId": "298441a9-d491-4c4e-bf2f-6a63dd8fcdbc",
+          "parentId": "a2806d62-c568-4a9b-8569-989a4592891e",
           "content": "Independent creative practice — Istanbul / Worldwide",
           "base": {
             "x": 0,
@@ -1251,10 +1306,10 @@
           "name": "Hero index"
         },
         {
-          "id": "ef843028-2e01-4000-8275-b57f320faf8f",
+          "id": "5e2c1e8c-1e60-4ef9-bdc6-f0fdf6c4adc1",
           "type": "Heading",
           "z": 0,
-          "parentId": "298441a9-d491-4c4e-bf2f-6a63dd8fcdbc",
+          "parentId": "a2806d62-c568-4a9b-8569-989a4592891e",
           "content": "WE DESIGN\nTHE UNEXPECTED.",
           "base": {
             "x": 0,
@@ -1328,10 +1383,10 @@
           }
         },
         {
-          "id": "d612d412-1651-429d-a3f0-cd0cdd7397ab",
+          "id": "7b27b7fc-f06d-4d83-ab0b-af3621451b11",
           "type": "Container",
           "z": 0,
-          "parentId": "298441a9-d491-4c4e-bf2f-6a63dd8fcdbc",
+          "parentId": "a2806d62-c568-4a9b-8569-989a4592891e",
           "base": {
             "x": 0,
             "y": 0,
@@ -1399,10 +1454,10 @@
           }
         },
         {
-          "id": "f03705c5-fca1-4832-9b79-1f7956c1af04",
+          "id": "53bc674b-02bb-481b-8dca-a96daa73d7c0",
           "type": "Text",
           "z": 0,
-          "parentId": "d612d412-1651-429d-a3f0-cd0cdd7397ab",
+          "parentId": "7b27b7fc-f06d-4d83-ab0b-af3621451b11",
           "content": "A strategy-led design studio shaping identities and digital experiences for ambitious people building what comes next.",
           "base": {
             "x": 0,
@@ -1470,10 +1525,10 @@
           }
         },
         {
-          "id": "7274208c-9fba-45ab-a57a-4412851cc876",
+          "id": "165425a8-cc43-4541-ba42-260c03493c1b",
           "type": "Text",
           "z": 0,
-          "parentId": "d612d412-1651-429d-a3f0-cd0cdd7397ab",
+          "parentId": "7b27b7fc-f06d-4d83-ab0b-af3621451b11",
           "content": "Scroll to explore ↓",
           "base": {
             "x": 0,
@@ -1540,10 +1595,10 @@
           }
         },
         {
-          "id": "9c59e21a-3c52-4034-8cdc-33f5cdaf5b19",
+          "id": "9cf23fa3-c9e0-4820-b541-3906261b60a9",
           "type": "Frame",
           "z": 0,
-          "parentId": "7d5c985e-98c8-48af-ae4c-e62b32eacfea",
+          "parentId": "6426ad20-bb14-47e4-906b-d4d7c9efc225",
           "base": {
             "x": 0,
             "y": 0,
@@ -1605,22 +1660,22 @@
           "name": "Hero artwork",
           "overrides": {
             "tablet": {
-              "w": 310,
-              "h": 460
+              "widthMode": "fill",
+              "h": 460,
+              "rotate": 0
             },
             "mobile": {
               "widthMode": "fill",
-              "w": 320,
-              "h": 420,
+              "h": 390,
               "rotate": 0
             }
           }
         },
         {
-          "id": "8424b155-38bc-4cb9-b1a3-4f6291e0ffcc",
+          "id": "52c4230e-c3b8-4576-a4ba-018d5cef3223",
           "type": "Text",
           "z": 0,
-          "parentId": "9c59e21a-3c52-4034-8cdc-33f5cdaf5b19",
+          "parentId": "9cf23fa3-c9e0-4820-b541-3906261b60a9",
           "content": "Form / Tension / 001",
           "base": {
             "x": 24,
@@ -1680,13 +1735,19 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Artwork label"
+          "name": "Artwork label",
+          "overrides": {
+            "mobile": {
+              "x": 18,
+              "y": 18
+            }
+          }
         },
         {
-          "id": "8713eeea-f15d-4b18-8fc0-7ff46523d824",
+          "id": "04ca7511-6e0d-4fa4-9f61-1cc197c499dd",
           "type": "Frame",
           "z": 0,
-          "parentId": "9c59e21a-3c52-4034-8cdc-33f5cdaf5b19",
+          "parentId": "9cf23fa3-c9e0-4820-b541-3906261b60a9",
           "base": {
             "x": 220,
             "y": 350,
@@ -1746,16 +1807,28 @@
             "hidden": false
           },
           "name": "Kinetic orb",
+          "overrides": {
+            "tablet": {
+              "x": 500,
+              "y": 286
+            },
+            "mobile": {
+              "x": 200,
+              "y": 245,
+              "w": 96,
+              "h": 96
+            }
+          },
           "loop": {
             "type": "pulse",
             "duration": 4200
           }
         },
         {
-          "id": "66381e44-94f0-4982-ba75-8e0efc96bb18",
+          "id": "6788cddc-90c7-4217-8166-2f15cfc68631",
           "type": "Heading",
           "z": 0,
-          "parentId": "9c59e21a-3c52-4034-8cdc-33f5cdaf5b19",
+          "parentId": "9cf23fa3-c9e0-4820-b541-3906261b60a9",
           "content": "24—26",
           "base": {
             "x": 24,
@@ -1815,10 +1888,23 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Artwork number"
+          "name": "Artwork number",
+          "overrides": {
+            "tablet": {
+              "y": 350
+            },
+            "mobile": {
+              "x": 18,
+              "y": 310,
+              "w": 220,
+              "h": 60,
+              "fontSize": 48,
+              "letterSpacing": -3
+            }
+          }
         },
         {
-          "id": "b6322892-62a4-4d84-9cb4-4a3288634a03",
+          "id": "866bee3b-4af8-49ba-89db-1dadccb62a5c",
           "type": "Section",
           "z": 0,
           "base": {
@@ -1879,13 +1965,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Ticker"
+          "name": "Ticker",
+          "overrides": {
+            "tablet": {
+              "padT": 18,
+              "padR": 24,
+              "padB": 18,
+              "padL": 24
+            },
+            "mobile": {
+              "padT": 16,
+              "padR": 20,
+              "padB": 16,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "7dc7d5f6-5f5e-4b60-baec-71c7f4bc28df",
+          "id": "21bb89a4-1104-4774-8f70-c7595a870def",
           "type": "Text",
           "z": 0,
-          "parentId": "b6322892-62a4-4d84-9cb4-4a3288634a03",
+          "parentId": "866bee3b-4af8-49ba-89db-1dadccb62a5c",
           "content": "Brand systems  ✦  Digital direction  ✦  Interactive experiences  ✦  Art direction  ✦  Strategy",
           "base": {
             "x": 0,
@@ -1948,7 +2048,7 @@
           "name": "Ticker line"
         },
         {
-          "id": "98ff601c-d99b-48c9-bd33-2f22b4a11978",
+          "id": "518093dc-f53c-4172-accb-f4bf694d0cdd",
           "type": "Section",
           "z": 0,
           "base": {
@@ -2009,13 +2109,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Manifesto"
+          "name": "Manifesto",
+          "overrides": {
+            "tablet": {
+              "padT": 115,
+              "padR": 32,
+              "padB": 115,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 95,
+              "padR": 20,
+              "padB": 95,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "05030148-916d-446c-9513-1a684149addd",
+          "id": "ff9741bf-5501-4066-8986-5f3d3ece0cdb",
           "type": "Container",
           "z": 0,
-          "parentId": "98ff601c-d99b-48c9-bd33-2f22b4a11978",
+          "parentId": "518093dc-f53c-4172-accb-f4bf694d0cdd",
           "base": {
             "x": 0,
             "y": 0,
@@ -2077,7 +2191,8 @@
           "name": "Manifesto inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill",
+              "gap": 48
             },
             "mobile": {
               "widthMode": "fill",
@@ -2086,10 +2201,10 @@
           }
         },
         {
-          "id": "ad8fb952-99f0-4428-8e29-a34b3b0ca8eb",
+          "id": "816d3952-26f4-445e-b0e2-2c31ff7bf7bf",
           "type": "Text",
           "z": 0,
-          "parentId": "05030148-916d-446c-9513-1a684149addd",
+          "parentId": "ff9741bf-5501-4066-8986-5f3d3ece0cdb",
           "content": "01 / Our point of view",
           "base": {
             "x": 0,
@@ -2152,10 +2267,10 @@
           "name": "Manifesto eyebrow"
         },
         {
-          "id": "d53934df-203e-4b6a-a191-ccca648f4b89",
+          "id": "fce803d5-f702-4d58-ae0c-531fb8ccdb42",
           "type": "Heading",
           "z": 0,
-          "parentId": "05030148-916d-446c-9513-1a684149addd",
+          "parentId": "ff9741bf-5501-4066-8986-5f3d3ece0cdb",
           "content": "Safe ideas disappear.\nDistinct ones build culture.",
           "base": {
             "x": 0,
@@ -2227,10 +2342,10 @@
           }
         },
         {
-          "id": "3a71816d-e711-4f70-bb1e-ec6489eb5bf8",
+          "id": "b4e06a0d-91e1-45b9-85c9-eea1e3ed6df8",
           "type": "Container",
           "z": 0,
-          "parentId": "05030148-916d-446c-9513-1a684149addd",
+          "parentId": "ff9741bf-5501-4066-8986-5f3d3ece0cdb",
           "base": {
             "x": 0,
             "y": 0,
@@ -2291,7 +2406,10 @@
           },
           "name": "Manifesto details",
           "overrides": {
-            "tablet": {},
+            "tablet": {
+              "direction": "column",
+              "gap": 28
+            },
             "mobile": {
               "direction": "column",
               "gap": 24
@@ -2299,10 +2417,10 @@
           }
         },
         {
-          "id": "e46cc4c6-e02d-42a1-b9a4-c5202144c2fa",
+          "id": "f728f737-dac6-49f3-9989-643fe6912458",
           "type": "Text",
           "z": 0,
-          "parentId": "3a71816d-e711-4f70-bb1e-ec6489eb5bf8",
+          "parentId": "b4e06a0d-91e1-45b9-85c9-eea1e3ed6df8",
           "content": "We partner with founders and cultural teams at inflection points—when the old language no longer fits and a sharper expression can unlock the next chapter.",
           "base": {
             "x": 0,
@@ -2364,16 +2482,20 @@
           },
           "name": "Manifesto body",
           "overrides": {
-            "mobile": {
+            "tablet": {
               "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 16
             }
           }
         },
         {
-          "id": "a6ef53f9-7e9b-4c55-811d-b35757f30d7e",
+          "id": "31d36431-545d-47bf-8a64-29aed2a8f5d6",
           "type": "Text",
           "z": 0,
-          "parentId": "3a71816d-e711-4f70-bb1e-ec6489eb5bf8",
+          "parentId": "b4e06a0d-91e1-45b9-85c9-eea1e3ed6df8",
           "content": "POSITIONING\nIDENTITY SYSTEMS\nDIGITAL PRODUCTS\nCAMPAIGN WORLDS",
           "base": {
             "x": 0,
@@ -2433,10 +2555,15 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Manifesto services"
+          "name": "Manifesto services",
+          "overrides": {
+            "mobile": {
+              "widthMode": "fill"
+            }
+          }
         },
         {
-          "id": "15bc8ee0-874b-4b33-8ee4-edc797f49452",
+          "id": "16d496b0-105f-4367-85a2-983280361581",
           "type": "Section",
           "z": 0,
           "base": {
@@ -2497,13 +2624,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Selected work"
+          "name": "Selected work",
+          "overrides": {
+            "tablet": {
+              "padT": 105,
+              "padR": 32,
+              "padB": 105,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 87,
+              "padR": 20,
+              "padB": 87,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "21bc90f6-342d-40f4-a998-444ad2f99dcd",
+          "id": "65d902a7-0023-452e-a046-e7daf597d20b",
           "type": "Container",
           "z": 0,
-          "parentId": "15bc8ee0-874b-4b33-8ee4-edc797f49452",
+          "parentId": "16d496b0-105f-4367-85a2-983280361581",
           "base": {
             "x": 0,
             "y": 0,
@@ -2565,18 +2706,19 @@
           "name": "Work inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill"
+              "widthMode": "fill",
+              "gap": 34
             }
           }
         },
         {
-          "id": "5f03d383-92c0-4386-b6d5-7f012698936b",
+          "id": "1d741d19-7f2f-487e-9240-5ba6656b29b3",
           "type": "Container",
           "z": 0,
-          "parentId": "21bc90f6-342d-40f4-a998-444ad2f99dcd",
+          "parentId": "65d902a7-0023-452e-a046-e7daf597d20b",
           "base": {
             "x": 0,
             "y": 0,
@@ -2644,10 +2786,10 @@
           }
         },
         {
-          "id": "1f12c149-3212-47ec-ac2e-e83ab9880d27",
+          "id": "941d26e9-10a8-4c33-9bb6-bd08bae5cdee",
           "type": "Heading",
           "z": 0,
-          "parentId": "5f03d383-92c0-4386-b6d5-7f012698936b",
+          "parentId": "1d741d19-7f2f-487e-9240-5ba6656b29b3",
           "content": "SELECTED WORK",
           "base": {
             "x": 0,
@@ -2710,10 +2852,10 @@
           "name": "Work title"
         },
         {
-          "id": "e6e302da-8aaf-4965-a514-70b12f62dc4b",
+          "id": "240b4bd9-16d5-4acf-bcb1-4409e0e5aace",
           "type": "Text",
           "z": 0,
-          "parentId": "5f03d383-92c0-4386-b6d5-7f012698936b",
+          "parentId": "1d741d19-7f2f-487e-9240-5ba6656b29b3",
           "content": "2024—2026 / 03 PROJECTS",
           "base": {
             "x": 0,
@@ -2776,10 +2918,10 @@
           "name": "Work count"
         },
         {
-          "id": "f8decc93-cc74-4a90-969a-d0a116d45658",
+          "id": "e3b4baf2-5a09-4c8e-b764-2546dd358e2a",
           "type": "Grid",
           "z": 0,
-          "parentId": "21bc90f6-342d-40f4-a998-444ad2f99dcd",
+          "parentId": "65d902a7-0023-452e-a046-e7daf597d20b",
           "base": {
             "x": 0,
             "y": 0,
@@ -2849,10 +2991,10 @@
           }
         },
         {
-          "id": "05205e1a-07ec-4292-bcef-689227cc0168",
+          "id": "056c2c85-2d2c-4458-8403-1448b422f9ee",
           "type": "Container",
           "z": 0,
-          "parentId": "f8decc93-cc74-4a90-969a-d0a116d45658",
+          "parentId": "e3b4baf2-5a09-4c8e-b764-2546dd358e2a",
           "base": {
             "x": 0,
             "y": 0,
@@ -2918,10 +3060,10 @@
           }
         },
         {
-          "id": "c208827c-ff04-4ea5-9632-68596829d0b6",
+          "id": "aa946cfa-7d47-43b1-9350-a318cfb02183",
           "type": "Frame",
           "z": 0,
-          "parentId": "05205e1a-07ec-4292-bcef-689227cc0168",
+          "parentId": "056c2c85-2d2c-4458-8403-1448b422f9ee",
           "base": {
             "x": 0,
             "y": 0,
@@ -2988,10 +3130,10 @@
           }
         },
         {
-          "id": "8af2c550-64f0-4006-bda7-ce2965f40fa7",
+          "id": "46ce8d85-51c8-498a-bcaa-e4f7ebcfbb0e",
           "type": "Container",
           "z": 0,
-          "parentId": "05205e1a-07ec-4292-bcef-689227cc0168",
+          "parentId": "056c2c85-2d2c-4458-8403-1448b422f9ee",
           "base": {
             "x": 0,
             "y": 0,
@@ -3050,13 +3192,19 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Project caption"
+          "name": "Project caption",
+          "overrides": {
+            "mobile": {
+              "direction": "column",
+              "gap": 6
+            }
+          }
         },
         {
-          "id": "e822996e-f750-4849-b6bc-d1cb5146b91c",
+          "id": "f572cfdc-c063-423a-80c9-ed0fcfad2188",
           "type": "Heading",
           "z": 0,
-          "parentId": "8af2c550-64f0-4006-bda7-ce2965f40fa7",
+          "parentId": "46ce8d85-51c8-498a-bcaa-e4f7ebcfbb0e",
           "content": "AER / Mobility",
           "base": {
             "x": 0,
@@ -3119,10 +3267,10 @@
           "name": "Project name"
         },
         {
-          "id": "167b7122-238e-4aa5-bc28-fdf7dbaa3413",
+          "id": "18acc92f-4f5a-4b61-adda-b59679b7ae41",
           "type": "Text",
           "z": 0,
-          "parentId": "8af2c550-64f0-4006-bda7-ce2965f40fa7",
+          "parentId": "46ce8d85-51c8-498a-bcaa-e4f7ebcfbb0e",
           "content": "Identity + Digital",
           "base": {
             "x": 0,
@@ -3185,10 +3333,10 @@
           "name": "Project discipline"
         },
         {
-          "id": "04719539-76d9-46e3-949b-48da2e0c2278",
+          "id": "51503dcc-6ec4-4c76-99f0-3350753cb85c",
           "type": "Container",
           "z": 0,
-          "parentId": "f8decc93-cc74-4a90-969a-d0a116d45658",
+          "parentId": "e3b4baf2-5a09-4c8e-b764-2546dd358e2a",
           "base": {
             "x": 0,
             "y": 0,
@@ -3254,10 +3402,10 @@
           }
         },
         {
-          "id": "c0c626f4-2b72-4e10-8b2a-bb2dd70dc8ff",
+          "id": "10902bfd-7e14-4952-8322-751804abbe38",
           "type": "Frame",
           "z": 0,
-          "parentId": "04719539-76d9-46e3-949b-48da2e0c2278",
+          "parentId": "51503dcc-6ec4-4c76-99f0-3350753cb85c",
           "base": {
             "x": 0,
             "y": 0,
@@ -3324,10 +3472,10 @@
           }
         },
         {
-          "id": "cd687a38-8429-4d83-a214-cb5f297bc99c",
+          "id": "c2a776b1-b7a0-4e4f-a157-f2e67a0a9e45",
           "type": "Container",
           "z": 0,
-          "parentId": "04719539-76d9-46e3-949b-48da2e0c2278",
+          "parentId": "51503dcc-6ec4-4c76-99f0-3350753cb85c",
           "base": {
             "x": 0,
             "y": 0,
@@ -3386,13 +3534,19 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Project caption"
+          "name": "Project caption",
+          "overrides": {
+            "mobile": {
+              "direction": "column",
+              "gap": 6
+            }
+          }
         },
         {
-          "id": "6779234b-24e5-4f8d-94be-549b596b4874",
+          "id": "8bfbc387-757f-4c52-a5ea-950e3dd21d7a",
           "type": "Heading",
           "z": 0,
-          "parentId": "cd687a38-8429-4d83-a214-cb5f297bc99c",
+          "parentId": "c2a776b1-b7a0-4e4f-a157-f2e67a0a9e45",
           "content": "KERN / Objects",
           "base": {
             "x": 0,
@@ -3455,10 +3609,10 @@
           "name": "Project name"
         },
         {
-          "id": "84c4cc9e-2fa3-49cd-8ddf-2ecdc51d5372",
+          "id": "ce9943a2-2b20-44ec-9409-dd010741d407",
           "type": "Text",
           "z": 0,
-          "parentId": "cd687a38-8429-4d83-a214-cb5f297bc99c",
+          "parentId": "c2a776b1-b7a0-4e4f-a157-f2e67a0a9e45",
           "content": "Strategy + Commerce",
           "base": {
             "x": 0,
@@ -3521,10 +3675,10 @@
           "name": "Project discipline"
         },
         {
-          "id": "ca09bd23-fb74-47d5-9180-a9228fa787aa",
+          "id": "2a724083-c375-4202-9284-36203dd3ed5d",
           "type": "Container",
           "z": 0,
-          "parentId": "f8decc93-cc74-4a90-969a-d0a116d45658",
+          "parentId": "e3b4baf2-5a09-4c8e-b764-2546dd358e2a",
           "base": {
             "x": 0,
             "y": 0,
@@ -3590,10 +3744,10 @@
           }
         },
         {
-          "id": "788f63d6-dda7-4f0c-a8d5-1dfaef5e303a",
+          "id": "1f292c84-14b8-47dc-932f-b992e04b8546",
           "type": "Frame",
           "z": 0,
-          "parentId": "ca09bd23-fb74-47d5-9180-a9228fa787aa",
+          "parentId": "2a724083-c375-4202-9284-36203dd3ed5d",
           "base": {
             "x": 0,
             "y": 0,
@@ -3660,10 +3814,10 @@
           }
         },
         {
-          "id": "8d6ff960-e4b6-4616-9b84-8f6614bf3d85",
+          "id": "1b3032ec-db14-4a11-88bc-1afb08319d1e",
           "type": "Container",
           "z": 0,
-          "parentId": "ca09bd23-fb74-47d5-9180-a9228fa787aa",
+          "parentId": "2a724083-c375-4202-9284-36203dd3ed5d",
           "base": {
             "x": 0,
             "y": 0,
@@ -3722,13 +3876,19 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Project caption"
+          "name": "Project caption",
+          "overrides": {
+            "mobile": {
+              "direction": "column",
+              "gap": 6
+            }
+          }
         },
         {
-          "id": "fd44e0c6-d7d0-45f4-8b80-9d17b4f3d43e",
+          "id": "55280e14-289f-43af-9f49-a69b53dc5f7f",
           "type": "Heading",
           "z": 0,
-          "parentId": "8d6ff960-e4b6-4616-9b84-8f6614bf3d85",
+          "parentId": "1b3032ec-db14-4a11-88bc-1afb08319d1e",
           "content": "OTHER / Culture",
           "base": {
             "x": 0,
@@ -3791,10 +3951,10 @@
           "name": "Project name"
         },
         {
-          "id": "d4df74d8-66f9-4c92-9f25-3e12d08b417c",
+          "id": "becae9e5-8492-4fac-b46b-be7533e1bd33",
           "type": "Text",
           "z": 0,
-          "parentId": "8d6ff960-e4b6-4616-9b84-8f6614bf3d85",
+          "parentId": "1b3032ec-db14-4a11-88bc-1afb08319d1e",
           "content": "Campaign + Experience",
           "base": {
             "x": 0,
@@ -3857,7 +4017,7 @@
           "name": "Project discipline"
         },
         {
-          "id": "6019d274-fcbe-45f5-b857-bb34a41add24",
+          "id": "cef462cc-1797-45d0-b927-46824757102f",
           "type": "Section",
           "z": 0,
           "base": {
@@ -3918,13 +4078,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Closing CTA"
+          "name": "Closing CTA",
+          "overrides": {
+            "tablet": {
+              "padT": 98,
+              "padR": 32,
+              "padB": 98,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 82,
+              "padR": 20,
+              "padB": 82,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "3c1066ca-0397-413e-bc09-28f8bb81e740",
+          "id": "c9379a0a-c952-4c8a-8ca1-4cb4b66cd5cd",
           "type": "Container",
           "z": 0,
-          "parentId": "6019d274-fcbe-45f5-b857-bb34a41add24",
+          "parentId": "cef462cc-1797-45d0-b927-46824757102f",
           "base": {
             "x": 0,
             "y": 0,
@@ -3986,7 +4160,7 @@
           "name": "CTA inner",
           "overrides": {
             "tablet": {
-              "w": 760
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -3994,10 +4168,10 @@
           }
         },
         {
-          "id": "cb734516-8373-426c-8f0c-560f04b3a0d6",
+          "id": "dad3197d-598c-476f-87fd-e1048710c166",
           "type": "Text",
           "z": 0,
-          "parentId": "3c1066ca-0397-413e-bc09-28f8bb81e740",
+          "parentId": "c9379a0a-c952-4c8a-8ca1-4cb4b66cd5cd",
           "content": "Have a meaningful problem?",
           "base": {
             "x": 0,
@@ -4006,7 +4180,7 @@
             "constraintY": "start",
             "w": 480,
             "h": 24,
-            "widthMode": "auto",
+            "widthMode": "fill",
             "heightMode": "auto",
             "layout": "absolute",
             "direction": "column",
@@ -4034,7 +4208,7 @@
             "fontWeight": "800",
             "lineHeight": 1.6,
             "letterSpacing": 2,
-            "textAlign": "left",
+            "textAlign": "center",
             "textTransform": "uppercase",
             "overflow": "visible",
             "position": "static",
@@ -4060,10 +4234,10 @@
           "name": "CTA eyebrow"
         },
         {
-          "id": "ac9f45e6-7e2d-4835-a9fc-aea4f0cd894a",
+          "id": "d6f6e718-9157-40d6-9254-7fb43cd40abc",
           "type": "Heading",
           "z": 0,
-          "parentId": "3c1066ca-0397-413e-bc09-28f8bb81e740",
+          "parentId": "c9379a0a-c952-4c8a-8ca1-4cb4b66cd5cd",
           "content": "LET’S MAKE IT\nIMPOSSIBLE TO IGNORE.",
           "base": {
             "x": 0,
@@ -4125,20 +4299,25 @@
           },
           "name": "CTA title",
           "overrides": {
+            "tablet": {
+              "fontSize": 60,
+              "letterSpacing": -3.5
+            },
             "mobile": {
-              "fontSize": 44,
+              "fontSize": 42,
               "letterSpacing": -2.5
             }
           }
         },
         {
-          "id": "643ee00a-b876-474d-9a7f-40844f0f913a",
+          "id": "0a285985-bbf9-49d0-a06b-33b61fb95147",
           "type": "Button",
           "z": 0,
-          "parentId": "3c1066ca-0397-413e-bc09-28f8bb81e740",
+          "parentId": "c9379a0a-c952-4c8a-8ca1-4cb4b66cd5cd",
           "content": "Tell us what you’re building ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -4208,7 +4387,7 @@
           }
         },
         {
-          "id": "f4672f1d-d5c2-496b-83f3-f7c797e02d0c",
+          "id": "1705f3cb-d516-49f3-bcff-37f50696657b",
           "type": "Section",
           "z": 0,
           "base": {
@@ -4269,13 +4448,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer"
+          "name": "Footer",
+          "overrides": {
+            "tablet": {
+              "padT": 34,
+              "padR": 32,
+              "padB": 34,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 29,
+              "padR": 20,
+              "padB": 29,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "componentSourceId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "variant": "Default"
         },
         {
-          "id": "f1a855d9-342c-4e5a-abb6-d231eb9e8272",
+          "id": "a8cdc610-010a-4546-a45a-4ed13227da16",
           "type": "Container",
           "z": 0,
-          "parentId": "f4672f1d-d5c2-496b-83f3-f7c797e02d0c",
+          "parentId": "1705f3cb-d516-49f3-bcff-37f50696657b",
           "base": {
             "x": 0,
             "y": 0,
@@ -4337,20 +4534,21 @@
           "name": "Footer inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
               "direction": "column",
               "align": "start"
             }
-          }
+          },
+          "componentSourceId": "445480ff-b1a5-4814-94bd-4e83d93659da"
         },
         {
-          "id": "55d1afe3-7525-4fd1-b123-a163fd823985",
+          "id": "0d84121c-2859-4e1f-8a6d-d3509da85d02",
           "type": "Heading",
           "z": 0,
-          "parentId": "f1a855d9-342c-4e5a-abb6-d231eb9e8272",
+          "parentId": "a8cdc610-010a-4546-a45a-4ed13227da16",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -4410,13 +4608,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer brand"
+          "name": "Footer brand",
+          "componentSourceId": "93881a86-dba3-4cc2-ba58-89cfca0c81dd"
         },
         {
-          "id": "63968a7e-807e-4600-befe-83da8e222689",
+          "id": "c3061631-7731-43aa-a0e4-76d61a5ddacd",
           "type": "Text",
           "z": 0,
-          "parentId": "f1a855d9-342c-4e5a-abb6-d231eb9e8272",
+          "parentId": "a8cdc610-010a-4546-a45a-4ed13227da16",
           "content": "ISTANBUL / WORLDWIDE\n© 2026 — ALL RIGHTS RESERVED",
           "base": {
             "x": 0,
@@ -4476,7 +4675,13 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer meta"
+          "name": "Footer meta",
+          "overrides": {
+            "mobile": {
+              "textAlign": "left"
+            }
+          },
+          "componentSourceId": "7e24a291-e1ff-478b-b1f2-46530d862eb9"
         }
       ],
       "rootStyle": {
@@ -4494,6 +4699,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "showcase-manrope",
@@ -4536,7 +4743,7 @@
       "slug": "work",
       "elements": [
         {
-          "id": "2da630d1-748b-4f2e-b6a0-5c29cc3f43ef",
+          "id": "d1309bdf-1d48-4747-8d2d-3d3bee6bacb3",
           "type": "Section",
           "z": 0,
           "base": {
@@ -4597,13 +4804,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation"
+          "name": "Nocturne navigation",
+          "overrides": {
+            "tablet": {
+              "padT": 18,
+              "padR": 32,
+              "padB": 18,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 16,
+              "padR": 20,
+              "padB": 16,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "componentSourceId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "variant": "Default"
         },
         {
-          "id": "e50182d4-c4aa-4573-8e64-7e5009713391",
+          "id": "5b23ae62-6d22-4931-b9b8-1d723b874459",
           "type": "Container",
           "z": 0,
-          "parentId": "2da630d1-748b-4f2e-b6a0-5c29cc3f43ef",
+          "parentId": "d1309bdf-1d48-4747-8d2d-3d3bee6bacb3",
           "base": {
             "x": 0,
             "y": 0,
@@ -4665,18 +4890,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "50de2731-ce67-4525-8de6-b897b6ec93df"
         },
         {
-          "id": "98eaad48-d318-46f8-b2d7-ebe706992f19",
+          "id": "549dd60b-6a80-42aa-8285-ba99baf6af00",
           "type": "Heading",
           "z": 0,
-          "parentId": "e50182d4-c4aa-4573-8e64-7e5009713391",
+          "parentId": "5b23ae62-6d22-4931-b9b8-1d723b874459",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -4736,13 +4962,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Wordmark"
+          "name": "Wordmark",
+          "componentSourceId": "597e7c0b-1fd1-4ed0-a0b8-8a90d1936055"
         },
         {
-          "id": "c9396553-3e72-4130-aca5-d643488289ce",
+          "id": "e6339153-5ca3-4217-be49-e2c9914ea18f",
           "type": "Container",
           "z": 0,
-          "parentId": "e50182d4-c4aa-4573-8e64-7e5009713391",
+          "parentId": "5b23ae62-6d22-4931-b9b8-1d723b874459",
           "base": {
             "x": 0,
             "y": 0,
@@ -4807,16 +5034,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "f965be1b-c3b2-4122-8365-2912f0418518"
         },
         {
-          "id": "d5939758-7c43-4018-90f7-a775c3b542bd",
+          "id": "0af0911c-888b-45d1-b864-94c43a6d4764",
           "type": "Button",
           "z": 0,
-          "parentId": "c9396553-3e72-4130-aca5-d643488289ce",
+          "parentId": "e6339153-5ca3-4217-be49-e2c9914ea18f",
           "content": "Work",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -4879,21 +5108,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4b6c4c41-bc2f-4a92-9350-b689869ed587"
         },
         {
-          "id": "44fcc42f-1eb5-4e58-81d7-b11cd44d24f0",
+          "id": "0c7a2a96-95fb-4fe9-814e-0ea5871c6932",
           "type": "Button",
           "z": 0,
-          "parentId": "c9396553-3e72-4130-aca5-d643488289ce",
+          "parentId": "e6339153-5ca3-4217-be49-e2c9914ea18f",
           "content": "Studio",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -4956,21 +5187,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4515d25d-d21e-42ff-8b2b-2ca97091da2b"
         },
         {
-          "id": "e0b674f8-f5d7-4d06-9755-4107f05af0cd",
+          "id": "4ea12082-cb21-402e-b53a-ef5d15dd3d1b",
           "type": "Button",
           "z": 0,
-          "parentId": "c9396553-3e72-4130-aca5-d643488289ce",
+          "parentId": "e6339153-5ca3-4217-be49-e2c9914ea18f",
           "content": "Contact",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -5033,21 +5266,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "8bfbc09a-3e9d-4ef4-b951-dfed1183aa91"
         },
         {
-          "id": "f6564ad8-f0a5-4067-a91e-5edaad9e7669",
+          "id": "8172ee84-ee97-46b0-92d8-f6c391717a55",
           "type": "Button",
           "z": 0,
-          "parentId": "e50182d4-c4aa-4573-8e64-7e5009713391",
+          "parentId": "5b23ae62-6d22-4931-b9b8-1d723b874459",
           "content": "Start a project ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -5119,16 +5354,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "6fe55f38-11cc-4f8d-9685-7d749dac5fcd"
         },
         {
-          "id": "da0f1139-87ef-4454-8063-78fa8dcfa346",
+          "id": "eaa4a856-a943-4d8a-a395-3fb8672710f9",
           "type": "Button",
           "z": 0,
-          "parentId": "e50182d4-c4aa-4573-8e64-7e5009713391",
+          "parentId": "5b23ae62-6d22-4931-b9b8-1d723b874459",
           "content": "MENU +",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -5199,14 +5436,15 @@
           "interaction": {
             "trigger": "click",
             "action": "toggle-layer",
-            "value": "21d48740-b4f5-488a-8ab3-8c4faaf7116c"
-          }
+            "value": "f55e9b01-35cf-4f4e-8581-39436575981a"
+          },
+          "componentSourceId": "182a1659-ccc9-4418-b65d-2f6597d7f1a1"
         },
         {
-          "id": "21d48740-b4f5-488a-8ab3-8c4faaf7116c",
+          "id": "f55e9b01-35cf-4f4e-8581-39436575981a",
           "type": "Container",
           "z": 0,
-          "parentId": "2da630d1-748b-4f2e-b6a0-5c29cc3f43ef",
+          "parentId": "d1309bdf-1d48-4747-8d2d-3d3bee6bacb3",
           "base": {
             "x": 0,
             "y": 0,
@@ -5265,16 +5503,18 @@
             "cursor": "auto",
             "hidden": true
           },
-          "name": "Mobile navigation menu"
+          "name": "Mobile navigation menu",
+          "componentSourceId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541"
         },
         {
-          "id": "6e9ce785-14bd-4464-88d7-432ba2b8bd86",
+          "id": "f52cbfce-866e-4dd5-b110-5882beb61d81",
           "type": "Button",
           "z": 0,
-          "parentId": "21d48740-b4f5-488a-8ab3-8c4faaf7116c",
+          "parentId": "f55e9b01-35cf-4f4e-8581-39436575981a",
           "content": "Work  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -5337,21 +5577,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b2767fe2-3d72-4b9e-8652-8e6f00567847"
         },
         {
-          "id": "e2d16f7c-a916-4cd5-9d89-8d4067ae1ca8",
+          "id": "9ffe9b8e-ec6b-47a9-aa6e-44f7b64ebf10",
           "type": "Button",
           "z": 0,
-          "parentId": "21d48740-b4f5-488a-8ab3-8c4faaf7116c",
+          "parentId": "f55e9b01-35cf-4f4e-8581-39436575981a",
           "content": "Studio  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -5414,21 +5656,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b61ea1ad-1669-4889-bf10-45dcbf85ac75"
         },
         {
-          "id": "212826ea-41bd-4b97-80c0-3661c34528aa",
+          "id": "a02c143c-743d-4a65-bd35-4d8cd348efbe",
           "type": "Button",
           "z": 0,
-          "parentId": "21d48740-b4f5-488a-8ab3-8c4faaf7116c",
+          "parentId": "f55e9b01-35cf-4f4e-8581-39436575981a",
           "content": "Contact  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -5491,15 +5735,16 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "d1324095-9157-4e64-b7b8-0e04b40dd1f4"
         },
         {
-          "id": "d1b7b2a2-5a59-4403-a51a-fc2619b0b8d6",
+          "id": "1327b5f8-1b2f-4a29-bfbc-6a3d7c9e69e2",
           "type": "Section",
           "z": 0,
           "base": {
@@ -5560,13 +5805,28 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Work hero"
+          "name": "Work hero",
+          "overrides": {
+            "tablet": {
+              "padT": 96,
+              "padR": 32,
+              "padB": 104,
+              "padL": 32
+            },
+            "mobile": {
+              "gap": 38,
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "4d46dd0a-bbb8-430b-9362-27aad74da0ac",
+          "id": "8bdc3e67-d212-49b2-b311-fe6436f85146",
           "type": "Container",
           "z": 0,
-          "parentId": "d1b7b2a2-5a59-4403-a51a-fc2619b0b8d6",
+          "parentId": "1327b5f8-1b2f-4a29-bfbc-6a3d7c9e69e2",
           "base": {
             "x": 0,
             "y": 0,
@@ -5628,18 +5888,19 @@
           "name": "Work hero inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill"
+              "widthMode": "fill",
+              "gap": 28
             }
           }
         },
         {
-          "id": "3d5fd2ad-0727-41c4-9ece-d536f9dd198d",
+          "id": "9e3feea8-3b67-4987-a380-2790fed69fa4",
           "type": "Text",
           "z": 0,
-          "parentId": "4d46dd0a-bbb8-430b-9362-27aad74da0ac",
+          "parentId": "8bdc3e67-d212-49b2-b311-fe6436f85146",
           "content": "02 / Work",
           "base": {
             "x": 0,
@@ -5702,10 +5963,10 @@
           "name": "Work index"
         },
         {
-          "id": "4c4facc8-ac97-4199-bca3-53794188d142",
+          "id": "4053c863-de29-42c8-b33a-5f338b0cb685",
           "type": "Heading",
           "z": 0,
-          "parentId": "4d46dd0a-bbb8-430b-9362-27aad74da0ac",
+          "parentId": "8bdc3e67-d212-49b2-b311-fe6436f85146",
           "content": "SELECTED\nENGAGEMENTS.",
           "base": {
             "x": 0,
@@ -5777,10 +6038,10 @@
           }
         },
         {
-          "id": "bfec85a6-9e22-4948-b6ba-8daab090010c",
+          "id": "22c1843e-f4ae-4d30-955d-975cf6135410",
           "type": "Text",
           "z": 0,
-          "parentId": "4d46dd0a-bbb8-430b-9362-27aad74da0ac",
+          "parentId": "8bdc3e67-d212-49b2-b311-fe6436f85146",
           "content": "A focused archive of identities, products and campaign worlds created with teams in motion.",
           "base": {
             "x": 0,
@@ -5842,13 +6103,17 @@
           },
           "name": "Work intro",
           "overrides": {
-            "mobile": {
+            "tablet": {
               "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 16
             }
           }
         },
         {
-          "id": "9aef6c39-ab17-448e-89dd-624582c108b1",
+          "id": "5186559e-5cd5-41f2-9d54-1fd9d498ee57",
           "type": "Section",
           "z": 0,
           "base": {
@@ -5909,13 +6174,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Work content"
+          "name": "Work content",
+          "overrides": {
+            "tablet": {
+              "padT": 90,
+              "padR": 32,
+              "padB": 96,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "d89291bc-e218-494e-8fa4-830b16be384a",
+          "id": "456ca72f-d5ff-43d1-afad-f5a82ae6ad08",
           "type": "Grid",
           "z": 0,
-          "parentId": "9aef6c39-ab17-448e-89dd-624582c108b1",
+          "parentId": "5186559e-5cd5-41f2-9d54-1fd9d498ee57",
           "base": {
             "x": 0,
             "y": 0,
@@ -5977,7 +6256,7 @@
           "name": "Work grid",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
@@ -5986,10 +6265,10 @@
           }
         },
         {
-          "id": "d722ee18-5e4d-4021-947b-3c233c5bfe1a",
+          "id": "5ebf13fa-817e-4540-ae99-034741414d2e",
           "type": "Container",
           "z": 0,
-          "parentId": "d89291bc-e218-494e-8fa4-830b16be384a",
+          "parentId": "456ca72f-d5ff-43d1-afad-f5a82ae6ad08",
           "base": {
             "x": 0,
             "y": 0,
@@ -6048,13 +6327,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Work Aer"
+          "name": "Work Aer",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "e535ed55-d105-4611-9fed-ee219f107314",
+          "id": "64b72607-ef21-4d32-b2e2-934883b72abb",
           "type": "Text",
           "z": 0,
-          "parentId": "d722ee18-5e4d-4021-947b-3c233c5bfe1a",
+          "parentId": "5ebf13fa-817e-4540-ae99-034741414d2e",
           "content": "01 — AER",
           "base": {
             "x": 0,
@@ -6117,10 +6405,10 @@
           "name": "Aer number"
         },
         {
-          "id": "f468e80b-f4e8-4329-ab26-b4d6d00f1d46",
+          "id": "62952730-f6c3-42ed-8b89-c3724f0e4aee",
           "type": "Text",
           "z": 0,
-          "parentId": "d722ee18-5e4d-4021-947b-3c233c5bfe1a",
+          "parentId": "5ebf13fa-817e-4540-ae99-034741414d2e",
           "content": "A new identity and booking experience for an electric mobility company built around quiet confidence.",
           "base": {
             "x": 0,
@@ -6183,10 +6471,10 @@
           "name": "Aer copy"
         },
         {
-          "id": "eb49640f-1094-467c-9513-103ee297688c",
+          "id": "498641f7-00c6-499e-a4e9-a11670c3df3a",
           "type": "Container",
           "z": 0,
-          "parentId": "d89291bc-e218-494e-8fa4-830b16be384a",
+          "parentId": "456ca72f-d5ff-43d1-afad-f5a82ae6ad08",
           "base": {
             "x": 0,
             "y": 0,
@@ -6245,13 +6533,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Work Kern"
+          "name": "Work Kern",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "636554aa-6320-4621-87a5-5dc2ab22fa01",
+          "id": "9f215d13-a939-44a3-ba6e-dd9cdb7d6232",
           "type": "Text",
           "z": 0,
-          "parentId": "eb49640f-1094-467c-9513-103ee297688c",
+          "parentId": "498641f7-00c6-499e-a4e9-a11670c3df3a",
           "content": "02 — KERN",
           "base": {
             "x": 0,
@@ -6314,10 +6611,10 @@
           "name": "Kern number"
         },
         {
-          "id": "842fbbc4-b959-4824-9de7-0d58ead2e24b",
+          "id": "fa704743-9692-4493-a657-7cdb1961d501",
           "type": "Text",
           "z": 0,
-          "parentId": "eb49640f-1094-467c-9513-103ee297688c",
+          "parentId": "498641f7-00c6-499e-a4e9-a11670c3df3a",
           "content": "A tactile commerce system for collectible objects, balancing material detail with digital clarity.",
           "base": {
             "x": 0,
@@ -6380,10 +6677,10 @@
           "name": "Kern copy"
         },
         {
-          "id": "0405161e-d610-4be5-b87f-991f6a27abdc",
+          "id": "b198d171-b059-4d9d-946d-d2a74ec390e7",
           "type": "Container",
           "z": 0,
-          "parentId": "d89291bc-e218-494e-8fa4-830b16be384a",
+          "parentId": "456ca72f-d5ff-43d1-afad-f5a82ae6ad08",
           "base": {
             "x": 0,
             "y": 0,
@@ -6442,13 +6739,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Work Other"
+          "name": "Work Other",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "5eedbb50-2a40-468c-80f5-bde5ba20eecb",
+          "id": "7df1c626-16a7-45a3-9065-bcfcb80e7350",
           "type": "Text",
           "z": 0,
-          "parentId": "0405161e-d610-4be5-b87f-991f6a27abdc",
+          "parentId": "b198d171-b059-4d9d-946d-d2a74ec390e7",
           "content": "03 — OTHER",
           "base": {
             "x": 0,
@@ -6511,10 +6817,10 @@
           "name": "Other number"
         },
         {
-          "id": "27c929fb-baf4-4e4c-8c6f-c6356cc1a000",
+          "id": "943ec41f-719f-44ba-bfa3-043543bd3c97",
           "type": "Text",
           "z": 0,
-          "parentId": "0405161e-d610-4be5-b87f-991f6a27abdc",
+          "parentId": "b198d171-b059-4d9d-946d-d2a74ec390e7",
           "content": "A cultural platform transformed into an evolving editorial identity and participatory campaign.",
           "base": {
             "x": 0,
@@ -6577,10 +6883,10 @@
           "name": "Other copy"
         },
         {
-          "id": "dda9286b-6266-43c7-a2d1-150e8dacbbe6",
+          "id": "0c55d2d7-2a10-44dc-8b48-1f221490b4f0",
           "type": "Container",
           "z": 0,
-          "parentId": "d89291bc-e218-494e-8fa4-830b16be384a",
+          "parentId": "456ca72f-d5ff-43d1-afad-f5a82ae6ad08",
           "base": {
             "x": 0,
             "y": 0,
@@ -6639,13 +6945,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Work Field"
+          "name": "Work Field",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "caf91cf8-851d-443b-94b1-c0756015a690",
+          "id": "7b099c76-dff9-42f1-af80-0ade9e7abb0b",
           "type": "Text",
           "z": 0,
-          "parentId": "dda9286b-6266-43c7-a2d1-150e8dacbbe6",
+          "parentId": "0c55d2d7-2a10-44dc-8b48-1f221490b4f0",
           "content": "04 — FIELD",
           "base": {
             "x": 0,
@@ -6708,10 +7023,10 @@
           "name": "Field number"
         },
         {
-          "id": "1bb1d74a-66c5-49f8-a32c-1e08f155277e",
+          "id": "7afdc137-bec6-450a-9f50-279b14c4b963",
           "type": "Text",
           "z": 0,
-          "parentId": "dda9286b-6266-43c7-a2d1-150e8dacbbe6",
+          "parentId": "0c55d2d7-2a10-44dc-8b48-1f221490b4f0",
           "content": "A data product made human through a precise interface, direct language and a flexible visual system.",
           "base": {
             "x": 0,
@@ -6774,7 +7089,7 @@
           "name": "Field copy"
         },
         {
-          "id": "34623df1-3013-4066-b648-5c467232f7ca",
+          "id": "908878c0-0b2f-4f91-b7dd-ff4b4553221b",
           "type": "Section",
           "z": 0,
           "base": {
@@ -6835,13 +7150,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer"
+          "name": "Footer",
+          "overrides": {
+            "tablet": {
+              "padT": 34,
+              "padR": 32,
+              "padB": 34,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 29,
+              "padR": 20,
+              "padB": 29,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "componentSourceId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "variant": "Default"
         },
         {
-          "id": "17a5469d-c24f-4577-bf8a-1cf941e9b824",
+          "id": "931ebfc8-4901-4bb3-8dd9-263b4e29260a",
           "type": "Container",
           "z": 0,
-          "parentId": "34623df1-3013-4066-b648-5c467232f7ca",
+          "parentId": "908878c0-0b2f-4f91-b7dd-ff4b4553221b",
           "base": {
             "x": 0,
             "y": 0,
@@ -6903,20 +7236,21 @@
           "name": "Footer inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
               "direction": "column",
               "align": "start"
             }
-          }
+          },
+          "componentSourceId": "445480ff-b1a5-4814-94bd-4e83d93659da"
         },
         {
-          "id": "ad43490b-811e-437a-9b82-907bd340bcac",
+          "id": "04e52961-56d2-44b3-91f1-d2c3a8fa6404",
           "type": "Heading",
           "z": 0,
-          "parentId": "17a5469d-c24f-4577-bf8a-1cf941e9b824",
+          "parentId": "931ebfc8-4901-4bb3-8dd9-263b4e29260a",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -6976,13 +7310,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer brand"
+          "name": "Footer brand",
+          "componentSourceId": "93881a86-dba3-4cc2-ba58-89cfca0c81dd"
         },
         {
-          "id": "dea1292f-1473-4194-aaf4-d23b59ffb537",
+          "id": "6e26c2c8-9a86-485e-ab84-25d88d4448d1",
           "type": "Text",
           "z": 0,
-          "parentId": "17a5469d-c24f-4577-bf8a-1cf941e9b824",
+          "parentId": "931ebfc8-4901-4bb3-8dd9-263b4e29260a",
           "content": "ISTANBUL / WORLDWIDE\n© 2026 — ALL RIGHTS RESERVED",
           "base": {
             "x": 0,
@@ -7042,7 +7377,13 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer meta"
+          "name": "Footer meta",
+          "overrides": {
+            "mobile": {
+              "textAlign": "left"
+            }
+          },
+          "componentSourceId": "7e24a291-e1ff-478b-b1f2-46530d862eb9"
         }
       ],
       "rootStyle": {
@@ -7060,6 +7401,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "showcase-manrope",
@@ -7102,7 +7445,7 @@
       "slug": "studio",
       "elements": [
         {
-          "id": "24fb55be-54a5-44cf-a8bd-9fec299fb052",
+          "id": "933486e1-d940-4bc1-9ee4-adb5d3386780",
           "type": "Section",
           "z": 0,
           "base": {
@@ -7163,13 +7506,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation"
+          "name": "Nocturne navigation",
+          "overrides": {
+            "tablet": {
+              "padT": 18,
+              "padR": 32,
+              "padB": 18,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 16,
+              "padR": 20,
+              "padB": 16,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "componentSourceId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "variant": "Default"
         },
         {
-          "id": "2a738a3c-c7d5-4c4c-9ae2-1759ca2caade",
+          "id": "2c142308-5c2a-4490-b3eb-a466db3bdebf",
           "type": "Container",
           "z": 0,
-          "parentId": "24fb55be-54a5-44cf-a8bd-9fec299fb052",
+          "parentId": "933486e1-d940-4bc1-9ee4-adb5d3386780",
           "base": {
             "x": 0,
             "y": 0,
@@ -7231,18 +7592,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "50de2731-ce67-4525-8de6-b897b6ec93df"
         },
         {
-          "id": "54ab6958-4237-44c1-adc1-80e50eaab361",
+          "id": "9b024b35-4ad1-45b9-907f-3424e78f5595",
           "type": "Heading",
           "z": 0,
-          "parentId": "2a738a3c-c7d5-4c4c-9ae2-1759ca2caade",
+          "parentId": "2c142308-5c2a-4490-b3eb-a466db3bdebf",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -7302,13 +7664,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Wordmark"
+          "name": "Wordmark",
+          "componentSourceId": "597e7c0b-1fd1-4ed0-a0b8-8a90d1936055"
         },
         {
-          "id": "e59f4e37-2085-4e5d-85e5-d2d633417d24",
+          "id": "8ca49936-05d8-4bd2-aba9-9a00307441a2",
           "type": "Container",
           "z": 0,
-          "parentId": "2a738a3c-c7d5-4c4c-9ae2-1759ca2caade",
+          "parentId": "2c142308-5c2a-4490-b3eb-a466db3bdebf",
           "base": {
             "x": 0,
             "y": 0,
@@ -7373,16 +7736,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "f965be1b-c3b2-4122-8365-2912f0418518"
         },
         {
-          "id": "d49104cd-8430-43bf-bd43-a8c0c3de1d21",
+          "id": "6f57f518-3cc3-444d-8399-084531e1bdab",
           "type": "Button",
           "z": 0,
-          "parentId": "e59f4e37-2085-4e5d-85e5-d2d633417d24",
+          "parentId": "8ca49936-05d8-4bd2-aba9-9a00307441a2",
           "content": "Work",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7445,21 +7810,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4b6c4c41-bc2f-4a92-9350-b689869ed587"
         },
         {
-          "id": "4144d559-7cce-4480-80fc-a86ade57fec6",
+          "id": "64d16320-175d-49df-b1b1-c624d8f47584",
           "type": "Button",
           "z": 0,
-          "parentId": "e59f4e37-2085-4e5d-85e5-d2d633417d24",
+          "parentId": "8ca49936-05d8-4bd2-aba9-9a00307441a2",
           "content": "Studio",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7522,21 +7889,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4515d25d-d21e-42ff-8b2b-2ca97091da2b"
         },
         {
-          "id": "2b6cbbe5-ded9-4dc1-ab59-1dbe39a58531",
+          "id": "f6ebff17-032a-496f-8399-11721b77ecb5",
           "type": "Button",
           "z": 0,
-          "parentId": "e59f4e37-2085-4e5d-85e5-d2d633417d24",
+          "parentId": "8ca49936-05d8-4bd2-aba9-9a00307441a2",
           "content": "Contact",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7599,21 +7968,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "8bfbc09a-3e9d-4ef4-b951-dfed1183aa91"
         },
         {
-          "id": "5549fefe-92ce-41f6-b080-31168b852e1e",
+          "id": "5816ac8c-686e-464b-8de6-e0d19772b88b",
           "type": "Button",
           "z": 0,
-          "parentId": "2a738a3c-c7d5-4c4c-9ae2-1759ca2caade",
+          "parentId": "2c142308-5c2a-4490-b3eb-a466db3bdebf",
           "content": "Start a project ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7685,16 +8056,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "6fe55f38-11cc-4f8d-9685-7d749dac5fcd"
         },
         {
-          "id": "e8a61fe7-eaba-44f5-92c4-ee264e171434",
+          "id": "f5e3ce4c-a0ba-437d-9431-a0966dd8298f",
           "type": "Button",
           "z": 0,
-          "parentId": "2a738a3c-c7d5-4c4c-9ae2-1759ca2caade",
+          "parentId": "2c142308-5c2a-4490-b3eb-a466db3bdebf",
           "content": "MENU +",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7765,14 +8138,15 @@
           "interaction": {
             "trigger": "click",
             "action": "toggle-layer",
-            "value": "975613cc-367a-4419-8f5c-9317d25151a9"
-          }
+            "value": "212bbdaa-66e6-4597-9974-9fc742334814"
+          },
+          "componentSourceId": "182a1659-ccc9-4418-b65d-2f6597d7f1a1"
         },
         {
-          "id": "975613cc-367a-4419-8f5c-9317d25151a9",
+          "id": "212bbdaa-66e6-4597-9974-9fc742334814",
           "type": "Container",
           "z": 0,
-          "parentId": "24fb55be-54a5-44cf-a8bd-9fec299fb052",
+          "parentId": "933486e1-d940-4bc1-9ee4-adb5d3386780",
           "base": {
             "x": 0,
             "y": 0,
@@ -7831,16 +8205,18 @@
             "cursor": "auto",
             "hidden": true
           },
-          "name": "Mobile navigation menu"
+          "name": "Mobile navigation menu",
+          "componentSourceId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541"
         },
         {
-          "id": "e7146bac-a2df-4076-8c89-ec8d8795abe0",
+          "id": "250f292d-6223-4204-8f9e-75bb7f272bd7",
           "type": "Button",
           "z": 0,
-          "parentId": "975613cc-367a-4419-8f5c-9317d25151a9",
+          "parentId": "212bbdaa-66e6-4597-9974-9fc742334814",
           "content": "Work  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7903,21 +8279,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b2767fe2-3d72-4b9e-8652-8e6f00567847"
         },
         {
-          "id": "bbf1a066-da17-4209-936d-bfb511a4802e",
+          "id": "d84ef473-ff03-4b90-afd5-fdc4224bc03f",
           "type": "Button",
           "z": 0,
-          "parentId": "975613cc-367a-4419-8f5c-9317d25151a9",
+          "parentId": "212bbdaa-66e6-4597-9974-9fc742334814",
           "content": "Studio  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -7980,21 +8358,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b61ea1ad-1669-4889-bf10-45dcbf85ac75"
         },
         {
-          "id": "dc5d65e3-8083-4376-b0ae-c49d7cd584cd",
+          "id": "3376ccdd-980f-435d-85b8-4d178b09ad1f",
           "type": "Button",
           "z": 0,
-          "parentId": "975613cc-367a-4419-8f5c-9317d25151a9",
+          "parentId": "212bbdaa-66e6-4597-9974-9fc742334814",
           "content": "Contact  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -8057,15 +8437,16 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "d1324095-9157-4e64-b7b8-0e04b40dd1f4"
         },
         {
-          "id": "c88a85c3-ef1f-4487-99bc-490eefbd4d43",
+          "id": "4b40ec96-5559-40f2-9951-be6adcd3f064",
           "type": "Section",
           "z": 0,
           "base": {
@@ -8126,13 +8507,28 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Studio hero"
+          "name": "Studio hero",
+          "overrides": {
+            "tablet": {
+              "padT": 96,
+              "padR": 32,
+              "padB": 104,
+              "padL": 32
+            },
+            "mobile": {
+              "gap": 38,
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "d6899f73-c26a-4003-93d2-e7c188ad9e61",
+          "id": "ff4f6458-ebe9-46ef-854f-f1ba9d27ff74",
           "type": "Container",
           "z": 0,
-          "parentId": "c88a85c3-ef1f-4487-99bc-490eefbd4d43",
+          "parentId": "4b40ec96-5559-40f2-9951-be6adcd3f064",
           "base": {
             "x": 0,
             "y": 0,
@@ -8194,18 +8590,19 @@
           "name": "Studio hero inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill"
+              "widthMode": "fill",
+              "gap": 28
             }
           }
         },
         {
-          "id": "42241a9d-cbf6-4c84-bcc5-81dbe355447b",
+          "id": "9bbbe2d2-2639-4ad3-8489-b2689f06205e",
           "type": "Text",
           "z": 0,
-          "parentId": "d6899f73-c26a-4003-93d2-e7c188ad9e61",
+          "parentId": "ff4f6458-ebe9-46ef-854f-f1ba9d27ff74",
           "content": "03 / Studio",
           "base": {
             "x": 0,
@@ -8268,10 +8665,10 @@
           "name": "Studio index"
         },
         {
-          "id": "2b5daef0-5412-4e43-8ae6-878243901e84",
+          "id": "a24f529e-ca37-4cda-bfa7-55dd9fd622c2",
           "type": "Heading",
           "z": 0,
-          "parentId": "d6899f73-c26a-4003-93d2-e7c188ad9e61",
+          "parentId": "ff4f6458-ebe9-46ef-854f-f1ba9d27ff74",
           "content": "SMALL TEAM.\nSERIOUS RANGE.",
           "base": {
             "x": 0,
@@ -8343,10 +8740,10 @@
           }
         },
         {
-          "id": "5c7b1149-8183-4594-adeb-91c2db6e78d1",
+          "id": "3b1449ea-dc76-4583-b940-114a46d6017c",
           "type": "Text",
           "z": 0,
-          "parentId": "d6899f73-c26a-4003-93d2-e7c188ad9e61",
+          "parentId": "ff4f6458-ebe9-46ef-854f-f1ba9d27ff74",
           "content": "Nocturne is an independent strategy and design practice for moments when a familiar answer is no longer enough.",
           "base": {
             "x": 0,
@@ -8408,13 +8805,17 @@
           },
           "name": "Studio intro",
           "overrides": {
-            "mobile": {
+            "tablet": {
               "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 16
             }
           }
         },
         {
-          "id": "c05d0007-63f2-4914-96e0-65e6a17ad721",
+          "id": "551a7390-54b8-4b94-8537-ad9d75b72c39",
           "type": "Section",
           "z": 0,
           "base": {
@@ -8475,13 +8876,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Studio content"
+          "name": "Studio content",
+          "overrides": {
+            "tablet": {
+              "padT": 90,
+              "padR": 32,
+              "padB": 96,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "5be96d78-be15-481a-aed3-b66257236db9",
+          "id": "fa31fe99-0730-41aa-b040-f7f75f9c2be1",
           "type": "Grid",
           "z": 0,
-          "parentId": "c05d0007-63f2-4914-96e0-65e6a17ad721",
+          "parentId": "551a7390-54b8-4b94-8537-ad9d75b72c39",
           "base": {
             "x": 0,
             "y": 0,
@@ -8543,7 +8958,7 @@
           "name": "Studio grid",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
@@ -8552,10 +8967,10 @@
           }
         },
         {
-          "id": "858ad985-fd95-4e72-8fb3-8283ff7c9b1d",
+          "id": "8e523297-1f49-4738-838b-e9e2bdfd7648",
           "type": "Container",
           "z": 0,
-          "parentId": "5be96d78-be15-481a-aed3-b66257236db9",
+          "parentId": "fa31fe99-0730-41aa-b040-f7f75f9c2be1",
           "base": {
             "x": 0,
             "y": 0,
@@ -8614,13 +9029,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Studio Approach"
+          "name": "Studio Approach",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "d34b8e7f-30c9-4648-851c-b1c75f4c905f",
+          "id": "0773769e-4060-4ed5-8528-4fb7df1e4c4c",
           "type": "Text",
           "z": 0,
-          "parentId": "858ad985-fd95-4e72-8fb3-8283ff7c9b1d",
+          "parentId": "8e523297-1f49-4738-838b-e9e2bdfd7648",
           "content": "01 — APPROACH",
           "base": {
             "x": 0,
@@ -8683,10 +9107,10 @@
           "name": "Approach number"
         },
         {
-          "id": "3e152acf-9763-4c3e-a6bc-a62c04dfed08",
+          "id": "50584805-2802-475b-8879-e938baf9704b",
           "type": "Text",
           "z": 0,
-          "parentId": "858ad985-fd95-4e72-8fb3-8283ff7c9b1d",
+          "parentId": "8e523297-1f49-4738-838b-e9e2bdfd7648",
           "content": "We begin with the tension underneath the brief, then build one clear idea that can carry an entire system.",
           "base": {
             "x": 0,
@@ -8749,10 +9173,10 @@
           "name": "Approach copy"
         },
         {
-          "id": "ad00f482-a8ab-4c9c-9e86-38f9684b1e29",
+          "id": "68845730-baa3-4acb-82db-74b7f336ca3e",
           "type": "Container",
           "z": 0,
-          "parentId": "5be96d78-be15-481a-aed3-b66257236db9",
+          "parentId": "fa31fe99-0730-41aa-b040-f7f75f9c2be1",
           "base": {
             "x": 0,
             "y": 0,
@@ -8811,13 +9235,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Studio Team"
+          "name": "Studio Team",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "351be668-f5ef-433f-bd5c-64cdd0cf9ba9",
+          "id": "961cf31b-1187-4f02-b209-75be54d19383",
           "type": "Text",
           "z": 0,
-          "parentId": "ad00f482-a8ab-4c9c-9e86-38f9684b1e29",
+          "parentId": "68845730-baa3-4acb-82db-74b7f336ca3e",
           "content": "02 — TEAM",
           "base": {
             "x": 0,
@@ -8880,10 +9313,10 @@
           "name": "Team number"
         },
         {
-          "id": "5f10bf3b-fcb0-4514-8fdc-3b5f94501440",
+          "id": "0c8a13a1-aa5b-4aad-a308-e70e040e810f",
           "type": "Text",
           "z": 0,
-          "parentId": "ad00f482-a8ab-4c9c-9e86-38f9684b1e29",
+          "parentId": "68845730-baa3-4acb-82db-74b7f336ca3e",
           "content": "A senior, hands-on core supported by a trusted network of specialists selected around each challenge.",
           "base": {
             "x": 0,
@@ -8946,10 +9379,10 @@
           "name": "Team copy"
         },
         {
-          "id": "2b7285c4-453a-4974-a261-64c46a9cabb7",
+          "id": "2bb2a549-c568-46a6-925d-cef368da85cd",
           "type": "Container",
           "z": 0,
-          "parentId": "5be96d78-be15-481a-aed3-b66257236db9",
+          "parentId": "fa31fe99-0730-41aa-b040-f7f75f9c2be1",
           "base": {
             "x": 0,
             "y": 0,
@@ -9008,13 +9441,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Studio Principles"
+          "name": "Studio Principles",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "dcbd6cfe-2562-4715-a9d3-729b318af9ea",
+          "id": "d1ea329c-f874-451a-9ecd-2be8ed8921f2",
           "type": "Text",
           "z": 0,
-          "parentId": "2b7285c4-453a-4974-a261-64c46a9cabb7",
+          "parentId": "2bb2a549-c568-46a6-925d-cef368da85cd",
           "content": "03 — PRINCIPLES",
           "base": {
             "x": 0,
@@ -9077,10 +9519,10 @@
           "name": "Principles number"
         },
         {
-          "id": "7637a51c-50ba-47be-9bb0-a8c6037c6acc",
+          "id": "9709b08c-dd5a-4c0d-9980-c49263b8be60",
           "type": "Text",
           "z": 0,
-          "parentId": "2b7285c4-453a-4974-a261-64c46a9cabb7",
+          "parentId": "2bb2a549-c568-46a6-925d-cef368da85cd",
           "content": "Clarity over decoration. Character over trends. Systems that stay useful after the launch moment.",
           "base": {
             "x": 0,
@@ -9143,10 +9585,10 @@
           "name": "Principles copy"
         },
         {
-          "id": "cc05f789-9c6b-46c3-bceb-510d7a694b68",
+          "id": "1e231ca6-b6c9-4c99-8d1f-26185c6eb3e2",
           "type": "Container",
           "z": 0,
-          "parentId": "5be96d78-be15-481a-aed3-b66257236db9",
+          "parentId": "fa31fe99-0730-41aa-b040-f7f75f9c2be1",
           "base": {
             "x": 0,
             "y": 0,
@@ -9205,13 +9647,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Studio Partners"
+          "name": "Studio Partners",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "263d022d-2e33-44b8-83fe-dc5c94c09c6d",
+          "id": "4135fcab-ecca-455d-969d-6200e3094780",
           "type": "Text",
           "z": 0,
-          "parentId": "cc05f789-9c6b-46c3-bceb-510d7a694b68",
+          "parentId": "1e231ca6-b6c9-4c99-8d1f-26185c6eb3e2",
           "content": "04 — PARTNERS",
           "base": {
             "x": 0,
@@ -9274,10 +9725,10 @@
           "name": "Partners number"
         },
         {
-          "id": "126a6e85-2e26-415a-88c5-a0a672e21467",
+          "id": "ad1faca1-c297-43ad-a65d-115e399de850",
           "type": "Text",
           "z": 0,
-          "parentId": "cc05f789-9c6b-46c3-bceb-510d7a694b68",
+          "parentId": "1e231ca6-b6c9-4c99-8d1f-26185c6eb3e2",
           "content": "We work directly with founders, cultural leaders and internal teams who value an honest creative exchange.",
           "base": {
             "x": 0,
@@ -9340,7 +9791,7 @@
           "name": "Partners copy"
         },
         {
-          "id": "dd6e92c5-8b9a-45f6-a0fd-542a5ebea0c5",
+          "id": "55d4276c-1206-4859-ad68-73da155a4075",
           "type": "Section",
           "z": 0,
           "base": {
@@ -9401,13 +9852,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer"
+          "name": "Footer",
+          "overrides": {
+            "tablet": {
+              "padT": 34,
+              "padR": 32,
+              "padB": 34,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 29,
+              "padR": 20,
+              "padB": 29,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "componentSourceId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "variant": "Default"
         },
         {
-          "id": "2b60c599-3ad2-44ca-a095-952cb2bd60fb",
+          "id": "ff9be8b9-745c-442e-916d-764515408f84",
           "type": "Container",
           "z": 0,
-          "parentId": "dd6e92c5-8b9a-45f6-a0fd-542a5ebea0c5",
+          "parentId": "55d4276c-1206-4859-ad68-73da155a4075",
           "base": {
             "x": 0,
             "y": 0,
@@ -9469,20 +9938,21 @@
           "name": "Footer inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
               "direction": "column",
               "align": "start"
             }
-          }
+          },
+          "componentSourceId": "445480ff-b1a5-4814-94bd-4e83d93659da"
         },
         {
-          "id": "35a8027e-2237-4470-9e8e-d6edfdf5bf09",
+          "id": "fa100c6c-4bad-4dd8-8c75-1d4e35c0e779",
           "type": "Heading",
           "z": 0,
-          "parentId": "2b60c599-3ad2-44ca-a095-952cb2bd60fb",
+          "parentId": "ff9be8b9-745c-442e-916d-764515408f84",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -9542,13 +10012,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer brand"
+          "name": "Footer brand",
+          "componentSourceId": "93881a86-dba3-4cc2-ba58-89cfca0c81dd"
         },
         {
-          "id": "847d847b-f815-493b-b804-70056f6b76dc",
+          "id": "7d918b53-ed74-495c-9945-f9f3e71e8240",
           "type": "Text",
           "z": 0,
-          "parentId": "2b60c599-3ad2-44ca-a095-952cb2bd60fb",
+          "parentId": "ff9be8b9-745c-442e-916d-764515408f84",
           "content": "ISTANBUL / WORLDWIDE\n© 2026 — ALL RIGHTS RESERVED",
           "base": {
             "x": 0,
@@ -9608,7 +10079,13 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer meta"
+          "name": "Footer meta",
+          "overrides": {
+            "mobile": {
+              "textAlign": "left"
+            }
+          },
+          "componentSourceId": "7e24a291-e1ff-478b-b1f2-46530d862eb9"
         }
       ],
       "rootStyle": {
@@ -9626,6 +10103,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "showcase-manrope",
@@ -9668,7 +10147,7 @@
       "slug": "contact",
       "elements": [
         {
-          "id": "93cd4a0f-aed1-4ed8-b35a-3962d6565fac",
+          "id": "6135d052-cd31-4bf9-b538-bd2b9b729535",
           "type": "Section",
           "z": 0,
           "base": {
@@ -9729,13 +10208,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation"
+          "name": "Nocturne navigation",
+          "overrides": {
+            "tablet": {
+              "padT": 18,
+              "padR": 32,
+              "padB": 18,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 16,
+              "padR": 20,
+              "padB": 16,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "componentSourceId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+          "variant": "Default"
         },
         {
-          "id": "b6203529-cbd2-4e52-8198-06b424087a30",
+          "id": "5fd5ee32-a3fb-4851-b38a-e4766f4c36d6",
           "type": "Container",
           "z": 0,
-          "parentId": "93cd4a0f-aed1-4ed8-b35a-3962d6565fac",
+          "parentId": "6135d052-cd31-4bf9-b538-bd2b9b729535",
           "base": {
             "x": 0,
             "y": 0,
@@ -9797,18 +10294,19 @@
           "name": "Navigation inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "50de2731-ce67-4525-8de6-b897b6ec93df"
         },
         {
-          "id": "7a305ed6-a31b-455c-a6c2-45c81b581b28",
+          "id": "256b7f71-6d2a-40ad-8c08-c105c1f673a5",
           "type": "Heading",
           "z": 0,
-          "parentId": "b6203529-cbd2-4e52-8198-06b424087a30",
+          "parentId": "5fd5ee32-a3fb-4851-b38a-e4766f4c36d6",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -9868,13 +10366,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Wordmark"
+          "name": "Wordmark",
+          "componentSourceId": "597e7c0b-1fd1-4ed0-a0b8-8a90d1936055"
         },
         {
-          "id": "f3e375fb-c108-49cc-8368-d7cee9a29888",
+          "id": "c7a73ff2-d4b1-4d93-bca8-8c0e07df09c0",
           "type": "Container",
           "z": 0,
-          "parentId": "b6203529-cbd2-4e52-8198-06b424087a30",
+          "parentId": "5fd5ee32-a3fb-4851-b38a-e4766f4c36d6",
           "base": {
             "x": 0,
             "y": 0,
@@ -9939,16 +10438,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "f965be1b-c3b2-4122-8365-2912f0418518"
         },
         {
-          "id": "fe899bb2-606a-4e4e-a97d-a53f1d766419",
+          "id": "2d214a27-b5f6-427b-9637-7b5c06e96627",
           "type": "Button",
           "z": 0,
-          "parentId": "f3e375fb-c108-49cc-8368-d7cee9a29888",
+          "parentId": "c7a73ff2-d4b1-4d93-bca8-8c0e07df09c0",
           "content": "Work",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10011,21 +10512,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4b6c4c41-bc2f-4a92-9350-b689869ed587"
         },
         {
-          "id": "acb6deef-9b31-4278-9c26-17399a6fd778",
+          "id": "139e1bb2-4dac-40ea-bfc7-0314880475b8",
           "type": "Button",
           "z": 0,
-          "parentId": "f3e375fb-c108-49cc-8368-d7cee9a29888",
+          "parentId": "c7a73ff2-d4b1-4d93-bca8-8c0e07df09c0",
           "content": "Studio",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10088,21 +10591,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "4515d25d-d21e-42ff-8b2b-2ca97091da2b"
         },
         {
-          "id": "ad6a388f-a413-4177-baba-9cdbd4942ea6",
+          "id": "d7abc96f-d2c9-4443-9045-b17bc2b657d5",
           "type": "Button",
           "z": 0,
-          "parentId": "f3e375fb-c108-49cc-8368-d7cee9a29888",
+          "parentId": "c7a73ff2-d4b1-4d93-bca8-8c0e07df09c0",
           "content": "Contact",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10165,21 +10670,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "color": "#f1f0ea"
-          }
+          },
+          "componentSourceId": "8bfbc09a-3e9d-4ef4-b951-dfed1183aa91"
         },
         {
-          "id": "ee3687c2-d7c3-44c1-a2c2-dfd2b8c76e07",
+          "id": "3f058acf-3aa8-4fcc-9183-a702c6658fba",
           "type": "Button",
           "z": 0,
-          "parentId": "b6203529-cbd2-4e52-8198-06b424087a30",
+          "parentId": "5fd5ee32-a3fb-4851-b38a-e4766f4c36d6",
           "content": "Start a project ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10251,16 +10758,18 @@
             "mobile": {
               "hidden": true
             }
-          }
+          },
+          "componentSourceId": "6fe55f38-11cc-4f8d-9685-7d749dac5fcd"
         },
         {
-          "id": "49a015e4-87d9-4649-abd6-9cdfe0c25568",
+          "id": "b34d0ae0-60bd-4fec-a419-b727772b86e2",
           "type": "Button",
           "z": 0,
-          "parentId": "b6203529-cbd2-4e52-8198-06b424087a30",
+          "parentId": "5fd5ee32-a3fb-4851-b38a-e4766f4c36d6",
           "content": "MENU +",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10331,14 +10840,15 @@
           "interaction": {
             "trigger": "click",
             "action": "toggle-layer",
-            "value": "d1a4ae32-9f92-478b-b9fa-ad2703d53d41"
-          }
+            "value": "e2beb5f6-707b-45de-9e54-18d645a94ec0"
+          },
+          "componentSourceId": "182a1659-ccc9-4418-b65d-2f6597d7f1a1"
         },
         {
-          "id": "d1a4ae32-9f92-478b-b9fa-ad2703d53d41",
+          "id": "e2beb5f6-707b-45de-9e54-18d645a94ec0",
           "type": "Container",
           "z": 0,
-          "parentId": "93cd4a0f-aed1-4ed8-b35a-3962d6565fac",
+          "parentId": "6135d052-cd31-4bf9-b538-bd2b9b729535",
           "base": {
             "x": 0,
             "y": 0,
@@ -10397,16 +10907,18 @@
             "cursor": "auto",
             "hidden": true
           },
-          "name": "Mobile navigation menu"
+          "name": "Mobile navigation menu",
+          "componentSourceId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541"
         },
         {
-          "id": "c54595dd-c5a0-40b1-a49b-0143a063d1f8",
+          "id": "3a43c6a3-1c3a-4fa5-9648-3953137df792",
           "type": "Button",
           "z": 0,
-          "parentId": "d1a4ae32-9f92-478b-b9fa-ad2703d53d41",
+          "parentId": "e2beb5f6-707b-45de-9e54-18d645a94ec0",
           "content": "Work  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10469,21 +10981,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/work",
+            "value": "/work",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b2767fe2-3d72-4b9e-8652-8e6f00567847"
         },
         {
-          "id": "4295254b-8888-4470-b03a-05b930657eaf",
+          "id": "8b4b47af-efb5-4f1f-a842-08657e831b40",
           "type": "Button",
           "z": 0,
-          "parentId": "d1a4ae32-9f92-478b-b9fa-ad2703d53d41",
+          "parentId": "e2beb5f6-707b-45de-9e54-18d645a94ec0",
           "content": "Studio  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10546,21 +11060,23 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/studio",
+            "value": "/studio",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "b61ea1ad-1669-4889-bf10-45dcbf85ac75"
         },
         {
-          "id": "83b4fcc9-7714-49f2-a016-aeb045ca4694",
+          "id": "f3ef0667-7a77-4415-a6a2-16b08d3de8d9",
           "type": "Button",
           "z": 0,
-          "parentId": "d1a4ae32-9f92-478b-b9fa-ad2703d53d41",
+          "parentId": "e2beb5f6-707b-45de-9e54-18d645a94ec0",
           "content": "Contact  ↗",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -10623,15 +11139,16 @@
           "interaction": {
             "trigger": "click",
             "action": "navigate",
-            "value": "/s/contact",
+            "value": "/contact",
             "target": "_self"
           },
           "hover": {
             "bg": "rgba(255,255,255,.06)"
-          }
+          },
+          "componentSourceId": "d1324095-9157-4e64-b7b8-0e04b40dd1f4"
         },
         {
-          "id": "3e7be546-6091-44f9-9550-464ca17d86f3",
+          "id": "a5264835-bc87-478b-8b6a-d1bf34012a95",
           "type": "Section",
           "z": 0,
           "base": {
@@ -10692,13 +11209,28 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Contact hero"
+          "name": "Contact hero",
+          "overrides": {
+            "tablet": {
+              "padT": 96,
+              "padR": 32,
+              "padB": 104,
+              "padL": 32
+            },
+            "mobile": {
+              "gap": 38,
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "3e66445f-535f-44c0-a354-b1be295ffc7c",
+          "id": "64b08a97-8b07-437f-af68-7d7c3623f337",
           "type": "Container",
           "z": 0,
-          "parentId": "3e7be546-6091-44f9-9550-464ca17d86f3",
+          "parentId": "a5264835-bc87-478b-8b6a-d1bf34012a95",
           "base": {
             "x": 0,
             "y": 0,
@@ -10760,18 +11292,19 @@
           "name": "Contact hero inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill"
+              "widthMode": "fill",
+              "gap": 28
             }
           }
         },
         {
-          "id": "f36489e5-206b-45f1-91fe-839f8ec671c5",
+          "id": "38381f6f-87d8-4661-aade-52306d745d19",
           "type": "Text",
           "z": 0,
-          "parentId": "3e66445f-535f-44c0-a354-b1be295ffc7c",
+          "parentId": "64b08a97-8b07-437f-af68-7d7c3623f337",
           "content": "04 / Contact",
           "base": {
             "x": 0,
@@ -10834,10 +11367,10 @@
           "name": "Contact index"
         },
         {
-          "id": "7e9f4c14-908c-43f6-b5b9-98d334eaa906",
+          "id": "c79570fb-9995-42dd-85c9-6870a34f172c",
           "type": "Heading",
           "z": 0,
-          "parentId": "3e66445f-535f-44c0-a354-b1be295ffc7c",
+          "parentId": "64b08a97-8b07-437f-af68-7d7c3623f337",
           "content": "LET’S START\nWITH THE TRUTH.",
           "base": {
             "x": 0,
@@ -10909,10 +11442,10 @@
           }
         },
         {
-          "id": "c17ff369-6c62-4348-b313-98aad904994d",
+          "id": "9704cf34-ad90-4b7b-ad85-68fe8653d0e0",
           "type": "Text",
           "z": 0,
-          "parentId": "3e66445f-535f-44c0-a354-b1be295ffc7c",
+          "parentId": "64b08a97-8b07-437f-af68-7d7c3623f337",
           "content": "Tell us what is changing, what feels stuck and why this moment matters. We will take it from there.",
           "base": {
             "x": 0,
@@ -10974,13 +11507,17 @@
           },
           "name": "Contact intro",
           "overrides": {
-            "mobile": {
+            "tablet": {
               "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 16
             }
           }
         },
         {
-          "id": "30bd681d-3fc2-44cc-86b9-fa20cfe570e7",
+          "id": "5bd4f1f6-3fb2-4517-aa4b-2faaccc9bad6",
           "type": "Section",
           "z": 0,
           "base": {
@@ -11041,13 +11578,27 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Contact content"
+          "name": "Contact content",
+          "overrides": {
+            "tablet": {
+              "padT": 90,
+              "padR": 32,
+              "padB": 96,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "10ad90b5-0b25-49d2-8bf3-e4aedf8888ca",
+          "id": "09389ece-16fb-4438-a66c-16aea97b7395",
           "type": "Grid",
           "z": 0,
-          "parentId": "30bd681d-3fc2-44cc-86b9-fa20cfe570e7",
+          "parentId": "5bd4f1f6-3fb2-4517-aa4b-2faaccc9bad6",
           "base": {
             "x": 0,
             "y": 0,
@@ -11109,7 +11660,7 @@
           "name": "Contact grid",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
@@ -11118,10 +11669,10 @@
           }
         },
         {
-          "id": "46866220-9712-4a17-8486-89f463ba91c7",
+          "id": "6948b09a-02c9-4b0c-8d1e-d0021f2ee87d",
           "type": "Container",
           "z": 0,
-          "parentId": "10ad90b5-0b25-49d2-8bf3-e4aedf8888ca",
+          "parentId": "09389ece-16fb-4438-a66c-16aea97b7395",
           "base": {
             "x": 0,
             "y": 0,
@@ -11180,13 +11731,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Contact New business"
+          "name": "Contact New business",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "5ce20fb4-11cd-4fcc-9050-691e0b99222d",
+          "id": "000957f2-6df7-4c7f-9eee-7dd0ed48aea4",
           "type": "Text",
           "z": 0,
-          "parentId": "46866220-9712-4a17-8486-89f463ba91c7",
+          "parentId": "6948b09a-02c9-4b0c-8d1e-d0021f2ee87d",
           "content": "01 — NEW BUSINESS",
           "base": {
             "x": 0,
@@ -11249,10 +11809,10 @@
           "name": "New business number"
         },
         {
-          "id": "d7e65242-eb4a-492f-9f7d-4723bc522fef",
+          "id": "e5fc5e90-9d9c-49b7-9338-f39e1499233a",
           "type": "Text",
           "z": 0,
-          "parentId": "46866220-9712-4a17-8486-89f463ba91c7",
+          "parentId": "6948b09a-02c9-4b0c-8d1e-d0021f2ee87d",
           "content": "projects@nocturne.studio\nShare your ambition, timing and the people involved.",
           "base": {
             "x": 0,
@@ -11315,10 +11875,10 @@
           "name": "New business copy"
         },
         {
-          "id": "7a71e40d-6dea-47c7-bbdb-9c57223243f2",
+          "id": "aaee8d7f-5ffc-4636-92d7-204f99ef627d",
           "type": "Container",
           "z": 0,
-          "parentId": "10ad90b5-0b25-49d2-8bf3-e4aedf8888ca",
+          "parentId": "09389ece-16fb-4438-a66c-16aea97b7395",
           "base": {
             "x": 0,
             "y": 0,
@@ -11377,13 +11937,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Contact Elsewhere"
+          "name": "Contact Elsewhere",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "642c7783-a90a-497f-b81a-d38e7d7c1b57",
+          "id": "57362042-1313-4df2-916a-202cf1ae323b",
           "type": "Text",
           "z": 0,
-          "parentId": "7a71e40d-6dea-47c7-bbdb-9c57223243f2",
+          "parentId": "aaee8d7f-5ffc-4636-92d7-204f99ef627d",
           "content": "02 — ELSEWHERE",
           "base": {
             "x": 0,
@@ -11446,10 +12015,10 @@
           "name": "Elsewhere number"
         },
         {
-          "id": "49e15bc1-382a-40d6-8173-ccd6211edd67",
+          "id": "5ffadca9-61b4-4ac3-908a-55dbfd889e93",
           "type": "Text",
           "z": 0,
-          "parentId": "7a71e40d-6dea-47c7-bbdb-9c57223243f2",
+          "parentId": "aaee8d7f-5ffc-4636-92d7-204f99ef627d",
           "content": "Instagram / LinkedIn / Are.na\nFollow current work, fragments and studio notes.",
           "base": {
             "x": 0,
@@ -11512,10 +12081,10 @@
           "name": "Elsewhere copy"
         },
         {
-          "id": "aff5bc49-bd48-484d-b50c-8a531200ee53",
+          "id": "d50711cb-6681-495d-9868-550bdea8939d",
           "type": "Container",
           "z": 0,
-          "parentId": "10ad90b5-0b25-49d2-8bf3-e4aedf8888ca",
+          "parentId": "09389ece-16fb-4438-a66c-16aea97b7395",
           "base": {
             "x": 0,
             "y": 0,
@@ -11574,13 +12143,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Contact Istanbul"
+          "name": "Contact Istanbul",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "9f1481e0-74e6-4787-a3cf-0fb613217356",
+          "id": "18b0f5c7-48bc-4e54-af63-278d7541777a",
           "type": "Text",
           "z": 0,
-          "parentId": "aff5bc49-bd48-484d-b50c-8a531200ee53",
+          "parentId": "d50711cb-6681-495d-9868-550bdea8939d",
           "content": "03 — ISTANBUL",
           "base": {
             "x": 0,
@@ -11643,10 +12221,10 @@
           "name": "Istanbul number"
         },
         {
-          "id": "070ac3b0-402f-4658-a57c-804688c42505",
+          "id": "25a172c1-6bee-4315-9406-31d232403a25",
           "type": "Text",
           "z": 0,
-          "parentId": "aff5bc49-bd48-484d-b50c-8a531200ee53",
+          "parentId": "d50711cb-6681-495d-9868-550bdea8939d",
           "content": "Karaköy, Istanbul\nWorking locally and collaborating worldwide.",
           "base": {
             "x": 0,
@@ -11709,10 +12287,10 @@
           "name": "Istanbul copy"
         },
         {
-          "id": "534f0adc-b4de-4493-a877-62908baee6f1",
+          "id": "4d0d3779-6fd3-4a29-b963-2ba4e6e9f27b",
           "type": "Container",
           "z": 0,
-          "parentId": "10ad90b5-0b25-49d2-8bf3-e4aedf8888ca",
+          "parentId": "09389ece-16fb-4438-a66c-16aea97b7395",
           "base": {
             "x": 0,
             "y": 0,
@@ -11771,13 +12349,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Contact Availability"
+          "name": "Contact Availability",
+          "overrides": {
+            "mobile": {
+              "gap": 20,
+              "padT": 30,
+              "padR": 26,
+              "padB": 34,
+              "padL": 26
+            }
+          }
         },
         {
-          "id": "ef138e09-50f3-495b-9eb2-aea29621d3c7",
+          "id": "caf99117-1a6a-42d6-b4f2-0d300bd1b5e1",
           "type": "Text",
           "z": 0,
-          "parentId": "534f0adc-b4de-4493-a877-62908baee6f1",
+          "parentId": "4d0d3779-6fd3-4a29-b963-2ba4e6e9f27b",
           "content": "04 — AVAILABILITY",
           "base": {
             "x": 0,
@@ -11840,10 +12427,10 @@
           "name": "Availability number"
         },
         {
-          "id": "79aa9223-e3e0-47be-813f-0c80fe72f93a",
+          "id": "5bc2ebcb-e82f-461f-a93f-81d37b69d3cf",
           "type": "Text",
           "z": 0,
-          "parentId": "534f0adc-b4de-4493-a877-62908baee6f1",
+          "parentId": "4d0d3779-6fd3-4a29-b963-2ba4e6e9f27b",
           "content": "Selected partnerships for Q4 2026.\nTypical engagements begin with a focused strategy sprint.",
           "base": {
             "x": 0,
@@ -11906,7 +12493,657 @@
           "name": "Availability copy"
         },
         {
-          "id": "da6a9bb6-3256-4a5e-9277-eee84ce5d5c4",
+          "id": "aad06025-52cd-4291-8b8c-aaaf0dab7eb1",
+          "type": "Section",
+          "z": 0,
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 1280,
+            "h": 480,
+            "widthMode": "fill",
+            "heightMode": "auto",
+            "layout": "stack",
+            "direction": "column",
+            "gap": 24,
+            "padT": 110,
+            "padR": 40,
+            "padB": 120,
+            "padL": 40,
+            "justify": "start",
+            "align": "center",
+            "wrap": false,
+            "columns": 3,
+            "bg": "#0b0b0a",
+            "gradient": "",
+            "color": "#27272a",
+            "radius": 0,
+            "opacity": 100,
+            "borderW": 0,
+            "borderC": "transparent",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 16,
+            "fontWeight": "normal",
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "Project enquiry",
+          "overrides": {
+            "tablet": {
+              "padT": 90,
+              "padR": 32,
+              "padB": 96,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 72,
+              "padR": 20,
+              "padB": 78,
+              "padL": 20
+            }
+          }
+        },
+        {
+          "id": "7274164b-0313-4943-a62c-9a7fb8393ddf",
+          "type": "Form",
+          "z": 0,
+          "parentId": "aad06025-52cd-4291-8b8c-aaaf0dab7eb1",
+          "formAction": "/api/contact",
+          "formMethod": "POST",
+          "formSubmitMode": "request",
+          "formContentType": "json",
+          "formSuccessMessage": "Sent successfully.",
+          "formErrorMessage": "Something went wrong.",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 860,
+            "h": 240,
+            "widthMode": "fixed",
+            "heightMode": "auto",
+            "layout": "stack",
+            "direction": "column",
+            "gap": 16,
+            "padT": 34,
+            "padR": 34,
+            "padB": 34,
+            "padL": 34,
+            "justify": "start",
+            "align": "stretch",
+            "wrap": false,
+            "columns": 3,
+            "bg": "#151514",
+            "gradient": "",
+            "color": "#27272a",
+            "radius": 24,
+            "opacity": 100,
+            "borderW": 1,
+            "borderC": "rgba(241,240,234,.14)",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 16,
+            "fontWeight": "normal",
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "New project form",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "radius": 18,
+              "padT": 22,
+              "padR": 20,
+              "padB": 22,
+              "padL": 20
+            }
+          }
+        },
+        {
+          "id": "61aa2b20-83a3-470d-a01f-637926c296f7",
+          "type": "Text",
+          "z": 0,
+          "parentId": "7274164b-0313-4943-a62c-9a7fb8393ddf",
+          "content": "Start a conversation",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 480,
+            "h": 24,
+            "widthMode": "fill",
+            "heightMode": "auto",
+            "layout": "absolute",
+            "direction": "column",
+            "gap": 0,
+            "padT": 0,
+            "padR": 0,
+            "padB": 0,
+            "padL": 0,
+            "justify": "start",
+            "align": "start",
+            "wrap": false,
+            "columns": 3,
+            "bg": "transparent",
+            "gradient": "",
+            "color": "#d7ff3f",
+            "radius": 0,
+            "opacity": 100,
+            "borderW": 0,
+            "borderC": "transparent",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 10,
+            "fontWeight": "800",
+            "lineHeight": 1.6,
+            "letterSpacing": 1.8,
+            "textAlign": "left",
+            "textTransform": "uppercase",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "Form eyebrow"
+        },
+        {
+          "id": "a591677a-51cc-417b-806a-9e20d927202d",
+          "type": "Heading",
+          "z": 0,
+          "parentId": "7274164b-0313-4943-a62c-9a7fb8393ddf",
+          "content": "WHAT ARE WE BUILDING?",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 480,
+            "h": 48,
+            "widthMode": "fill",
+            "heightMode": "auto",
+            "layout": "absolute",
+            "direction": "column",
+            "gap": 0,
+            "padT": 0,
+            "padR": 0,
+            "padB": 0,
+            "padL": 0,
+            "justify": "start",
+            "align": "start",
+            "wrap": false,
+            "columns": 3,
+            "bg": "transparent",
+            "gradient": "",
+            "color": "#f1f0ea",
+            "radius": 0,
+            "opacity": 100,
+            "borderW": 0,
+            "borderC": "transparent",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 38,
+            "fontWeight": "600",
+            "lineHeight": 1.05,
+            "letterSpacing": -2,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "Form title",
+          "overrides": {
+            "mobile": {
+              "fontSize": 30,
+              "letterSpacing": -1.4
+            }
+          }
+        },
+        {
+          "id": "b99dfdc7-fede-40f4-9129-2ac70728d2fc",
+          "type": "Container",
+          "z": 0,
+          "parentId": "7274164b-0313-4943-a62c-9a7fb8393ddf",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 600,
+            "h": 240,
+            "widthMode": "fill",
+            "heightMode": "auto",
+            "layout": "stack",
+            "direction": "row",
+            "gap": 12,
+            "padT": 8,
+            "padR": 0,
+            "padB": 0,
+            "padL": 0,
+            "justify": "start",
+            "align": "stretch",
+            "wrap": false,
+            "columns": 3,
+            "bg": "transparent",
+            "gradient": "",
+            "color": "#27272a",
+            "radius": 12,
+            "opacity": 100,
+            "borderW": 0,
+            "borderC": "#e4e4e7",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 16,
+            "fontWeight": "normal",
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "Contact fields",
+          "overrides": {
+            "tablet": {},
+            "mobile": {
+              "direction": "column"
+            }
+          }
+        },
+        {
+          "id": "f45f2711-892a-4f61-9091-4d812e0c2c98",
+          "type": "Input",
+          "z": 0,
+          "parentId": "b99dfdc7-fede-40f4-9129-2ac70728d2fc",
+          "placeholder": "Your name",
+          "fieldName": "name",
+          "inputType": "text",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 320,
+            "h": 52,
+            "widthMode": "fill",
+            "heightMode": "fixed",
+            "layout": "absolute",
+            "direction": "column",
+            "gap": 0,
+            "padT": 0,
+            "padR": 16,
+            "padB": 0,
+            "padL": 16,
+            "justify": "start",
+            "align": "start",
+            "wrap": false,
+            "columns": 3,
+            "bg": "#0b0b0a",
+            "gradient": "",
+            "color": "#f1f0ea",
+            "radius": 12,
+            "opacity": 100,
+            "borderW": 1,
+            "borderC": "rgba(241,240,234,.16)",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 14,
+            "fontWeight": "normal",
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "name field",
+          "required": true
+        },
+        {
+          "id": "b15d6f09-aad2-43c3-9598-4c22f036f651",
+          "type": "Input",
+          "z": 0,
+          "parentId": "b99dfdc7-fede-40f4-9129-2ac70728d2fc",
+          "placeholder": "Email address",
+          "fieldName": "email",
+          "inputType": "email",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 320,
+            "h": 52,
+            "widthMode": "fill",
+            "heightMode": "fixed",
+            "layout": "absolute",
+            "direction": "column",
+            "gap": 0,
+            "padT": 0,
+            "padR": 16,
+            "padB": 0,
+            "padL": 16,
+            "justify": "start",
+            "align": "start",
+            "wrap": false,
+            "columns": 3,
+            "bg": "#0b0b0a",
+            "gradient": "",
+            "color": "#f1f0ea",
+            "radius": 12,
+            "opacity": 100,
+            "borderW": 1,
+            "borderC": "rgba(241,240,234,.16)",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 14,
+            "fontWeight": "normal",
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "email field",
+          "required": true
+        },
+        {
+          "id": "1fb1c1d5-6a99-4412-995d-6b54857ea550",
+          "type": "Textarea",
+          "z": 0,
+          "parentId": "7274164b-0313-4943-a62c-9a7fb8393ddf",
+          "placeholder": "Tell us about the change you want to create…",
+          "fieldName": "message",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 320,
+            "h": 150,
+            "widthMode": "fill",
+            "heightMode": "fixed",
+            "layout": "absolute",
+            "direction": "column",
+            "gap": 0,
+            "padT": 15,
+            "padR": 16,
+            "padB": 15,
+            "padL": 16,
+            "justify": "start",
+            "align": "start",
+            "wrap": false,
+            "columns": 3,
+            "bg": "#0b0b0a",
+            "gradient": "",
+            "color": "#f1f0ea",
+            "radius": 12,
+            "opacity": 100,
+            "borderW": 1,
+            "borderC": "rgba(241,240,234,.16)",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 14,
+            "fontWeight": "normal",
+            "lineHeight": 1.55,
+            "letterSpacing": 0,
+            "textAlign": "left",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "auto",
+            "hidden": false
+          },
+          "name": "Project details",
+          "required": true
+        },
+        {
+          "id": "d696a807-6b96-4896-9eb4-d4b17f8fa03e",
+          "type": "Button",
+          "z": 0,
+          "parentId": "7274164b-0313-4943-a62c-9a7fb8393ddf",
+          "content": "Send project enquiry ↗",
+          "href": "",
+          "target": "_self",
+          "buttonType": "submit",
+          "base": {
+            "x": 0,
+            "y": 0,
+            "constraintX": "start",
+            "constraintY": "start",
+            "w": 140,
+            "h": 44,
+            "widthMode": "fill",
+            "heightMode": "auto",
+            "layout": "stack",
+            "direction": "row",
+            "gap": 0,
+            "padT": 15,
+            "padR": 24,
+            "padB": 15,
+            "padL": 24,
+            "justify": "center",
+            "align": "center",
+            "wrap": false,
+            "columns": 3,
+            "bg": "#d7ff3f",
+            "gradient": "",
+            "color": "#0b0b0a",
+            "radius": 999,
+            "opacity": 100,
+            "borderW": 0,
+            "borderC": "transparent",
+            "borderStyle": "solid",
+            "shadow": "",
+            "rotate": 0,
+            "fontFamily": "inherit",
+            "fontSize": 13,
+            "fontWeight": "800",
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "textAlign": "center",
+            "textTransform": "none",
+            "overflow": "visible",
+            "position": "static",
+            "stickyOffset": 0,
+            "bgImage": "",
+            "bgSize": "cover",
+            "bgPosition": "center",
+            "blur": 0,
+            "backdropBlur": 0,
+            "blendMode": "normal",
+            "scale": 100,
+            "aspectRatio": "",
+            "entrance": "none",
+            "entranceDuration": 600,
+            "entranceDelay": 0,
+            "entranceCurve": "ease",
+            "entranceBezier": "0.44, 0, 0.56, 1",
+            "springStiffness": 300,
+            "springDamping": 30,
+            "cursor": "pointer",
+            "hidden": false
+          },
+          "name": "Send enquiry",
+          "hover": {
+            "bg": "#edff9a",
+            "scale": 101
+          }
+        },
+        {
+          "id": "c93724b0-89e3-41be-aba6-8a84581e968d",
           "type": "Section",
           "z": 0,
           "base": {
@@ -11967,13 +13204,31 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer"
+          "name": "Footer",
+          "overrides": {
+            "tablet": {
+              "padT": 34,
+              "padR": 32,
+              "padB": 34,
+              "padL": 32
+            },
+            "mobile": {
+              "padT": 29,
+              "padR": 20,
+              "padB": 29,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "componentSourceId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+          "variant": "Default"
         },
         {
-          "id": "b74490f4-e095-40eb-9fe9-e4ab06eaaae9",
+          "id": "bf01db71-7089-4a34-84bc-3bd49dc4cc36",
           "type": "Container",
           "z": 0,
-          "parentId": "da6a9bb6-3256-4a5e-9277-eee84ce5d5c4",
+          "parentId": "c93724b0-89e3-41be-aba6-8a84581e968d",
           "base": {
             "x": 0,
             "y": 0,
@@ -12035,20 +13290,21 @@
           "name": "Footer inner",
           "overrides": {
             "tablet": {
-              "w": 860
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
               "direction": "column",
               "align": "start"
             }
-          }
+          },
+          "componentSourceId": "445480ff-b1a5-4814-94bd-4e83d93659da"
         },
         {
-          "id": "4ad05f78-51b5-45df-945c-bdae6bd877dc",
+          "id": "978ff910-d031-4c16-bfc8-48c8d8b1ee14",
           "type": "Heading",
           "z": 0,
-          "parentId": "b74490f4-e095-40eb-9fe9-e4ab06eaaae9",
+          "parentId": "bf01db71-7089-4a34-84bc-3bd49dc4cc36",
           "content": "NOCTURNE®",
           "base": {
             "x": 0,
@@ -12108,13 +13364,14 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer brand"
+          "name": "Footer brand",
+          "componentSourceId": "93881a86-dba3-4cc2-ba58-89cfca0c81dd"
         },
         {
-          "id": "2bb99e89-7d83-4cf1-b38b-552d2c03427e",
+          "id": "4cb144ac-1d32-40cb-b781-597d31e9d6ec",
           "type": "Text",
           "z": 0,
-          "parentId": "b74490f4-e095-40eb-9fe9-e4ab06eaaae9",
+          "parentId": "bf01db71-7089-4a34-84bc-3bd49dc4cc36",
           "content": "ISTANBUL / WORLDWIDE\n© 2026 — ALL RIGHTS RESERVED",
           "base": {
             "x": 0,
@@ -12174,7 +13431,13 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Footer meta"
+          "name": "Footer meta",
+          "overrides": {
+            "mobile": {
+              "textAlign": "left"
+            }
+          },
+          "componentSourceId": "7e24a291-e1ff-478b-b1f2-46530d862eb9"
         }
       ],
       "rootStyle": {
@@ -12192,6 +13455,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "showcase-manrope",
@@ -12228,6 +13493,1306 @@
           }
         ]
       }
+    }
+  ],
+  "components": [
+    {
+      "id": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+      "type": "Section",
+      "z": 0,
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1280,
+        "h": 480,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "column",
+        "gap": 24,
+        "padT": 22,
+        "padR": 40,
+        "padB": 22,
+        "padL": 40,
+        "justify": "start",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#0b0b0a",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Nocturne navigation",
+      "overrides": {
+        "tablet": {
+          "padT": 18,
+          "padR": 32,
+          "padB": 18,
+          "padL": 32
+        },
+        "mobile": {
+          "padT": 16,
+          "padR": 20,
+          "padB": 16,
+          "padL": 20
+        }
+      },
+      "componentRole": "master",
+      "componentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+      "componentSourceId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+      "variant": "Default"
+    },
+    {
+      "id": "50de2731-ce67-4525-8de6-b897b6ec93df",
+      "type": "Container",
+      "z": 0,
+      "parentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1180,
+        "h": 240,
+        "widthMode": "fixed",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 28,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "between",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 12,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "#e4e4e7",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Navigation inner",
+      "overrides": {
+        "tablet": {
+          "widthMode": "fill"
+        },
+        "mobile": {
+          "widthMode": "fill"
+        }
+      },
+      "componentSourceId": "50de2731-ce67-4525-8de6-b897b6ec93df"
+    },
+    {
+      "id": "597e7c0b-1fd1-4ed0-a0b8-8a90d1936055",
+      "type": "Heading",
+      "z": 0,
+      "parentId": "50de2731-ce67-4525-8de6-b897b6ec93df",
+      "content": "NOCTURNE®",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 480,
+        "h": 48,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "absolute",
+        "direction": "column",
+        "gap": 0,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "start",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f1f0ea",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 17,
+        "fontWeight": "800",
+        "lineHeight": 1.2,
+        "letterSpacing": -0.7,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Wordmark",
+      "componentSourceId": "597e7c0b-1fd1-4ed0-a0b8-8a90d1936055"
+    },
+    {
+      "id": "f965be1b-c3b2-4122-8365-2912f0418518",
+      "type": "Container",
+      "z": 0,
+      "parentId": "50de2731-ce67-4525-8de6-b897b6ec93df",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 600,
+        "h": 240,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 28,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 12,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "#e4e4e7",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Navigation links",
+      "overrides": {
+        "tablet": {},
+        "mobile": {
+          "hidden": true
+        }
+      },
+      "componentSourceId": "f965be1b-c3b2-4122-8365-2912f0418518"
+    },
+    {
+      "id": "4b6c4c41-bc2f-4a92-9350-b689869ed587",
+      "type": "Button",
+      "z": 0,
+      "parentId": "f965be1b-c3b2-4122-8365-2912f0418518",
+      "content": "Work",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 4,
+        "padR": 0,
+        "padB": 4,
+        "padL": 0,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#96958f",
+        "radius": 8,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 13,
+        "fontWeight": "600",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Nav Work",
+      "interaction": {
+        "trigger": "click",
+        "action": "navigate",
+        "value": "/work",
+        "target": "_self"
+      },
+      "hover": {
+        "color": "#f1f0ea"
+      },
+      "componentSourceId": "4b6c4c41-bc2f-4a92-9350-b689869ed587"
+    },
+    {
+      "id": "4515d25d-d21e-42ff-8b2b-2ca97091da2b",
+      "type": "Button",
+      "z": 0,
+      "parentId": "f965be1b-c3b2-4122-8365-2912f0418518",
+      "content": "Studio",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 4,
+        "padR": 0,
+        "padB": 4,
+        "padL": 0,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#96958f",
+        "radius": 8,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 13,
+        "fontWeight": "600",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Nav Studio",
+      "interaction": {
+        "trigger": "click",
+        "action": "navigate",
+        "value": "/studio",
+        "target": "_self"
+      },
+      "hover": {
+        "color": "#f1f0ea"
+      },
+      "componentSourceId": "4515d25d-d21e-42ff-8b2b-2ca97091da2b"
+    },
+    {
+      "id": "8bfbc09a-3e9d-4ef4-b951-dfed1183aa91",
+      "type": "Button",
+      "z": 0,
+      "parentId": "f965be1b-c3b2-4122-8365-2912f0418518",
+      "content": "Contact",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 4,
+        "padR": 0,
+        "padB": 4,
+        "padL": 0,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#96958f",
+        "radius": 8,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 13,
+        "fontWeight": "600",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Nav Contact",
+      "interaction": {
+        "trigger": "click",
+        "action": "navigate",
+        "value": "/contact",
+        "target": "_self"
+      },
+      "hover": {
+        "color": "#f1f0ea"
+      },
+      "componentSourceId": "8bfbc09a-3e9d-4ef4-b951-dfed1183aa91"
+    },
+    {
+      "id": "6fe55f38-11cc-4f8d-9685-7d749dac5fcd",
+      "type": "Button",
+      "z": 0,
+      "parentId": "50de2731-ce67-4525-8de6-b897b6ec93df",
+      "content": "Start a project ↗",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 11,
+        "padR": 18,
+        "padB": 11,
+        "padL": 18,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#d7ff3f",
+        "gradient": "",
+        "color": "#0b0b0a",
+        "radius": 999,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 12,
+        "fontWeight": "800",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Navigation CTA",
+      "hover": {
+        "scale": 101.8,
+        "bg": "#edff9a",
+        "shadow": "0 10px 32px rgba(215,255,63,.18)"
+      },
+      "press": {
+        "scale": 97.5
+      },
+      "overrides": {
+        "mobile": {
+          "hidden": true
+        }
+      },
+      "componentSourceId": "6fe55f38-11cc-4f8d-9685-7d749dac5fcd"
+    },
+    {
+      "id": "182a1659-ccc9-4418-b65d-2f6597d7f1a1",
+      "type": "Button",
+      "z": 0,
+      "parentId": "50de2731-ce67-4525-8de6-b897b6ec93df",
+      "content": "MENU +",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 9,
+        "padR": 14,
+        "padB": 9,
+        "padL": 14,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f1f0ea",
+        "radius": 999,
+        "opacity": 100,
+        "borderW": 1,
+        "borderC": "rgba(241,240,234,.14)",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 11,
+        "fontWeight": "800",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": true
+      },
+      "name": "Mobile menu trigger",
+      "overrides": {
+        "mobile": {
+          "hidden": false
+        }
+      },
+      "press": {
+        "scale": 97
+      },
+      "interaction": {
+        "trigger": "click",
+        "action": "toggle-layer",
+        "value": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541"
+      },
+      "componentSourceId": "182a1659-ccc9-4418-b65d-2f6597d7f1a1"
+    },
+    {
+      "id": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541",
+      "type": "Container",
+      "z": 0,
+      "parentId": "5d06ad4c-9326-407d-a00d-650762e1b6fd",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 600,
+        "h": 240,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "column",
+        "gap": 0,
+        "padT": 8,
+        "padR": 8,
+        "padB": 8,
+        "padL": 8,
+        "justify": "start",
+        "align": "stretch",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#151514",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 14,
+        "opacity": 100,
+        "borderW": 1,
+        "borderC": "rgba(241,240,234,.14)",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": true
+      },
+      "name": "Mobile navigation menu",
+      "componentSourceId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541"
+    },
+    {
+      "id": "b2767fe2-3d72-4b9e-8652-8e6f00567847",
+      "type": "Button",
+      "z": 0,
+      "parentId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541",
+      "content": "Work  ↗",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 14,
+        "padR": 14,
+        "padB": 14,
+        "padL": 14,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f1f0ea",
+        "radius": 9,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 14,
+        "fontWeight": "700",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Mobile Work",
+      "interaction": {
+        "trigger": "click",
+        "action": "navigate",
+        "value": "/work",
+        "target": "_self"
+      },
+      "hover": {
+        "bg": "rgba(255,255,255,.06)"
+      },
+      "componentSourceId": "b2767fe2-3d72-4b9e-8652-8e6f00567847"
+    },
+    {
+      "id": "b61ea1ad-1669-4889-bf10-45dcbf85ac75",
+      "type": "Button",
+      "z": 0,
+      "parentId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541",
+      "content": "Studio  ↗",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 14,
+        "padR": 14,
+        "padB": 14,
+        "padL": 14,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f1f0ea",
+        "radius": 9,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 14,
+        "fontWeight": "700",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Mobile Studio",
+      "interaction": {
+        "trigger": "click",
+        "action": "navigate",
+        "value": "/studio",
+        "target": "_self"
+      },
+      "hover": {
+        "bg": "rgba(255,255,255,.06)"
+      },
+      "componentSourceId": "b61ea1ad-1669-4889-bf10-45dcbf85ac75"
+    },
+    {
+      "id": "d1324095-9157-4e64-b7b8-0e04b40dd1f4",
+      "type": "Button",
+      "z": 0,
+      "parentId": "f1ca4964-1be0-48eb-8fa8-b4d6c3652541",
+      "content": "Contact  ↗",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 14,
+        "padR": 14,
+        "padB": 14,
+        "padL": 14,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f1f0ea",
+        "radius": 9,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 14,
+        "fontWeight": "700",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "pointer",
+        "hidden": false
+      },
+      "name": "Mobile Contact",
+      "interaction": {
+        "trigger": "click",
+        "action": "navigate",
+        "value": "/contact",
+        "target": "_self"
+      },
+      "hover": {
+        "bg": "rgba(255,255,255,.06)"
+      },
+      "componentSourceId": "d1324095-9157-4e64-b7b8-0e04b40dd1f4"
+    },
+    {
+      "id": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+      "type": "Section",
+      "z": 0,
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1280,
+        "h": 480,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "column",
+        "gap": 24,
+        "padT": 42,
+        "padR": 40,
+        "padB": 42,
+        "padL": 40,
+        "justify": "start",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#0b0b0a",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Footer",
+      "overrides": {
+        "tablet": {
+          "padT": 34,
+          "padR": 32,
+          "padB": 34,
+          "padL": 32
+        },
+        "mobile": {
+          "padT": 29,
+          "padR": 20,
+          "padB": 29,
+          "padL": 20
+        }
+      },
+      "componentRole": "master",
+      "componentId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+      "componentSourceId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+      "variant": "Default"
+    },
+    {
+      "id": "445480ff-b1a5-4814-94bd-4e83d93659da",
+      "type": "Container",
+      "z": 0,
+      "parentId": "371b5141-cf06-4a8d-9b3e-e3525c0bedbc",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1180,
+        "h": 240,
+        "widthMode": "fixed",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 32,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "between",
+        "align": "end",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 12,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "#e4e4e7",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Footer inner",
+      "overrides": {
+        "tablet": {
+          "widthMode": "fill"
+        },
+        "mobile": {
+          "widthMode": "fill",
+          "direction": "column",
+          "align": "start"
+        }
+      },
+      "componentSourceId": "445480ff-b1a5-4814-94bd-4e83d93659da"
+    },
+    {
+      "id": "93881a86-dba3-4cc2-ba58-89cfca0c81dd",
+      "type": "Heading",
+      "z": 0,
+      "parentId": "445480ff-b1a5-4814-94bd-4e83d93659da",
+      "content": "NOCTURNE®",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 480,
+        "h": 48,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "absolute",
+        "direction": "column",
+        "gap": 0,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "start",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f1f0ea",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 28,
+        "fontWeight": "800",
+        "lineHeight": 1.2,
+        "letterSpacing": -1.5,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Footer brand",
+      "componentSourceId": "93881a86-dba3-4cc2-ba58-89cfca0c81dd"
+    },
+    {
+      "id": "7e24a291-e1ff-478b-b1f2-46530d862eb9",
+      "type": "Text",
+      "z": 0,
+      "parentId": "445480ff-b1a5-4814-94bd-4e83d93659da",
+      "content": "ISTANBUL / WORLDWIDE\n© 2026 — ALL RIGHTS RESERVED",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 480,
+        "h": 24,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "absolute",
+        "direction": "column",
+        "gap": 0,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "start",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#96958f",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 11,
+        "fontWeight": "normal",
+        "lineHeight": 1.8,
+        "letterSpacing": 0,
+        "textAlign": "right",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Footer meta",
+      "overrides": {
+        "mobile": {
+          "textAlign": "left"
+        }
+      },
+      "componentSourceId": "7e24a291-e1ff-478b-b1f2-46530d862eb9"
     }
   ]
 }

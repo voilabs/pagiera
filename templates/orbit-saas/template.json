@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "orbit-saas",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "pages": [
     {
       "name": "Home",
       "slug": "home",
       "elements": [
         {
-          "id": "dc1d2951-5652-4e1d-ab44-eb5d7a02f4c7",
+          "id": "f5dcf54b-a0df-497c-84be-8c5f0fca1dda",
           "type": "Section",
           "z": 0,
           "base": {
@@ -69,13 +69,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit navigation"
+          "name": "Orbit navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+          "componentSourceId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+          "variant": "Default"
         },
         {
-          "id": "74a0f64a-f1e9-48f7-84c9-b26fb7e94254",
+          "id": "5a9a9d51-5691-46bf-aefd-91d06879ffea",
           "type": "Container",
           "z": 0,
-          "parentId": "dc1d2951-5652-4e1d-ab44-eb5d7a02f4c7",
+          "parentId": "f5dcf54b-a0df-497c-84be-8c5f0fca1dda",
           "base": {
             "x": 0,
             "y": 0,
@@ -137,19 +153,19 @@
           "name": "Orbit navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "d196d203-ad33-4b0d-84e2-d6cff0610248"
         },
         {
-          "id": "86dd7dbe-10cb-4e22-9b86-eaacd767166c",
+          "id": "dde4839e-def9-4b5c-a393-44ebf0c2d21e",
           "type": "Heading",
           "z": 0,
-          "parentId": "74a0f64a-f1e9-48f7-84c9-b26fb7e94254",
+          "parentId": "5a9a9d51-5691-46bf-aefd-91d06879ffea",
           "content": "ORBIT/OS",
           "base": {
             "x": 0,
@@ -209,16 +225,18 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit logo"
+          "name": "Orbit logo",
+          "componentSourceId": "e88eaeee-7d06-4642-84a1-254080feb8aa"
         },
         {
-          "id": "0e1b213a-b2c5-4863-ad71-ed99f13074f5",
+          "id": "58612255-4986-4040-97fe-3784160c99bd",
           "type": "Button",
           "z": 0,
-          "parentId": "74a0f64a-f1e9-48f7-84c9-b26fb7e94254",
+          "parentId": "5a9a9d51-5691-46bf-aefd-91d06879ffea",
           "content": "Start building",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -281,10 +299,11 @@
           "hover": {
             "scale": 103,
             "shadow": "0 14px 40px rgba(115,87,255,.35)"
-          }
+          },
+          "componentSourceId": "0bb9a23d-41c4-450a-a48e-12cffd9b95d9"
         },
         {
-          "id": "b9eb6fbb-36c6-48af-82b6-0b67b8057ce6",
+          "id": "b32378bc-909b-47a7-9eb3-4ad9fd9e2427",
           "type": "Section",
           "z": 0,
           "base": {
@@ -345,13 +364,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Home hero"
+          "name": "Home hero",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 77,
+              "padR": 20,
+              "padB": 77,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "00d7cd95-1861-40b5-aac7-49f0fe47cef0",
+          "id": "d9c3cb13-ccae-4732-a271-77349c3fcfd0",
           "type": "Container",
           "z": 0,
-          "parentId": "b9eb6fbb-36c6-48af-82b6-0b67b8057ce6",
+          "parentId": "b32378bc-909b-47a7-9eb3-4ad9fd9e2427",
           "base": {
             "x": 0,
             "y": 0,
@@ -413,7 +444,7 @@
           "name": "Orbit hero inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -421,10 +452,10 @@
           }
         },
         {
-          "id": "b0761897-ea7e-4c58-aff9-a3d61e930e8d",
+          "id": "1c703151-b071-4701-835d-51176d4164d2",
           "type": "Text",
           "z": 0,
-          "parentId": "00d7cd95-1861-40b5-aac7-49f0fe47cef0",
+          "parentId": "d9c3cb13-ccae-4732-a271-77349c3fcfd0",
           "content": "The adaptive product platform",
           "base": {
             "x": 0,
@@ -433,7 +464,7 @@
             "constraintY": "start",
             "w": 480,
             "h": 24,
-            "widthMode": "auto",
+            "widthMode": "fill",
             "heightMode": "auto",
             "layout": "absolute",
             "direction": "column",
@@ -461,7 +492,7 @@
             "fontWeight": "800",
             "lineHeight": 1.6,
             "letterSpacing": 2,
-            "textAlign": "left",
+            "textAlign": "center",
             "textTransform": "uppercase",
             "overflow": "visible",
             "position": "static",
@@ -487,10 +518,10 @@
           "name": "Orbit eyebrow"
         },
         {
-          "id": "45fd4fd1-3a07-4760-aced-804bdd5aa9ed",
+          "id": "14945c9f-0908-43bc-9087-b6ca0fb4d0d4",
           "type": "Heading",
           "z": 0,
-          "parentId": "00d7cd95-1861-40b5-aac7-49f0fe47cef0",
+          "parentId": "d9c3cb13-ccae-4732-a271-77349c3fcfd0",
           "content": "SHIP THE NEXT\nVERSION OF YOU.",
           "base": {
             "x": 0,
@@ -562,10 +593,10 @@
           }
         },
         {
-          "id": "1b358c7e-0cd8-4e41-9af0-8906d0ef4162",
+          "id": "6b5adfd4-28a6-4224-86e0-cb470b630e95",
           "type": "Text",
           "z": 0,
-          "parentId": "00d7cd95-1861-40b5-aac7-49f0fe47cef0",
+          "parentId": "d9c3cb13-ccae-4732-a271-77349c3fcfd0",
           "content": "Orbit gives product teams one composable workspace for planning, building and learning—without the operational drag.",
           "base": {
             "x": 0,
@@ -625,13 +656,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit copy"
+          "name": "Orbit copy",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 15
+            }
+          }
         },
         {
-          "id": "58d269ce-a923-44a3-8e09-f32e4e235f2e",
+          "id": "b74e4c39-206b-4de0-821b-741549c0f009",
           "type": "Frame",
           "z": 0,
-          "parentId": "00d7cd95-1861-40b5-aac7-49f0fe47cef0",
+          "parentId": "d9c3cb13-ccae-4732-a271-77349c3fcfd0",
           "base": {
             "x": 0,
             "y": 0,
@@ -692,13 +732,17 @@
           },
           "name": "Product interface",
           "overrides": {
+            "tablet": {
+              "h": 440
+            },
             "mobile": {
-              "h": 330
+              "h": 300,
+              "radius": 18
             }
           }
         },
         {
-          "id": "7a6eb1e6-e146-4414-a7bc-315cbd5929a4",
+          "id": "8ed62f84-bfc7-4f8d-8952-9e2d5d9f61d4",
           "type": "Section",
           "z": 0,
           "base": {
@@ -759,13 +803,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Product metrics"
+          "name": "Product metrics",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 56,
+              "padR": 20,
+              "padB": 56,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "6a2b3546-8454-4b00-aea5-e5213ad9474a",
+          "id": "aad80ec7-7c37-4044-8127-fd5322b2a4f9",
           "type": "Container",
           "z": 0,
-          "parentId": "7a6eb1e6-e146-4414-a7bc-315cbd5929a4",
+          "parentId": "8ed62f84-bfc7-4f8d-8952-9e2d5d9f61d4",
           "base": {
             "x": 0,
             "y": 0,
@@ -827,7 +883,7 @@
           "name": "Metrics grid",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
@@ -836,10 +892,10 @@
           }
         },
         {
-          "id": "7a4d7dc5-a75e-4f80-bd29-907d984bd364",
+          "id": "ecfaa244-11e5-4fc1-bda9-b64b1b42a730",
           "type": "Container",
           "z": 0,
-          "parentId": "6a2b3546-8454-4b00-aea5-e5213ad9474a",
+          "parentId": "aad80ec7-7c37-4044-8127-fd5322b2a4f9",
           "base": {
             "x": 0,
             "y": 0,
@@ -898,13 +954,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 1"
+          "name": "Metric 1",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "1be528de-bdca-4fba-a179-c982bfdcef85",
+          "id": "e8d59ce3-b4b1-47df-bd8d-cace8e8df6f3",
           "type": "Heading",
           "z": 0,
-          "parentId": "7a4d7dc5-a75e-4f80-bd29-907d984bd364",
+          "parentId": "ecfaa244-11e5-4fc1-bda9-b64b1b42a730",
           "content": "32%",
           "base": {
             "x": 0,
@@ -967,10 +1031,10 @@
           "name": "Metric value"
         },
         {
-          "id": "dc5c95d9-d0c3-4334-81bf-a04bd655cb1e",
+          "id": "b33bf51e-f83e-45ce-9999-971e9ee15827",
           "type": "Text",
           "z": 0,
-          "parentId": "7a4d7dc5-a75e-4f80-bd29-907d984bd364",
+          "parentId": "ecfaa244-11e5-4fc1-bda9-b64b1b42a730",
           "content": "faster launches",
           "base": {
             "x": 0,
@@ -1033,10 +1097,10 @@
           "name": "Metric label"
         },
         {
-          "id": "f32f4f09-a08f-4258-8be6-a50cbaf6b482",
+          "id": "5d048264-aab0-4699-a177-6d0f9f82b3bd",
           "type": "Container",
           "z": 0,
-          "parentId": "6a2b3546-8454-4b00-aea5-e5213ad9474a",
+          "parentId": "aad80ec7-7c37-4044-8127-fd5322b2a4f9",
           "base": {
             "x": 0,
             "y": 0,
@@ -1095,13 +1159,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 2"
+          "name": "Metric 2",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "79327897-b90b-4b72-aedb-b26e48f5a60b",
+          "id": "b22a6192-a8b0-486d-b0ad-600a8bbde132",
           "type": "Heading",
           "z": 0,
-          "parentId": "f32f4f09-a08f-4258-8be6-a50cbaf6b482",
+          "parentId": "5d048264-aab0-4699-a177-6d0f9f82b3bd",
           "content": "4.8×",
           "base": {
             "x": 0,
@@ -1164,10 +1236,10 @@
           "name": "Metric value"
         },
         {
-          "id": "e45dd734-851c-46b5-affc-341c3c0a8666",
+          "id": "867e828b-c30f-488d-96aa-85e60b02fd57",
           "type": "Text",
           "z": 0,
-          "parentId": "f32f4f09-a08f-4258-8be6-a50cbaf6b482",
+          "parentId": "5d048264-aab0-4699-a177-6d0f9f82b3bd",
           "content": "team velocity",
           "base": {
             "x": 0,
@@ -1230,10 +1302,10 @@
           "name": "Metric label"
         },
         {
-          "id": "ae796fdf-f3cd-40c4-a74f-43c32a9b448b",
+          "id": "a66ae484-1e2f-4d6b-8bf8-e21638e02cdc",
           "type": "Container",
           "z": 0,
-          "parentId": "6a2b3546-8454-4b00-aea5-e5213ad9474a",
+          "parentId": "aad80ec7-7c37-4044-8127-fd5322b2a4f9",
           "base": {
             "x": 0,
             "y": 0,
@@ -1292,13 +1364,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 3"
+          "name": "Metric 3",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "bd942407-8095-498a-b383-1d67f549b438",
+          "id": "75c7b1da-90d3-4833-a3a2-fe7edbfa4f19",
           "type": "Heading",
           "z": 0,
-          "parentId": "ae796fdf-f3cd-40c4-a74f-43c32a9b448b",
+          "parentId": "a66ae484-1e2f-4d6b-8bf8-e21638e02cdc",
           "content": "99.99%",
           "base": {
             "x": 0,
@@ -1361,10 +1441,10 @@
           "name": "Metric value"
         },
         {
-          "id": "c25b9674-e4bc-4b7d-bfa5-4a0d1bbac389",
+          "id": "b69811ef-7bce-4c2a-8e5b-2d940e809e13",
           "type": "Text",
           "z": 0,
-          "parentId": "ae796fdf-f3cd-40c4-a74f-43c32a9b448b",
+          "parentId": "a66ae484-1e2f-4d6b-8bf8-e21638e02cdc",
           "content": "platform uptime",
           "base": {
             "x": 0,
@@ -1442,6 +1522,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -1479,7 +1561,7 @@
       "slug": "product",
       "elements": [
         {
-          "id": "7cdf4d27-e76f-40ed-a2a0-68a8690bb65d",
+          "id": "36dd46ba-3149-4df2-a6c7-0bddfd977aa1",
           "type": "Section",
           "z": 0,
           "base": {
@@ -1540,13 +1622,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit navigation"
+          "name": "Orbit navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+          "componentSourceId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+          "variant": "Default"
         },
         {
-          "id": "d38a6577-8dc6-413a-9e1d-9ef4eaa5b0b7",
+          "id": "37895e80-c613-4eee-a05c-5017cfc2c15b",
           "type": "Container",
           "z": 0,
-          "parentId": "7cdf4d27-e76f-40ed-a2a0-68a8690bb65d",
+          "parentId": "36dd46ba-3149-4df2-a6c7-0bddfd977aa1",
           "base": {
             "x": 0,
             "y": 0,
@@ -1608,19 +1706,19 @@
           "name": "Orbit navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "d196d203-ad33-4b0d-84e2-d6cff0610248"
         },
         {
-          "id": "5d79b5eb-398d-4b9a-909f-97905bbc572f",
+          "id": "07901845-81ba-4062-af9c-5849273913f0",
           "type": "Heading",
           "z": 0,
-          "parentId": "d38a6577-8dc6-413a-9e1d-9ef4eaa5b0b7",
+          "parentId": "37895e80-c613-4eee-a05c-5017cfc2c15b",
           "content": "ORBIT/OS",
           "base": {
             "x": 0,
@@ -1680,16 +1778,18 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit logo"
+          "name": "Orbit logo",
+          "componentSourceId": "e88eaeee-7d06-4642-84a1-254080feb8aa"
         },
         {
-          "id": "f9ca8742-3e02-47b2-87b6-ea9f676292fc",
+          "id": "b009679a-3d4a-49dc-8985-cb71e622c423",
           "type": "Button",
           "z": 0,
-          "parentId": "d38a6577-8dc6-413a-9e1d-9ef4eaa5b0b7",
+          "parentId": "37895e80-c613-4eee-a05c-5017cfc2c15b",
           "content": "Start building",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -1752,10 +1852,11 @@
           "hover": {
             "scale": 103,
             "shadow": "0 14px 40px rgba(115,87,255,.35)"
-          }
+          },
+          "componentSourceId": "0bb9a23d-41c4-450a-a48e-12cffd9b95d9"
         },
         {
-          "id": "129f2ded-6bf3-4494-b958-39f16f517483",
+          "id": "3d6fa121-9af8-4380-9811-731fc0a42908",
           "type": "Section",
           "z": 0,
           "base": {
@@ -1816,13 +1917,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Product hero"
+          "name": "Product hero",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 77,
+              "padR": 20,
+              "padB": 77,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "21d317be-42bb-48c6-9408-6b718d8151ce",
+          "id": "51afc7bc-5b2b-4538-926b-7484e2000510",
           "type": "Container",
           "z": 0,
-          "parentId": "129f2ded-6bf3-4494-b958-39f16f517483",
+          "parentId": "3d6fa121-9af8-4380-9811-731fc0a42908",
           "base": {
             "x": 0,
             "y": 0,
@@ -1884,7 +1997,7 @@
           "name": "Orbit hero inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -1892,10 +2005,10 @@
           }
         },
         {
-          "id": "b30a0a34-95f8-40cb-9a2e-9f2c9633f613",
+          "id": "aa980bd8-44eb-482f-8e1f-4d4a2555e637",
           "type": "Text",
           "z": 0,
-          "parentId": "21d317be-42bb-48c6-9408-6b718d8151ce",
+          "parentId": "51afc7bc-5b2b-4538-926b-7484e2000510",
           "content": "One system, every workflow",
           "base": {
             "x": 0,
@@ -1904,7 +2017,7 @@
             "constraintY": "start",
             "w": 480,
             "h": 24,
-            "widthMode": "auto",
+            "widthMode": "fill",
             "heightMode": "auto",
             "layout": "absolute",
             "direction": "column",
@@ -1932,7 +2045,7 @@
             "fontWeight": "800",
             "lineHeight": 1.6,
             "letterSpacing": 2,
-            "textAlign": "left",
+            "textAlign": "center",
             "textTransform": "uppercase",
             "overflow": "visible",
             "position": "static",
@@ -1958,10 +2071,10 @@
           "name": "Orbit eyebrow"
         },
         {
-          "id": "39ee9e30-bea5-4c06-ada1-6952fd859fb4",
+          "id": "9a12b573-5201-44df-862e-3f4f6022da0c",
           "type": "Heading",
           "z": 0,
-          "parentId": "21d317be-42bb-48c6-9408-6b718d8151ce",
+          "parentId": "51afc7bc-5b2b-4538-926b-7484e2000510",
           "content": "FROM SIGNAL\nTO SHIPPED.",
           "base": {
             "x": 0,
@@ -2033,10 +2146,10 @@
           }
         },
         {
-          "id": "c6d2da38-9292-47a8-8192-d4d8aebbee6b",
+          "id": "44235ca9-2d7f-42b9-896a-d50614ca51fb",
           "type": "Text",
           "z": 0,
-          "parentId": "21d317be-42bb-48c6-9408-6b718d8151ce",
+          "parentId": "51afc7bc-5b2b-4538-926b-7484e2000510",
           "content": "Connect research, decisions, design and delivery in a system that keeps context alive from first insight to final release.",
           "base": {
             "x": 0,
@@ -2096,13 +2209,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit copy"
+          "name": "Orbit copy",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 15
+            }
+          }
         },
         {
-          "id": "286a3a42-895b-47e2-9b7f-cdb4c9d5bb83",
+          "id": "8d2048ec-44b1-4e83-9062-92d330de8944",
           "type": "Frame",
           "z": 0,
-          "parentId": "21d317be-42bb-48c6-9408-6b718d8151ce",
+          "parentId": "51afc7bc-5b2b-4538-926b-7484e2000510",
           "base": {
             "x": 0,
             "y": 0,
@@ -2163,13 +2285,17 @@
           },
           "name": "Product interface",
           "overrides": {
+            "tablet": {
+              "h": 440
+            },
             "mobile": {
-              "h": 330
+              "h": 300,
+              "radius": 18
             }
           }
         },
         {
-          "id": "7a1190e1-d204-4686-8d61-13458ccd59d9",
+          "id": "584812a6-42ef-4184-bd62-94a31cdece4b",
           "type": "Section",
           "z": 0,
           "base": {
@@ -2230,13 +2356,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Product metrics"
+          "name": "Product metrics",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 56,
+              "padR": 20,
+              "padB": 56,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "67eff0d0-8aaa-4c9f-ac6b-05e96cfd31f0",
+          "id": "49ac3d51-0b6f-40c3-a877-2ecb8a3d0882",
           "type": "Container",
           "z": 0,
-          "parentId": "7a1190e1-d204-4686-8d61-13458ccd59d9",
+          "parentId": "584812a6-42ef-4184-bd62-94a31cdece4b",
           "base": {
             "x": 0,
             "y": 0,
@@ -2298,7 +2436,7 @@
           "name": "Metrics grid",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
@@ -2307,10 +2445,10 @@
           }
         },
         {
-          "id": "3e4437ba-5c5b-4536-881c-1d5a9e6b83ee",
+          "id": "1505503c-ac7e-47e1-b869-caea83248104",
           "type": "Container",
           "z": 0,
-          "parentId": "67eff0d0-8aaa-4c9f-ac6b-05e96cfd31f0",
+          "parentId": "49ac3d51-0b6f-40c3-a877-2ecb8a3d0882",
           "base": {
             "x": 0,
             "y": 0,
@@ -2369,13 +2507,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 1"
+          "name": "Metric 1",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "77a0aad2-29c7-4d6b-82cc-5afd2e882ec0",
+          "id": "e97a11e4-7947-47c2-a41e-4c9a09f13ca1",
           "type": "Heading",
           "z": 0,
-          "parentId": "3e4437ba-5c5b-4536-881c-1d5a9e6b83ee",
+          "parentId": "1505503c-ac7e-47e1-b869-caea83248104",
           "content": "32%",
           "base": {
             "x": 0,
@@ -2438,10 +2584,10 @@
           "name": "Metric value"
         },
         {
-          "id": "b7228810-2992-4597-a771-cd6822be45b1",
+          "id": "4546a96f-2801-4f4d-8f99-a889d7c77900",
           "type": "Text",
           "z": 0,
-          "parentId": "3e4437ba-5c5b-4536-881c-1d5a9e6b83ee",
+          "parentId": "1505503c-ac7e-47e1-b869-caea83248104",
           "content": "faster launches",
           "base": {
             "x": 0,
@@ -2504,10 +2650,10 @@
           "name": "Metric label"
         },
         {
-          "id": "bb0d394a-d1b8-44eb-9cb6-5704f49311ff",
+          "id": "d2b9d306-5852-4fa2-844f-bb4d48456648",
           "type": "Container",
           "z": 0,
-          "parentId": "67eff0d0-8aaa-4c9f-ac6b-05e96cfd31f0",
+          "parentId": "49ac3d51-0b6f-40c3-a877-2ecb8a3d0882",
           "base": {
             "x": 0,
             "y": 0,
@@ -2566,13 +2712,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 2"
+          "name": "Metric 2",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "2a8d5381-e8a8-41db-80b6-b26d122c7ee4",
+          "id": "badabc4a-b3ad-4058-928d-650a87a40d66",
           "type": "Heading",
           "z": 0,
-          "parentId": "bb0d394a-d1b8-44eb-9cb6-5704f49311ff",
+          "parentId": "d2b9d306-5852-4fa2-844f-bb4d48456648",
           "content": "4.8×",
           "base": {
             "x": 0,
@@ -2635,10 +2789,10 @@
           "name": "Metric value"
         },
         {
-          "id": "1e6121fb-443e-4e56-a5fb-42b027d65eb1",
+          "id": "5dfb387d-9f73-4f05-b409-7db5ad5980c2",
           "type": "Text",
           "z": 0,
-          "parentId": "bb0d394a-d1b8-44eb-9cb6-5704f49311ff",
+          "parentId": "d2b9d306-5852-4fa2-844f-bb4d48456648",
           "content": "team velocity",
           "base": {
             "x": 0,
@@ -2701,10 +2855,10 @@
           "name": "Metric label"
         },
         {
-          "id": "7175f2ac-5a66-4b30-9a0d-c5732f199518",
+          "id": "d0471b2a-ffd0-4144-94f3-f29427553526",
           "type": "Container",
           "z": 0,
-          "parentId": "67eff0d0-8aaa-4c9f-ac6b-05e96cfd31f0",
+          "parentId": "49ac3d51-0b6f-40c3-a877-2ecb8a3d0882",
           "base": {
             "x": 0,
             "y": 0,
@@ -2763,13 +2917,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 3"
+          "name": "Metric 3",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "09f859a1-5adf-45fb-aa3f-c2d2b8c8db6f",
+          "id": "d10c9b55-7d67-491c-a15d-72e4f6e98f5c",
           "type": "Heading",
           "z": 0,
-          "parentId": "7175f2ac-5a66-4b30-9a0d-c5732f199518",
+          "parentId": "d0471b2a-ffd0-4144-94f3-f29427553526",
           "content": "99.99%",
           "base": {
             "x": 0,
@@ -2832,10 +2994,10 @@
           "name": "Metric value"
         },
         {
-          "id": "e7254a62-9a11-4623-8799-185aa2ecabde",
+          "id": "a484fcc4-6a43-4930-b81d-060d0bf99576",
           "type": "Text",
           "z": 0,
-          "parentId": "7175f2ac-5a66-4b30-9a0d-c5732f199518",
+          "parentId": "d0471b2a-ffd0-4144-94f3-f29427553526",
           "content": "platform uptime",
           "base": {
             "x": 0,
@@ -2913,6 +3075,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -2950,7 +3114,7 @@
       "slug": "pricing",
       "elements": [
         {
-          "id": "23f7a4df-f3b1-49c6-9dc5-556c8562320f",
+          "id": "1284e270-12d4-43e5-b551-5bbda241803f",
           "type": "Section",
           "z": 0,
           "base": {
@@ -3011,13 +3175,29 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit navigation"
+          "name": "Orbit navigation",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 20,
+              "padR": 20,
+              "padB": 20,
+              "padL": 20
+            }
+          },
+          "componentRole": "instance",
+          "componentId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+          "componentSourceId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+          "variant": "Default"
         },
         {
-          "id": "67758b79-0f7a-4dde-933e-5acdc1a124ce",
+          "id": "02ef9de4-8b93-410a-b46f-075a952c0599",
           "type": "Container",
           "z": 0,
-          "parentId": "23f7a4df-f3b1-49c6-9dc5-556c8562320f",
+          "parentId": "1284e270-12d4-43e5-b551-5bbda241803f",
           "base": {
             "x": 0,
             "y": 0,
@@ -3079,19 +3259,19 @@
           "name": "Orbit navigation inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
-              "widthMode": "fill",
-              "direction": "column"
+              "widthMode": "fill"
             }
-          }
+          },
+          "componentSourceId": "d196d203-ad33-4b0d-84e2-d6cff0610248"
         },
         {
-          "id": "34ad491e-84df-4ae4-bc8c-29515772d939",
+          "id": "f767d053-c32c-4d8e-aab9-9e3b985e0ee1",
           "type": "Heading",
           "z": 0,
-          "parentId": "67758b79-0f7a-4dde-933e-5acdc1a124ce",
+          "parentId": "02ef9de4-8b93-410a-b46f-075a952c0599",
           "content": "ORBIT/OS",
           "base": {
             "x": 0,
@@ -3151,16 +3331,18 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit logo"
+          "name": "Orbit logo",
+          "componentSourceId": "e88eaeee-7d06-4642-84a1-254080feb8aa"
         },
         {
-          "id": "7a5c0cdb-ed62-42bc-8acd-6243c20c8d44",
+          "id": "9c249c7f-70a5-43fb-b9da-bc4b3f8fc03c",
           "type": "Button",
           "z": 0,
-          "parentId": "67758b79-0f7a-4dde-933e-5acdc1a124ce",
+          "parentId": "02ef9de4-8b93-410a-b46f-075a952c0599",
           "content": "Start building",
           "href": "",
           "target": "_self",
+          "buttonType": "button",
           "base": {
             "x": 0,
             "y": 0,
@@ -3223,10 +3405,11 @@
           "hover": {
             "scale": 103,
             "shadow": "0 14px 40px rgba(115,87,255,.35)"
-          }
+          },
+          "componentSourceId": "0bb9a23d-41c4-450a-a48e-12cffd9b95d9"
         },
         {
-          "id": "0cbefc8e-d267-43ae-bf65-77e88ab69168",
+          "id": "2d5ab692-dc8c-43e6-839f-43d04ba0d80f",
           "type": "Section",
           "z": 0,
           "base": {
@@ -3287,13 +3470,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Pricing hero"
+          "name": "Pricing hero",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 77,
+              "padR": 20,
+              "padB": 77,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "df1594c5-cf47-4b90-8487-05e9b86b061a",
+          "id": "a157bdea-d792-4fdf-ae5d-a8bd6696b076",
           "type": "Container",
           "z": 0,
-          "parentId": "0cbefc8e-d267-43ae-bf65-77e88ab69168",
+          "parentId": "2d5ab692-dc8c-43e6-839f-43d04ba0d80f",
           "base": {
             "x": 0,
             "y": 0,
@@ -3355,7 +3550,7 @@
           "name": "Orbit hero inner",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill"
@@ -3363,10 +3558,10 @@
           }
         },
         {
-          "id": "9cfacbed-55b4-4bf7-b8a5-40457fd10fc8",
+          "id": "5f07a052-4d79-4285-b29b-4463f4bf8123",
           "type": "Text",
           "z": 0,
-          "parentId": "df1594c5-cf47-4b90-8487-05e9b86b061a",
+          "parentId": "a157bdea-d792-4fdf-ae5d-a8bd6696b076",
           "content": "Simple by design",
           "base": {
             "x": 0,
@@ -3375,7 +3570,7 @@
             "constraintY": "start",
             "w": 480,
             "h": 24,
-            "widthMode": "auto",
+            "widthMode": "fill",
             "heightMode": "auto",
             "layout": "absolute",
             "direction": "column",
@@ -3403,7 +3598,7 @@
             "fontWeight": "800",
             "lineHeight": 1.6,
             "letterSpacing": 2,
-            "textAlign": "left",
+            "textAlign": "center",
             "textTransform": "uppercase",
             "overflow": "visible",
             "position": "static",
@@ -3429,10 +3624,10 @@
           "name": "Orbit eyebrow"
         },
         {
-          "id": "45516fc1-a280-43ab-804b-f699fd8639b0",
+          "id": "32bbca5a-a127-46ab-8984-f23864c08de5",
           "type": "Heading",
           "z": 0,
-          "parentId": "df1594c5-cf47-4b90-8487-05e9b86b061a",
+          "parentId": "a157bdea-d792-4fdf-ae5d-a8bd6696b076",
           "content": "PRICING THAT\nSCALES CALMLY.",
           "base": {
             "x": 0,
@@ -3504,10 +3699,10 @@
           }
         },
         {
-          "id": "ad258737-4108-4dea-a41b-ca5a7c4cdeb2",
+          "id": "0e63b587-ec12-472a-bff1-0ae0af0341f7",
           "type": "Text",
           "z": 0,
-          "parentId": "df1594c5-cf47-4b90-8487-05e9b86b061a",
+          "parentId": "a157bdea-d792-4fdf-ae5d-a8bd6696b076",
           "content": "Start with the essentials, then expand across teams without surprise platform fees or a maze of artificial limits.",
           "base": {
             "x": 0,
@@ -3567,13 +3762,22 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Orbit copy"
+          "name": "Orbit copy",
+          "overrides": {
+            "tablet": {
+              "widthMode": "fill"
+            },
+            "mobile": {
+              "widthMode": "fill",
+              "fontSize": 15
+            }
+          }
         },
         {
-          "id": "87b8c31a-712f-4cba-bc1a-7f560e6868cd",
+          "id": "0448d19c-b0fe-424c-a0c7-3db4b4a8c819",
           "type": "Frame",
           "z": 0,
-          "parentId": "df1594c5-cf47-4b90-8487-05e9b86b061a",
+          "parentId": "a157bdea-d792-4fdf-ae5d-a8bd6696b076",
           "base": {
             "x": 0,
             "y": 0,
@@ -3634,13 +3838,17 @@
           },
           "name": "Product interface",
           "overrides": {
+            "tablet": {
+              "h": 440
+            },
             "mobile": {
-              "h": 330
+              "h": 300,
+              "radius": 18
             }
           }
         },
         {
-          "id": "3c92b35d-085b-40b6-a148-d06c96a3ba28",
+          "id": "407c8908-24da-495e-9e8f-a9aa90b9c8cc",
           "type": "Section",
           "z": 0,
           "base": {
@@ -3701,13 +3909,25 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Product metrics"
+          "name": "Product metrics",
+          "overrides": {
+            "tablet": {
+              "padR": 28,
+              "padL": 28
+            },
+            "mobile": {
+              "padT": 56,
+              "padR": 20,
+              "padB": 56,
+              "padL": 20
+            }
+          }
         },
         {
-          "id": "1d3704a3-7b70-4c8e-bb40-8684a4f293db",
+          "id": "f6df9fc0-c165-4ce7-8cb8-12474c204c1e",
           "type": "Container",
           "z": 0,
-          "parentId": "3c92b35d-085b-40b6-a148-d06c96a3ba28",
+          "parentId": "407c8908-24da-495e-9e8f-a9aa90b9c8cc",
           "base": {
             "x": 0,
             "y": 0,
@@ -3769,7 +3989,7 @@
           "name": "Metrics grid",
           "overrides": {
             "tablet": {
-              "w": 820
+              "widthMode": "fill"
             },
             "mobile": {
               "widthMode": "fill",
@@ -3778,10 +3998,10 @@
           }
         },
         {
-          "id": "b924a10b-fb6c-4e20-a9d6-4c6f1368dfce",
+          "id": "4cc793f8-e881-4bde-84e3-b0c7eb65dfe4",
           "type": "Container",
           "z": 0,
-          "parentId": "1d3704a3-7b70-4c8e-bb40-8684a4f293db",
+          "parentId": "f6df9fc0-c165-4ce7-8cb8-12474c204c1e",
           "base": {
             "x": 0,
             "y": 0,
@@ -3840,13 +4060,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 1"
+          "name": "Metric 1",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "7f56908e-ef06-480b-bd0b-f27bd1662f1f",
+          "id": "671c1199-bc79-46e5-b6bd-d31526694981",
           "type": "Heading",
           "z": 0,
-          "parentId": "b924a10b-fb6c-4e20-a9d6-4c6f1368dfce",
+          "parentId": "4cc793f8-e881-4bde-84e3-b0c7eb65dfe4",
           "content": "32%",
           "base": {
             "x": 0,
@@ -3909,10 +4137,10 @@
           "name": "Metric value"
         },
         {
-          "id": "9fd79e8e-e811-4b4c-a10c-1a6cb32b8191",
+          "id": "953ea2d9-53fd-4189-8815-afe15a385b7e",
           "type": "Text",
           "z": 0,
-          "parentId": "b924a10b-fb6c-4e20-a9d6-4c6f1368dfce",
+          "parentId": "4cc793f8-e881-4bde-84e3-b0c7eb65dfe4",
           "content": "faster launches",
           "base": {
             "x": 0,
@@ -3975,10 +4203,10 @@
           "name": "Metric label"
         },
         {
-          "id": "6e46e60d-804f-40a9-987f-df073d50095e",
+          "id": "c1d96b17-307c-477d-8695-0e848f1d9784",
           "type": "Container",
           "z": 0,
-          "parentId": "1d3704a3-7b70-4c8e-bb40-8684a4f293db",
+          "parentId": "f6df9fc0-c165-4ce7-8cb8-12474c204c1e",
           "base": {
             "x": 0,
             "y": 0,
@@ -4037,13 +4265,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 2"
+          "name": "Metric 2",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "5f2201e0-676b-498d-92eb-5c94813a17cb",
+          "id": "4ea13583-4d21-4acf-90e3-1830dc41a90b",
           "type": "Heading",
           "z": 0,
-          "parentId": "6e46e60d-804f-40a9-987f-df073d50095e",
+          "parentId": "c1d96b17-307c-477d-8695-0e848f1d9784",
           "content": "4.8×",
           "base": {
             "x": 0,
@@ -4106,10 +4342,10 @@
           "name": "Metric value"
         },
         {
-          "id": "2ec36533-1963-41c3-9816-c471ba2e9e5c",
+          "id": "98802d0d-50f7-4dac-96ce-a605210161cd",
           "type": "Text",
           "z": 0,
-          "parentId": "6e46e60d-804f-40a9-987f-df073d50095e",
+          "parentId": "c1d96b17-307c-477d-8695-0e848f1d9784",
           "content": "team velocity",
           "base": {
             "x": 0,
@@ -4172,10 +4408,10 @@
           "name": "Metric label"
         },
         {
-          "id": "0ee6d4b8-0a4e-4fbf-b185-695f35285cf0",
+          "id": "addc3d04-f5c7-4a0c-800f-3d3d777edb19",
           "type": "Container",
           "z": 0,
-          "parentId": "1d3704a3-7b70-4c8e-bb40-8684a4f293db",
+          "parentId": "f6df9fc0-c165-4ce7-8cb8-12474c204c1e",
           "base": {
             "x": 0,
             "y": 0,
@@ -4234,13 +4470,21 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Metric 3"
+          "name": "Metric 3",
+          "overrides": {
+            "mobile": {
+              "padT": 22,
+              "padR": 22,
+              "padB": 22,
+              "padL": 22
+            }
+          }
         },
         {
-          "id": "3d2a3f4b-63b4-430c-bec2-3e280fcb79a0",
+          "id": "6d63fb79-5d89-4f7c-84bd-a428131d7f29",
           "type": "Heading",
           "z": 0,
-          "parentId": "0ee6d4b8-0a4e-4fbf-b185-695f35285cf0",
+          "parentId": "addc3d04-f5c7-4a0c-800f-3d3d777edb19",
           "content": "99.99%",
           "base": {
             "x": 0,
@@ -4303,10 +4547,10 @@
           "name": "Metric value"
         },
         {
-          "id": "6b0c059f-6179-4963-951c-89a8fc9edc97",
+          "id": "abdef4a3-5e97-4f0f-af3b-e04241a287de",
           "type": "Text",
           "z": 0,
-          "parentId": "0ee6d4b8-0a4e-4fbf-b185-695f35285cf0",
+          "parentId": "addc3d04-f5c7-4a0c-800f-3d3d777edb19",
           "content": "platform uptime",
           "base": {
             "x": 0,
@@ -4384,6 +4628,8 @@
         "padL": 0,
         "align": "stretch",
         "fontFamily": "\"Manrope Showcase\", sans-serif",
+        "pageTransition": "smooth",
+        "pageTransitionDuration": 380,
         "customFonts": [
           {
             "id": "template-manrope",
@@ -4415,6 +4661,303 @@
         ]
       },
       "dataSources": []
+    }
+  ],
+  "components": [
+    {
+      "id": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+      "type": "Section",
+      "z": 0,
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1280,
+        "h": 480,
+        "widthMode": "fill",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "column",
+        "gap": 24,
+        "padT": 20,
+        "padR": 32,
+        "padB": 20,
+        "padL": 32,
+        "justify": "start",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#070914",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Orbit navigation",
+      "overrides": {
+        "tablet": {
+          "padR": 28,
+          "padL": 28
+        },
+        "mobile": {
+          "padT": 20,
+          "padR": 20,
+          "padB": 20,
+          "padL": 20
+        }
+      },
+      "componentRole": "master",
+      "componentId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+      "componentSourceId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+      "variant": "Default"
+    },
+    {
+      "id": "d196d203-ad33-4b0d-84e2-d6cff0610248",
+      "type": "Container",
+      "z": 0,
+      "parentId": "6dac64b3-8132-42ea-8a8b-5a4ecab4dfda",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 1120,
+        "h": 240,
+        "widthMode": "fixed",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 24,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "between",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#27272a",
+        "radius": 12,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "#e4e4e7",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 16,
+        "fontWeight": "normal",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Orbit navigation inner",
+      "overrides": {
+        "tablet": {
+          "widthMode": "fill"
+        },
+        "mobile": {
+          "widthMode": "fill"
+        }
+      },
+      "componentSourceId": "d196d203-ad33-4b0d-84e2-d6cff0610248"
+    },
+    {
+      "id": "e88eaeee-7d06-4642-84a1-254080feb8aa",
+      "type": "Heading",
+      "z": 0,
+      "parentId": "d196d203-ad33-4b0d-84e2-d6cff0610248",
+      "content": "ORBIT/OS",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 480,
+        "h": 48,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "absolute",
+        "direction": "column",
+        "gap": 0,
+        "padT": 0,
+        "padR": 0,
+        "padB": 0,
+        "padL": 0,
+        "justify": "start",
+        "align": "start",
+        "wrap": false,
+        "columns": 3,
+        "bg": "transparent",
+        "gradient": "",
+        "color": "#f5f7ff",
+        "radius": 0,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 19,
+        "fontWeight": "800",
+        "lineHeight": 1.2,
+        "letterSpacing": -0.5,
+        "textAlign": "left",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Orbit logo",
+      "componentSourceId": "e88eaeee-7d06-4642-84a1-254080feb8aa"
+    },
+    {
+      "id": "0bb9a23d-41c4-450a-a48e-12cffd9b95d9",
+      "type": "Button",
+      "z": 0,
+      "parentId": "d196d203-ad33-4b0d-84e2-d6cff0610248",
+      "content": "Start building",
+      "href": "",
+      "target": "_self",
+      "buttonType": "button",
+      "base": {
+        "x": 0,
+        "y": 0,
+        "constraintX": "start",
+        "constraintY": "start",
+        "w": 140,
+        "h": 44,
+        "widthMode": "auto",
+        "heightMode": "auto",
+        "layout": "stack",
+        "direction": "row",
+        "gap": 0,
+        "padT": 11,
+        "padR": 18,
+        "padB": 11,
+        "padL": 18,
+        "justify": "center",
+        "align": "center",
+        "wrap": false,
+        "columns": 3,
+        "bg": "#7357ff",
+        "gradient": "",
+        "color": "#ffffff",
+        "radius": 999,
+        "opacity": 100,
+        "borderW": 0,
+        "borderC": "transparent",
+        "borderStyle": "solid",
+        "shadow": "",
+        "rotate": 0,
+        "fontFamily": "inherit",
+        "fontSize": 12,
+        "fontWeight": "700",
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "textTransform": "none",
+        "overflow": "visible",
+        "position": "static",
+        "stickyOffset": 0,
+        "bgImage": "",
+        "bgSize": "cover",
+        "bgPosition": "center",
+        "blur": 0,
+        "backdropBlur": 0,
+        "blendMode": "normal",
+        "scale": 100,
+        "aspectRatio": "",
+        "entrance": "none",
+        "entranceDuration": 600,
+        "entranceDelay": 0,
+        "entranceCurve": "ease",
+        "entranceBezier": "0.44, 0, 0.56, 1",
+        "springStiffness": 300,
+        "springDamping": 30,
+        "cursor": "auto",
+        "hidden": false
+      },
+      "name": "Navigation action",
+      "hover": {
+        "scale": 103,
+        "shadow": "0 14px 40px rgba(115,87,255,.35)"
+      },
+      "componentSourceId": "0bb9a23d-41c4-450a-a48e-12cffd9b95d9"
     }
   ]
 }

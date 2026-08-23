@@ -61,6 +61,39 @@ export function classFor(id: string) {
  */
 export const DEFAULT_PAGE_FONT = "ui-sans-serif, system-ui, sans-serif";
 
+function pageTransitionCss(rootStyle: RootStyle) {
+    const kind = rootStyle.pageTransition ?? "smooth";
+    if (kind === "none") return "html{scrollbar-gutter:stable}";
+
+    const duration = Math.max(120, Math.min(1200, rootStyle.pageTransitionDuration ?? 380));
+    const leaveDuration = Math.max(90, Math.round(duration * 0.48));
+    const frames = kind === "fade"
+        ? {
+              leave: "to{opacity:0}",
+              enter: "from{opacity:0}to{opacity:1}",
+          }
+        : kind === "slide"
+          ? {
+                leave: "to{opacity:0;transform:translateX(-20px)}",
+                enter: "from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}",
+            }
+          : {
+                leave: "to{opacity:0;transform:translateY(-6px);filter:blur(3px)}",
+                enter: "from{opacity:0;transform:translateY(10px);filter:blur(5px)}to{opacity:1;transform:none;filter:blur(0)}",
+            };
+
+    return `
+@view-transition{navigation:auto}
+html{scrollbar-gutter:stable}
+::view-transition-old(root),::view-transition-new(root){mix-blend-mode:normal;animation-fill-mode:both}
+::view-transition-old(root){animation:pg-page-leave ${leaveDuration}ms cubic-bezier(.4,0,1,1) both}
+::view-transition-new(root){animation:pg-page-enter ${duration}ms cubic-bezier(.16,1,.3,1) both}
+@keyframes pg-page-leave{${frames.leave}}
+@keyframes pg-page-enter{${frames.enter}}
+@media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}}
+`;
+}
+
 export function resolveFont(fontFamily: string) {
     return fontFamily === "inherit" || fontFamily === ""
         ? DEFAULT_PAGE_FONT
@@ -91,10 +124,10 @@ function rulesFor(
         {
             parentLayout: parentStyle?.layout ?? "stack",
             parentDirection: parentStyle?.direction ?? "column",
+            parentAlign: parentStyle?.align ?? rootStyle.align,
         },
         element,
     );
-    css.zIndex = element.z;
     if (style.hidden) css.display = "none";
 
     if (!isBand(element.type, style, rootStyle) || style.hidden) {
@@ -106,6 +139,41 @@ function rulesFor(
         ["", declarationsToCss(shell)],
         [">.pg-inner", declarationsToCss(inner)],
     ];
+}
+
+/**
+ * Interaction states must only override the declarations they actually
+ * change. Re-emitting the complete base style from `:hover` used to win over
+ * responsive rules through the pseudo-class's higher specificity, making a
+ * button inside a component jump back to its desktop size and placement.
+ */
+function interactionDeclarations(
+    element: CanvasElement,
+    byId: Map<string, CanvasElement>,
+    breakpoint: Breakpoint,
+    rootStyle: RootStyle,
+    cascade: Cascade,
+    patch: NonNullable<CanvasElement["hover"]>,
+) {
+    const parent = element.parentId ? byId.get(element.parentId) : undefined;
+    const parentStyle = parent ? resolveStyle(parent, breakpoint, cascade) : undefined;
+    const context = {
+        parentLayout: parentStyle?.layout ?? "stack",
+        parentDirection: parentStyle?.direction ?? "column",
+        parentAlign: parentStyle?.align ?? rootStyle.align,
+    } as const;
+    const resting = resolveStyle(element, breakpoint, cascade);
+    const restingCss = styleToCss(resting, context, element);
+    const activeCss = styleToCss({ ...resting, ...patch }, context, element);
+    const delta: CSSProperties = {};
+    for (const property of Object.keys(activeCss) as Array<keyof CSSProperties>) {
+        if (activeCss[property] !== restingCss[property]) {
+            // CSSProperties is a heterogeneous map; this assignment is safe
+            // because both values come from the same property key.
+            (delta as Record<string, unknown>)[property as string] = activeCss[property];
+        }
+    }
+    return declarationsToCss(delta);
 }
 
 /**
@@ -194,6 +262,7 @@ export function stylesheetFor(
     const cascade = cascadeOf(rootStyle.breakpoints, rootStyle.baseBreakpointId);
     const baseId = baseOf(cascade).id;
     const parts: string[] = [];
+    parts.push(pageTransitionCss(rootStyle));
     for (const font of rootStyle.customFonts ?? []) {
         const family = font.name.replace(/["'{};]/g, "");
         const rawUrl = font.url.replace(/["'()\\]/g, "");
@@ -216,8 +285,15 @@ export function stylesheetFor(
         // element selector and leak the editor's typeface into the site.
         // The shell spans the viewport; the content width is applied by each
         // band's inner box, so section backgrounds reach both edges.
-        `.pg-root{font-family:${resolveFont(rootStyle.fontFamily)}}` +
+            `.pg-root{font-family:${resolveFont(rootStyle.fontFamily)}}` +
             ".pg-node{box-sizing:border-box}" +
+            ".pg-node:is(input,textarea,button){font:inherit}" +
+            ".pg-node:is(input,textarea){outline:none}" +
+            ".pg-node:is(textarea){resize:none}" +
+            ".pg-form-status:empty{display:none}" +
+            ".pg-form-status{font-size:12px;line-height:1.4}" +
+            ".pg-node[data-pg-state=success] .pg-form-status{color:#22c55e}" +
+            ".pg-node[data-pg-state=error] .pg-form-status{color:#ef4444}" +
             ".pg-node img{display:block;width:100%;height:100%}" +
             ".pg-link{text-decoration:none;color:inherit}",
     );
@@ -265,35 +341,33 @@ export function stylesheetFor(
 
     for (const element of elements) {
         if (element.hover || element.press) parts.push(`.${classFor(element.id)}{transition:transform .42s cubic-bezier(.16,1,.3,1),scale .42s cubic-bezier(.16,1,.3,1),rotate .42s cubic-bezier(.16,1,.3,1),translate .42s cubic-bezier(.16,1,.3,1),background-color .32s ease,color .32s ease,border-color .32s ease,box-shadow .42s cubic-bezier(.16,1,.3,1),opacity .32s ease,filter .42s ease;will-change:transform}`);
-        if (!element.hover || Object.keys(element.hover).length === 0) continue;
-        const merged = { ...resolveStyle(element, baseId, cascade), ...element.hover };
-        const parent = element.parentId ? byId.get(element.parentId) : undefined;
-        const parentStyle = parent ? resolveStyle(parent, baseId, cascade) : undefined;
-        const css = styleToCss(
-            merged,
-            {
-                parentLayout: parentStyle?.layout ?? "stack",
-                parentDirection: parentStyle?.direction ?? "column",
-            },
-            element,
-        );
-        parts.push(
-            `.${classFor(element.id)}:hover{${declarationsToCss(css)}}`,
-        );
-    }
-
-    for (const element of elements) {
-        if (element.press && Object.keys(element.press).length) {
-            const merged = { ...resolveStyle(element, baseId, cascade), ...element.press };
-            const parent = element.parentId ? byId.get(element.parentId) : undefined;
-            const parentStyle = parent ? resolveStyle(parent, baseId, cascade) : undefined;
-            const css = styleToCss(merged, { parentLayout: parentStyle?.layout ?? "stack", parentDirection: parentStyle?.direction ?? "column" }, element);
-            parts.push(`.${classFor(element.id)}:active{${declarationsToCss(css)}}`);
-        }
+        if (element.hover && Object.keys(element.hover).length) parts.push(`.${classFor(element.id)}:hover{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.hover)}}`);
+        if (element.press && Object.keys(element.press).length) parts.push(`.${classFor(element.id)}:active{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.press)}}`);
         if (element.loop) {
             const name = element.loop.type;
             parts.push(`.${classFor(element.id)}{animation:pg-loop-${name} ${element.loop.duration}ms ease-in-out infinite}`);
         }
+    }
+
+    // A constraint or rotation can itself be responsive. Recompute the small
+    // interaction delta inside that artboard's media query so hover composes
+    // with the active breakpoint rather than with the base artboard.
+    for (const plan of mediaPlan(cascade)) {
+        const rules = elements.flatMap((element) => {
+            if (!element.hover && !element.press) return [];
+            const parent = element.parentId ? byId.get(element.parentId) : undefined;
+            if (!element.overrides?.[plan.id] && !parent?.overrides?.[plan.id]) return [];
+            const selector = `.${classFor(element.id)}`;
+            return [
+                element.hover && Object.keys(element.hover).length
+                    ? `${selector}:hover{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.hover)}}`
+                    : "",
+                element.press && Object.keys(element.press).length
+                    ? `${selector}:active{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.press)}}`
+                    : "",
+            ].filter(Boolean);
+        }).join("");
+        if (rules) parts.push(`@media ${plan.query}{${rules}}`);
     }
     if (elements.some((element) => element.loop)) parts.push(`@keyframes pg-loop-pulse{0%,100%{scale:1}50%{scale:1.06}}@keyframes pg-loop-float{0%,100%{translate:0 0}50%{translate:0 -12px}}@keyframes pg-loop-spin{to{rotate:360deg}}@media(prefers-reduced-motion:reduce){.pg-node{animation:none!important}}`);
 

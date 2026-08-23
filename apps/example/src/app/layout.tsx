@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Press_Start_2P, Syncopate } from "next/font/google";
+import { Geist, Geist_Mono, Press_Start_2P, Syncopate, Manrope } from "next/font/google";
 import { PagieraProvider } from "pagiera/provider";
 import type { ReactNode } from "react";
 import "./globals.css";
@@ -24,6 +24,11 @@ const syncopate = Syncopate({
   variable: "--font-syncopate",
 });
 
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "Pagiera package example",
   description: "A standalone consumer of the Pagiera npm package",
@@ -31,14 +36,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col"
+        suppressHydrationWarning>
         <PagieraProvider
           fonts={[
             { variable: geistSans.variable, title: "Geist Sans" },
             { variable: geistMono.variable, title: "Geist Mono" },
             { variable: pressStart2P.variable, title: "Press Start 2P" },
             { variable: syncopate.variable, title: "Syncopate" },
+            { variable: manrope.variable, title: "Manrope" },
           ]}
         >
           {children}

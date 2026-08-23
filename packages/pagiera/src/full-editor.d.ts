@@ -33,10 +33,13 @@ export type PagieraStudioAdapters = {
     renamePage?(id: string, name: string, slug: string): Promise<PagieraMutationResult>;
     duplicatePage?(id: string, name: string, slug: string): Promise<PagieraMutationResult>;
     deletePage?(id: string): Promise<PagieraMutationResult>;
-    installTemplate?(template: string | { schemaVersion: 1; id: string; version: string; pages: unknown[] }): Promise<PagieraMutationResult>;
+    installTemplate?(templateId: string): Promise<PagieraMutationResult>;
+    setSiteFont?(fontFamily: string, customFonts?: unknown[]): Promise<unknown>;
+    setSiteTransition?(pageTransition: "smooth" | "fade" | "slide" | "none", pageTransitionDuration: number): Promise<unknown>;
     publishPage?(id: string): Promise<PagieraMutationResult>;
     unpublishPage?(id: string, slug: string): Promise<PagieraMutationResult>;
     navigate?(pageId: string, options?: { replace?: boolean }): void | Promise<void>;
+    editorHref?(pageId: string, panel?: string): string;
     refresh?(): void;
     previewHref?(pageId: string): string;
     publishedHref?(slug: string): string;
@@ -48,6 +51,8 @@ export type PagieraStudioProps = {
     library: unknown[];
     adapters: PagieraStudioAdapters;
     templateRegistryUrl?: string;
+    /** Server-resolved editor panel used for the very first render. */
+    initialPanel?: string;
 };
 
 export const PagieraStudio: ComponentType<PagieraStudioProps>;
