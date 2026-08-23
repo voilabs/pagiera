@@ -14,7 +14,7 @@ import {
     type TemplateRegistryEntry,
 } from "@/lib/editor/template-registry";
 
-type RegistryState = "loading" | "network" | "cache" | "stale" | "bundled";
+type RegistryState = "loading" | "local" | "network" | "cache" | "stale" | "bundled";
 type InstallStage = "fetching" | "replacing" | "creating" | "opening";
 
 const INSTALL_STEPS: Array<{ id: InstallStage; label: string; detail: string }> = [
@@ -170,7 +170,7 @@ export function TemplatesPanel({
                     </Select>
                 </div>
 
-                <div className="mt-3 flex max-w-[720px] items-center justify-between px-1 text-[9px] text-ed-faint"><span>{visible.length} templates available</span><span className="flex items-center gap-1.5"><i className={`size-1.5 rounded-full ${status === "network" ? "bg-emerald-400" : status === "loading" ? "animate-pulse bg-ed-accent" : "bg-amber-400"}`} />{status === "network" ? (registryUrl.includes("/api/pagiera/templates/") ? "Package catalog" : registryUrl.includes("raw.githubusercontent.com") ? "GitHub catalog" : "Custom catalog") : status === "cache" ? "Cached catalog" : status === "loading" ? "Refreshing" : "Offline catalog"}</span></div>
+                <div className="mt-3 flex max-w-[720px] items-center justify-between px-1 text-[9px] text-ed-faint"><span>{visible.length} templates available</span><span className="flex items-center gap-1.5"><i className={`size-1.5 rounded-full ${status === "local" || status === "network" ? "bg-emerald-400" : status === "loading" ? "animate-pulse bg-ed-accent" : "bg-amber-400"}`} />{status === "local" ? "Local templates" : status === "network" ? (registryUrl.includes("/api/pagiera/templates/") ? "Package catalog" : registryUrl.includes("raw.githubusercontent.com") ? "GitHub catalog" : "Custom catalog") : status === "cache" ? "Cached catalog" : status === "loading" ? "Refreshing" : "Offline catalog"}</span></div>
                 </div>
             </div>
 

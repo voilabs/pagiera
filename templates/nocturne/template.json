@@ -69,7 +69,7 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation",
+          "name": "Navbar",
           "overrides": {
             "tablet": {
               "padT": 18,
@@ -4804,7 +4804,7 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation",
+          "name": "Navbar",
           "overrides": {
             "tablet": {
               "padT": 18,
@@ -7506,7 +7506,7 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation",
+          "name": "Navbar",
           "overrides": {
             "tablet": {
               "padT": 18,
@@ -10208,7 +10208,7 @@
             "cursor": "auto",
             "hidden": false
           },
-          "name": "Nocturne navigation",
+          "name": "Navbar",
           "overrides": {
             "tablet": {
               "padT": 18,
@@ -13558,7 +13558,7 @@
         "cursor": "auto",
         "hidden": false
       },
-      "name": "Nocturne navigation",
+      "name": "Navbar",
       "overrides": {
         "tablet": {
           "padT": 18,

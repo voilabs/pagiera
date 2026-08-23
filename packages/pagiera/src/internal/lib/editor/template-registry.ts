@@ -37,7 +37,7 @@ export const FALLBACK_TEMPLATE_REGISTRY: TemplateRegistry = {
     templates: [
         {
             id: "pulse-social",
-            version: "1.1.0",
+            version: "1.1.1",
             name: "Pulse Social",
             description: "A polished one-page social feed with a responsive shell, native search and post composer forms.",
             category: "Social",
@@ -50,7 +50,7 @@ export const FALLBACK_TEMPLATE_REGISTRY: TemplateRegistry = {
         },
         {
             id: "editorial-blog",
-            version: "1.3.0",
+            version: "1.3.1",
             name: "Field Notes",
             description: "A dynamic editorial journal with API-powered article routes.",
             category: "Editorial",
@@ -63,7 +63,7 @@ export const FALLBACK_TEMPLATE_REGISTRY: TemplateRegistry = {
         },
         {
             id: "orbit-saas",
-            version: "1.2.0",
+            version: "1.2.1",
             name: "Orbit OS",
             description: "A high-contrast product launch site for modern software teams.",
             category: "SaaS",
@@ -75,7 +75,7 @@ export const FALLBACK_TEMPLATE_REGISTRY: TemplateRegistry = {
         },
         {
             id: "nocturne",
-            version: "1.2.0",
+            version: "1.2.1",
             name: "Nocturne Studio",
             description: "An art-directed portfolio for independent creative studios.",
             category: "Portfolio",
@@ -137,7 +137,10 @@ function isRegistry(value: unknown): value is TemplateRegistry {
 async function fetchJson(url: string) {
     const response = await fetch(url, { cache: "no-cache", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`Template registry returned ${response.status}.`);
-    return response.json() as Promise<unknown>;
+    return {
+        value: await response.json() as unknown,
+        source: response.headers.get("x-pagiera-template-source"),
+    };
 }
 
 export async function loadTemplateRegistry(url = DEFAULT_TEMPLATE_REGISTRY_URL, force = false) {
@@ -148,10 +151,11 @@ export async function loadTemplateRegistry(url = DEFAULT_TEMPLATE_REGISTRY_URL, 
         if (cached && isRegistry(cached)) return { registry: cached, source: "cache" as const };
     }
     try {
-        const value = await fetchJson(url);
+        const response = await fetchJson(url);
+        const value = response.value;
         if (!isRegistry(value)) throw new Error("Template registry has an unsupported format.");
         if (cacheable) writeCache(key, value);
-        return { registry: value, source: "network" as const };
+        return { registry: value, source: response.source === "local" ? "local" as const : "network" as const };
     } catch (error) {
         const stale = cacheable ? readCache<TemplateRegistry>(key, true) : undefined;
         if (stale && isRegistry(stale)) return { registry: stale, source: "stale" as const, error };

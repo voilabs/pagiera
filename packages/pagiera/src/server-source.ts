@@ -1,5 +1,8 @@
 import { Pool } from "pg";
 import { createClient, type RedisClientType } from "redis";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import manropeDataUrl from "./manrope-data.js";
 
 export type PagieraServerConfig = {
@@ -13,8 +16,9 @@ export type PagieraServerConfig = {
 };
 
 const DEFAULT_TEMPLATE_REGISTRY_URL = "https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json";
+const LOCAL_TEMPLATE_REGISTRY = "pagiera:local-templates";
 const TEMPLATE_CACHE_SECONDS = 15 * 60;
-const TEMPLATE_CACHE_REVISION = 3;
+const TEMPLATE_CACHE_REVISION = 4;
 const BUILTIN_TEMPLATE_IDS = ["nocturne", "editorial-blog", "orbit-saas", "pulse-social"] as const;
 type BuiltinTemplateId = (typeof BUILTIN_TEMPLATE_IDS)[number];
 
@@ -84,6 +88,14 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const fail = (error: unknown, status = 400) => ok({ error: error instanceof Error ? error.message : String(error) }, status);
 
     const cachedTemplateJson = async (cacheKey: string, url: string) => {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.protocol === "file:") {
+            // Local development intentionally bypasses Redis: saving a
+            // template file must be visible on the very next refresh/install.
+            const text = await readFile(fileURLToPath(parsedUrl), "utf8");
+            if (text.length > 15_000_000) throw new Error("Template bundle is too large.");
+            return JSON.parse(text) as unknown;
+        }
         const cached = await redis.get(cacheKey);
         if (cached) return JSON.parse(cached) as unknown;
         const response = await fetch(url, {
@@ -108,10 +120,33 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         preview?: unknown;
     };
 
+    const findLocalTemplateRegistry = async () => {
+        let directory = process.cwd();
+        for (let depth = 0; depth < 8; depth += 1) {
+            const candidate = resolve(directory, "templates", "registry.json");
+            try {
+                await readFile(candidate, "utf8");
+                return candidate;
+            } catch {
+                const parent = dirname(directory);
+                if (parent === directory) break;
+                directory = parent;
+            }
+        }
+        return undefined;
+    };
+
     const templateRegistryFor = async (requestUrl: string) => {
-        const registryUrl = new URL(config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL, requestUrl).href;
+        const configuredSource = config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL;
+        const localPath = configuredSource === LOCAL_TEMPLATE_REGISTRY
+            ? await findLocalTemplateRegistry()
+            : undefined;
+        const registryUrl = localPath
+            ? pathToFileURL(localPath).href
+            : new URL(configuredSource === LOCAL_TEMPLATE_REGISTRY ? DEFAULT_TEMPLATE_REGISTRY_URL : configuredSource, requestUrl).href;
         let registry: { schemaVersion?: unknown; templates?: RegistryEntry[] };
         let bundled = false;
+        let local = Boolean(localPath);
         try {
             // Pointing the upstream URL at this package endpoint would recurse.
             const current = new URL(requestUrl);
@@ -123,9 +158,10 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         } catch {
             registry = templateCatalog.FALLBACK_TEMPLATE_REGISTRY;
             bundled = true;
+            local = false;
         }
         if (registry.schemaVersion !== 1 || !Array.isArray(registry.templates)) throw new Error("Template registry has an unsupported format.");
-        return { registry, registryUrl, bundled };
+        return { registry, registryUrl, bundled, local };
     };
 
     const templateBundleById = async (templateId: string, requestUrl: string) => {
@@ -138,7 +174,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             return builtin ? templates.createSiteTemplateBundle(templateId as BuiltinTemplateId) : undefined;
         }
         const bundleUrl = new URL(entry.file, registryUrl).href;
-        if (!/^https?:$/.test(new URL(bundleUrl).protocol)) throw new Error("Template bundle URL must use HTTP or HTTPS.");
+        if (!/^(https?|file):$/.test(new URL(bundleUrl).protocol)) throw new Error("Template bundle URL must use HTTP, HTTPS or a local development file.");
         const bundle = await cachedTemplateJson(`pagiera:templates:bundle:${templateId}:${String(entry.version ?? "latest")}:${bundleUrl}`, bundleUrl) as {
             schemaVersion?: unknown;
             id?: unknown;
@@ -307,11 +343,12 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 });
             }
             if (request.method === "GET" && path === "/templates/registry.json") {
-                const { registry } = await templateRegistryFor(request.url);
+                const { registry, bundled, local } = await templateRegistryFor(request.url);
                 return new Response(JSON.stringify(registry), {
                     headers: {
                         "Content-Type": "application/json; charset=utf-8",
-                        "Cache-Control": "public, max-age=300, stale-while-revalidate=900",
+                        "Cache-Control": local || bundled ? "no-store" : "public, max-age=300, stale-while-revalidate=900",
+                        "X-Pagiera-Template-Source": local ? "local" : bundled ? "bundled" : "network",
                     },
                 });
             }
@@ -405,7 +442,9 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             }
             if (parts[0] === "pages" && parts[1] && parts[2] === "save" && request.method === "POST") {
                 const body = await bodyOf(request); const document = body.document ?? {};
-                return ok(await pages.savePageDocument(parts[1], validation.parseElements(document.elements), validation.parseRootStyle(document.rootStyle), validation.parseDataSources(document.dataSources), Number(body.expectedVersion)));
+                const saved = await pages.savePageDocument(parts[1], validation.parseElements(document.elements), validation.parseRootStyle(document.rootStyle), validation.parseDataSources(document.dataSources), Number(body.expectedVersion));
+                if (saved.status === "saved" && saved.componentsPublished) await invalidate();
+                return ok(saved);
             }
             if (parts[0] === "pages" && parts[1] && parts[2] === "duplicate" && request.method === "POST") {
                 const body = await bodyOf(request); const name = validation.parseName(body.name); const slug = validation.parseSlug(body.slug);
@@ -460,7 +499,7 @@ export function pagieraConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Pagi
         redisUrl: env.PAGIERA_REDIS_URL ?? env.REDIS_URL ?? "",
         openRouterApiKey: env.OPENROUTER_API_KEY ?? "",
         openRouterModel: env.OPENROUTER_MODEL ?? "",
-        templateRegistryUrl: env.PAGIERA_TEMPLATE_REGISTRY_URL ?? DEFAULT_TEMPLATE_REGISTRY_URL,
+        templateRegistryUrl: env.PAGIERA_TEMPLATE_REGISTRY_URL ?? (env.NODE_ENV === "production" ? DEFAULT_TEMPLATE_REGISTRY_URL : LOCAL_TEMPLATE_REGISTRY),
     };
 }
 
@@ -482,7 +521,7 @@ export function createPagieraRouteHandlers(config: PagieraServerConfig) {
 }
 
 const globalServers = globalThis as typeof globalThis & { __pagieraServers?: Map<string, ReturnType<typeof createPagieraServer>> };
-const SERVER_RUNTIME_REVISION = 12;
+const SERVER_RUNTIME_REVISION = 14;
 
 /** Reuses pools and Redis connections across API routes, SSR and development reloads. */
 export function getPagieraServer(config: PagieraServerConfig) {

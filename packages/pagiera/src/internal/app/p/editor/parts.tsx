@@ -398,7 +398,10 @@ export function LayersPanel({
     componentMode?: boolean;
     onOpenComponent?: (element: CanvasElement) => void;
 }) {
-    const [dropTarget, setDropTarget] = useState<string | null>(null);
+    const [dropTarget, setDropTarget] = useState<{
+        id: string;
+        placement: "before" | "inside" | "after";
+    } | null>(null);
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
     const [layerMenu, setLayerMenu] = useState<{ id: string; x: number; y: number } | null>(null);
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -420,9 +423,9 @@ export function LayersPanel({
     // Follow document/canvas flow from top to bottom. This keeps a stack page
     // readable as Navigation → Hero → Sections → Footer instead of presenting
     // the entire page backwards.
-    const rows = (parentId: string | undefined, depth: number): React.ReactNode[] =>
-        childrenOf(elements, parentId)
-            .flatMap((el) => {
+    const rows = (parentId: string | undefined, depth: number): React.ReactNode[] => {
+        const siblings = childrenOf(elements, parentId);
+        return siblings.flatMap((el, siblingIndex) => {
                 // On a page, a component instance is one atomic layer. Its
                 // implementation belongs to the component canvas and opens on
                 // double-click instead of leaking dozens of internal rows.
@@ -442,7 +445,8 @@ export function LayersPanel({
                         style={resolveStyle(el, breakpoint)}
                         depth={depth}
                         isSelected={selectedIds.includes(el.id)}
-                        isDropTarget={dropTarget === el.id}
+                        dropPlacement={dropTarget?.id === el.id ? dropTarget.placement : undefined}
+                        nextSiblingId={siblings[siblingIndex + 1]?.id}
                         onSelect={onSelect}
                         onDropTargetChange={setDropTarget}
                         onReparent={onReparent}
@@ -470,6 +474,7 @@ export function LayersPanel({
                     ...nested,
                 ];
             });
+    };
 
     const list = rows(undefined, 0);
     if (list.length === 0) {
@@ -562,7 +567,8 @@ function LayerRow({
     style,
     depth,
     isSelected,
-    isDropTarget,
+    dropPlacement,
+    nextSiblingId,
     onSelect,
     onDropTargetChange,
     onReparent,
@@ -577,9 +583,10 @@ function LayerRow({
     style: ElementStyle;
     depth: number;
     isSelected: boolean;
-    isDropTarget: boolean;
+    dropPlacement?: "before" | "inside" | "after";
+    nextSiblingId?: string;
     onSelect: (id: string, additive: boolean) => void;
-    onDropTargetChange: (id: string | null) => void;
+    onDropTargetChange: (target: { id: string; placement: "before" | "inside" | "after" } | null) => void;
     onReparent: (id: string, parentId: string | undefined, beforeId?: string) => void;
     isComponentInstance: boolean;
     onOpenComponent?: (element: CanvasElement) => void;
@@ -592,43 +599,57 @@ function LayerRow({
     const container = !isComponentInstance && isContainer(element.type);
 
     return (
-        // A container row accepts dropped layers; selection and every action
-        // live on the buttons inside it.
+        // Every row accepts before/after drops. Containers additionally expose
+        // a middle zone for nesting, matching the canvas tree structure.
         // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop surface
         <div
-            className={`group flex h-8 items-center gap-2 pr-2 text-[11px] transition-colors ${isDropTarget
-                    ? "bg-emerald-500/20 text-ed-text"
+            className={`group relative flex h-8 items-center gap-2 pr-2 text-[11px] transition-colors ${dropPlacement === "inside"
+                    ? "bg-[var(--ed-accent-soft)] text-ed-text"
                     : isSelected
                         ? "bg-[var(--ed-accent-soft)] text-ed-text"
                         : "text-ed-muted hover:bg-ed-field hover:text-ed-text"
                 }`}
             style={{ paddingLeft: 12 + depth * 14 }}
             onContextMenu={onContextMenu}
-            onDragOver={
-                container
-                    ? (event) => {
-                        if (!event.dataTransfer.types.includes(MOVE_MIME)) return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.dataTransfer.dropEffect = "move";
-                        onDropTargetChange(element.id);
-                    }
-                    : undefined
-            }
-            onDragLeave={container ? () => onDropTargetChange(null) : undefined}
-            onDrop={
-                container
-                    ? (event) => {
-                        const id = event.dataTransfer.getData(MOVE_MIME);
-                        if (!id) return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onReparent(id, element.id);
-                        onDropTargetChange(null);
-                    }
-                    : undefined
-            }
+            onDragOver={(event) => {
+                if (!event.dataTransfer.types.includes(MOVE_MIME)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = "move";
+                const rect = event.currentTarget.getBoundingClientRect();
+                const ratio = (event.clientY - rect.top) / rect.height;
+                const placement = container && ratio >= 0.3 && ratio <= 0.7
+                    ? "inside"
+                    : ratio < 0.5 ? "before" : "after";
+                onDropTargetChange({ id: element.id, placement });
+            }}
+            onDragLeave={(event) => {
+                if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                onDropTargetChange(null);
+            }}
+            onDrop={(event) => {
+                const id = event.dataTransfer.getData(MOVE_MIME);
+                if (!id) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (id !== element.id) {
+                    if (dropPlacement === "inside") onReparent(id, element.id);
+                    else if (dropPlacement === "before") onReparent(id, element.parentId, element.id);
+                    else if (nextSiblingId !== id) onReparent(id, element.parentId, nextSiblingId);
+                }
+                onDropTargetChange(null);
+            }}
         >
+            {dropPlacement === "before" && (
+                <span className="pointer-events-none absolute inset-x-1 top-0 z-10 h-0.5 -translate-y-1/2 rounded-full bg-ed-accent">
+                    <span className="absolute -left-0.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-ed-accent" />
+                </span>
+            )}
+            {dropPlacement === "after" && (
+                <span className="pointer-events-none absolute inset-x-1 bottom-0 z-10 h-0.5 translate-y-1/2 rounded-full bg-ed-accent">
+                    <span className="absolute -left-0.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-ed-accent" />
+                </span>
+            )}
             {canCollapse ? (
                 <button
                     type="button"
@@ -654,6 +675,7 @@ function LayerRow({
                     event.dataTransfer.setData(MOVE_MIME, element.id);
                     event.dataTransfer.effectAllowed = "move";
                 }}
+                onDragEnd={() => onDropTargetChange(null)}
                 onClick={(event) => onSelect(element.id, event.shiftKey || event.metaKey)}
                 onDoubleClick={(event) => {
                     if (!isComponentInstance || !onOpenComponent) return;

@@ -395,7 +395,7 @@ export async function getOrCreateDefaultPage(): Promise<Page> {
 /* ------------------------------------------------------------------- writes */
 
 export type SaveResult =
-    | { status: "saved"; version: number }
+    | { status: "saved"; version: number; componentsPublished?: boolean }
     /** Another writer advanced the page; carries the winning state. */
     | {
           status: "conflict";
@@ -417,6 +417,8 @@ export async function savePageDocument(
     const siteFont = await getSiteFont(currentPage.siteId);
     const siteTransition = await getSiteTransition(currentPage.siteId);
     const components = componentMastersFrom(elements);
+    const previousComponents = componentMastersFrom(currentPage.elements);
+    const componentsChanged = JSON.stringify(previousComponents) !== JSON.stringify(components);
     const pageElements = syncComponentInstances(withoutComponentMasters(elements), components);
     const normalizedRootStyle = withSiteTransition(withSiteFont(rootStyle, siteFont), siteTransition);
     const [updated] = await db.transaction(async (tx) => {
@@ -431,7 +433,16 @@ export async function savePageDocument(
             })
             .where(and(eq(pages.id, pageId), eq(pages.version, expectedVersion)))
             .returning({ version: pages.version });
-        if (saved[0]) await tx.update(sites).set({ components, updatedAt: new Date() }).where(eq(sites.id, currentPage.siteId));
+        if (saved[0]) {
+            await tx
+                .update(sites)
+                .set({
+                    components,
+                    ...(componentsChanged ? { publishedComponents: components } : {}),
+                    updatedAt: new Date(),
+                })
+                .where(eq(sites.id, currentPage.siteId));
+        }
         return saved;
     });
 
@@ -463,7 +474,7 @@ export async function savePageDocument(
         .values({ pageId, version: updated.version, elements: pageElements, rootStyle: normalizedRootStyle });
     await pruneRevisions(pageId);
 
-    return { status: "saved", version: updated.version };
+    return { status: "saved", version: updated.version, componentsPublished: componentsChanged || undefined };
 }
 
 /** Copies the current draft into the published columns. */
