@@ -39,7 +39,10 @@ export function PagieraEditor({
         navigate: async (id, options) => {
           const next = (await client.bootstrap(id)) as EditorBootstrap;
           setBootstrap(next);
-          const candidate = window.location.pathname.split("/").filter(Boolean).at(-1);
+          const candidate = window.location.pathname
+            .split("/")
+            .filter(Boolean)
+            .at(-1);
           const panel = candidate ? editorPanel(candidate) : undefined;
           const href = `${editorHref(id, panel)}${window.location.search}`;
           if (options?.replace) router.replace(href);
@@ -55,11 +58,11 @@ export function PagieraEditor({
           slug === "home"
             ? "/"
             : `/${slug
-              .split("/")
-              .map((part) =>
-                part.startsWith(":") ? part : encodeURIComponent(part),
-              )
-              .join("/")}`,
+                .split("/")
+                .map((part) =>
+                  part.startsWith(":") ? part : encodeURIComponent(part),
+                )
+                .join("/")}`,
       }}
     />
   );

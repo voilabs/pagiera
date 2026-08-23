@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Press_Start_2P, Syncopate, Manrope } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Manrope,
+  Press_Start_2P,
+  Syncopate,
+} from "next/font/google";
 import { PagieraProvider } from "pagiera/provider";
 import type { ReactNode } from "react";
 import "./globals.css";
@@ -37,8 +43,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <body className="min-h-full flex flex-col"
-        suppressHydrationWarning>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <PagieraProvider
           fonts={[
             { variable: geistSans.variable, title: "Geist Sans" },
