@@ -1,0 +1,24 @@
+{
+  "name": "Pagiera — visual website builder",
+  "short_name": "Pagiera",
+  "description": "The open-source visual website builder for expressive, responsive and data-driven websites.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f7fb",
+  "theme_color": "#f5f3ff",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48 32x32 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
