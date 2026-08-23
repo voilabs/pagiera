@@ -1,6 +1,6 @@
 {
   "name": "pagiera",
-  "version": "0.2.0-alpha.40",
+  "version": "0.2.0-alpha.41",
   "description": "Full-stack visual website editor with PostgreSQL, Redis and OpenRouter",
   "homepage": "https://pagiera.com",
   "repository": {
