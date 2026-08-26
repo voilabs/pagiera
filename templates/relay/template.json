@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "my-template",
+  "id": "relay",
   "version": "1.0.0",
   "pages": [
     {
@@ -9021,7 +9021,7 @@
           },
           {
             "id": "bp-mtacnm2x",
-            "name": "Breakpoint 3",
+            "name": "Laptop",
             "width": 1380
           },
           {

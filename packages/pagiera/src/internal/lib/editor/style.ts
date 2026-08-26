@@ -171,6 +171,11 @@ export function styleToCss(
     context: BoxContext,
     element?: Pick<CanvasElement, "type">,
 ): CSSProperties {
+    const borderT = style.borderT ?? style.borderW;
+    const borderR = style.borderR ?? style.borderW;
+    const borderB = style.borderB ?? style.borderW;
+    const borderL = style.borderL ?? style.borderW;
+    const hasBorder = borderT > 0 || borderR > 0 || borderB > 0 || borderL > 0;
     const css: CSSProperties = {
         boxSizing: "border-box",
         display: "flex",
@@ -209,9 +214,12 @@ export function styleToCss(
         color: style.color,
         borderRadius: style.radius || undefined,
         opacity: style.opacity === 100 ? undefined : style.opacity / 100,
-        borderWidth: style.borderW || undefined,
-        borderColor: style.borderW ? style.borderC : undefined,
-        borderStyle: style.borderW ? style.borderStyle : undefined,
+        borderTopWidth: borderT || undefined,
+        borderRightWidth: borderR || undefined,
+        borderBottomWidth: borderB || undefined,
+        borderLeftWidth: borderL || undefined,
+        borderColor: hasBorder ? style.borderC : undefined,
+        borderStyle: hasBorder ? style.borderStyle : undefined,
         boxShadow: style.shadow || undefined,
         transform:
             [

@@ -661,6 +661,10 @@ function TypographyGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
 function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle, onCommitStart, onCommitEnd } = ctx;
     const knownShadow = SHADOW_PRESETS.some((p) => p.value === style.shadow);
+    const separateBorders = [style.borderT, style.borderR, style.borderB, style.borderL].some((value) => value !== null);
+    const hasBorder = [style.borderT, style.borderR, style.borderB, style.borderL]
+        .map((value) => value ?? style.borderW)
+        .some((value) => value > 0);
 
     return (
         <Group title="Effects" defaultOpen={false}>
@@ -704,15 +708,34 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
             )}
 
             <More label="Border and rotation">
-                {ov(
+                <Segmented
+                    label="Border sides"
+                    value={separateBorders ? "separate" : "linked"}
+                    options={[
+                        { label: "Linked", value: "linked" as const },
+                        { label: "Separate", value: "separate" as const },
+                    ]}
+                    onChange={(value) => value === "linked"
+                        ? onStyle({ borderT: null, borderR: null, borderB: null, borderL: null })
+                        : onStyle({ borderT: style.borderW, borderR: style.borderW, borderB: style.borderW, borderL: style.borderW })}
+                />
+                {!separateBorders && ov(
                     ["borderW"],
                     <NumberInput
-                        label="Border"
+                        label="All sides"
                         suffix="px"
                         min={0}
                         value={style.borderW}
                         onChange={(borderW) => onStyle({ borderW })}
                     />,
+                )}
+                {separateBorders && (
+                    <div className="grid grid-cols-2 gap-2">
+                        {ov(["borderT"], <NumberInput label="Top" suffix="px" min={0} value={style.borderT ?? style.borderW} onChange={(borderT) => onStyle({ borderT })} />)}
+                        {ov(["borderR"], <NumberInput label="Right" suffix="px" min={0} value={style.borderR ?? style.borderW} onChange={(borderR) => onStyle({ borderR })} />)}
+                        {ov(["borderB"], <NumberInput label="Bottom" suffix="px" min={0} value={style.borderB ?? style.borderW} onChange={(borderB) => onStyle({ borderB })} />)}
+                        {ov(["borderL"], <NumberInput label="Left" suffix="px" min={0} value={style.borderL ?? style.borderW} onChange={(borderL) => onStyle({ borderL })} />)}
+                    </div>
                 )}
                 {ov(
                     ["borderStyle"],
@@ -726,7 +749,7 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                         ]}
                         onChange={(borderStyle) => onStyle({ borderStyle })}
                     />,
-                )}                {style.borderW > 0 &&
+                )}                {hasBorder &&
                     ov(
                         ["borderC"],
                         <ColorInput

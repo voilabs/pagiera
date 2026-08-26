@@ -37,6 +37,12 @@ function num(value: unknown, fallback: number, min: number, max: number) {
     return Math.min(max, Math.max(min, n));
 }
 
+function borderSide(value: unknown, fallback: number | null) {
+    if (value === null) return null;
+    if (value === undefined) return fallback;
+    return num(value, fallback ?? 0, 0, 999);
+}
+
 /** Older AI/preset builds wrote CSS scale multipliers (1.03) while the editor
  * stores percentages (103). Normalize those documents as they are loaded. */
 function scalePercent(value: unknown, fallback: number) {
@@ -222,6 +228,10 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         radius: num(raw.radius, base.radius, 0, 9999),
         opacity: num(raw.opacity, base.opacity, 0, 100),
         borderW: num(raw.borderW, base.borderW, 0, 999),
+        borderT: borderSide(raw.borderT, base.borderT),
+        borderR: borderSide(raw.borderR, base.borderR),
+        borderB: borderSide(raw.borderB, base.borderB),
+        borderL: borderSide(raw.borderL, base.borderL),
         borderC: cssValue(raw.borderC, base.borderC),
         borderStyle: oneOf(raw.borderStyle, ["solid", "dashed", "dotted"], base.borderStyle),
         shadow: cssValue(raw.shadow, base.shadow),

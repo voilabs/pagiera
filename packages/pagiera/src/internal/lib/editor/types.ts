@@ -184,6 +184,11 @@ export type ElementStyle = {
     radius: number;
     opacity: number;
     borderW: number;
+    /** Per-edge override; null inherits borderW. */
+    borderT: number | null;
+    borderR: number | null;
+    borderB: number | null;
+    borderL: number | null;
     borderC: string;
     borderStyle: BorderStyle;
     /** A full CSS box-shadow value, or "" for none. */
@@ -265,6 +270,10 @@ export const STYLE_KEYS = [
     "radius",
     "opacity",
     "borderW",
+    "borderT",
+    "borderR",
+    "borderB",
+    "borderL",
     "borderC",
     "borderStyle",
     "shadow",
@@ -400,6 +409,10 @@ export const BASE_STYLE: ElementStyle = {
     radius: 0,
     opacity: 100,
     borderW: 0,
+    borderT: null,
+    borderR: null,
+    borderB: null,
+    borderL: null,
     borderC: "transparent",
     borderStyle: "solid",
     shadow: "",
