@@ -170,7 +170,6 @@ export async function getTemplatePreviewDocument(id: string) {
     elements: page.elements,
     dataSources: page.dataSources ?? [],
     rootStyle: {
-      ...page.rootStyle,
       documentMode: page.rootStyle.documentMode ?? "page",
       maxWidth: page.rootStyle.maxWidth ?? 1280,
       canvasHeight: page.rootStyle.canvasHeight ?? 900,
@@ -179,15 +178,13 @@ export async function getTemplatePreviewDocument(id: string) {
       layout: page.rootStyle.layout ?? "stack",
       direction: page.rootStyle.direction ?? "column",
       gap: page.rootStyle.gap ?? 0,
-      fontFamily: "var(--font-template), sans-serif",
-      pageTransition: "none",
-      pageTransitionDuration: 0,
-      customFonts: [],
-      breakpoints: [
-        { id: "desktop", name: "Desktop", width: 1280 },
-        { id: "tablet", name: "Tablet", width: 810 },
-        { id: "mobile", name: "Mobile", width: 390 },
-      ],
+      fontFamily: page.rootStyle.fontFamily ?? "var(--font-template), sans-serif",
+      breakpoints: page.rootStyle.breakpoints ?? [
+          { id: "desktop", name: "Desktop", width: 1280 },
+          { id: "tablet", name: "Tablet", width: 810 },
+          { id: "mobile", name: "Mobile", width: 390 },
+        ],
+      ...page.rootStyle,
     },
   };
 

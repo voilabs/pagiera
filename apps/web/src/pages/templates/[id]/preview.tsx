@@ -3,21 +3,16 @@ import type {
   GetStaticProps,
   InferGetStaticPropsType,
 } from "next";
-import dynamic from "next/dynamic";
 import { Manrope } from "next/font/google";
 import Head from "next/head";
 import type { PagieraDocument } from "pagiera";
-import { RenderedPage as RuntimePage } from "pagiera/runtime";
+import { RenderedPage } from "pagiera/runtime";
 import {
   getTemplateCatalog,
   getTemplatePreviewDocument,
 } from "@/lib/template-catalog";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-template" });
-const RenderedPage = dynamic(() => Promise.resolve(RuntimePage), {
-  ssr: false,
-});
-
 type PreviewProps = {
   document: PagieraDocument;
   name: string;
