@@ -76,6 +76,14 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "h": 637.020202020202,
+              "w": 1920,
+              "x": 0,
+              "y": 0
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -153,6 +161,16 @@
           "parentId": "431d9d1e-b2a5-4c02-9936-a981dd03246f",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "h": 1293,
+              "w": 1880.2272727272727,
+              "x": 262.49999999999994,
+              "y": 427.5757575757575,
+              "widthMode": "fill",
+              "heightMode": "fixed"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -228,6 +246,13 @@
           "parentId": "431d9d1e-b2a5-4c02-9936-a981dd03246f",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padB": 5,
+              "padL": 5,
+              "padR": 5
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -279,7 +304,7 @@
             "widthMode": "fixed",
             "bgPosition": "center",
             "fontFamily": "inherit",
-            "fontWeight": "normal",
+            "fontWeight": "600",
             "heightMode": "auto",
             "lineHeight": 1.2,
             "aspectRatio": "",
@@ -304,6 +329,18 @@
           "parentId": "6f652df0-7a6c-4b05-b8da-f6e95fe49349",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "fontSize": 48,
+              "textAlign": "center",
+              "widthMode": "fill",
+              "fontWeight": "600"
+            },
+            "bp-mtacnm2x": {
+              "fontSize": 56,
+              "fontWeight": "600"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -380,6 +417,12 @@
           "parentId": "6f652df0-7a6c-4b05-b8da-f6e95fe49349",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "textAlign": "center",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -456,6 +499,12 @@
           "parentId": "6f652df0-7a6c-4b05-b8da-f6e95fe49349",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "textAlign": "center",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -531,6 +580,15 @@
           "parentId": "6f652df0-7a6c-4b05-b8da-f6e95fe49349",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "gap": 12,
+              "padT": 0,
+              "justify": "center",
+              "direction": "column",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -758,6 +816,12 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padL": 36,
+              "padR": 36
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -910,6 +974,11 @@
           "parentId": "febd2884-70d6-4d4f-b815-adde9265dcc4",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "hidden": true
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -1407,6 +1476,27 @@
           "parentId": "6f652df0-7a6c-4b05-b8da-f6e95fe49349",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "h": 877.1851851851852,
+              "w": 1436.2962962962963,
+              "x": 257.3333333333333,
+              "y": 600.3703703703704,
+              "hidden": true,
+              "overflow": "visible",
+              "position": "static",
+              "widthMode": "fill"
+            },
+            "bp-mtacnm2x": {
+              "h": 877.1851851851852,
+              "w": 1319.6296296296296,
+              "x": 38.37263987891485,
+              "y": 491.1111111111112,
+              "overflow": "hidden",
+              "position": "absolute",
+              "widthMode": "fixed"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -1557,6 +1647,11 @@
           "parentId": "d04db41d-4e34-4438-8be9-7677a534fb08",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -1632,6 +1727,15 @@
           "parentId": "d04db41d-4e34-4438-8be9-7677a534fb08",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "align": "center",
+              "justify": "center",
+              "overflow": "auto",
+              "direction": "row",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2086,6 +2190,14 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padB": 36,
+              "padL": 36,
+              "padR": 36,
+              "padT": 36
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2161,6 +2273,14 @@
           "parentId": "80c26eca-192a-4edd-9ae1-2d1ea8e92145",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "align": "start",
+              "layout": "stack",
+              "justify": "start",
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2236,6 +2356,12 @@
           "parentId": "b1785691-1768-4669-ada4-83980ae8cc1d",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "layout": "stack",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2312,6 +2438,11 @@
           "parentId": "6cdb114f-0c4c-40e0-9d08-b2354894efef",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2388,6 +2519,11 @@
           "parentId": "6cdb114f-0c4c-40e0-9d08-b2354894efef",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2464,6 +2600,11 @@
           "parentId": "b1785691-1768-4669-ada4-83980ae8cc1d",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2539,6 +2680,11 @@
           "parentId": "80c26eca-192a-4edd-9ae1-2d1ea8e92145",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2614,6 +2760,12 @@
           "parentId": "b1757bda-ba4c-4878-89b7-3d6344ccf9fd",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "h": 400,
+              "heightMode": "fixed"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2691,6 +2843,11 @@
           "parentId": "45eeefd2-d652-4402-aa37-6865632d78f8",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "heightMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2766,6 +2923,11 @@
           "parentId": "b1757bda-ba4c-4878-89b7-3d6344ccf9fd",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2842,6 +3004,11 @@
           "parentId": "37c87121-b6af-4acb-944c-f7f0b95dea2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2918,6 +3085,11 @@
           "parentId": "37c87121-b6af-4acb-944c-f7f0b95dea2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -2994,6 +3166,11 @@
           "parentId": "37c87121-b6af-4acb-944c-f7f0b95dea2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3069,6 +3246,11 @@
           "parentId": "37c87121-b6af-4acb-944c-f7f0b95dea2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3295,6 +3477,14 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padB": 36,
+              "padL": 36,
+              "padR": 36,
+              "padT": 36
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3371,6 +3561,11 @@
           "parentId": "8a463045-9859-47e7-b503-cee16e765f2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3447,6 +3642,11 @@
           "parentId": "8a463045-9859-47e7-b503-cee16e765f2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3523,6 +3723,11 @@
           "parentId": "8a463045-9859-47e7-b503-cee16e765f2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3598,6 +3803,11 @@
           "parentId": "8a463045-9859-47e7-b503-cee16e765f2b",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3749,6 +3959,11 @@
           "parentId": "c1b034d9-2b19-4605-a823-593b0d2c79f2",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3825,6 +4040,11 @@
           "parentId": "c1b034d9-2b19-4605-a823-593b0d2c79f2",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -3901,6 +4121,11 @@
           "parentId": "c1b034d9-2b19-4605-a823-593b0d2c79f2",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "auto"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4127,6 +4352,11 @@
           "parentId": "7fee333a-730a-4fda-bdd1-e64e0d050708",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4278,6 +4508,11 @@
           "parentId": "8225231d-e930-4bf0-91d7-91d8de369e89",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4429,6 +4664,11 @@
           "parentId": "59af81fd-25bf-49d3-9add-38cb8691069f",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4504,6 +4744,11 @@
           "parentId": "ed39657f-7f4e-4131-a8a5-d1277f999637",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4580,6 +4825,11 @@
           "parentId": "1848a838-3e18-460e-bc7a-e5a71bf4a610",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4656,6 +4906,11 @@
           "parentId": "1848a838-3e18-460e-bc7a-e5a71bf4a610",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4732,6 +4987,11 @@
           "parentId": "1848a838-3e18-460e-bc7a-e5a71bf4a610",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4807,6 +5067,11 @@
           "parentId": "1848a838-3e18-460e-bc7a-e5a71bf4a610",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4883,6 +5148,11 @@
           "parentId": "fa59a952-a2ac-4183-9099-51a25d974628",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -4959,6 +5229,11 @@
           "parentId": "fa59a952-a2ac-4183-9099-51a25d974628",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -5033,6 +5308,14 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padB": 36,
+              "padL": 36,
+              "padR": 36,
+              "padT": 36
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -5108,6 +5391,13 @@
           "parentId": "b204ab92-265a-4c56-adc5-27f24e6a5daf",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "align": "start",
+              "justify": "start",
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -5184,6 +5474,11 @@
           "parentId": "fcabd700-8b6c-48df-aef2-18565740b247",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -5260,6 +5555,11 @@
           "parentId": "fcabd700-8b6c-48df-aef2-18565740b247",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -5335,6 +5635,11 @@
           "parentId": "b204ab92-265a-4c56-adc5-27f24e6a5daf",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6091,6 +6396,11 @@
           "parentId": "b204ab92-265a-4c56-adc5-27f24e6a5daf",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6167,6 +6477,11 @@
           "parentId": "bec2c623-1409-48a3-a4e0-87e2a6bdf3b5",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6243,6 +6558,12 @@
           "parentId": "bec2c623-1409-48a3-a4e0-87e2a6bdf3b5",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "textAlign": "left",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6317,6 +6638,14 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padB": 36,
+              "padL": 36,
+              "padR": 36,
+              "padT": 36
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6468,6 +6797,11 @@
           "parentId": "ee04c46c-aec4-4401-ac5b-52208a964801",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6544,6 +6878,11 @@
           "parentId": "ee04c46c-aec4-4401-ac5b-52208a964801",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6620,6 +6959,11 @@
           "parentId": "ee04c46c-aec4-4401-ac5b-52208a964801",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6777,6 +7121,16 @@
           "iconName": "star",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "padB": 36,
+              "padL": 36,
+              "padR": 36,
+              "padT": 36,
+              "layout": "stack",
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6852,6 +7206,11 @@
           "parentId": "731bb018-c220-4fa8-bbd7-5a1f19dac6dd",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -6927,6 +7286,11 @@
           "parentId": "c84ca915-5bbf-4cd7-a6d4-a78930bb61cc",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -7003,6 +7367,11 @@
           "parentId": "d2313245-f384-415e-983e-7cfefef3540e",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -7079,6 +7448,11 @@
           "parentId": "d2313245-f384-415e-983e-7cfefef3540e",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -7154,6 +7528,13 @@
           "parentId": "c84ca915-5bbf-4cd7-a6d4-a78930bb61cc",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "wrap": true,
+              "justify": "start",
+              "widthMode": "fill"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -7985,6 +8366,13 @@
           "parentId": "731bb018-c220-4fa8-bbd7-5a1f19dac6dd",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "align": "start",
+              "justify": "start",
+              "direction": "column"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -8137,6 +8525,11 @@
           "parentId": "d83b94f7-843c-4aab-9359-440d16155b03",
           "inputType": "text",
           "objectFit": "cover",
+          "overrides": {
+            "bp-mtac6gmq": {
+              "textAlign": "left"
+            }
+          },
           "buttonType": "button",
           "formMethod": "POST",
           "formSubmitMode": "request",
@@ -8619,16 +9012,26 @@
             "value": "#8b7bff"
           }
         ],
-        "fontFamily": "var(--font-geist-sans)",
+        "fontFamily": "var(--font-manrope)",
         "breakpoints": [
           {
             "id": "desktop",
             "name": "Desktop",
             "width": 1920
+          },
+          {
+            "id": "bp-mtacnm2x",
+            "name": "Breakpoint 3",
+            "width": 1380
+          },
+          {
+            "id": "bp-mtac6gmq",
+            "name": "Mobile",
+            "width": 640
           }
         ],
         "customFonts": [],
-        "canvasHeight": 5037,
+        "canvasHeight": 4796,
         "documentMode": "page",
         "pageTransition": "smooth",
         "baseBreakpointId": "desktop",
