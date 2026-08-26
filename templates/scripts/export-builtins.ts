@@ -16,7 +16,14 @@ const registry = JSON.parse(await readFile(resolve(templatesRoot, "registry.json
     }>;
 };
 
+// Only the bundled designs are regenerated from source. Hand-authored
+// templates live beside them in the same registry and are written by their own
+// builder, so walking every entry here would try to generate them from a
+// site-template that does not exist.
+const BUILTINS = new Set<string>(["nocturne", "editorial-blog", "orbit-saas", "pulse-social"]);
+
 for (const template of registry.templates) {
+    if (!BUILTINS.has(template.id)) continue;
     const bundle = createSiteTemplateBundle(template.id);
     const directory = resolve(templatesRoot, template.id);
     await mkdir(directory, { recursive: true });

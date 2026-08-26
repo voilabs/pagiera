@@ -119,7 +119,17 @@ export type Overflow = "visible" | "hidden" | "auto" | "scroll";
 export type Entrance = "none" | "fade" | "up" | "down" | "left" | "right" | "zoom";
 export type MotionCurve = "ease" | "spring";
 export type CursorStyle = "auto" | "default" | "pointer" | "text" | "grab" | "zoom-in" | "none";
-export type PositionMode = "static" | "sticky";
+/**
+ * How an element sits relative to its siblings.
+ *
+ * `absolute` is per element, not per container: it lifts this one out of the
+ * flow and places it at x/y while everything around it keeps stacking. Making
+ * the whole parent free instead would move every sibling to satisfy one of
+ * them.
+ */
+export type PositionMode = "static" | "sticky" | "fixed" | "absolute";
+/** Which edge a pinned element holds to. */
+export type PinSide = "top" | "bottom" | "left" | "right";
 export type BgSize = "cover" | "contain" | "auto";
 export type BlendMode =
     | "normal"
@@ -151,6 +161,15 @@ export type ElementStyle = {
     padR: number;
     padB: number;
     padL: number;
+    /**
+     * Space held below the element, outside its own box.
+     *
+     * Separate from `padB` on purpose: padding is the breathing room the
+     * author gave the content inside a section, while this is the distance to
+     * whatever comes next. Sharing one value would make adjusting the rhythm
+     * between sections quietly reflow their insides.
+     */
+    marginB: number;
     justify: Justify;
     align: Align;
     wrap: boolean;
@@ -186,8 +205,10 @@ export type ElementStyle = {
     position: PositionMode;
     /** CSS stacking order, independent from the internal document order. */
     zIndex: number;
-    /** Distance from the top edge while stuck; only read when position is sticky. */
+    /** Distance from `pinSide` while pinned; read when position is sticky or fixed. */
     stickyOffset: number;
+    /** Edge a sticky or fixed element pins to. */
+    pinSide: PinSide;
     /** Background image URL, or "" for none. Painted over `gradient`. */
     bgImage: string;
     bgSize: BgSize;
@@ -233,6 +254,7 @@ export const STYLE_KEYS = [
     "padR",
     "padB",
     "padL",
+    "marginB",
     "justify",
     "align",
     "wrap",
@@ -258,6 +280,7 @@ export const STYLE_KEYS = [
     "position",
     "zIndex",
     "stickyOffset",
+    "pinSide",
     "bgImage",
     "bgSize",
     "bgPosition",
@@ -365,6 +388,7 @@ export const BASE_STYLE: ElementStyle = {
     padR: 0,
     padB: 0,
     padL: 0,
+    marginB: 0,
     justify: "start",
     align: "start",
     wrap: false,
@@ -393,6 +417,7 @@ export const BASE_STYLE: ElementStyle = {
     position: "static",
     zIndex: 0,
     stickyOffset: 0,
+    pinSide: "top",
     bgImage: "",
     bgSize: "cover",
     bgPosition: "center",
@@ -714,6 +739,19 @@ export type RootStyle = {
     baseBreakpointId?: string;
     variables?: DesignVariable[];
     customFonts?: CustomFont[];
+    /**
+     * Raw CSS appended after the generated sheet, so it can override any rule
+     * the builder produced. Escape hatch for what the inspector cannot express.
+     */
+    customCss?: string;
+    /**
+     * Raw JavaScript run on the published page, after the document parses.
+     *
+     * It is deliberately never executed inside the editor: the canvas and the
+     * template preview both render without scripting, so a page cannot reach
+     * the editor it is being built in.
+     */
+    customJs?: string;
 };
 
 export type CustomFont = { id: string; name: string; url: string; weight: number; style: "normal" | "italic" };

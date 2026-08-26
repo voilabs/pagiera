@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS page_revisions (
   version integer NOT NULL, elements jsonb NOT NULL, root_style jsonb, created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS page_revisions_page_id_created_at_idx ON page_revisions(page_id, created_at);
+CREATE TABLE IF NOT EXISTS assets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), mime text NOT NULL, bytes bytea NOT NULL,
+  prompt text, created_at timestamptz NOT NULL DEFAULT now()
+);
 `;
 
 function required(name: string, value: string) {
@@ -76,9 +80,21 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const templateCatalog = await import("@/lib/editor/template-registry");
     const templateThumbnails = await import("@/lib/editor/template-thumbnail");
     const ai = await import("@/app/api/ai-design/route");
+
     const renderData = await import("@/lib/render/load-data");
     const { cascadeOf } = await import("@/lib/editor/cascade");
     const basePath = (config.basePath ?? "/api/pagiera").replace(/\/$/, "");
+
+    // The design agent generates imagery but has no database of its own, and
+    // the bytes are far too large to travel inside a document, so they are
+    // stored here and the plan carries a URL instead.
+    ai.setImageStore(async (image) => {
+        const inserted = await pool.query<{ id: string }>(
+            "INSERT INTO assets (mime, bytes, prompt) VALUES ($1, $2, $3) RETURNING id",
+            [image.mime, image.bytes, image.prompt.slice(0, 500)],
+        );
+        return `${basePath}/assets/${inserted.rows[0].id}`;
+    });
 
     const invalidate = async () => {
         const keys = await redis.keys("pagiera:published:*");
@@ -354,6 +370,26 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 await pool.query("SELECT 1");
                 return ok({ status: "ok", postgres: true, redis: (await redis.ping()) === "PONG", model: config.openRouterModel });
             }
+            // Generated imagery is stored rather than inlined: one image comes
+            // back from the provider as roughly 1.4 MB of base64, which cannot
+            // fit in an element's `src` and would be re-sent with the document
+            // on every editor load.
+            if (request.method === "GET" && parts[0] === "assets" && parts.length === 2 && /^[0-9a-f-]{36}$/i.test(parts[1])) {
+                const stored = await pool.query<{ mime: string; bytes: Buffer }>(
+                    "SELECT mime, bytes FROM assets WHERE id = $1",
+                    [parts[1]],
+                );
+                const asset = stored.rows[0];
+                if (!asset) return fail("Asset not found", 404);
+                return new Response(new Uint8Array(asset.bytes), {
+                    headers: {
+                        "Content-Type": asset.mime,
+                        // The id is derived from the bytes, so a URL can never
+                        // point at different content later.
+                        "Cache-Control": "public, max-age=31536000, immutable",
+                    },
+                });
+            }
             if (request.method === "GET" && path === "/assets/manrope-variable.woff2") {
                 const encoded = manropeDataUrl.slice(manropeDataUrl.indexOf(",") + 1);
                 return new Response(Buffer.from(encoded, "base64"), {
@@ -514,6 +550,58 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             }
             if (parts[0] === "pages" && parts[1] && parts[2] === "unpublish" && request.method === "POST") {
                 await pages.unpublishPage(parts[1]); await invalidate(); return ok({ status: "ok" });
+            }
+            // Save the current site as a template bundle — the same shape the
+            // catalog serves, so an exported file can be committed to a
+            // registry and installed anywhere.
+            if (request.method === "GET" && path === "/templates/export") {
+                const site = await pages.exportSite();
+                const id = (url.searchParams.get("id") || "exported-template")
+                    .toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "exported-template";
+                const bundle = {
+                    schemaVersion: 1,
+                    id,
+                    version: url.searchParams.get("version") || "1.0.0",
+                    pages: site.pages,
+                    components: site.components,
+                };
+                return new Response(JSON.stringify(bundle, null, 2), {
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8",
+                        "Content-Disposition": `attachment; filename="${id}.json"`,
+                        "Cache-Control": "no-store",
+                    },
+                });
+            }
+            // Install a bundle the author supplies directly, rather than one
+            // named in the catalog. Same validation and the same replacement
+            // as a catalog install: an uploaded file is no more trusted.
+            if (parts[0] === "templates" && parts[1] === "import" && parts.length === 2 && request.method === "POST") {
+                const body = await bodyOf(request);
+                const bundle = body?.bundle ?? body;
+                if (bundle?.schemaVersion !== 1 || !Array.isArray(bundle?.pages)) {
+                    return fail("That file is not a Pagiera template bundle.", 400);
+                }
+                const fontFamily = typeof body.fontFamily === "string" ? body.fontFamily.trim().slice(0, 300) : undefined;
+                const safeFontFamily = fontFamily
+                    ? validation.parseRootStyle({ fontFamily }).fontFamily
+                    : undefined;
+                const templatePages = validateTemplatePages(bundle.pages).map((page) => {
+                    if (!safeFontFamily) return page;
+                    const usesBundledFont = safeFontFamily === page.rootStyle.fontFamily;
+                    return {
+                        ...page,
+                        rootStyle: {
+                            ...page.rootStyle,
+                            fontFamily: safeFontFamily,
+                            customFonts: usesBundledFont ? page.rootStyle.customFonts : [],
+                        },
+                    };
+                });
+                const templateComponents = validation.parseElements(bundle.components);
+                const pageId = await pages.installTemplatePages(templatePages, templateComponents);
+                await invalidate();
+                return ok({ status: "ok", pageId, pageCount: templatePages.length });
             }
             if (parts[0] === "templates" && parts[1] === "install" && parts.length === 2 && request.method === "POST") {
                 const body = await bodyOf(request);

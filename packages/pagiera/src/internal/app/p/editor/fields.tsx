@@ -583,3 +583,46 @@ export function TextArea({
         </div>
     );
 }
+
+/**
+ * A full-width code field for the raw CSS/JS escape hatches.
+ *
+ * These are edited as whole documents rather than single values, so the label
+ * sits above the box instead of beside it and the text keeps its own
+ * monospaced, non-wrapping layout — wrapped code is unreadable to skim.
+ */
+export function CodeInput({
+    label,
+    value,
+    onChange,
+    placeholder,
+    hint,
+    rows = 10,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    hint?: string;
+    rows?: number;
+}) {
+    const id = useId();
+    return (
+        <div className="flex flex-col gap-1.5">
+            <label htmlFor={id} className="text-[10px] font-medium text-ed-muted">
+                {label}
+            </label>
+            <textarea
+                id={id}
+                value={value}
+                rows={rows}
+                spellCheck={false}
+                placeholder={placeholder}
+                onChange={(event) => onChange(event.target.value)}
+                className="w-full resize-y rounded-xl bg-ed-field px-3 py-2.5 font-mono text-[10px] leading-[1.6] text-ed-text outline-none ring-ed-accent focus:ring-1"
+                style={{ whiteSpace: "pre", overflowWrap: "normal", overflowX: "auto" }}
+            />
+            {hint && <p className="text-[9px] leading-relaxed text-ed-faint">{hint}</p>}
+        </div>
+    );
+}

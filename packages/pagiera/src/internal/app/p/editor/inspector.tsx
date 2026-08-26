@@ -12,13 +12,15 @@ import {
     IconPlus,
     IconPlayerPlay,
     IconTrash,
+    IconUpload,
     IconX,
 } from "@tabler/icons-react";
 import type React from "react";
 import { useState } from "react";
 import { usePagieraFonts } from "pagiera/provider";
 import { ICON_CATALOG } from "@/lib/editor/icon";
-import { hasOverride } from "@/lib/editor/style";
+import { hasOverride, resolveStyle } from "@/lib/editor/style";
+import { displayName } from "@/lib/editor/tree";
 import {
     type Align,
     ASPECT_RATIOS,
@@ -36,6 +38,7 @@ import {
     isTextual,
     type Justify,
     type LayoutMode,
+    type PinSide,
     type PositionMode,
     type RootStyle,
     SHADOW_PRESETS,
@@ -44,6 +47,7 @@ import {
     type TextTransform,
 } from "@/lib/editor/types";
 import {
+    CodeInput,
     ColorInput,
     Group,
     More,
@@ -77,6 +81,57 @@ type Ctx = {
 };
 
 type Wrap = (keys: StyleKey[], node: React.ReactNode) => React.ReactNode;
+
+const INLINE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"]);
+const MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
+
+function ImageUpload({ src, onChange }: { src?: string; onChange: (src: string) => void }) {
+    const [error, setError] = useState("");
+    const uploaded = src?.startsWith("data:image/") ?? false;
+
+    const choose = (file?: File) => {
+        setError("");
+        if (!file) return;
+        if (!INLINE_IMAGE_TYPES.has(file.type)) {
+            setError("Use PNG, JPG, WebP, GIF or AVIF. SVG is not accepted for inline uploads.");
+            return;
+        }
+        if (file.size > MAX_INLINE_IMAGE_BYTES) {
+            setError("The image must be 2 MB or smaller.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onerror = () => setError("Could not read the image.");
+        reader.onload = () => {
+            if (typeof reader.result === "string") onChange(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <div className="flex flex-col gap-2">
+            <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-ed-border bg-ed-field px-3 py-3 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text">
+                <IconUpload size={14} /> {uploaded ? "Replace uploaded image" : "Upload image as base64"}
+                <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                    className="hidden"
+                    onChange={(event) => {
+                        choose(event.target.files?.[0]);
+                        event.target.value = "";
+                    }}
+                />
+            </label>
+            {uploaded && (
+                <div className="flex items-center justify-between rounded-lg bg-ed-subtle px-2.5 py-2 text-[9px] text-ed-faint">
+                    <span>Stored inside the page JSON</span>
+                    <button type="button" onClick={() => onChange("")} className="text-ed-muted hover:text-red-400">Remove</button>
+                </div>
+            )}
+            {error && <p className="rounded-lg bg-red-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-red-300">{error}</p>}
+        </div>
+    );
+}
 
 /**
  * Wraps a control so it shows — and can undo — an override set at the current
@@ -366,6 +421,19 @@ function SpacingGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     }
                 />,
             )}
+            {ov(
+                ["marginB"],
+                <NumberInput
+                    label="Space after"
+                    suffix="px"
+                    min={0}
+                    value={style.marginB}
+                    onChange={(marginB) => onStyle({ marginB })}
+                />,
+            )}
+            <p className="text-[10px] leading-relaxed text-ed-faint">
+                Padding is the room inside this layer; space after is the distance to the next one.
+            </p>
             <More label="Per side">
                     {ov(
                         ["padT"],
@@ -689,8 +757,37 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
  * The pieces that turn a stack of boxes into a designed page: clipping,
  * sticky rails, imagery, glass and blend effects.
  */
+/**
+ * Why a sticky element will not stick.
+ *
+ * Both causes are silent — the element simply scrolls away with everything
+ * else, and nothing in the style panel hints at the ancestor responsible. That
+ * makes it the single most confusing property in the editor, so the reason is
+ * named here rather than left to be discovered.
+ */
+function stickyBlocker(ctx: Ctx): string | undefined {
+    if (ctx.style.position !== "sticky") return undefined;
+    if (ctx.parentLayout === "absolute") {
+        return "Its container places children freely, so this is already out of the flow and cannot stick. Switch the container to Stack.";
+    }
+
+    const byId = new Map(ctx.elements.map((el) => [el.id, el]));
+    let cursor = ctx.element.parentId ? byId.get(ctx.element.parentId) : undefined;
+    const seen = new Set<string>([ctx.element.id]);
+    while (cursor && !seen.has(cursor.id)) {
+        seen.add(cursor.id);
+        const overflow = resolveStyle(cursor, ctx.breakpoint).overflow;
+        if (overflow !== "visible") {
+            return `“${displayName(cursor)}” clips its content (overflow: ${overflow}), which stops anything inside it from sticking. Set that layer's overflow to Visible.`;
+        }
+        cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+    }
+    return undefined;
+}
+
 function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle, onCommitStart, onCommitEnd } = ctx;
+    const stickyWarning = stickyBlocker(ctx);
 
     return (
         <Group title="Composition" defaultOpen={false}>
@@ -737,20 +834,49 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     options={[
                         { label: "Off", value: "static" as PositionMode },
                         { label: "Sticky", value: "sticky" as PositionMode },
+                        { label: "Fixed", value: "fixed" as PositionMode },
+                        { label: "Free", value: "absolute" as PositionMode },
                     ]}
                     onChange={(position) => onStyle({ position })}
                 />,
             )}
-            {style.position === "sticky" &&
-                ov(
-                    ["stickyOffset"],
-                    <NumberInput
-                        label="Stops at"
-                        suffix="px"
-                        value={style.stickyOffset}
-                        onChange={(stickyOffset) => onStyle({ stickyOffset })}
-                    />,
-                )}
+            {style.position !== "static" && (
+                <>
+                    {ov(
+                        ["pinSide"],
+                        <Segmented
+                            label="Edge"
+                            value={style.pinSide}
+                            options={[
+                                { label: "Top", value: "top" as PinSide },
+                                { label: "Bottom", value: "bottom" as PinSide },
+                                { label: "Left", value: "left" as PinSide },
+                                { label: "Right", value: "right" as PinSide },
+                            ]}
+                            onChange={(pinSide) => onStyle({ pinSide })}
+                        />,
+                    )}
+                    {ov(
+                        ["stickyOffset"],
+                        <NumberInput
+                            label="Stops at"
+                            suffix="px"
+                            value={style.stickyOffset}
+                            onChange={(stickyOffset) => onStyle({ stickyOffset })}
+                        />,
+                    )}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        {style.position === "absolute"
+                            ? "Placed at its own coordinates. Its siblings keep stacking as if it were not there."
+                            : style.position === "fixed"
+                            ? "Holds its place on screen while the page scrolls under it. The canvas pins it to the artboard so you can still edit it."
+                            : "Scrolls with the page until it reaches this edge, then holds until its container leaves."}
+                    </p>
+                    {stickyWarning && (
+                        <p className="text-[10px] leading-relaxed text-amber-300">{stickyWarning}</p>
+                    )}
+                </>
+            )}
 
             <More label="Image and effects">
                 {ov(
@@ -1092,6 +1218,7 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
 
             {element.type === "Image" && (
                 <Group title="Image">
+                    <ImageUpload src={element.src} onChange={(src) => onProps({ src })} />
                     <TextInput
                         label="Source"
                         value={element.src ?? ""}
@@ -1217,6 +1344,11 @@ function HoverTab({ element, style, onProps, onStyle }: Ctx) {
     const [transitionOpen, setTransitionOpen] = useState(false);
     const setHover = (patch: Partial<ElementStyle>) =>
         onProps({ hover: { ...hover, ...patch } });
+    const clearHoverProperty = (key: keyof ElementStyle) => {
+        const next = { ...hover };
+        delete next[key];
+        onProps({ hover: Object.keys(next).length > 0 ? next : undefined });
+    };
     const addEffect = (name: string) => {
         setAddOpen(false);
         if (name === "Appear") setTransitionOpen(true);
@@ -1275,6 +1407,25 @@ function HoverTab({ element, style, onProps, onStyle }: Ctx) {
                     value={hover.opacity ?? style.opacity}
                     onChange={(opacity) => setHover({ opacity })}
                 />
+                <Segmented
+                    label="Scale effect"
+                    value={hover.scale === undefined ? "off" : "on"}
+                    options={[
+                        { label: "Off", value: "off" as const },
+                        { label: "On", value: "on" as const },
+                    ]}
+                    onChange={(value) => value === "off" ? clearHoverProperty("scale") : setHover({ scale: 103 })}
+                />
+                {hover.scale !== undefined && (
+                    <SliderInput
+                        label="Hover scale"
+                        min={10}
+                        max={150}
+                        suffix="%"
+                        value={hover.scale}
+                        onChange={(scale) => setHover({ scale })}
+                    />
+                )}
                 <More>
                     <ColorInput
                         label="Border"
@@ -1408,6 +1559,23 @@ export function PageInspector({
                 <p className="text-[10px] leading-relaxed text-ed-faint">
                     Used for navigation between every published page. Reduced-motion preferences are always respected.
                 </p>
+            </Group>
+
+            <Group title="Custom code" defaultOpen={false}>
+                <CodeInput
+                    label="CSS"
+                    value={rootStyle.customCss ?? ""}
+                    onChange={(customCss) => onChange({ customCss })}
+                    placeholder={".pg-root h1 {\n  letter-spacing: -0.04em;\n}"}
+                    hint="Appended after the generated stylesheet, so these rules win at equal specificity. @import is stripped."
+                />
+                <CodeInput
+                    label="JavaScript"
+                    value={rootStyle.customJs ?? ""}
+                    onChange={(customJs) => onChange({ customJs })}
+                    placeholder={"document.querySelectorAll('.pg-node')"}
+                    hint="Runs on the published page only — never in the editor or the preview, so a mistake here cannot break the canvas. Publish to test it."
+                />
             </Group>
 
             <Group title="Layout" defaultOpen={false}>

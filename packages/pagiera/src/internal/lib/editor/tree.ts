@@ -242,6 +242,7 @@ export function reparent(
     breakpoint: Breakpoint,
     /** Insert before this sibling; appended last when omitted. */
     beforeSiblingId?: string,
+    cascade: Cascade = DEFAULT_CASCADE,
 ): CanvasElement[] {
     const byId = indexById(elements);
     const element = byId.get(id);
@@ -256,16 +257,17 @@ export function reparent(
 
     // Keep the element where it looks like it is: convert its absolute position
     // into the new parent's coordinate space.
-    const before = absolutePosition(byId, element, breakpoint);
+    const before = absolutePosition(byId, element, breakpoint, cascade);
     const newParent = newParentId ? byId.get(newParentId) : undefined;
     const parentOrigin = newParent
-        ? absolutePosition(byId, newParent, breakpoint)
+        ? absolutePosition(byId, newParent, breakpoint, cascade)
         : { x: 0, y: 0 };
 
     const moved = applyStyle(
         { ...element, parentId: newParentId },
         breakpoint,
         { x: before.x - parentOrigin.x, y: before.y - parentOrigin.y },
+        cascade,
     );
 
     const rest = elements.map((el) => (el.id === id ? moved : el));

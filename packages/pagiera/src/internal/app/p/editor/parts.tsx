@@ -3,6 +3,7 @@
 import {
     IconArrowDown,
     IconArrowUp,
+    IconArrowsMove,
     IconBox,
     IconChevronRight,
     IconCopy,
@@ -25,9 +26,10 @@ import {
     IconPlus,
     IconRepeat,
     IconSection,
-    IconSearch,
     IconSparkles,
     IconDots,
+    IconDownload,
+    IconUpload,
     IconTrash,
     IconTypography,
     IconVideo,
@@ -35,7 +37,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolveStyle } from "@/lib/editor/style";
 import { ICON_CATALOG, IconGlyph } from "@/lib/editor/icon";
 import { childrenOf, displayName } from "@/lib/editor/tree";
@@ -49,6 +51,7 @@ import {
     MOVE_MIME,
     type ResizeHandle,
 } from "@/lib/editor/types";
+import { PagieraMark } from "./brand";
 import type { SaveStatus } from "./use-editor";
 
 const TYPE_ICONS: Record<
@@ -160,16 +163,25 @@ export function ResizeHandles({
         element: CanvasElement,
     ) => void;
 }) {
-    const canWidth = style.widthMode === "fixed";
+    // `fill` gets handles too: dragging inward is the only way back to an
+    // explicit width once an element has been stretched to its container.
+    const canWidth = style.widthMode === "fixed" || style.widthMode === "fill";
     const canHeight = style.heightMode === "fixed";
     if (!canWidth && !canHeight) return null;
 
+    const edges = (list: readonly ResizeHandle[]) =>
+        list.map((h) => ({ handle: h, className: EDGE_HANDLES[h] }));
+
+    // With both axes free, the corners scale the box (and a text's type with
+    // it) while the edge midpoints change one dimension on its own — the
+    // arrangement every design tool uses, and the only way to widen something
+    // without also making it taller.
     const handles: Array<{ handle: ResizeHandle; className: string }> =
         canWidth && canHeight
-            ? CORNER_HANDLES
+            ? [...CORNER_HANDLES, ...edges(["n", "s", "w", "e"])]
             : canWidth
-                ? (["w", "e"] as const).map((h) => ({ handle: h, className: EDGE_HANDLES[h] }))
-                : (["n", "s"] as const).map((h) => ({ handle: h, className: EDGE_HANDLES[h] }));
+                ? edges(["w", "e"])
+                : edges(["n", "s"]);
 
     return (
         <>
@@ -983,6 +995,9 @@ export function ContextMenu({
     onCopy,
     onWrap,
     onUnwrap,
+    onToggleFree,
+    isFree,
+    onAskLuma,
     onDelete,
 }: {
     x: number;
@@ -993,6 +1008,10 @@ export function ContextMenu({
     onCopy: () => void;
     onWrap: () => void;
     onUnwrap: () => void;
+    onToggleFree: () => void;
+    /** Whether this element is already placed freely. */
+    isFree: boolean;
+    onAskLuma: () => void;
     onDelete: () => void;
 }) {
     return (
@@ -1000,6 +1019,12 @@ export function ContextMenu({
             className="fixed z-[100] flex min-w-[210px] flex-col rounded-xl border border-ed-border bg-ed-surface/95 p-1.5 shadow-2xl backdrop-blur-md"
             style={{ left: x, top: y }}
         >
+            <MenuItem
+                icon={<PagieraMark size={14} className="rounded-[4px]" />}
+                label="Ask Luma…"
+                onClick={onAskLuma}
+            />
+            <div className="mx-1 my-1 h-px bg-ed-field" />
             <MenuItem
                 icon={<IconArrowUp size={14} className="text-ed-muted" />}
                 label="Bring forward"
@@ -1011,6 +1036,11 @@ export function ContextMenu({
                 onClick={onSendBackward}
             />
             <div className="mx-1 my-1 h-px bg-ed-field" />
+            <MenuItem
+                icon={<IconArrowsMove size={14} className="text-ed-muted" />}
+                label={isFree ? "Return to flow" : "Place freely"}
+                onClick={onToggleFree}
+            />
             <MenuItem
                 icon={<IconBox size={14} className="text-ed-muted" />}
                 label="Wrap in container"
@@ -1075,5 +1105,285 @@ function MenuItem({
             {label}
             {shortcut && <span className="ml-auto text-[10px] text-ed-faint">{shortcut}</span>}
         </button>
+    );
+}
+
+type PadSide = "padT" | "padR" | "padB" | "padL";
+
+const PAD_SIDES: Array<{ side: PadSide; cursor: string }> = [
+    { side: "padT", cursor: "cursor-ns-resize" },
+    { side: "padR", cursor: "cursor-ew-resize" },
+    { side: "padB", cursor: "cursor-ns-resize" },
+    { side: "padL", cursor: "cursor-ew-resize" },
+];
+
+/**
+ * Draggable padding bands drawn inside the selected container.
+ *
+ * Padding is the difference between a stacked layout that reads as designed
+ * and one that reads as a form, but it is the one property you cannot judge
+ * from a number field — you have to see it against the content. These bands
+ * shade the actual inset and let it be dragged in place.
+ *
+ * Only stacked containers get them: under `absolute` the parent does not place
+ * its children, so its padding changes nothing.
+ */
+export function PaddingHandles({
+    element,
+    style,
+    scale,
+    active,
+    onMouseDown,
+}: {
+    element: CanvasElement;
+    style: ElementStyle;
+    /** Canvas zoom, so a band keeps a usable grab area at any magnification. */
+    scale: number;
+    active?: PadSide;
+    onMouseDown: (
+        event: React.MouseEvent,
+        side: PadSide,
+        element: CanvasElement,
+    ) => void;
+}) {
+    if (style.layout !== "stack") return null;
+
+    // Below a couple of screen pixels the band is unhittable, so give it a
+    // floor and let it overhang the (tiny) padding it represents.
+    const grab = Math.max(6, 10 / scale);
+
+    return (
+        <>
+            {PAD_SIDES.map(({ side, cursor }) => {
+                const value = style[side];
+                const vertical = side === "padT" || side === "padB";
+                const thickness = Math.max(value, grab);
+                const box: React.CSSProperties = {
+                    position: "absolute",
+                    zIndex: 55,
+                    background:
+                        active === side || value > 0
+                            ? "color-mix(in srgb, var(--ed-accent) 16%, transparent)"
+                            : "transparent",
+                    ...(vertical
+                        ? { left: 0, right: 0, height: thickness, [side === "padT" ? "top" : "bottom"]: 0 }
+                        : { top: 0, bottom: 0, width: thickness, [side === "padL" ? "left" : "right"]: 0 }),
+                };
+                return (
+                    <button
+                        type="button"
+                        key={side}
+                        aria-label={`Drag ${side} padding`}
+                        title={`${side.slice(3)} padding · ${value}px`}
+                        onMouseDown={(event) => onMouseDown(event, side, element)}
+                        className={`${cursor} border-0 p-0 hover:bg-ed-accent/25`}
+                        style={box}
+                    >
+                        {active === side && (
+                            <span
+                                className="pointer-events-none absolute rounded bg-ed-accent px-1 text-[9px] font-semibold text-white"
+                                style={
+                                    vertical
+                                        ? { left: "50%", top: "50%", transform: "translate(-50%,-50%)" }
+                                        : { top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
+                                }
+                            >
+                                {value}
+                            </span>
+                        )}
+                    </button>
+                );
+            })}
+        </>
+    );
+}
+
+/**
+ * The seam between two stacked sections.
+ *
+ * Wix-style: the distance between sections is something you reach for on the
+ * canvas rather than hunt for in a panel, and the point where you want a new
+ * section is almost always the point you are looking at. Both live on the same
+ * strip — drag it to change the space, click the button to insert there.
+ *
+ * Only rendered under a stacked root, where one section genuinely follows
+ * another; free placement has no seam to speak of.
+ */
+export function SectionSeam({
+    space,
+    scale,
+    active,
+    onDragStart,
+    onInsert,
+}: {
+    /** Current `marginB` of the section above, in canvas pixels. */
+    space: number;
+    scale: number;
+    active: boolean;
+    onDragStart: (event: React.MouseEvent) => void;
+    onInsert: () => void;
+}) {
+    // The strip has to stay grabbable when the sections are flush, so it keeps
+    // a minimum height and overlays the boundary rather than occupying it.
+    const height = Math.max(space, 18 / scale);
+
+    return (
+        <div
+            className="group/seam pointer-events-none absolute inset-x-0 z-[70] flex items-center justify-center"
+            style={{ top: "100%", height }}
+        >
+            <div
+                className={`pointer-events-auto absolute inset-0 transition-colors ${active ? "bg-ed-accent/10" : "group-hover/seam:bg-ed-accent/[.06]"}`}
+            />
+            <div className={`pointer-events-auto relative flex items-center gap-1.5 transition-opacity ${active ? "opacity-100" : "opacity-0 group-hover/seam:opacity-100"}`}>
+                <button
+                    type="button"
+                    aria-label="Drag to change the space after this section"
+                    onMouseDown={onDragStart}
+                    className="flex h-4 w-9 cursor-ns-resize items-center justify-center rounded-full bg-ed-accent shadow-md"
+                >
+                    <span className="h-0.5 w-4 rounded-full bg-white/80" />
+                </button>
+                <span className="rounded-full bg-ed-accent px-2 py-0.5 font-mono text-[10px] font-semibold text-white shadow-md">
+                    {Math.round(space)} px
+                </span>
+                <button
+                    type="button"
+                    onClick={onInsert}
+                    className="flex items-center gap-1 rounded-full bg-ed-accent px-2.5 py-1 text-[10px] font-semibold text-white shadow-md hover:brightness-110"
+                >
+                    <IconPlus size={11} /> Add section
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Saving the site to a file and replacing it from one.
+ *
+ * Lives in Settings rather than the template catalog: the catalog is for
+ * browsing what other people made, while these two act on this site. The
+ * exported file is the same bundle shape the catalog serves, so a site saved
+ * here can be committed to a registry and installed anywhere.
+ */
+export function SiteTransfer({
+    exportUrl,
+    onImport,
+    busy,
+}: {
+    exportUrl?: (id: string) => string;
+    onImport?: (bundle: unknown) => Promise<void>;
+    busy?: boolean;
+}) {
+    const [name, setName] = useState("my-template");
+    const [error, setError] = useState("");
+    const [importing, setImporting] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    // The file name doubles as the bundle id, so it has to survive being one.
+    const id = name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "my-template";
+
+    const read = async (file: File) => {
+        setError("");
+        setImporting(true);
+        try {
+            const bundle = JSON.parse(await file.text()) as { schemaVersion?: unknown; pages?: unknown };
+            if (bundle?.schemaVersion !== 1 || !Array.isArray(bundle?.pages)) {
+                throw new Error("That file is not a Pagiera template bundle.");
+            }
+            await onImport?.(bundle);
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Could not read that file.");
+        } finally {
+            setImporting(false);
+            setConfirming(false);
+        }
+    };
+
+    if (!exportUrl && !onImport) return null;
+
+    return (
+        <div className="flex flex-col gap-2.5 border-t border-ed-border px-4 py-4">
+            <span className="text-[10px] font-semibold text-ed-text">Template file</span>
+
+            {exportUrl && (
+                <>
+                    <div className="flex items-center gap-2">
+                        <input
+                            aria-label="Template name"
+                            value={name}
+                            onChange={(event) => setName(event.target.value.slice(0, 60))}
+                            className="min-w-0 flex-1 rounded-lg bg-ed-field px-2.5 py-2 font-mono text-[10px] text-ed-text outline-none ring-ed-accent focus:ring-1"
+                        />
+                        <a
+                            href={exportUrl(id)}
+                            download={`${id}.json`}
+                            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-ed-field px-3 py-2 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text"
+                        >
+                            <IconDownload size={13} /> Export
+                        </a>
+                    </div>
+                    <p className="text-[9px] leading-relaxed text-ed-faint">
+                        Saves every page as a bundle in the same format the template catalog serves.
+                    </p>
+                </>
+            )}
+
+            {onImport && (
+                <>
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept="application/json,.json"
+                        className="hidden"
+                        onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            // Cleared so choosing the same file twice still fires.
+                            event.target.value = "";
+                            if (file) void read(file);
+                        }}
+                    />
+                    {confirming ? (
+                        <div className="flex flex-col gap-2 rounded-xl bg-amber-400/[.07] px-3 py-2.5">
+                            <p className="text-[9px] leading-relaxed text-ed-muted">
+                                <strong className="font-semibold text-ed-text">This replaces the whole site.</strong>{" "}
+                                Every page and its revision history is removed once the import succeeds.
+                            </p>
+                            <div className="flex gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => fileRef.current?.click()}
+                                    className="flex-1 rounded-lg bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white hover:brightness-110"
+                                >
+                                    Choose file
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirming(false)}
+                                    className="rounded-lg px-3 py-2 text-[10px] text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setConfirming(true)}
+                            disabled={busy || importing}
+                            className="flex items-center justify-center gap-1.5 rounded-lg bg-ed-field px-3 py-2 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40"
+                        >
+                            <IconUpload size={13} /> {importing ? "Importing…" : "Import a bundle"}
+                        </button>
+                    )}
+                </>
+            )}
+
+            {error && (
+                <p className="rounded-lg bg-red-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-red-300">{error}</p>
+            )}
+        </div>
     );
 }

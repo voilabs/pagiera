@@ -1,9 +1,39 @@
 import { createSiteTemplateBundle, type SiteTemplateId } from "../../packages/pagiera/src/internal/lib/editor/site-templates";
 import { resolveStyle } from "../../packages/pagiera/src/internal/lib/editor/style";
-import { DEFAULT_BREAKPOINTS, type CanvasElement, type ElementStyle } from "../../packages/pagiera/src/internal/lib/editor/types";
+import { DEFAULT_BREAKPOINTS, type CanvasElement, type ElementStyle, type RootStyle } from "../../packages/pagiera/src/internal/lib/editor/types";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const templateIds: SiteTemplateId[] = ["editorial-blog", "orbit-saas", "nocturne", "pulse-social"];
+const BUILTIN_IDS: SiteTemplateId[] = ["editorial-blog", "orbit-saas", "nocturne", "pulse-social"];
 const failures: string[] = [];
+
+/**
+ * Every template in the registry, however it was authored.
+ *
+ * The bundled designs are read from source so the audit runs against what will
+ * be exported next; anything else is read from its own template.json. Auditing
+ * only the built-ins left hand-written templates — the ones most likely to
+ * strand content at a fixed width or forget a mobile override — unchecked.
+ */
+function auditTargets(): Array<{ id: string; pages: Array<{ elements: CanvasElement[]; rootStyle: RootStyle }> }> {
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    const registry = JSON.parse(readFileSync(resolve(root, "registry.json"), "utf8")) as {
+        templates: Array<{ id: string; file: string }>;
+    };
+
+    return registry.templates.map((entry) => {
+        if (BUILTIN_IDS.includes(entry.id as SiteTemplateId)) {
+            return { id: entry.id, pages: createSiteTemplateBundle(entry.id as SiteTemplateId).pages };
+        }
+        const bundle = JSON.parse(readFileSync(resolve(root, entry.file), "utf8")) as {
+            pages: Array<{ elements: CanvasElement[]; rootStyle: RootStyle }>;
+        };
+        return { id: entry.id, pages: bundle.pages };
+    });
+}
+
+const targets = auditTargets();
 
 type LayoutContext = {
     available: number;
@@ -11,8 +41,9 @@ type LayoutContext = {
     parentStyle?: ElementStyle;
 };
 
-for (const templateId of templateIds) {
-    for (const page of createSiteTemplateBundle(templateId).pages) {
+for (const target of targets) {
+    const templateId = target.id;
+    for (const page of target.pages) {
         const children = new Map<string | undefined, CanvasElement[]>();
         for (const element of page.elements) {
             const siblings = children.get(element.parentId) ?? [];
@@ -71,4 +102,4 @@ for (const templateId of templateIds) {
 }
 
 if (failures.length > 0) throw new Error(`Responsive template audit failed:\n${failures.map((failure) => `- ${failure}`).join("\n")}`);
-console.log(`Audited ${templateIds.length} Pagiera templates across ${DEFAULT_BREAKPOINTS.length} breakpoints.`);
+console.log(`Audited ${targets.length} Pagiera templates across ${DEFAULT_BREAKPOINTS.length} breakpoints.`);

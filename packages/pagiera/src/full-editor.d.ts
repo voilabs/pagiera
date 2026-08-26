@@ -24,7 +24,8 @@ export type PagieraStudioAdapters = {
         | ({ status: "conflict"; version: number } & PagieraStudioDocument)
         | { status: "error"; message: string }
     >;
-    generate?(request: Record<string, unknown>): Promise<Record<string, unknown>>;
+    /** `onEvent` receives one progress event per model pass as it completes. */
+    generate?(request: Record<string, unknown>, onEvent?: (event: unknown) => void): Promise<Record<string, unknown>>;
     previewSource?(source: unknown, sampleQuery: string): Promise<
         | { status: "ok"; rows: Array<Record<string, unknown>>; keys: string[]; total: number }
         | { status: "error"; message: string }

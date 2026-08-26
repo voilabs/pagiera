@@ -13,6 +13,69 @@ async function jsonRequest(fetcher: typeof globalThis.fetch, url: string, init?:
     return body;
 }
 
+/**
+ * Runs a design request and reports each pass as it finishes.
+ *
+ * The endpoint answers with newline-delimited JSON so the three model passes
+ * can be surfaced while they run instead of after all of them. A server that
+ * still answers with a single JSON object — an older deployment — is handled
+ * by the non-stream branch, so upgrading either side alone keeps working.
+ */
+async function streamAi(
+    fetcher: typeof globalThis.fetch,
+    url: string,
+    request: unknown,
+    onEvent?: (event: unknown) => void,
+) {
+    const response = await fetcher(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+    });
+
+    const isStream = response.headers.get("content-type")?.includes("ndjson");
+    if (!isStream || !response.body) {
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(body?.error ?? `Pagiera API request failed (${response.status})`);
+        return body;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let plan: unknown;
+
+    const consume = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        let event: { type?: string; plan?: unknown; error?: string };
+        try {
+            event = JSON.parse(trimmed);
+        } catch {
+            return;
+        }
+        if (event.type === "error") throw new Error(event.error ?? "AI request failed.");
+        if (event.type === "plan") plan = event.plan;
+        onEvent?.(event);
+    };
+
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let newline = buffer.indexOf("\n");
+        while (newline !== -1) {
+            consume(buffer.slice(0, newline));
+            buffer = buffer.slice(newline + 1);
+            newline = buffer.indexOf("\n");
+        }
+    }
+    consume(buffer);
+
+    if (!plan) throw new Error("The AI stream ended without a plan.");
+    return plan;
+}
+
 /** Ready-to-pass adapters for `<PagieraStudio />`. */
 export function createPagieraClient(options: PagieraClientOptions = {}) {
     const base = (options.baseUrl ?? "/api/pagiera").replace(/\/$/, "");
@@ -30,12 +93,15 @@ export function createPagieraClient(options: PagieraClientOptions = {}) {
             duplicatePage: (id: string, name: string, slug: string) => call(`/pages/${id}/duplicate`, "POST", { name, slug }),
             deletePage: (id: string) => call(`/pages/${id}`, "DELETE"),
             installTemplate: (templateId: string, fontFamily?: string) => call("/templates/install", "POST", { templateId, fontFamily }),
+            importTemplate: (bundle: unknown, fontFamily?: string) => call("/templates/import", "POST", { bundle, fontFamily }),
+            exportTemplateUrl: (id: string) => `${base}/templates/export?id=${encodeURIComponent(id)}`,
             setSiteFont: (fontFamily: string, customFonts?: unknown[]) => call("/settings/font", "POST", { fontFamily, customFonts }),
             setSiteTransition: (pageTransition: string, pageTransitionDuration: number) => call("/settings/transition", "POST", { pageTransition, pageTransitionDuration }),
             publishPage: (id: string) => call(`/pages/${id}/publish`, "POST"),
             unpublishPage: (id: string) => call(`/pages/${id}/unpublish`, "POST"),
             previewSource: (source: unknown, sampleQuery: string) => call("/data/preview", "POST", { source, sampleQuery }),
-            generate: (request: unknown) => call("/ai", "POST", request),
+            generate: (request: unknown, onEvent?: (event: unknown) => void) =>
+                streamAi(fetcher, `${base}/ai`, request, onEvent),
         },
     };
 }

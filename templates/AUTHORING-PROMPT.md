@@ -107,7 +107,7 @@ Every key is optional; the listed default applies when omitted.
 | --- | --- | --- |
 | `documentMode` | `"page"` | Always `"page"` for templates. |
 | `maxWidth` | `1280` | 1–4000. Content width when `fullWidth` is false. |
-| `canvasHeight` | `800` | 1–12000. Editor surface height only; the live page grows with content. Set it to roughly the real page height so the template opens sensibly in the editor. |
+| `canvasHeight` | `800` | 1–12000. With `layout: "stack"` this is the editor surface only and the live page grows with content. With `layout: "absolute"` it also sets the published page's height — free-placed children are out of flow, so nothing else can. Either way, set it to roughly the real page height. |
 | `fullWidth` | `false` | See §7. |
 | `bg` | `"#ffffff"` | Page background. |
 | `layout` | `"stack"` | Use `"stack"` for pages. `"absolute"` makes the page a free canvas. |
@@ -281,6 +281,15 @@ placed:
 overlap (a badge on an image, a decorative blob). An absolute-heavy template
 cannot adapt to a narrow breakpoint.
 
+A whole page can be freely placed by setting `rootStyle.layout: "absolute"` —
+poster-like art direction where every section sits at its own coordinates. Two
+things then become your responsibility, because nothing else can do them:
+`canvasHeight` must cover the tallest content, and every breakpoint needs its
+own `x`/`y` overrides, since free coordinates do not reflow. Elements pushed
+fully past the left or right edge are treated as off-canvas notes and are
+**excluded from the published page** — that is how authors park scratch content,
+so keep real content inside the frame.
+
 **Three sizing modes** per axis:
 
 - `fixed` — exactly `w`/`h` px.
@@ -321,6 +330,43 @@ Section  "Footer"
 ```
 
 Sibling order comes from `z`: `0, 1, 2, …` top to bottom.
+
+### 7.1 Escape hatches: custom CSS and JS
+
+Two `rootStyle` fields exist for what the element model cannot express.
+
+`customCss` is appended **after** the generated stylesheet, so a rule wins
+against the builder's own at equal specificity — no `!important` needed. Target
+elements through the classes the renderer emits: `.pg-root` (the page),
+`.pg-node` (every element), `.pg-inner` (a band's content box), `.pg-link`.
+
+```json
+"customCss": ".pg-root h1{text-wrap:balance}
+@media (min-width:1600px){.pg-root{font-size:18px}}"
+```
+
+Use it for what has no field: `text-wrap`, `clip-path`, `mask-image`,
+`@supports`, `:has()`, container queries, custom `@keyframes`, print styles.
+Do **not** use it to restate values that already have fields — those stop
+tracking the design and never respond to breakpoint overrides.
+
+`customJs` runs on the published page after the document parses, once the
+builder's own behaviour is wired up. It never runs in the editor or in the
+template preview, so it cannot be verified before publishing — keep it small and
+defensive.
+
+```json
+"customJs": "document.querySelectorAll('[data-count]').forEach(function(n){/* … */});"
+```
+
+Both are limited (40 000 chars of CSS, 20 000 of JS) and narrowed on save: a
+closing `</style>` or `</script>` is neutralised so the source cannot break out
+of its own tag, and `@import` is removed — it would make every visitor's browser
+announce itself to a third-party host.
+
+**Prefer the element model.** A template that leans on `customCss` for layout is
+one the site owner cannot edit visually, which defeats the point of a builder.
+Reach for these only for the last 5%.
 
 ## 8. Responsive: breakpoints and overrides
 

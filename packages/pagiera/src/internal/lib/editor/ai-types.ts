@@ -1,6 +1,8 @@
 import type { CanvasElement, ElementStyle, ElementType, RootStyle, StyleKey } from "./types";
 
 type AiElementExtras = {
+    /** Filled by the server after the image is generated and stored. */
+    imagePrompt?: string;
     styleBindings?: Partial<Record<StyleKey, string>>;
     interaction?: CanvasElement["interaction"];
     pressStyle?: Partial<ElementStyle>;

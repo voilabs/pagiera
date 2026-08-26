@@ -279,6 +279,20 @@ export function stylesheetFor(
     parts.push(`html,body{margin:0;padding:0;background:${rootStyle.bg}}`);
 
     parts.push(`html{scroll-behavior:smooth}.pg-root{${declarationsToCss(rootStyleToCss(rootStyle))}}`);
+
+    // A freely placed page positions its children at absolute coordinates, so
+    // the page has to be exactly as wide as the artboard those coordinates were
+    // drawn on. Left at `width: 100%` the canvas is the viewport instead, and
+    // everything the author placed lands somewhere else on the published page.
+    // A stacked page needs none of this — flex reflows to whatever width it
+    // gets, which is the point of it.
+    if (rootStyle.layout === "absolute") {
+        parts.push(`.pg-root{width:${baseOf(cascade).width}px;margin-left:auto;margin-right:auto}`);
+        for (const plan of mediaPlan(cascade)) {
+            const definition = cascade.breakpoints.find((item) => item.id === plan.id);
+            if (definition) parts.push(`@media ${plan.query}{.pg-root{width:${definition.width}px}}`);
+        }
+    }
     parts.push(
         // The font is pinned on `.pg-root` rather than on <body>: the app's
         // layout puts a font class on <body>, which would out-specify an
@@ -370,6 +384,10 @@ export function stylesheetFor(
         if (rules) parts.push(`@media ${plan.query}{${rules}}`);
     }
     if (elements.some((element) => element.loop)) parts.push(`@keyframes pg-loop-pulse{0%,100%{scale:1}50%{scale:1.06}}@keyframes pg-loop-float{0%,100%{translate:0 0}50%{translate:0 -12px}}@keyframes pg-loop-spin{to{rotate:360deg}}@media(prefers-reduced-motion:reduce){.pg-node{animation:none!important}}`);
+
+    // Last, so an author's rule wins against the generated one at equal
+    // specificity without having to reach for `!important`.
+    if (rootStyle.customCss) parts.push(rootStyle.customCss);
 
     return parts.join("\n");
 }

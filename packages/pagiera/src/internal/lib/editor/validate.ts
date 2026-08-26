@@ -21,6 +21,8 @@ export const MAX_ELEMENTS = 2000;
 const MAX_CONTENT = 10_000;
 const MAX_SHORT_STRING = 200;
 const MAX_URL = 2048;
+/** A 2 MB image becomes roughly 2.7 MB once encoded as a data URL. */
+const MAX_IMAGE_DATA_URL = 2_800_000;
 const COORD_LIMIT = 100_000;
 
 const ELEMENT_TYPE_SET: ReadonlySet<string> = new Set(ELEMENT_TYPES);
@@ -42,6 +44,26 @@ function scalePercent(value: unknown, fallback: number) {
     if (!Number.isFinite(parsed)) return fallback;
     const normalized = parsed > 0 && parsed <= 5 ? parsed * 100 : parsed;
     return Math.min(500, Math.max(1, normalized));
+}
+
+/**
+ * Line height is stored as a unitless multiplier, but generators reliably
+ * confuse it with a CSS pixel length — a plan asking for `lineHeight: 10` on
+ * 48px type renders 480px-tall lines and a section thousands of pixels deep.
+ * Anything past a plausible multiplier is read as pixels and converted, the
+ * same normalisation `scalePercent` performs for its own unit confusion.
+ */
+function lineHeightValue(value: unknown, fontSize: number, fallback: number) {
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    if (parsed <= 4) return Math.max(0.5, parsed);
+
+    // Past 4 it is not a multiplier anyone means. If it reads as a pixel
+    // length for this type size, convert it; otherwise it is simply a bad
+    // number, and guessing would be worse than the default — dividing 10 by a
+    // 48px font would set lines at 0.2 and overlap the text.
+    const asPixels = fontSize > 0 ? parsed / fontSize : 0;
+    return asPixels >= 0.9 && asPixels <= 3 ? asPixels : fallback;
 }
 
 function str(value: unknown, max: number) {
@@ -87,6 +109,21 @@ function safeUrl(value: unknown): string | undefined {
     return undefined;
 }
 
+/**
+ * Image elements may carry an uploaded bitmap directly. Keep this separate
+ * from safeUrl: form actions, videos and links must never accept megabytes of
+ * inline data. SVG is intentionally excluded because it can contain active
+ * markup; the bitmap formats below are inert when rendered by <img>.
+ */
+function safeImageSource(value: unknown): string | undefined {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    if (/^data:image\/(?:png|jpe?g|webp|gif|avif);base64,[a-z0-9+/]+=*$/i.test(trimmed)) {
+        return trimmed.length <= MAX_IMAGE_DATA_URL ? trimmed : undefined;
+    }
+    return safeUrl(trimmed);
+}
+
 /** Safe for interpolation into `url("…")`. */
 function imageUrl(value: unknown) {
     const raw = safeUrl(value);
@@ -102,6 +139,42 @@ function bindingPath(value: unknown) {
     const raw = str(value, MAX_SHORT_STRING)?.trim();
     if (!raw) return undefined;
     return /^[A-Za-z0-9_$][A-Za-z0-9_$.-]*$/.test(raw) ? raw : undefined;
+}
+
+
+const MAX_CUSTOM_CSS = 40_000;
+const MAX_CUSTOM_JS = 20_000;
+
+/**
+ * Author-written CSS, appended verbatim after the generated sheet.
+ *
+ * Only two things are taken away. A closing tag would end the <style> element
+ * and turn the rest into markup, and `@import` would make the published page
+ * fetch a third-party stylesheet — a request that leaks every visitor's IP and
+ * referrer to whoever the URL points at. Everything else is left alone: the
+ * point of an escape hatch is that it escapes.
+ */
+function customCss(value: unknown) {
+    const raw = str(value, MAX_CUSTOM_CSS);
+    if (!raw?.trim()) return undefined;
+    const safe = raw
+        .replace(/<\/(style|script)/gi, "<\\/$1")
+        .replace(/@import/gi, "/* import blocked */");
+    return safe.trim() || undefined;
+}
+
+/**
+ * Author-written JavaScript for the published page.
+ *
+ * This runs with the site's own origin, so it is only ever as trustworthy as
+ * whoever wrote the page — the same footing as the app's own code. The one
+ * rewrite stops the source from closing its own <script> element early, which
+ * would let the remainder be parsed as markup.
+ */
+function customJs(value: unknown) {
+    const raw = str(value, MAX_CUSTOM_JS);
+    if (!raw?.trim()) return undefined;
+    return raw.replace(/<\/script/gi, "<\\/script").trim() || undefined;
 }
 
 /* -------------------------------------------------------------------- style */
@@ -137,6 +210,7 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         padR: num(raw.padR, base.padR, 0, 9999),
         padB: num(raw.padB, base.padB, 0, 9999),
         padL: num(raw.padL, base.padL, 0, 9999),
+        marginB: num(raw.marginB, base.marginB, 0, 9999),
         justify: oneOf(raw.justify, ["start", "center", "end", "between"], base.justify),
         align: oneOf(raw.align, ["start", "center", "end", "stretch"], base.align),
         wrap: raw.wrap === true,
@@ -156,7 +230,7 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         fontFamily: cssValue(raw.fontFamily, base.fontFamily),
         fontSize: num(raw.fontSize, base.fontSize, 1, 999),
         fontWeight: cssValue(raw.fontWeight, base.fontWeight),
-        lineHeight: num(raw.lineHeight, base.lineHeight, 0.5, 10),
+        lineHeight: lineHeightValue(raw.lineHeight, num(raw.fontSize, base.fontSize, 1, 999), base.lineHeight),
         letterSpacing: num(raw.letterSpacing, base.letterSpacing, -50, 50),
         textAlign: oneOf(raw.textAlign, ["left", "center", "right", "justify"], base.textAlign),
         textTransform: oneOf(
@@ -166,7 +240,8 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         ),
 
         overflow: oneOf(raw.overflow, ["visible", "hidden", "auto", "scroll"] as const, base.overflow),
-        position: oneOf(raw.position, ["static", "sticky"] as const, base.position),
+        position: oneOf(raw.position, ["static", "sticky", "fixed", "absolute"] as const, base.position),
+        pinSide: oneOf(raw.pinSide, ["top", "bottom", "left", "right"] as const, base.pinSide),
         zIndex: num(raw.zIndex, base.zIndex, -9999, 9999),
         stickyOffset: num(raw.stickyOffset, base.stickyOffset, -9999, 9999),
         bgImage: raw.bgImage === undefined ? base.bgImage : imageUrl(raw.bgImage),
@@ -307,7 +382,7 @@ export function parseElements(
 
             content: str(el.content, MAX_CONTENT),
             code: str(el.code, MAX_CONTENT),
-            src: safeUrl(el.src),
+            src: el.type === "Image" ? safeImageSource(el.src) : safeUrl(el.src),
             alt: str(el.alt, MAX_SHORT_STRING),
             objectFit: oneOf(el.objectFit, ["cover", "contain", "fill", "none"] as const, "cover"),
             iconName: oneOf(el.iconName, PAGIERA_ICON_NAMES, "star"),
@@ -503,6 +578,8 @@ export function parseRootStyle(input: unknown): RootStyle {
             : undefined,
         variables,
         customFonts,
+        customCss: customCss(raw.customCss),
+        customJs: customJs(raw.customJs),
     };
 }
 

@@ -72,8 +72,8 @@ import {
 import {
     absolutePosition,
     childrenOf,
+    displayName,
     cloneSubtree,
-    containerAt,
     createElement,
     indexById,
     isNote,
@@ -114,16 +114,22 @@ import {
     LayersPanel,
     type PageEntry,
     PagesPanel,
+    PaddingHandles,
     ResizeHandles,
+    SectionSeam,
     SaveIndicator,
+    SiteTransfer,
 } from "./parts";
+import { type DropPlan, resolveDrop } from "./drop-target";
 import { useCanvasView } from "./use-canvas-view";
 import { useEditorDocument } from "./use-editor";
-import { AiPanel, type AiDesignGenerator } from "./ai-panel";
+import { AiPanel, type AiDesignGenerator, type AiFocus } from "./ai-panel";
 import { VariablesPanel } from "./variables-panel";
 import { TemplatesPanel } from "./templates-panel";
 
 const MIN_SIZE = 10;
+/** How close to its container's edge a drag counts as "all the way". */
+const SNAP_FILL = 12;
 const COMPONENT_MIME = "application/pagiera-component";
 const EDITOR_TABS_STORAGE_KEY = "pagiera:editor-tabs";
 
@@ -237,6 +243,10 @@ export type EditorAdapters = {
     duplicatePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
     deletePage?: (id: string) => Promise<PageMutationResult>;
     installTemplate?: (templateId: string, fontFamily?: string) => Promise<PageMutationResult>;
+    /** Installs a bundle the author supplied from a file rather than the catalog. */
+    importTemplate?: (bundle: unknown, fontFamily?: string) => Promise<PageMutationResult>;
+    /** Where the current site can be downloaded as a template bundle. */
+    exportTemplateUrl?: (id: string) => string;
     setSiteFont?: (fontFamily: string, customFonts?: RootStyle["customFonts"]) => Promise<unknown>;
     setSiteTransition?: (pageTransition: RootStyle["pageTransition"], pageTransitionDuration: number) => Promise<unknown>;
     publishPage?: (id: string) => Promise<PageMutationResult>;
@@ -282,6 +292,21 @@ type ResizeInfo = {
     initialY: number;
     initialW: number;
     initialH: number;
+    /** Set for text, so a corner drag can scale the type with the box. */
+    initialFontSize?: number;
+};
+
+type PadSide = "padT" | "padR" | "padB" | "padL";
+
+type PaddingInfo = {
+    id: string;
+    breakpoint: Breakpoint;
+    side: PadSide;
+    startX: number;
+    startY: number;
+    initial: number;
+    /** Alt-drag moves the opposite side by the same amount. */
+    symmetric: boolean;
 };
 
 type Clipboard = { elements: CanvasElement[]; rootId: string };
@@ -864,6 +889,7 @@ export default function Editor({
 
     const [dragInfo, setDragInfo] = useState<DragInfo | null>(null);
     const [resizeInfo, setResizeInfo] = useState<ResizeInfo | null>(null);
+    const [paddingInfo, setPaddingInfo] = useState<PaddingInfo | null>(null);
     const [guides, setGuides] = useState<{
         origin: { x: number; y: number };
         lines: Guide[];
@@ -872,6 +898,12 @@ export default function Editor({
     const [dropTargetId, setDropTargetId] = useState<string | null | undefined>(
         undefined,
     );
+    /** Where inside the target the element lands, and the line that shows it. */
+    const [dropPlan, setDropPlan] = useState<DropPlan | null>(null);
+    /** The layer Luma has been asked to work on, if any. */
+    const [aiFocus, setAiFocus] = useState<AiFocus | undefined>();
+    /** Dragging the strip between two stacked sections. */
+    const [seamInfo, setSeamInfo] = useState<{ id: string; breakpoint: Breakpoint; startY: number; initial: number } | null>(null);
     const [clipboard, setClipboard] = useState<Clipboard | null>(null);
     /** Rows fetched by the Data panel, used to preview Repeat blocks. */
     const [samples, setSamples] = useState<Record<string, SourceSample>>({});
@@ -1275,13 +1307,41 @@ export default function Editor({
         [breakpoint, breakpointDefs, byId, cascade, contextFor, selectedIds, setElements],
     );
 
+    /** A component's insides belong to its master, so instances refuse drops. */
+    const acceptsDrop = useCallback(
+        (parentId: string | undefined) => {
+            const parent = parentId ? byId.get(parentId) : undefined;
+            if (!parent) return true;
+            if (componentMode) return true;
+            return !componentAssetIds.has(parent.id) && !componentInstanceFor(parent);
+        },
+        [byId, componentAssetIds, componentInstanceFor, componentMode],
+    );
+
+    /** Adds a Section immediately below `afterId` at the page root. */
+    const insertSectionAfter = (afterId: string) => {
+        const created = createElement("Section", { x: 0, y: 0, z: 0 });
+        setElements((current) => {
+            const siblings = childrenOf(current, undefined);
+            const at = siblings.findIndex((el) => el.id === afterId);
+            if (at === -1) return current;
+            const ordered = [...siblings.slice(0, at + 1), created, ...siblings.slice(at + 1)];
+            const zById = new Map(ordered.map((el, index) => [el.id, index]));
+            return [...current, created].map((el) => {
+                const z = zById.get(el.id);
+                return z === undefined ? el : { ...el, z };
+            });
+        });
+        setSelectedIds([created.id]);
+    };
+
     const doReparent = useCallback(
         (id: string, parentId: string | undefined, beforeId?: string) => {
             const parent = parentId ? byId.get(parentId) : undefined;
             if (!componentMode && parent && (componentAssetIds.has(parent.id) || componentInstanceFor(parent))) return;
-            setElements((els) => reparent(els, id, parentId, breakpoint, beforeId));
+            setElements((els) => reparent(els, id, parentId, breakpoint, beforeId, cascade));
         },
-        [breakpoint, byId, componentAssetIds, componentInstanceFor, componentMode, setElements],
+        [breakpoint, byId, cascade, componentAssetIds, componentInstanceFor, componentMode, setElements],
     );
 
     const switchPageLayout = (layout: "stack" | "absolute") => {
@@ -1318,14 +1378,14 @@ export default function Editor({
 
     /* ------------------------------------------------------ drag and resize */
 
-    const gesturing = dragInfo !== null || resizeInfo !== null;
+    const gesturing = dragInfo !== null || resizeInfo !== null || paddingInfo !== null || seamInfo !== null;
 
     useEffect(() => {
         if (!gesturing) return;
 
         const handleMouseMove = (event: MouseEvent) => {
 
-            const gestureBreakpoint = dragInfo?.breakpoint ?? resizeInfo?.breakpoint ?? breakpoint;
+            const gestureBreakpoint = dragInfo?.breakpoint ?? resizeInfo?.breakpoint ?? paddingInfo?.breakpoint ?? seamInfo?.breakpoint ?? breakpoint;
 
             if (dragInfo) {
                 const moving = byId.get(dragInfo.id);
@@ -1334,17 +1394,22 @@ export default function Editor({
                 const dx = (event.clientX - dragInfo.startX) / scale;
                 const dy = (event.clientY - dragInfo.startY) / scale;
 
-                // Which container would receive the element if dropped here.
-                const rect = canvasRef.current?.getBoundingClientRect();
-                if (rect) {
-                    const point = {
-                        x: (event.clientX - rect.left) / scale,
-                        y: (event.clientY - rect.top) / scale,
-                    };
-                    setDropTargetId(
-                        containerAt(visibleEditorElements, byId, point, gestureBreakpoint, dragInfo.id),
-                    );
-                }
+                // Which container would receive the element, and where in it.
+                // Measured from the rendered DOM: the model's w/h only match
+                // reality under fixed sizing.
+                const plan = resolveDrop(
+                    event.clientX,
+                    event.clientY,
+                    dragInfo.id,
+                    visibleEditorElements,
+                    byId,
+                    gestureBreakpoint,
+                    cascade,
+                    canvasRef.current,
+                    acceptsDrop,
+                );
+                setDropPlan(plan ?? null);
+                setDropTargetId(plan ? plan.parentId ?? null : undefined);
 
                 if (dragInfo.mode === "reflow") {
                     // Position is owned by the parent's layout, so only show a
@@ -1397,6 +1462,42 @@ export default function Editor({
                 return;
             }
 
+
+            if (seamInfo) {
+                const next = Math.round(Math.max(0, Math.min(9999, seamInfo.initial + (event.clientY - seamInfo.startY) / scale)));
+                setElements((els) =>
+                    els.map((el) =>
+                        el.id === seamInfo.id
+                            ? applyStyleIsolated(el, gestureBreakpoint, { marginB: next }, breakpointDefs.map((definition) => definition.id), cascade)
+                            : el,
+                    ),
+                );
+                return;
+            }
+
+            if (paddingInfo) {
+                // The inset grows as the pointer moves toward the middle of the
+                // box, so each side reads the axis it sits on with its own sign.
+                const delta =
+                    paddingInfo.side === "padT" ? event.clientY - paddingInfo.startY
+                    : paddingInfo.side === "padB" ? paddingInfo.startY - event.clientY
+                    : paddingInfo.side === "padL" ? event.clientX - paddingInfo.startX
+                    : paddingInfo.startX - event.clientX;
+                const next = Math.round(Math.max(0, Math.min(9999, paddingInfo.initial + delta / scale)));
+                const opposite = { padT: "padB", padB: "padT", padL: "padR", padR: "padL" } as const;
+                const patch: Partial<ElementStyle> = { [paddingInfo.side]: next };
+                if (paddingInfo.symmetric) patch[opposite[paddingInfo.side]] = next;
+
+                setElements((els) =>
+                    els.map((el) =>
+                        el.id === paddingInfo.id
+                            ? applyStyleIsolated(el, gestureBreakpoint, patch, breakpointDefs.map((definition) => definition.id), cascade)
+                            : el,
+                    ),
+                );
+                return;
+            }
+
             if (!resizeInfo) return;
             const dx = (event.clientX - resizeInfo.startX) / scale;
             const dy = (event.clientY - resizeInfo.startY) / scale;
@@ -1420,10 +1521,44 @@ export default function Editor({
                 y = initialY + dy;
             }
 
+            // Dragging a corner of a text box scales the type with it: the box
+            // is only ever as big as the words in it, so resizing it without
+            // the font just reflows the same text into a different shape.
+            // Edge handles keep the old behaviour — that is how you set a
+            // measure without touching the size.
+            const patch: Partial<ElementStyle> = { x, y, w, h };
+            const corner = handle.length === 2;
+            if (corner && resizeInfo.initialFontSize) {
+                const ratio = initialW > 0 && initialH > 0
+                    ? Math.min(w / initialW, h / initialH)
+                    : 1;
+                patch.fontSize = Math.round(
+                    Math.max(1, Math.min(999, resizeInfo.initialFontSize * ratio)),
+                );
+            }
+
+            // Dragging the edge all the way out means "as wide as this gets",
+            // not "exactly 1280 pixels". Without this the gesture silently
+            // writes a fixed width, and a design that filled the 1280 artboard
+            // strands at 1280 on a wider screen. Snapping to fill keeps the
+            // intent, so the same design fills 1920 too.
+            if (handle.includes("e") || handle.includes("w")) {
+                const node = document.querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(resizeInfo.id)}"]`);
+                const container = node?.parentElement?.getBoundingClientRect();
+                const parentStyle = resizing?.parentId
+                    ? resolveStyle(byId.get(resizing.parentId) ?? resizing, gestureBreakpoint, cascade)
+                    : undefined;
+                const available = container ? container.width / scale : undefined;
+                const inFlow = !resizing?.parentId || parentStyle?.layout === "stack";
+                if (inFlow && available) {
+                    patch.widthMode = w >= available - SNAP_FILL ? "fill" : "fixed";
+                }
+            }
+
             setElements((els) =>
                 els.map((el) =>
                     el.id === resizeInfo.id
-                        ? applyStyleIsolated(el, gestureBreakpoint, { x, y, w, h }, breakpointDefs.map((definition) => definition.id), cascade)
+                        ? applyStyleIsolated(el, gestureBreakpoint, patch, breakpointDefs.map((definition) => definition.id), cascade)
                         : el,
                 ),
             );
@@ -1435,20 +1570,46 @@ export default function Editor({
                 const currentParent = moving?.parentId;
                 // `undefined` means the page root, which is a valid destination,
                 // so only skip when nothing was hovered at all.
+                // A drop that keeps the same parent still counts: reordering
+                // inside one container is the common case, and skipping it
+                // when only `beforeId` changed is why ordering never took.
                 if (
                     dragInfo.mode === "reflow" &&
                     dragInfo.breakpoint === cascade.baseId &&
-                    dropTargetId !== undefined &&
-                    dropTargetId !== currentParent
+                    dropPlan?.free
                 ) {
-                    doReparent(dragInfo.id, dropTargetId ?? undefined);
+                    // Dropped away from any boundary: the element keeps the
+                    // spot it was let go of. It leaves the flow on its own, so
+                    // the siblings it was sitting among do not move.
+                    if (dropPlan.parentId !== currentParent) {
+                        doReparent(dragInfo.id, dropPlan.parentId);
+                    }
+                    const size = byId.get(dragInfo.id);
+                    const style = size ? resolveStyle(size, dragInfo.breakpoint, cascade) : undefined;
+                    patchStyle([dragInfo.id], {
+                        position: "absolute",
+                        // Drop point is the pointer; the element is centred on
+                        // it so it lands where the cursor is, not below-right.
+                        x: Math.round(dropPlan.free.x / scale - (style?.widthMode === "fixed" ? style.w / 2 : 0)),
+                        y: Math.round(dropPlan.free.y / scale - (style?.heightMode === "fixed" ? style.h / 2 : 0)),
+                    });
+                } else if (
+                    dragInfo.mode === "reflow" &&
+                    dragInfo.breakpoint === cascade.baseId &&
+                    dropPlan &&
+                    (dropPlan.parentId !== currentParent || dropPlan.beforeId)
+                ) {
+                    doReparent(dragInfo.id, dropPlan.parentId, dropPlan.beforeId);
                 }
             }
             setDragInfo(null);
             setPressedEffectId(null);
             setResizeInfo(null);
+            setPaddingInfo(null);
+            setSeamInfo(null);
             setGhost(null);
             setDropTargetId(undefined);
+            setDropPlan(null);
             setGuides({ origin: { x: 0, y: 0 }, lines: [] });
             // The whole gesture lands in the undo stack as a single step.
             endTransaction();
@@ -1465,14 +1626,19 @@ export default function Editor({
         breakpointDefs,
         byId,
         cascade,
+        acceptsDrop,
         canvasHeight,
         doReparent,
         dragInfo,
+        dropPlan,
         dropTargetId,
         elements,
         endTransaction,
         frameWidth,
         gesturing,
+        paddingInfo,
+        patchStyle,
+        seamInfo,
         resizeInfo,
         scale,
         setElements,
@@ -1512,7 +1678,12 @@ export default function Editor({
         setDragInfo({
             id: el.id,
             breakpoint: bp,
-            mode: contextFor(el).parentLayout === "absolute" ? "free" : "reflow",
+            // Either the container places its children freely, or this element
+            // has been lifted out of the flow on its own.
+            mode: contextFor(el).parentLayout === "absolute"
+                || resolveStyle(el, bp, cascade).position === "absolute"
+                ? "free"
+                : "reflow",
             startX: event.clientX,
             startY: event.clientY,
             initialX: style.x,
@@ -1530,6 +1701,9 @@ export default function Editor({
         if (bp !== breakpoint) setBreakpoint(bp);
         setSelectedIds([el.id]);
         const style = resolveStyle(el, bp, cascade);
+        const rendered = document.querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(el.id)}"]`)?.getBoundingClientRect();
+        const startWidth = style.widthMode === "fixed" || !rendered ? style.w : Math.round(rendered.width / scale);
+        const startHeight = style.heightMode === "fixed" || !rendered ? style.h : Math.round(rendered.height / scale);
         beginTransaction();
         setResizeInfo({
             id: el.id,
@@ -1539,8 +1713,31 @@ export default function Editor({
             startY: event.clientY,
             initialX: style.x,
             initialY: style.y,
-            initialW: style.w,
-            initialH: style.h,
+            initialW: startWidth,
+            initialH: startHeight,
+            initialFontSize: isTextual(el.type) ? style.fontSize : undefined,
+        });
+    };
+
+    const handlePaddingMouseDown = (
+        event: React.MouseEvent,
+        side: PadSide,
+        el: CanvasElement,
+        bp: Breakpoint = breakpoint,
+    ) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (bp !== breakpoint) setBreakpoint(bp);
+        setSelectedIds([el.id]);
+        beginTransaction();
+        setPaddingInfo({
+            id: el.id,
+            breakpoint: bp,
+            side,
+            startX: event.clientX,
+            startY: event.clientY,
+            initial: resolveStyle(el, bp, cascade)[side],
+            symmetric: event.altKey,
         });
     };
 
@@ -1589,6 +1786,7 @@ export default function Editor({
         event.preventDefault();
         event.stopPropagation();
         setDropTargetId(undefined);
+        setDropPlan(null);
 
         // An existing layer dragged out of the Layers panel.
         const movedId = event.dataTransfer.getData(MOVE_MIME);
@@ -1826,6 +2024,18 @@ export default function Editor({
         }
     }, [adapters]);
 
+    const importSiteBundle = useCallback(async (bundle: unknown) => {
+        if (!adapters?.importTemplate) throw new Error("Importing is not configured.");
+        setPageError(null);
+        const result = await adapters.importTemplate(bundle);
+        if (result.status === "error") {
+            setPageError(result.message);
+            throw new Error(result.message);
+        }
+        if (result.pageId) await navigateEditorPage(result.pageId, { replace: true });
+        else adapters.refresh?.();
+    }, [adapters, navigateEditorPage]);
+
     const publish = useCallback(() => {
         // Flush the draft first; Publish snapshots whatever the server holds.
         saveNow();
@@ -1899,6 +2109,11 @@ export default function Editor({
         const note = isNote(el, byId, frame.bp, frame.width, rootStyle.layout, cascade);
         const band = isBand(el.type, style, rootStyle);
         const css = styleToCss(style, contextFor(el, frame.bp), el);
+        // A real `fixed` would answer to the editor window and float over the
+        // panels. Inside the canvas it pins to the artboard instead, which is
+        // what the author is actually looking at; the published page still
+        // gets the genuine `position: fixed`.
+        if (css.position === "fixed") css.position = "absolute";
         if (el.hover || el.press) css.transition = "transform .42s cubic-bezier(.16,1,.3,1), scale .42s cubic-bezier(.16,1,.3,1), rotate .42s cubic-bezier(.16,1,.3,1), background-color .32s ease, color .32s ease, border-color .32s ease, box-shadow .42s cubic-bezier(.16,1,.3,1), opacity .32s ease, filter .42s ease";
         if (el.loop) css.animation = `pg-loop-${el.loop.type} ${el.loop.duration}ms ease-in-out infinite`;
         css.cursor = el.locked ? "default" : isEditing ? "text" : "move";
@@ -2040,12 +2255,44 @@ export default function Editor({
                     </span>
                 )}
 
-                {isSelected && !el.locked && selectedIds.length === 1 && (
-                    <ResizeHandles
-                        element={el}
-                        style={style}
-                        onMouseDown={(event, handle, element) => handleResizeMouseDown(event, handle, element, frame.bp)}
+                {/* The seam belongs to the boundary below a root-level section,
+                    so it is drawn by the section above it and only where one
+                    section actually follows another. */}
+                {!componentMode
+                    && rootStyle.layout === "stack"
+                    && !el.parentId
+                    && !note
+                    && childrenOf(visibleEditorElements, undefined).at(-1)?.id !== el.id && (
+                    <SectionSeam
+                        space={style.marginB}
+                        scale={scale}
+                        active={seamInfo?.id === el.id}
+                        onDragStart={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setSelectedIds([el.id]);
+                            beginTransaction();
+                            setSeamInfo({ id: el.id, breakpoint: frame.bp, startY: event.clientY, initial: style.marginB });
+                        }}
+                        onInsert={() => insertSectionAfter(el.id)}
                     />
+                )}
+
+                {isSelected && !el.locked && selectedIds.length === 1 && (
+                    <>
+                        <PaddingHandles
+                            element={el}
+                            style={style}
+                            scale={scale}
+                            active={paddingInfo?.id === el.id ? paddingInfo.side : undefined}
+                            onMouseDown={(event, side, element) => handlePaddingMouseDown(event, side, element, frame.bp)}
+                        />
+                        <ResizeHandles
+                            element={el}
+                            style={style}
+                            onMouseDown={(event, handle, element) => handleResizeMouseDown(event, handle, element, frame.bp)}
+                        />
+                    </>
                 )}
             </div>
         );
@@ -2394,13 +2641,24 @@ export default function Editor({
                                     elements={elements}
                                     rootStyle={rootStyle}
                                     breakpoint={breakpoint}
+                                    focus={aiFocus}
+                                    onClearFocus={() => setAiFocus(undefined)}
                                     onApply={applyAiPlan}
                                     generate={adapters?.generate}
                                 />
                             ) : leftTab === "Components" ? (
                                 <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Asset canvas</p><p className="mt-1 text-[9px] text-ed-faint">One asset, multiple variants—similar to its own breakpoint set.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Assets"); }} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Back to page</button></div>{activeComponentMaster && <div className="mb-3 space-y-2 rounded-2xl border border-ed-border bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Asset</span><input value={activeComponentMaster.name ?? ""} placeholder="Asset name" onChange={(event) => patchProps(activeComponentMaster.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Variant</span><input value={activeComponentMaster.variant ?? "Default"} onChange={(event) => patchProps(activeComponentMaster.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} /><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant to {activeComponentMaster?.name ?? "asset"}</button></div>
                             ) : leftTab === "Settings" ? (
-                                <div className="px-4 py-3"><PageInspector rootStyle={rootStyle} onChange={updatePageSettings} /></div>
+                                <div className="flex flex-col">
+                                    <div className="px-4 py-3">
+                                        <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} />
+                                    </div>
+                                    <SiteTransfer
+                                        exportUrl={adapters?.exportTemplateUrl}
+                                        onImport={adapters?.importTemplate ? importSiteBundle : undefined}
+                                        busy={isPending || Boolean(pageSwitchTarget)}
+                                    />
+                                </div>
                             ) : (
                                 <PagesPanel
                                     pages={pages}
@@ -2478,6 +2736,20 @@ export default function Editor({
                                 busy={isPending}
                                 registryUrl={templateRegistryUrl}
                                 onInstall={installSiteTemplate}
+                                onImport={adapters?.importTemplate
+                                    ? async (bundle) => {
+                                        const result = await adapters.importTemplate?.(bundle);
+                                        // The adapter reports failure in the payload rather
+                                        // than throwing, so it has to be raised here or the
+                                        // panel would announce a successful import.
+                                        if (result && "status" in result && result.status === "error") {
+                                            throw new Error(result.message);
+                                        }
+                                        const pageId = result && "pageId" in result ? result.pageId : undefined;
+                                        return { pageId: typeof pageId === "string" ? pageId : undefined };
+                                    }
+                                    : undefined}
+                                exportUrl={adapters?.exportTemplateUrl}
                                 onInstalled={async (pageId) => {
                                     if (pageId) await navigateEditorPage(pageId, { replace: true });
                                     else adapters?.refresh?.();
@@ -2987,6 +3259,35 @@ export default function Editor({
                         }
                         setContextMenu(null);
                     }}
+                    isFree={resolveStyle(byId.get(menuElementId) ?? elements[0], breakpoint, cascade).position === "absolute"}
+                    onToggleFree={() => {
+                        const el = byId.get(menuElementId);
+                        if (el) {
+                            const style = resolveStyle(el, breakpoint, cascade);
+                            const free = style.position === "absolute";
+                            // Lifting an element out of the flow keeps it where
+                            // it already looks: the coordinates it had while
+                            // stacked are meaningless, so they are taken from
+                            // what is on screen.
+                            const node = document.querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(el.id)}"]`);
+                            const box = node?.getBoundingClientRect();
+                            const parent = node?.parentElement?.getBoundingClientRect();
+                            const placed = !free && box && parent
+                                ? { x: Math.round((box.left - parent.left) / scale), y: Math.round((box.top - parent.top) / scale) }
+                                : {};
+                            patchStyle([el.id], { position: free ? "static" : "absolute", ...placed });
+                        }
+                        setContextMenu(null);
+                    }}
+                    onAskLuma={() => {
+                        const el = byId.get(menuElementId);
+                        if (el) {
+                            setAiFocus({ id: el.id, name: displayName(el), type: el.type });
+                            setSelectedIds([el.id]);
+                            setLeftTab("AI");
+                        }
+                        setContextMenu(null);
+                    }}
                     onUnwrap={() => {
                         const el = byId.get(menuElementId);
                         const grandparent = el?.parentId
@@ -3001,6 +3302,19 @@ export default function Editor({
                         setContextMenu(null);
                     }}
                     onDelete={() => deleteElements([menuElementId])}
+                />
+            )}
+
+            {/* Insertion line. Fixed positioning because the plan is measured
+                in screen coordinates, which already account for canvas zoom. */}
+            {dropPlan?.indicator && (
+                <div
+                    className="pointer-events-none fixed z-[95] rounded-full bg-ed-accent"
+                    style={
+                        dropPlan.indicator.vertical
+                            ? { left: dropPlan.indicator.x - 1, top: dropPlan.indicator.y, width: 2, height: dropPlan.indicator.length }
+                            : { left: dropPlan.indicator.x, top: dropPlan.indicator.y - 1, width: dropPlan.indicator.length, height: 2 }
+                    }
                 />
             )}
 

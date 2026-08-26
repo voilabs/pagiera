@@ -1,8 +1,8 @@
 "use client";
 
-import { IconAlertTriangle, IconArrowUpRight, IconCheck, IconRefresh, IconSearch, IconSparkles, IconTemplate, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowUpRight, IconCheck, IconDownload, IconRefresh, IconSearch, IconSparkles, IconTemplate, IconUpload, IconX } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePagieraFonts } from "pagiera/provider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,11 +40,17 @@ export function TemplatesPanel({
     busy,
     registryUrl = DEFAULT_TEMPLATE_REGISTRY_URL,
     onInstall,
+    onImport,
+    exportUrl,
     onInstalled,
 }: {
     busy: boolean;
     registryUrl?: string;
     onInstall: (templateId: string, fontFamily: string) => Promise<{ pageId?: string }>;
+    /** Installs a bundle the author supplied from a file. */
+    onImport?: (bundle: unknown) => Promise<{ pageId?: string }>;
+    /** Where the current site can be downloaded as a bundle. */
+    exportUrl?: (id: string) => string;
     onInstalled: (pageId?: string) => void | Promise<void>;
 }) {
     const [templates, setTemplates] = useState(FALLBACK_TEMPLATE_REGISTRY.templates);
@@ -58,6 +64,8 @@ export function TemplatesPanel({
     const [installError, setInstallError] = useState("");
     const [selectedFont, setSelectedFont] = useState("");
     const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+    const [busyImport, setBusyImport] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
     const providerFonts = usePagieraFonts();
     const [catalogRevision, setCatalogRevision] = useState(0);
     const preview = useTemplatePreview(pendingTemplate?.id, catalogRevision);
@@ -120,6 +128,25 @@ export function TemplatesPanel({
         );
     }, [templates, category, query]);
 
+    const importFile = async (file: File) => {
+        setError("");
+        setBusyImport(true);
+        try {
+            const text = await file.text();
+            const bundle = JSON.parse(text) as { schemaVersion?: unknown; pages?: unknown };
+            if (bundle?.schemaVersion !== 1 || !Array.isArray(bundle?.pages)) {
+                throw new Error("That file is not a Pagiera template bundle.");
+            }
+            if (!onImport) throw new Error("Importing is not configured.");
+            const result = await onImport(bundle);
+            await onInstalled(result.pageId);
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Could not read that file.");
+        } finally {
+            setBusyImport(false);
+        }
+    };
+
     const install = async (template: TemplateRegistryEntry) => {
         setInstalling(template.id);
         setInstallStage("fetching");
@@ -160,6 +187,41 @@ export function TemplatesPanel({
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-ed-accent-soft text-ed-accent"><IconTemplate size={18} /></span>
                         <div className="min-w-0"><h2 className="text-[18px] font-semibold tracking-[-.025em] text-ed-text">Template marketplace</h2><p className="mt-1 text-[11px] text-ed-faint">Discover and install complete, responsive Pagiera sites.</p></div>
                     </div>
+                    {exportUrl && (
+                        <a
+                            href={exportUrl("my-template")}
+                            download
+                            title="Download this site as a template bundle"
+                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text"
+                        >
+                            <IconDownload size={13} /> Export
+                        </a>
+                    )}
+                    {onImport && (
+                        <>
+                            <input
+                                ref={fileRef}
+                                type="file"
+                                accept="application/json,.json"
+                                className="hidden"
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    // Cleared so choosing the same file twice still fires.
+                                    event.target.value = "";
+                                    if (file) void importFile(file);
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileRef.current?.click()}
+                                disabled={busyImport || busy}
+                                title="Replace this site with a template bundle from a file"
+                                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40"
+                            >
+                                <IconUpload size={13} /> {busyImport ? "Importing…" : "Import"}
+                            </button>
+                        </>
+                    )}
                     <button type="button" onClick={() => void refresh(true)} disabled={status === "loading"} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ed-field text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40" title="Refresh template catalog">
                         <IconRefresh size={14} className={status === "loading" ? "animate-spin" : ""} />
                     </button>

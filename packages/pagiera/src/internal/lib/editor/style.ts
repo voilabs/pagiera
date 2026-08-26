@@ -183,6 +183,7 @@ export function styleToCss(
         paddingTop: style.padT || undefined,
         paddingRight: style.padR || undefined,
         paddingBottom: style.padB || undefined,
+        marginBottom: style.marginB || undefined,
         paddingLeft: style.padL || undefined,
 
         backgroundColor: style.bg || undefined,
@@ -243,7 +244,31 @@ export function styleToCss(
         css.display = "block";
     }
 
-    if (context.parentLayout === "absolute") {
+    // `fixed` answers to the viewport, not to any parent, so it is decided
+    // before the parent's layout gets a say — otherwise an absolute parent
+    // would quietly turn a fixed navbar back into an absolute one.
+    if (style.position === "fixed") {
+        css.position = "fixed";
+        pinTo(css, style);
+        // Across the pinned axis the element keeps its own sizing; along the
+        // other one, filling means spanning the viewport rather than a parent
+        // that no longer contains it.
+        const horizontal = style.pinSide === "left" || style.pinSide === "right";
+        if (horizontal) {
+            css.height = style.heightMode === "fixed" ? style.h : "auto";
+            if (style.heightMode === "fill") { css.top = 0; css.bottom = 0; css.height = "auto"; }
+            css.width = style.widthMode === "fixed" ? style.w : "max-content";
+        } else {
+            css.width = style.widthMode === "fixed" ? style.w : "max-content";
+            if (style.widthMode === "fill") { css.left = 0; css.right = 0; css.width = "auto"; }
+            css.height = style.heightMode === "fixed" ? style.h : "max-content";
+        }
+        return css;
+    }
+
+    // Either the container places its children freely, or this one element
+    // asked to be placed freely inside a container that does not.
+    if (context.parentLayout === "absolute" || style.position === "absolute") {
         css.position = "absolute";
         css.left = style.x;
         css.top = style.y;
@@ -284,7 +309,7 @@ export function styleToCss(
     // Sticky only means anything inside a flowing parent; in an absolute one
     // the element is already taken out of the flow above.
     css.position = style.position === "sticky" ? "sticky" : "relative";
-    if (style.position === "sticky") css.top = style.stickyOffset;
+    if (style.position === "sticky") pinTo(css, style);
 
     const mainAxisIsWidth = context.parentDirection === "row";
 
@@ -292,6 +317,20 @@ export function styleToCss(
     applySize(css, "height", style.heightMode, style.h, !mainAxisIsWidth, context.parentAlign);
 
     return css;
+}
+
+/**
+ * Anchors a pinned element to one edge.
+ *
+ * Only the chosen edge is written. Setting `top` on something meant to hold the
+ * bottom of the screen is the usual reason a "sticky" footer never sticks.
+ */
+function pinTo(css: CSSProperties, style: ElementStyle) {
+    css.top = undefined;
+    css.right = undefined;
+    css.bottom = undefined;
+    css.left = undefined;
+    css[style.pinSide] = style.stickyOffset;
 }
 
 function applySize(
@@ -397,7 +436,11 @@ export function rootStyleToCss(root: RootStyle): CSSProperties {
         backgroundColor: root.bg,
         fontFamily: root.fontFamily === "inherit" ? undefined : root.fontFamily,
         position: "relative",
-        minHeight: "100%",
+        // A freely placed page holds its children out of the normal flow, so
+        // nothing gives the root a height and the page would collapse to the
+        // viewport with everything below the fold clipped. The authored canvas
+        // height is the only thing that knows how tall the design is.
+        minHeight: root.layout === "absolute" ? root.canvasHeight : "100%",
         width: "100%",
     };
 }

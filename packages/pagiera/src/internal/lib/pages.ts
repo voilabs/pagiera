@@ -275,6 +275,40 @@ export async function listPages(): Promise<PageSummary[]> {
 }
 
 /**
+ * The whole site as a template bundle.
+ *
+ * The draft documents are exported rather than the published ones: a template
+ * is authored in the editor, and requiring a publish before it could be saved
+ * would mean shipping work-in-progress to the live site just to keep a copy of
+ * it.
+ */
+export async function exportSite() {
+    const siteId = await getDefaultSiteId();
+    const rows = await db
+        .select({
+            name: pages.name,
+            slug: pages.slug,
+            elements: pages.elements,
+            rootStyle: pages.rootStyle,
+            dataSources: pages.dataSources,
+        })
+        .from(pages)
+        .where(eq(pages.siteId, siteId))
+        .orderBy(asc(pages.createdAt));
+
+    return {
+        pages: rows.map((row) => ({
+            name: row.name,
+            slug: row.slug,
+            elements: row.elements ?? [],
+            rootStyle: row.rootStyle ?? DEFAULT_ROOT_STYLE,
+            dataSources: row.dataSources ?? [],
+        })),
+        components: await getSiteComponents(siteId),
+    };
+}
+
+/**
  * Every page's element tree, for the cross-page component library. Kept
  * separate from `listPages` because it pulls the whole document and only the
  * library needs that.

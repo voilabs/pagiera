@@ -21,11 +21,17 @@ export function RenderedPage({
     /** Rows already fetched for each data source; see `loadPageData`. */
     data?: PageData;
 }) {
-    // Anything parked beside the canvas is a note the author kept for
-    // themselves; it never reaches the page.
-    const frameWidth = rootStyle.fullWidth ? Number.POSITIVE_INFINITY : rootStyle.maxWidth;
     const cascade = cascadeOf(rootStyle.breakpoints, rootStyle.baseBreakpointId);
     const baseId = baseOf(cascade).id;
+
+    // Anything parked beside the canvas is a note the author kept for
+    // themselves; it never reaches the page. The reference has to be the width
+    // the canvas measured against — the breakpoint's own — and not the content
+    // cap: measuring against a smaller `maxWidth` would classify elements the
+    // author can plainly see on the artboard as notes and silently drop them.
+    const frameWidth = rootStyle.fullWidth
+        ? Number.POSITIVE_INFINITY
+        : baseOf(cascade).width;
     const notes = noteIds(all, indexById(all), baseId, frameWidth, rootStyle.layout, cascade);
     const elements = all.filter((element) => !notes.has(element.id) && element.componentRole !== "master");
 
@@ -55,6 +61,14 @@ export function RenderedPage({
             {elements.some((element) => element.draggable) && <script dangerouslySetInnerHTML={{ __html: DRAG_SCRIPT }} />}
             {elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <script dangerouslySetInnerHTML={{ __html: ACTION_SCRIPT }} />}
             {elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <script dangerouslySetInnerHTML={{ __html: FORM_SCRIPT }} />}
+            {rootStyle.customJs && (
+                <script
+                    // Last, so the page's own behaviour is already wired up and
+                    // author code can build on it rather than race it.
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: the page author's own script for their own site; the parser narrows it and the editor never executes it
+                    dangerouslySetInnerHTML={{ __html: rootStyle.customJs }}
+                />
+            )}
         </>
     );
 }
