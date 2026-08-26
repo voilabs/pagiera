@@ -9,14 +9,6 @@ import { cn } from "@/lib/cn";
 /** Kept in step with templates/registry.json — names, pages and accents. */
 const TEMPLATES = [
   {
-    accent: "#db4b2d",
-    category: "Editorial",
-    copy: "A dynamic journal with API-powered article routes, an author index and a tag archive.",
-    id: "editorial-blog",
-    name: "Field Notes",
-    pages: 4,
-  },
-  {
     accent: "#d7ff3f",
     category: "Portfolio",
     copy: "An art-directed studio site built on kinetic type, a case grid and scroll-led motion.",
@@ -25,21 +17,23 @@ const TEMPLATES = [
     pages: 4,
   },
   {
-    accent: "#7357ff",
+    accent: "#8B7BFF",
     category: "SaaS",
-    copy: "A high-contrast product launch system with pricing tiers and a feature matrix.",
-    id: "orbit-saas",
-    name: "Orbit OS",
-    pages: 3,
+    copy: "AI customer support and automation landing page with an omnichannel inbox, smart workflows, AI-assisted replies, performance metrics and conversion-focused product sections.",
+    id: "relay",
+    name: "Relay",
+    pages: 1,
+    featured: true
   },
   {
-    accent: "#8b5cf6",
+    accent: "#FFFFFF",
     category: "Social",
-    copy: "A one-page social shell with native search, a composer form and a responsive feed.",
-    id: "pulse-social",
-    name: "Pulse Social",
+    copy: "A clone of X (formerly Twitter) with a responsive shell, native search and post composer forms.",
+    id: "x-clone",
+    name: "X Clone",
     pages: 1,
-  },
+    featured: true
+  }
 ] as const;
 
 export function TemplatesSection() {
