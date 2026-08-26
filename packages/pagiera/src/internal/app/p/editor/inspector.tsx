@@ -188,12 +188,29 @@ function DesignTab(ctx: Ctx) {
             {isContainer(element.type) && <LayoutGroup ctx={ctx} ov={ov} />}
             {/* The group most likely to be edited for this element opens first. */}
             {textual && <TypographyGroup ctx={ctx} ov={ov} />}
+            {element.type === "Icon" && <IconAppearanceGroup ctx={ctx} ov={ov} />}
             <FillGroup ctx={ctx} ov={ov} defaultOpen={!textual} />
             <SpacingGroup ctx={ctx} ov={ov} />
             <EffectsGroup ctx={ctx} ov={ov} />
             <CompositionGroup ctx={ctx} ov={ov} />
             <MotionGroup ctx={ctx} ov={ov} />
         </div>
+    );
+}
+
+function IconAppearanceGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
+    const { style, onStyle } = ctx;
+    return (
+        <Group title="Icon">
+            {ov(
+                ["color"],
+                <ColorInput
+                    label="Colour"
+                    value={style.color}
+                    onChange={(color) => onStyle({ color })}
+                />,
+            )}
+        </Group>
     );
 }
 
@@ -1412,6 +1429,17 @@ function HoverTab({ element, style, onProps, onStyle }: Ctx) {
                     ) : null
                 }
             >
+                {element.parentId && (
+                    <Segmented
+                        label="Trigger"
+                        value={element.hoverTrigger ?? "self"}
+                        options={[
+                            { label: "Self", value: "self" as const },
+                            { label: "Parent", value: "parent" as const },
+                        ]}
+                        onChange={(hoverTrigger) => onProps({ hoverTrigger })}
+                    />
+                )}
                 <ColorInput
                     label="Background"
                     value={hover.bg ?? style.bg}

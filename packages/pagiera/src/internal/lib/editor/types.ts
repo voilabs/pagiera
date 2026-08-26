@@ -105,7 +105,7 @@ export const BREAKPOINT_CHAIN: Record<string, Breakpoint[]> = {
 /* ------------------------------------------------------------------ styles */
 
 /** `fill` stretches to the parent, `auto` shrinks to the content. */
-export type SizeMode = "fixed" | "fill" | "auto";
+export type SizeMode = "fixed" | "fill" | "auto" | "screen";
 export type Constraint = "start" | "center" | "end" | "stretch";
 /** `absolute` positions children by x/y; `stack` lays them out with flexbox. */
 export type LayoutMode = "absolute" | "stack";
@@ -372,6 +372,8 @@ export type CanvasElement = {
     overrides?: Record<string, Partial<ElementStyle>>;
     /** Applied on pointer hover, on top of the resolved breakpoint style. */
     hover?: Partial<ElementStyle>;
+    /** Whether hover is activated by this node or its immediate parent. */
+    hoverTrigger?: "self" | "parent";
     /** Applied while the pointer is pressed. */
     press?: Partial<ElementStyle>;
     loop?: { type: "pulse" | "float" | "spin"; duration: number };

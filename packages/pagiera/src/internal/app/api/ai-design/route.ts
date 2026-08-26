@@ -69,7 +69,7 @@ const prose = (max: number, hint?: string) =>
 const styleSchema = z
     .object({
         x: z.number().optional(), y: z.number().optional(), constraintX: z.enum(["start", "center", "end", "stretch"]).optional(), constraintY: z.enum(["start", "center", "end", "stretch"]).optional(), w: z.number().positive().optional(), h: z.number().positive().optional(),
-        widthMode: z.enum(["fixed", "fill", "auto"]).optional(), heightMode: z.enum(["fixed", "fill", "auto"]).optional(),
+        widthMode: z.enum(["fixed", "fill", "auto"]).optional(), heightMode: z.enum(["fixed", "fill", "auto", "screen"]).optional().describe("screen makes the element exactly one viewport tall (100vh), useful for full-screen heroes"),
         layout: z.enum(["absolute", "stack"]).optional(), direction: z.enum(["row", "column"]).optional(),
         gap: z.number().nonnegative().optional(), padT: z.number().nonnegative().optional(), padR: z.number().nonnegative().optional(), padB: z.number().nonnegative().optional(), padL: z.number().nonnegative().optional(), marginB: z.number().nonnegative().optional().describe("Space below this element, separating it from the next one. Use it for the rhythm between sections instead of padding."),
         justify: z.enum(["start", "center", "end", "between"]).optional(), align: z.enum(["start", "center", "end", "stretch"]).optional(), wrap: z.boolean().optional(), columns: z.number().int().min(1).max(12).optional(),

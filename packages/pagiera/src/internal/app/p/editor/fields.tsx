@@ -273,12 +273,16 @@ export function SelectInput<T extends string>({
 
 /* --------------------------------------------------------------------- size */
 
-export type SizeChoice = "fixed" | "fill" | "auto";
+export type SizeChoice = "fixed" | "fill" | "auto" | "screen";
 
 const SIZE_OPTIONS: ReadonlyArray<{ label: string; value: SizeChoice }> = [
     { label: "Fixed", value: "fixed" },
     { label: "Fill", value: "fill" },
     { label: "Hug", value: "auto" },
+];
+const HEIGHT_SIZE_OPTIONS: ReadonlyArray<{ label: string; value: SizeChoice }> = [
+    ...SIZE_OPTIONS,
+    { label: "Screen", value: "screen" },
 ];
 
 /**
@@ -333,14 +337,14 @@ export function SizeField({
                 ) : (
                     // The layout owns this axis, so there is no number to type.
                     <span className="flex-1 text-right text-ed-faint">
-                        {mode === "fill" ? "Fill" : "Hug"}
+                        {mode === "fill" ? "Fill" : mode === "screen" ? "100vh" : "Hug"}
                     </span>
                 )}
             </div>
 
             <SelectShell
                 value={mode}
-                options={SIZE_OPTIONS}
+                options={axis === "H" ? HEIGHT_SIZE_OPTIONS : SIZE_OPTIONS}
                 onChange={onMode}
                 ariaLabel={`${name} sizing mode`}
                 className="w-[76px] shrink-0"

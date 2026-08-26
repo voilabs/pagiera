@@ -207,7 +207,7 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         w: num(raw.w, base.w, 1, COORD_LIMIT),
         h: num(raw.h, base.h, 1, COORD_LIMIT),
         widthMode: oneOf(raw.widthMode, ["fixed", "fill", "auto"], base.widthMode),
-        heightMode: oneOf(raw.heightMode, ["fixed", "fill", "auto"], base.heightMode),
+        heightMode: oneOf(raw.heightMode, ["fixed", "fill", "auto", "screen"], base.heightMode),
 
         layout: oneOf(raw.layout, ["absolute", "stack"], base.layout),
         direction: oneOf(raw.direction, ["row", "column"], base.direction),
@@ -413,6 +413,7 @@ export function parseElements(
             href: safeUrl(el.href),
             sourceId: str(el.sourceId, MAX_SHORT_STRING),
             binding: bindingPath(el.binding),
+            hoverTrigger: oneOf(el.hoverTrigger, ["self", "parent"] as const, "self"),
             target: oneOf(el.target, ["_self", "_blank"] as const, "_self"),
             interaction:
                 el.interaction && typeof el.interaction === "object"

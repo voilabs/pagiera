@@ -65,6 +65,32 @@
       "file": "./relay/template.json",
       "thumbnail": "./relay/thumbnail.svg",
       "featured": true
+    },
+    {
+      "id": "x-clone",
+      "version": "1.0.0",
+      "name": "X Clone",
+      "description": "A clone of X (formerly Twitter) with a responsive shell, native search and post composer forms.",
+      "category": "Social",
+      "tags": [
+        "Social",
+        "App",
+        "Dark",
+        "Responsive"
+      ],
+      "pages": [
+        "Home"
+      ],
+      "file": "./x-clone/template.json",
+      "thumbnail": "./x-clone/thumbnail.svg",
+      "featured": true,
+      "preview": {
+        "background": "#000000",
+        "foreground": "#FFFFFF",
+        "accent": "#FFFFFF",
+        "eyebrow": "X (Formerly Twitter) Clone",
+        "headline": "X (Formerly Twitter) Clone"
+      }
     }
   ]
 }

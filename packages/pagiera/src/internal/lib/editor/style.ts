@@ -356,6 +356,12 @@ function applySize(
         return;
     }
 
+    if (mode === "screen") {
+        css[axis] = axis === "height" ? "100vh" : "100vw";
+        if (isMainAxis) css.flexShrink = 0;
+        return;
+    }
+
     if (mode === "auto") {
         css[axis] = "auto";
         if (isMainAxis) css.flexGrow = 0;
@@ -403,6 +409,8 @@ export function splitBand(
         flexWrap: css.flexWrap,
         gridTemplateColumns: css.gridTemplateColumns,
         width: "100%",
+        height: css.height,
+        minHeight: css.minHeight,
         maxWidth: contentWidth,
         marginLeft: "auto",
         marginRight: "auto",

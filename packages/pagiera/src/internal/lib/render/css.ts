@@ -176,6 +176,15 @@ function interactionDeclarations(
     return declarationsToCss(delta);
 }
 
+function hoverSelector(element: CanvasElement, byId: Map<string, CanvasElement>) {
+    const parent = element.hoverTrigger === "parent" && element.parentId
+        ? byId.get(element.parentId)
+        : undefined;
+    return parent
+        ? `.${classFor(parent.id)}:hover .${classFor(element.id)}`
+        : `.${classFor(element.id)}:hover`;
+}
+
 /**
  * Entrance keyframes animate `translate`/`scale` rather than `transform`, so
  * they compose with an element's own rotation or scale instead of clobbering
@@ -355,7 +364,7 @@ export function stylesheetFor(
 
     for (const element of elements) {
         if (element.hover || element.press) parts.push(`.${classFor(element.id)}{transition:transform .42s cubic-bezier(.16,1,.3,1),scale .42s cubic-bezier(.16,1,.3,1),rotate .42s cubic-bezier(.16,1,.3,1),translate .42s cubic-bezier(.16,1,.3,1),background-color .32s ease,color .32s ease,border-color .32s ease,box-shadow .42s cubic-bezier(.16,1,.3,1),opacity .32s ease,filter .42s ease;will-change:transform}`);
-        if (element.hover && Object.keys(element.hover).length) parts.push(`.${classFor(element.id)}:hover{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.hover)}}`);
+        if (element.hover && Object.keys(element.hover).length) parts.push(`${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.hover)}}`);
         if (element.press && Object.keys(element.press).length) parts.push(`.${classFor(element.id)}:active{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.press)}}`);
         if (element.loop) {
             const name = element.loop.type;
@@ -374,7 +383,7 @@ export function stylesheetFor(
             const selector = `.${classFor(element.id)}`;
             return [
                 element.hover && Object.keys(element.hover).length
-                    ? `${selector}:hover{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.hover)}}`
+                    ? `${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.hover)}}`
                     : "",
                 element.press && Object.keys(element.press).length
                     ? `${selector}:active{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.press)}}`

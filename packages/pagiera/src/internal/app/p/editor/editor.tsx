@@ -513,6 +513,7 @@ export default function Editor({
     const [hoveredEffectIds, setHoveredEffectIds] = useState<Set<string>>(() => new Set());
     const [pressedEffectId, setPressedEffectId] = useState<string | null>(null);
     const [effectsPreview, setEffectsPreview] = useState(false);
+    const [stickyPreview, setStickyPreview] = useState(true);
     const [previewVisibility, setPreviewVisibility] = useState<Record<string, boolean>>({});
     const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
     const [codeComposerOpen, setCodeComposerOpen] = useState(false);
@@ -2114,6 +2115,13 @@ export default function Editor({
         // what the author is actually looking at; the published page still
         // gets the genuine `position: fixed`.
         if (css.position === "fixed") css.position = "absolute";
+        if (!stickyPreview && style.position === "sticky") {
+            css.position = "relative";
+            css.top = undefined;
+            css.right = undefined;
+            css.bottom = undefined;
+            css.left = undefined;
+        }
         if (el.hover || el.press) css.transition = "transform .42s cubic-bezier(.16,1,.3,1), scale .42s cubic-bezier(.16,1,.3,1), rotate .42s cubic-bezier(.16,1,.3,1), background-color .32s ease, color .32s ease, border-color .32s ease, box-shadow .42s cubic-bezier(.16,1,.3,1), opacity .32s ease, filter .42s ease";
         if (el.loop) css.animation = `pg-loop-${el.loop.type} ${el.loop.duration}ms ease-in-out infinite`;
         css.cursor = el.locked ? "default" : isEditing ? "text" : "move";
@@ -2150,6 +2158,12 @@ export default function Editor({
                       el.type === "Request" ? canvasData[el.sourceId ?? ""]?.[0] : row,
                       keyPrefix,
                   ));
+        const hoverEffectIds = [
+            ...(el.hover && el.hoverTrigger !== "parent" ? [el.id] : []),
+            ...children
+                .filter((child) => child.hover && child.hoverTrigger === "parent")
+                .map((child) => child.id),
+        ];
 
         return (
             // A canvas node is manipulated by pointer; the Layers panel is its keyboard equivalent.
@@ -2159,14 +2173,14 @@ export default function Editor({
                 data-canvas-element={el.id}
                 style={split ? split.shell : css}
                 onMouseDown={(event) => handleElementMouseDown(event, interactionElement, frame.bp)}
-                onMouseEnter={() => effectsPreview && el.hover && setHoveredEffectIds((current) => {
-                    if (current.has(el.id)) return current;
+                onMouseEnter={() => effectsPreview && hoverEffectIds.length > 0 && setHoveredEffectIds((current) => {
+                    if (hoverEffectIds.every((id) => current.has(id))) return current;
                     const next = new Set(current);
-                    next.add(el.id);
+                    for (const id of hoverEffectIds) next.add(id);
                     return next;
                 })}
                 onMouseUp={() => effectsPreview && setPressedEffectId((id) => id === el.id ? null : id)}
-                onMouseLeave={() => { setHoveredEffectIds((current) => { if (!current.has(el.id)) return current; const next = new Set(current); next.delete(el.id); return next; }); setPressedEffectId((id) => id === el.id ? null : id); }}
+                onMouseLeave={() => { setHoveredEffectIds((current) => { if (!hoverEffectIds.some((id) => current.has(id))) return current; const next = new Set(current); for (const id of hoverEffectIds) next.delete(id); return next; }); setPressedEffectId((id) => id === el.id ? null : id); }}
                 onDoubleClick={(event) => {
                     event.stopPropagation();
                     if (componentInstance) openComponentEditor(componentInstance);
@@ -2239,7 +2253,7 @@ export default function Editor({
                         }}
                     >
                         {Math.round(style.widthMode === "fixed" ? style.w : 0) || "auto"} ×{" "}
-                        {Math.round(style.heightMode === "fixed" ? style.h : 0) || "auto"}
+                        {style.heightMode === "screen" ? "100vh" : Math.round(style.heightMode === "fixed" ? style.h : 0) || "auto"}
                     </span>
                 )}
 
@@ -3029,6 +3043,15 @@ export default function Editor({
 
                     <div className="absolute bottom-12 right-6 z-20 flex items-center gap-0.5 rounded-lg border border-ed-border bg-ed-surface/90 p-1 backdrop-blur">
                         <button type="button" title={effectsPreview ? "Stop interaction preview" : "Preview hover, press and layer actions"} onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }} className={`rounded-md p-1.5 transition-colors ${effectsPreview ? "bg-ed-accent text-white" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}><IconPlayerPlay size={14} stroke={1.5} /></button>
+                        <button
+                            type="button"
+                            aria-pressed={stickyPreview}
+                            title={stickyPreview ? "Disable sticky positioning on the canvas" : "Preview sticky positioning on the canvas"}
+                            onClick={() => setStickyPreview((value) => !value)}
+                            className={`rounded-md p-1.5 transition-colors ${stickyPreview ? "bg-ed-accent text-white" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}
+                        >
+                            {stickyPreview ? <IconPinFilled size={14} stroke={1.5} /> : <IconPin size={14} stroke={1.5} />}
+                        </button>
                         <button
                             type="button"
                             title="Recentre the canvas"
