@@ -159,6 +159,8 @@
   --ed-accent-soft: rgb(124 58 237 / 0.22);
   --ed-tooltip: #ffffff;
   --ed-tooltip-text: #171717;
+  --ed-scroll-thumb: rgb(255 255 255 / 0.16);
+  --ed-scroll-thumb-hover: rgb(255 255 255 / 0.3);
   /* A hint of structure, not a lattice. */
   --ed-grid: rgb(255 255 255 / 0.022);
 }
@@ -201,6 +203,59 @@
 .pg-editor .pg-chrome-panel,
 .pg-editor .pg-chrome-card { box-shadow: none; }
 
+/*
+ * Panel scrolling.
+ *
+ * `custom-scrollbar` marks a panel that scrolls its content vertically. The
+ * class was already on four containers but had never been defined, so those
+ * panels were using the platform's default bar.
+ *
+ * The `overflow-x` line is the point of it. Tailwind's `overflow-y-auto`
+ * only sets the block axis; CSS then promotes the untouched inline axis from
+ * `visible` to `auto`, so any child a single pixel too wide — a long layer
+ * name, a wide field row — put a horizontal scrollbar along the bottom of the
+ * panel. Panels are a fixed width and their content is meant to wrap or
+ * truncate, so that bar was never useful.
+ *
+ * The canvas is not covered here and must not be: panning the artboard
+ * sideways is how the editor is used. It hides its own bars separately.
+ */
+.pg-editor .custom-scrollbar {
+  overflow-x: hidden;
+  /* A panel that has hit its end should not start scrolling the canvas. */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ed-scroll-thumb) transparent;
+}
+
+/*
+ * WebKit ignores `scrollbar-width`, so the bar is drawn by hand there. The
+ * thumb is inset with a transparent border rather than made narrower, which
+ * keeps the pointer target the full width of the track while the visible mark
+ * stays hairline-thin.
+ */
+.pg-editor .custom-scrollbar::-webkit-scrollbar { width: 10px; height: 0; }
+.pg-editor .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.pg-editor .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--ed-scroll-thumb);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+.pg-editor .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ed-scroll-thumb-hover);
+}
+.pg-editor .custom-scrollbar::-webkit-scrollbar-corner { background: transparent; }
+
+/* For the short lists that are scrollable but too small to carry a bar. */
+.pg-editor .scrollbar-none {
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.pg-editor .scrollbar-none::-webkit-scrollbar { width: 0; height: 0; }
+
+
 .pg-editor[data-ed-theme="light"] {
   --ed-canvas: #e8e9ec;
   --ed-surface: #ffffff;
@@ -215,6 +270,8 @@
   --ed-accent-soft: rgb(84 2 230 / 0.12);
   --ed-tooltip: #171717;
   --ed-tooltip-text: #ffffff;
+  --ed-scroll-thumb: rgb(0 0 0 / 0.18);
+  --ed-scroll-thumb-hover: rgb(0 0 0 / 0.32);
   --ed-grid: rgb(0 0 0 / 0.045);
 }
 

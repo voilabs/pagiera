@@ -312,12 +312,30 @@ export function stylesheetFor(
             ".pg-node{box-sizing:border-box}" +
             ".pg-node:is(input,textarea,button){font:inherit}" +
             ".pg-node:is(input,textarea){outline:none}" +
+            ".pg-node:is(select){outline:none;appearance:none;background-image:url(\"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27 fill=%27none%27 stroke=%27%23888%27 stroke-width=%271.6%27><path d=%27M4 6.5 8 10.5 12 6.5%27/></svg>\");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}" +
+            // A radio group is several inputs inside one styled box, so the
+            // choices lay themselves out rather than inheriting the box's own
+            // flow, which is sized for a single control.
+            ".pg-node[role=radiogroup]{display:flex;flex-direction:column;gap:8px}" +
+            ".pg-choice{display:flex;align-items:center;gap:8px;cursor:pointer}" +
+            ".pg-choice input{accent-color:currentColor;margin:0}" +
+            ".pg-node:is(input[type=checkbox],input[type=radio]){accent-color:currentColor}" +
             ".pg-node:is(textarea){resize:none}" +
             ".pg-form-status:empty{display:none}" +
             ".pg-form-status{font-size:12px;line-height:1.4}" +
             ".pg-node[data-pg-state=success] .pg-form-status{color:#22c55e}" +
             ".pg-node[data-pg-state=error] .pg-form-status{color:#ef4444}" +
             ".pg-node img{display:block;width:100%;height:100%}" +
+            ".pg-node:is(ul,ol){list-style:none}" +
+            ".pg-list{counter-reset:pg-list}" +
+            ".pg-list>li{position:relative}" +
+            ".pg-list-bullet>li::before{content:'\\2022';position:absolute;left:-1em;opacity:.65}" +
+            ".pg-list-number>li::before{counter-increment:pg-list;content:counter(pg-list) '.';position:absolute;left:-1.6em;opacity:.65;font-variant-numeric:tabular-nums}" +
+            ".pg-node hr{border:0;width:100%;height:100%}" +
+            ".pg-node iframe{display:block;width:100%;height:100%;border:0}" +
+            // A pasted glyph carries whatever width the author copied it with;
+            // the element box is what should decide its size.
+            ".pg-svg-glyph>svg{display:block;width:100%;height:100%}" +
             ".pg-link{text-decoration:none;color:inherit}",
     );
 

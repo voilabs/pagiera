@@ -8,10 +8,8 @@ import {
     IconArrowsVertical,
     IconLayoutAlignBottom,
     IconLayoutAlignTop,
-    IconChevronRight,
     IconPlus,
     IconPlayerPlay,
-    IconTrash,
     IconUpload,
     IconX,
 } from "@tabler/icons-react";
@@ -24,6 +22,17 @@ import { displayName } from "@/lib/editor/tree";
 import {
     type Align,
     ASPECT_RATIOS,
+    CUSTOM_TAGS,
+    type CustomTag,
+    type ElementAttribute,
+    type FieldOption,
+    type AlignContent,
+    type AlignSelf,
+    hasOptions,
+    INPUT_TYPES,
+    type InputType,
+    isField,
+    RESERVED_ATTRIBUTES,
     type BgSize,
     type BlendMode,
     type Breakpoint,
@@ -133,6 +142,140 @@ function ImageUpload({ src, onChange }: { src?: string; onChange: (src: string) 
     );
 }
 
+/* -------------------------------------------------------------- list editors */
+
+const ROW = "flex items-center gap-1.5";
+const CELL =
+    "min-w-0 flex-1 rounded-lg bg-ed-field px-2 py-1.5 text-[10px] text-ed-text outline-none transition-colors hover:bg-ed-field-hover focus:bg-ed-surface focus:ring-1 focus:ring-inset focus:ring-[var(--ed-accent)]/60";
+const REMOVE =
+    "flex size-6 shrink-0 items-center justify-center rounded-md text-ed-faint transition-colors hover:bg-ed-field hover:text-red-400";
+const ADD =
+    "flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-ed-border py-1.5 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text";
+
+/** The choices a Select or Radio offers, edited as label/value pairs. */
+function OptionsEditor({
+    options,
+    onChange,
+}: {
+    options: FieldOption[];
+    onChange: (options: FieldOption[]) => void;
+}) {
+    const patch = (index: number, next: Partial<FieldOption>) =>
+        onChange(options.map((option, at) => (at === index ? { ...option, ...next } : option)));
+
+    return (
+        <div className="flex flex-col gap-1.5">
+            {options.map((option, index) => (
+                // Options have no identity of their own, so the row index is
+                // the only stable key available while one is being typed.
+                // biome-ignore lint/suspicious/noArrayIndexKey: an option is identified by its position
+                <div key={index} className={ROW}>
+                    <input
+                        value={option.label}
+                        placeholder="Label"
+                        onChange={(event) => patch(index, { label: event.target.value })}
+                        className={CELL}
+                    />
+                    <input
+                        value={option.value}
+                        placeholder="value"
+                        onChange={(event) => patch(index, { value: event.target.value })}
+                        className={`${CELL} font-mono`}
+                    />
+                    <button
+                        type="button"
+                        aria-label={`Remove ${option.label || "option"}`}
+                        onClick={() => onChange(options.filter((_, at) => at !== index))}
+                        className={REMOVE}
+                    >
+                        <IconX size={12} />
+                    </button>
+                </div>
+            ))}
+            <button
+                type="button"
+                onClick={() => onChange([...options, { label: "", value: "" }])}
+                className={ADD}
+            >
+                <IconPlus size={12} /> Add option
+            </button>
+            <p className="text-[9px] leading-relaxed text-ed-faint">
+                The label is what a visitor reads; the value is what the form submits.
+            </p>
+        </div>
+    );
+}
+
+/**
+ * Raw HTML attributes.
+ *
+ * Names that would execute script or fight the generated stylesheet are
+ * refused here as well as on save, so the author is told why the attribute is
+ * not going to appear rather than watching it vanish after a reload.
+ */
+function AttributesEditor({
+    attributes,
+    onChange,
+}: {
+    attributes: ElementAttribute[];
+    onChange: (attributes: ElementAttribute[]) => void;
+}) {
+    const patch = (index: number, next: Partial<ElementAttribute>) =>
+        onChange(attributes.map((item, at) => (at === index ? { ...item, ...next } : item)));
+
+    const refusal = (name: string) => {
+        const key = name.trim().toLowerCase();
+        if (!key) return undefined;
+        if (key.startsWith("on")) return "Event handlers are not allowed.";
+        if (RESERVED_ATTRIBUTES.has(key)) return `${key} is set by the fields above.`;
+        if (!/^(?:data-|aria-)?[a-z][a-z0-9-]*$/.test(key)) return "Use letters, digits and dashes.";
+        return undefined;
+    };
+
+    return (
+        <div className="flex flex-col gap-1.5">
+            {attributes.map((attribute, index) => {
+                const problem = refusal(attribute.name);
+                return (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: an attribute row is identified by its position
+                    <div key={index} className="flex flex-col gap-1">
+                        <div className={ROW}>
+                            <input
+                                value={attribute.name}
+                                placeholder="data-analytics"
+                                onChange={(event) => patch(index, { name: event.target.value })}
+                                className={`${CELL} font-mono ${problem ? "ring-1 ring-inset ring-red-500/50" : ""}`}
+                            />
+                            <input
+                                value={attribute.value}
+                                placeholder="value"
+                                onChange={(event) => patch(index, { value: event.target.value })}
+                                className={CELL}
+                            />
+                            <button
+                                type="button"
+                                aria-label={`Remove ${attribute.name || "attribute"}`}
+                                onClick={() => onChange(attributes.filter((_, at) => at !== index))}
+                                className={REMOVE}
+                            >
+                                <IconX size={12} />
+                            </button>
+                        </div>
+                        {problem && <p className="pl-1 text-[9px] text-red-400">{problem}</p>}
+                    </div>
+                );
+            })}
+            <button
+                type="button"
+                onClick={() => onChange([...attributes, { name: "", value: "" }])}
+                className={ADD}
+            >
+                <IconPlus size={12} /> Add attribute
+            </button>
+        </div>
+    );
+}
+
 /**
  * Wraps a control so it shows — and can undo — an override set at the current
  * breakpoint. Every style field goes through this, otherwise there is no way to
@@ -149,35 +292,37 @@ function makeOverridable(ctx: Ctx): Wrap {
     );
 }
 
+/**
+ * Three tabs, split by the question the author is asking:
+ *
+ * - Content — what this element *is*: its words, its picture, what it submits.
+ * - Style — what it *looks like* at rest.
+ * - Interact — what it *does*: on click, on hover, on entering the viewport.
+ *
+ * The split matters because a control belongs in exactly one of them. An
+ * earlier layout had a Design tab and an Effects tab that both set the
+ * entrance animation, and a Link field that competed with the click action for
+ * the same URL, so the same page could be described two ways.
+ */
 export function Inspector({
     tab,
     ...ctx
-}: Ctx & { tab: "Design" | "Content" | "Hover" | "Interact" }) {
+}: Ctx & { tab: InspectorTab }) {
     if (tab === "Content") return <ContentTab {...ctx} />;
-    if (tab === "Hover") return <HoverTab {...ctx} />;
-    if (tab === "Interact") return <InteractionTab {...ctx} />;
-    return <DesignTab {...ctx} />;
+    if (tab === "Interact") return <InteractTab {...ctx} />;
+    return <StyleTab {...ctx} />;
 }
 
-function InteractionTab({ element, elements, onProps }: Ctx) {
-    const interaction = element.interaction;
-    const action = interaction?.action ?? "navigate";
-    return (
-        <div className="flex flex-col gap-4">
-            <p className="text-[10px] leading-relaxed text-ed-muted">Create navigation or control another layer. Toggle/show/hide powers menus, dropdowns, accordions and overlays.</p>
-            <Group title="On click">
-                <SelectInput label="Action" value={action} options={[{ label: "Navigate", value: "navigate" as const }, { label: "Scroll to layer", value: "scroll-to" as const }, { label: "Toggle layer", value: "toggle-layer" as const }, { label: "Show layer", value: "show-layer" as const }, { label: "Hide layer", value: "hide-layer" as const }]} onChange={(nextAction) => onProps({ interaction: { trigger: "click", action: nextAction, value: interaction?.value ?? "", target: interaction?.target ?? "_self" } })} />
-                {action === "navigate" ? <TextInput label="URL" value={interaction?.value ?? ""} placeholder="https://… or /s/about" onChange={(value) => onProps({ interaction: { trigger: "click", action, value, target: interaction?.target ?? "_self" } })} /> : <SelectInput label="Target layer" value={interaction?.value ?? ""} options={[{ label: "Choose a layer…", value: "" }, ...elements.filter((candidate) => candidate.id !== element.id).map((candidate) => ({ label: candidate.name || candidate.type, value: candidate.id }))]} onChange={(value) => onProps({ interaction: { trigger: "click", action, value, target: "_self" } })} />}
-                {action === "navigate" && <SelectInput label="Opens" value={interaction?.target ?? "_self"} options={[{ label: "Same tab", value: "_self" as const }, { label: "New tab", value: "_blank" as const }]} onChange={(target) => onProps({ interaction: { trigger: "click", action, value: interaction?.value ?? "", target } })} />}
-                {interaction && <button type="button" onClick={() => onProps({ interaction: undefined })} className="self-start rounded-md px-2 py-1 text-[10px] text-ed-faint hover:bg-ed-field hover:text-red-400">Remove interaction</button>}
-            </Group>
-        </div>
-    );
-}
+export const INSPECTOR_TABS = ["Content", "Style", "Interact"] as const;
+export type InspectorTab = (typeof INSPECTOR_TABS)[number];
 
-/* ------------------------------------------------------------------- design */
+/* -------------------------------------------------------------------- style */
 
-function DesignTab(ctx: Ctx) {
+/**
+ * The element at rest, from the outside in: how big it is, how it arranges
+ * what is inside it, then what it is painted with.
+ */
+function StyleTab(ctx: Ctx) {
     const { element } = ctx;
     const ov = makeOverridable(ctx);
     const textual = isTextual(element.type);
@@ -185,32 +330,15 @@ function DesignTab(ctx: Ctx) {
     return (
         <div className="flex flex-col divide-y divide-ed-border">
             <SizeGroup ctx={ctx} ov={ov} />
+            {ctx.parentLayout === "stack" && <FlexChildGroup ctx={ctx} ov={ov} />}
             {isContainer(element.type) && <LayoutGroup ctx={ctx} ov={ov} />}
+            <SpacingGroup ctx={ctx} ov={ov} />
             {/* The group most likely to be edited for this element opens first. */}
             {textual && <TypographyGroup ctx={ctx} ov={ov} />}
-            {element.type === "Icon" && <IconAppearanceGroup ctx={ctx} ov={ov} />}
             <FillGroup ctx={ctx} ov={ov} defaultOpen={!textual} />
-            <SpacingGroup ctx={ctx} ov={ov} />
-            <EffectsGroup ctx={ctx} ov={ov} />
+            <BorderGroup ctx={ctx} ov={ov} />
             <CompositionGroup ctx={ctx} ov={ov} />
-            <MotionGroup ctx={ctx} ov={ov} />
         </div>
-    );
-}
-
-function IconAppearanceGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
-    const { style, onStyle } = ctx;
-    return (
-        <Group title="Icon">
-            {ov(
-                ["color"],
-                <ColorInput
-                    label="Colour"
-                    value={style.color}
-                    onChange={(color) => onStyle({ color })}
-                />,
-            )}
-        </Group>
     );
 }
 
@@ -303,6 +431,90 @@ function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     );
 }
 
+/**
+ * What this element does with the space its parent gives it.
+ *
+ * Only shown inside a flowing parent — in an absolute one the element is
+ * placed by x/y and none of this applies. It is separate from Size because it
+ * answers a different question: Size is how big this box wants to be, this is
+ * how it negotiates with its siblings for what is left over.
+ */
+function FlexChildGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
+    const { style, onStyle, onCommitStart, onCommitEnd } = ctx;
+    const parent = ctx.elements.find((candidate) => candidate.id === ctx.element.parentId);
+    const inGrid = parent?.type === "Grid" || parent?.type === "Repeat";
+
+    return (
+        <Group title="In the parent" defaultOpen={false}>
+            {ov(
+                ["alignSelf"],
+                <SelectInput
+                    label="Align self"
+                    value={style.alignSelf}
+                    options={[
+                        { label: "Follow the parent", value: "auto" as AlignSelf },
+                        { label: "Start", value: "start" as AlignSelf },
+                        { label: "Centre", value: "center" as AlignSelf },
+                        { label: "End", value: "end" as AlignSelf },
+                        { label: "Stretch", value: "stretch" as AlignSelf },
+                        { label: "Baseline", value: "baseline" as AlignSelf },
+                    ]}
+                    onChange={(alignSelf) => onStyle({ alignSelf })}
+                />,
+            )}
+
+            {inGrid
+                ? ov(
+                      ["gridSpan"],
+                      <NumberInput
+                          label="Column span"
+                          min={1}
+                          max={12}
+                          value={style.gridSpan}
+                          onChange={(gridSpan) => onStyle({ gridSpan: Math.round(gridSpan) })}
+                      />,
+                  )
+                : ov(
+                      ["grow"],
+                      <NumberInput
+                          label="Grow"
+                          min={-1}
+                          max={100}
+                          value={style.grow}
+                          onChange={(grow) => onStyle({ grow: Math.round(grow) })}
+                      />,
+                  )}
+            {!inGrid && (
+                <p className="text-[10px] leading-relaxed text-ed-faint">
+                    -1 leaves it to the width and height modes. 0 holds its size; 1 or
+                    more claims that share of the leftover space, so two siblings at 2
+                    and 1 split the row two-thirds to one.
+                </p>
+            )}
+
+            <More>
+                {ov(
+                    ["order"],
+                    <NumberInput
+                        label="Order"
+                        min={-999}
+                        max={999}
+                        value={style.order}
+                        onChange={(order) => onStyle({ order: Math.round(order) })}
+                        onCommitStart={onCommitStart}
+                        onCommitEnd={onCommitEnd}
+                    />,
+                )}
+                <p className="text-[10px] leading-relaxed text-ed-faint">
+                    Moves the element among its siblings without moving it in the
+                    layer tree. Set it on one breakpoint to reorder a row on mobile
+                    while the layers stay where the rest of the page expects them.
+                </p>
+            </More>
+        </Group>
+    );
+}
+
 function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle, element } = ctx;
     const isGrid = element.type === "Grid" || element.type === "Repeat";
@@ -366,6 +578,49 @@ function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                             onChange={(gap) => onStyle({ gap })}
                         />,
                     )}
+
+                    <More label="Gaps and wrapping">
+                        {ov(
+                            ["rowGap"],
+                            <NumberInput
+                                label="Row gap"
+                                suffix="px"
+                                min={-1}
+                                value={style.rowGap}
+                                onChange={(rowGap) => onStyle({ rowGap: Math.round(rowGap) })}
+                            />,
+                        )}
+                        {ov(
+                            ["columnGap"],
+                            <NumberInput
+                                label="Column gap"
+                                suffix="px"
+                                min={-1}
+                                value={style.columnGap}
+                                onChange={(columnGap) => onStyle({ columnGap: Math.round(columnGap) })}
+                            />,
+                        )}
+                        <p className="text-[10px] leading-relaxed text-ed-faint">
+                            -1 leaves the axis to the single Gap above. Set one to pull
+                            wrapped rows closer than the columns are.
+                        </p>
+                        {style.wrap &&
+                            ov(
+                                ["alignContent"],
+                                <SelectInput
+                                    label="Wrapped lines"
+                                    value={style.alignContent}
+                                    options={[
+                                        { label: "Packed at the start", value: "start" as AlignContent },
+                                        { label: "Centred", value: "center" as AlignContent },
+                                        { label: "Packed at the end", value: "end" as AlignContent },
+                                        { label: "Stretched", value: "stretch" as AlignContent },
+                                        { label: "Spaced apart", value: "between" as AlignContent },
+                                    ]}
+                                    onChange={(alignContent) => onStyle({ alignContent })}
+                                />,
+                            )}
+                    </More>
 
                     <More label="Alignment">
                         {ov(
@@ -515,6 +770,10 @@ function FillGroup({
 }) {
     const { style, onStyle } = ctx;
 
+    // Text already sets its own colour in the Text group; repeating it here
+    // would be the second place to change one value.
+    const paintsForeground = ctx.element.type === "Icon";
+
     return (
         <Group title="Fill" defaultOpen={defaultOpen}>
             {ov(
@@ -525,6 +784,50 @@ function FillGroup({
                     placeholder="transparent"
                     onChange={(bg) => onStyle({ bg })}
                 />,
+            )}
+            {style.bg !== "transparent" &&
+                style.bg !== "" &&
+                ov(
+                    ["bgOpacity"],
+                    <SliderInput
+                        label="Fill opacity"
+                        min={0}
+                        max={100}
+                        suffix="%"
+                        value={style.bgOpacity}
+                        onChange={(bgOpacity) => onStyle({ bgOpacity })}
+                        onCommitStart={ctx.onCommitStart}
+                        onCommitEnd={ctx.onCommitEnd}
+                    />,
+                )}
+            {paintsForeground &&
+                ov(
+                    ["color"],
+                    <ColorInput
+                        label="Colour"
+                        value={style.color}
+                        onChange={(color) => onStyle({ color })}
+                    />,
+                )}
+            {ov(
+                ["opacity"],
+                <SliderInput
+                    label="Opacity"
+                    min={0}
+                    max={100}
+                    suffix="%"
+                    value={style.opacity}
+                    onChange={(opacity) => onStyle({ opacity })}
+                    onCommitStart={ctx.onCommitStart}
+                    onCommitEnd={ctx.onCommitEnd}
+                />,
+            )}
+            {style.opacity < 100 && style.backdropBlur > 0 && (
+                <p className="rounded-lg bg-amber-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-amber-400">
+                    Opacity fades the whole element, including the glass blur behind
+                    it. For a frosted panel leave Opacity at 100% and lower Fill
+                    opacity instead.
+                </p>
             )}
             <More label="Gradient">
                 <div className="flex gap-1">
@@ -675,8 +978,9 @@ function TypographyGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     );
 }
 
-function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
-    const { style, onStyle, onCommitStart, onCommitEnd } = ctx;
+/** The element's edge: its corners, its border and the shadow it casts. */
+function BorderGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
+    const { style, onStyle } = ctx;
     const knownShadow = SHADOW_PRESETS.some((p) => p.value === style.shadow);
     const separateBorders = [style.borderT, style.borderR, style.borderB, style.borderL].some((value) => value !== null);
     const hasBorder = [style.borderT, style.borderR, style.borderB, style.borderL]
@@ -684,7 +988,7 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
         .some((value) => value > 0);
 
     return (
-        <Group title="Effects" defaultOpen={false}>
+        <Group title="Border and shadow" defaultOpen={false}>
             {ov(
                 ["radius"],
                 <NumberInput
@@ -710,21 +1014,8 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     }}
                 />,
             )}
-            {ov(
-                ["opacity"],
-                <SliderInput
-                    label="Opacity"
-                    min={0}
-                    max={100}
-                    suffix="%"
-                    value={style.opacity}
-                    onChange={(opacity) => onStyle({ opacity })}
-                    onCommitStart={onCommitStart}
-                    onCommitEnd={onCommitEnd}
-                />,
-            )}
 
-            <More label="Border and rotation">
+            <More label="Border sides">
                 <Segmented
                     label="Border sides"
                     value={separateBorders ? "separate" : "linked"}
@@ -748,10 +1039,10 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                 )}
                 {separateBorders && (
                     <div className="grid grid-cols-2 gap-2">
-                        {ov(["borderT"], <NumberInput label="Top" suffix="px" min={0} value={style.borderT ?? style.borderW} onChange={(borderT) => onStyle({ borderT })} />)}
-                        {ov(["borderR"], <NumberInput label="Right" suffix="px" min={0} value={style.borderR ?? style.borderW} onChange={(borderR) => onStyle({ borderR })} />)}
-                        {ov(["borderB"], <NumberInput label="Bottom" suffix="px" min={0} value={style.borderB ?? style.borderW} onChange={(borderB) => onStyle({ borderB })} />)}
-                        {ov(["borderL"], <NumberInput label="Left" suffix="px" min={0} value={style.borderL ?? style.borderW} onChange={(borderL) => onStyle({ borderL })} />)}
+                        {ov(["borderT"], <NumberInput compact label="Top" min={0} value={style.borderT ?? style.borderW} onChange={(borderT) => onStyle({ borderT })} />)}
+                        {ov(["borderR"], <NumberInput compact label="Right" min={0} value={style.borderR ?? style.borderW} onChange={(borderR) => onStyle({ borderR })} />)}
+                        {ov(["borderB"], <NumberInput compact label="Bottom" min={0} value={style.borderB ?? style.borderW} onChange={(borderB) => onStyle({ borderB })} />)}
+                        {ov(["borderL"], <NumberInput compact label="Left" min={0} value={style.borderL ?? style.borderW} onChange={(borderL) => onStyle({ borderL })} />)}
                     </div>
                 )}
                 {ov(
@@ -775,19 +1066,6 @@ function EffectsGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                             onChange={(borderC) => onStyle({ borderC })}
                         />,
                     )}
-                {ov(
-                    ["rotate"],
-                    <SliderInput
-                        label="Rotate"
-                        min={-180}
-                        max={180}
-                        suffix="°"
-                        value={style.rotate}
-                        onChange={(rotate) => onStyle({ rotate })}
-                        onCommitStart={onCommitStart}
-                        onCommitEnd={onCommitEnd}
-                    />,
-                )}
             </More>
         </Group>
     );
@@ -994,6 +1272,19 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     />,
                 )}
                 {ov(
+                    ["rotate"],
+                    <SliderInput
+                        label="Rotate"
+                        min={-180}
+                        max={180}
+                        suffix="°"
+                        value={style.rotate}
+                        onChange={(rotate) => onStyle({ rotate })}
+                        onCommitStart={onCommitStart}
+                        onCommitEnd={onCommitEnd}
+                    />,
+                )}
+                {ov(
                     ["blendMode"],
                     <SelectInput
                         label="Blend"
@@ -1017,59 +1308,9 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
 }
 
 /** Entrance effects play on the published page and in Preview, not on canvas. */
-function MotionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
-    const { style, onStyle } = ctx;
-
-    return (
-        <Group title="Motion" defaultOpen={false}>
-            {ov(
-                ["entrance"],
-                <SelectInput
-                    label="Entrance"
-                    value={style.entrance}
-                    options={ENTRANCES}
-                    onChange={(entrance) => onStyle({ entrance })}
-                />,
-            )}
-            {style.entrance !== "none" && (
-                <>
-                    {ov(
-                        ["entranceDuration"],
-                        <NumberInput
-                            label="Duration"
-                            suffix="ms"
-                            min={50}
-                            max={5000}
-                            step={50}
-                            value={style.entranceDuration}
-                            onChange={(entranceDuration) => onStyle({ entranceDuration })}
-                        />,
-                    )}
-                    {ov(
-                        ["entranceDelay"],
-                        <NumberInput
-                            label="Delay"
-                            suffix="ms"
-                            min={0}
-                            max={5000}
-                            step={50}
-                            value={style.entranceDelay}
-                            onChange={(entranceDelay) => onStyle({ entranceDelay })}
-                        />,
-                    )}
-                    <p className="text-[10px] leading-relaxed text-ed-faint">
-                        Plays once as the element scrolls into view. The canvas shows
-                        the finished state — use Preview to watch it.
-                    </p>
-                </>
-            )}
-        </Group>
-    );
-}
-
 /* ------------------------------------------------------------------ content */
 
-function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ctx) {
+function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRepeat }: Ctx) {
     return (
         <div className="flex flex-col divide-y divide-ed-border">
             {(element.type === "Repeat" || element.type === "Request") && (
@@ -1176,32 +1417,25 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
                 </Group>
             )}
 
-            {(element.type === "Input" || element.type === "Textarea") && (
-                <Group title="Field">
-                    {element.type === "Input" && (
-                        <SelectInput
-                            label="Type"
-                            value={element.inputType ?? "text"}
-                            options={[
-                                { label: "Text", value: "text" as const },
-                                { label: "Email", value: "email" as const },
-                                { label: "Password", value: "password" as const },
-                                { label: "Number", value: "number" as const },
-                                { label: "Telephone", value: "tel" as const },
-                                { label: "URL", value: "url" as const },
-                                { label: "Search", value: "search" as const },
-                            ]}
-                            onChange={(inputType) => onProps({ inputType })}
-                        />
-                    )}
-                    <TextInput label="Name" value={element.fieldName ?? ""} placeholder="email" onChange={(fieldName) => onProps({ fieldName })} />
-                    <TextInput label="Placeholder" value={element.placeholder ?? ""} placeholder="Enter a value…" onChange={(placeholder) => onProps({ placeholder })} />
-                    <Segmented
-                        label="Required"
-                        value={element.required ? "yes" : "no"}
-                        options={[{ label: "No", value: "no" as const }, { label: "Yes", value: "yes" as const }]}
-                        onChange={(value) => onProps({ required: value === "yes" })}
+            {isField(element.type) && <FieldGroup element={element} onProps={onProps} />}
+
+            {element.type === "Label" && (
+                <Group title="Label">
+                    <SelectInput
+                        label="Labels"
+                        value={element.labelFor ?? ""}
+                        options={[
+                            { label: "Nothing yet", value: "" },
+                            ...elements
+                                .filter((candidate) => isField(candidate.type))
+                                .map((candidate) => ({ label: displayName(candidate), value: candidate.id })),
+                        ]}
+                        onChange={(labelFor) => onProps({ labelFor: labelFor || undefined })}
                     />
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        Clicking the label focuses the field it points at, and screen readers
+                        announce the two together.
+                    </p>
                 </Group>
             )}
 
@@ -1285,6 +1519,42 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
                 </Group>
             )}
 
+            {element.type === "List" && (
+                <Group title="List">
+                    <Segmented
+                        label="Markers"
+                        value={element.listStyle ?? "bullet"}
+                        options={[
+                            { label: "Bullets", value: "bullet" as const },
+                            { label: "Numbers", value: "number" as const },
+                            { label: "None", value: "none" as const },
+                        ]}
+                        onChange={(listStyle) => onProps({ listStyle })}
+                    />
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        Numbers publish the list as an <code className="text-ed-muted">ol</code>,
+                        bullets and none as a <code className="text-ed-muted">ul</code>. Put List
+                        item elements inside it; the markers sit in the list's left padding.
+                    </p>
+                </Group>
+            )}
+
+            {element.type === "Embed" && (
+                <Group title="Embed">
+                    <TextInput
+                        label="URL"
+                        value={element.src ?? ""}
+                        placeholder="https://…"
+                        onChange={(src) => onProps({ src })}
+                    />
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        For a map, a calendar or a third-party form. The frame is
+                        sandboxed, and a site that refuses to be framed will show
+                        nothing here — that is the other site's choice, not a broken URL.
+                    </p>
+                </Group>
+            )}
+
             {element.type === "Video" && (
                 <Group title="Video">
                     <TextInput
@@ -1300,37 +1570,7 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
                 </Group>
             )}
 
-            {element.type === "Icon" && (
-                <Group title="Icon">
-                    <SelectInput
-                        label="Glyph"
-                        value={element.iconName ?? "star"}
-                        options={ICON_CATALOG.map((icon) => ({
-                            label: `${icon.category} · ${icon.name}`,
-                            value: icon.value,
-                        }))}
-                        onChange={(iconName) => onProps({ iconName })}
-                    />
-                </Group>
-            )}
-
-            <Group title="Link" defaultOpen={false}>
-                <TextInput
-                    label="URL"
-                    value={element.href ?? ""}
-                    placeholder="https://… or /s/about"
-                    onChange={(href) => onProps({ href })}
-                />
-                <SelectInput
-                    label="Opens"
-                    value={element.target ?? "_self"}
-                    options={[
-                        { label: "Same tab", value: "_self" as const },
-                        { label: "New tab", value: "_blank" as const },
-                    ]}
-                    onChange={(target) => onProps({ target })}
-                />
-            </Group>
+            {element.type === "Icon" && <IconGroup element={element} onProps={onProps} />}
 
             <Group title="Layer name" defaultOpen={false}>
                 <TextInput
@@ -1340,7 +1580,320 @@ function ContentTab({ element, onProps, sources, bindingKeys, insideRepeat }: Ct
                     onChange={(name) => onProps({ name })}
                 />
             </Group>
+
+            <HtmlGroup element={element} onProps={onProps} />
         </div>
+    );
+}
+
+/**
+ * Everything a field submits and validates, for whichever field type is
+ * selected. One group rather than one per type: an author moving from an Input
+ * to a Select should find the name and required controls in the same place.
+ */
+function FieldGroup({
+    element,
+    onProps,
+}: {
+    element: CanvasElement;
+    onProps: (patch: Partial<CanvasElement>) => void;
+}) {
+    const { type } = element;
+    const boolean = type === "Checkbox";
+    const textual = type === "Input" || type === "Textarea";
+    const ranged =
+        type === "Input" &&
+        ["number", "range", "date", "time", "datetime-local", "month", "week"].includes(
+            element.inputType ?? "text",
+        );
+
+    return (
+        <Group title="Field">
+            {type === "Input" && (
+                <SelectInput
+                    label="Type"
+                    value={element.inputType ?? "text"}
+                    options={INPUT_TYPES.map((value) => ({ label: INPUT_TYPE_LABELS[value], value }))}
+                    onChange={(inputType: InputType) => onProps({ inputType })}
+                />
+            )}
+
+            <TextInput
+                label="Name"
+                value={element.fieldName ?? ""}
+                placeholder={type === "Radio" ? "plan" : "email"}
+                onChange={(fieldName) => onProps({ fieldName })}
+            />
+
+            {(textual || type === "Select") && (
+                <TextInput
+                    label="Placeholder"
+                    value={element.placeholder ?? ""}
+                    placeholder={type === "Select" ? "Choose an option…" : "Enter a value…"}
+                    onChange={(placeholder) => onProps({ placeholder })}
+                />
+            )}
+
+            {hasOptions(type) && (
+                <OptionsEditor
+                    options={element.options ?? []}
+                    onChange={(options) => onProps({ options })}
+                />
+            )}
+
+            {boolean ? (
+                <>
+                    <TextInput
+                        label="Submits"
+                        value={element.defaultValue ?? ""}
+                        placeholder="yes"
+                        onChange={(defaultValue) => onProps({ defaultValue })}
+                    />
+                    <Segmented
+                        label="Starts"
+                        value={element.checked ? "checked" : "clear"}
+                        options={[{ label: "Clear", value: "clear" as const }, { label: "Checked", value: "checked" as const }]}
+                        onChange={(value) => onProps({ checked: value === "checked" || undefined })}
+                    />
+                </>
+            ) : type !== "FileInput" ? (
+                <TextInput
+                    label="Default"
+                    value={element.defaultValue ?? ""}
+                    placeholder={hasOptions(type) ? "The value of a choice above" : "Pre-filled value"}
+                    onChange={(defaultValue) => onProps({ defaultValue })}
+                />
+            ) : null}
+
+            {type === "FileInput" && (
+                <TextInput
+                    label="Accepts"
+                    value={element.accept ?? ""}
+                    placeholder="image/*,.pdf"
+                    onChange={(accept) => onProps({ accept })}
+                />
+            )}
+
+            <Segmented
+                label="Required"
+                value={element.required ? "yes" : "no"}
+                options={[{ label: "No", value: "no" as const }, { label: "Yes", value: "yes" as const }]}
+                onChange={(value) => onProps({ required: value === "yes" || undefined })}
+            />
+
+            <More>
+                {(type === "Select" || type === "FileInput") && (
+                    <Segmented
+                        label="Multiple"
+                        value={element.multiple ? "yes" : "no"}
+                        options={[{ label: "One", value: "no" as const }, { label: "Many", value: "yes" as const }]}
+                        onChange={(value) => onProps({ multiple: value === "yes" || undefined })}
+                    />
+                )}
+
+                {ranged && (
+                    <>
+                        <TextInput label="Min" value={element.minValue ?? ""} placeholder="0" onChange={(minValue) => onProps({ minValue })} />
+                        <TextInput label="Max" value={element.maxValue ?? ""} placeholder="100" onChange={(maxValue) => onProps({ maxValue })} />
+                        <TextInput label="Step" value={element.step ?? ""} placeholder="1" onChange={(step) => onProps({ step })} />
+                    </>
+                )}
+
+                {textual && (
+                    <>
+                        <NumberInput
+                            label="Min length"
+                            value={element.minLength ?? 0}
+                            min={0}
+                            max={10000}
+                            onChange={(minLength) => onProps({ minLength: minLength || undefined })}
+                        />
+                        <NumberInput
+                            label="Max length"
+                            value={element.maxLength ?? 0}
+                            min={0}
+                            max={10000}
+                            onChange={(maxLength) => onProps({ maxLength: maxLength || undefined })}
+                        />
+                        <TextInput
+                            label="Pattern"
+                            value={element.pattern ?? ""}
+                            placeholder="[0-9]{4}"
+                            onChange={(pattern) => onProps({ pattern })}
+                        />
+                        <TextInput
+                            label="Autocomplete"
+                            value={element.autocomplete ?? ""}
+                            placeholder="email, name, off…"
+                            onChange={(autocomplete) => onProps({ autocomplete })}
+                        />
+                        <Segmented
+                            label="Read only"
+                            value={element.readOnly ? "yes" : "no"}
+                            options={[{ label: "No", value: "no" as const }, { label: "Yes", value: "yes" as const }]}
+                            onChange={(value) => onProps({ readOnly: value === "yes" || undefined })}
+                        />
+                    </>
+                )}
+
+                <Segmented
+                    label="Disabled"
+                    value={element.disabled ? "yes" : "no"}
+                    options={[{ label: "No", value: "no" as const }, { label: "Yes", value: "yes" as const }]}
+                    onChange={(value) => onProps({ disabled: value === "yes" || undefined })}
+                />
+            </More>
+        </Group>
+    );
+}
+
+const INPUT_TYPE_LABELS: Record<InputType, string> = {
+    text: "Text",
+    email: "Email",
+    password: "Password",
+    number: "Number",
+    tel: "Telephone",
+    url: "URL",
+    search: "Search",
+    date: "Date",
+    time: "Time",
+    "datetime-local": "Date and time",
+    month: "Month",
+    week: "Week",
+    color: "Colour",
+    range: "Slider",
+    hidden: "Hidden",
+};
+
+/**
+ * The glyph an Icon draws: one from the catalogue, or the author's own SVG.
+ *
+ * A pasted SVG takes over while it is set, so the two are shown as one choice
+ * rather than two fields that both claim to decide the shape.
+ */
+function IconGroup({
+    element,
+    onProps,
+}: {
+    element: CanvasElement;
+    onProps: (patch: Partial<CanvasElement>) => void;
+}) {
+    const [draft, setDraft] = useState(element.svg ?? "");
+    const custom = Boolean(element.svg);
+
+    return (
+        <Group title="Icon">
+            <Segmented
+                label="Source"
+                value={custom ? "custom" : "catalog"}
+                options={[
+                    { label: "Catalogue", value: "catalog" as const },
+                    { label: "Custom SVG", value: "custom" as const },
+                ]}
+                onChange={(value) =>
+                    onProps({ svg: value === "custom" ? draft || PLACEHOLDER_SVG : undefined })
+                }
+            />
+
+            {custom ? (
+                <>
+                    <CodeInput
+                        label="SVG"
+                        rows={7}
+                        value={draft}
+                        placeholder={PLACEHOLDER_SVG}
+                        hint="Paste a complete <svg> element. Scripts, stylesheets and links to other documents are removed when the page is saved."
+                        onChange={(value) => {
+                            setDraft(value);
+                            onProps({ svg: value });
+                        }}
+                    />
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        Use <code className="text-ed-muted">currentColor</code> for strokes and
+                        fills and the icon will follow the Colour field in Style. A hard-coded
+                        colour in the SVG stays exactly as written.
+                    </p>
+                    {draft.trim() && !element.svg && (
+                        <p className="rounded-lg bg-amber-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-amber-400">
+                            This is not being drawn: an icon has to be a single complete
+                            &lt;svg&gt;…&lt;/svg&gt; element.
+                        </p>
+                    )}
+                </>
+            ) : (
+                <SelectInput
+                    label="Glyph"
+                    value={element.iconName ?? "star"}
+                    options={ICON_CATALOG.map((icon) => ({
+                        label: `${icon.category} · ${icon.name}`,
+                        value: icon.value,
+                    }))}
+                    onChange={(iconName) => onProps({ iconName })}
+                />
+            )}
+        </Group>
+    );
+}
+
+const PLACEHOLDER_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 21h16z"/></svg>';
+
+/**
+ * The markup escape hatch: the tag an element publishes as, the classes and
+ * declarations layered over the generated ones, and any raw attribute.
+ *
+ * It is closed by default and last in the panel because reaching for it means
+ * the inspector above could not express something — the exception, not the
+ * route most edits should take.
+ */
+function HtmlGroup({
+    element,
+    onProps,
+}: {
+    element: CanvasElement;
+    onProps: (patch: Partial<CanvasElement>) => void;
+}) {
+    return (
+        <Group title="HTML" defaultOpen={false}>
+            <SelectInput
+                label="Tag"
+                value={element.tag ?? ""}
+                options={[
+                    { label: `Automatic (${element.type.toLowerCase()})`, value: "" },
+                    ...CUSTOM_TAGS.map((tag) => ({ label: `<${tag}>`, value: tag })),
+                ]}
+                onChange={(tag) => onProps({ tag: (tag || undefined) as CustomTag | undefined })}
+            />
+            <p className="text-[10px] leading-relaxed text-ed-faint">
+                Changes only the published markup — the canvas keeps drawing the element
+                the same way. Fields and images ignore it, since their tag carries their
+                behaviour.
+            </p>
+
+            <TextInput
+                label="Classes"
+                value={element.customClass ?? ""}
+                placeholder="hero-card featured"
+                onChange={(customClass) => onProps({ customClass })}
+            />
+
+            <CodeInput
+                label="Inline style"
+                rows={4}
+                value={element.customStyle ?? ""}
+                placeholder={"mix-blend-mode: difference;\n--accent: #5402e6;"}
+                hint="Applied on the element itself, so it overrides everything the inspector set."
+                onChange={(customStyle) => onProps({ customStyle })}
+            />
+
+            <div className="flex flex-col gap-1.5 pt-1">
+                <span className="text-[10px] font-medium text-ed-muted">Attributes</span>
+                <AttributesEditor
+                    attributes={element.attributes ?? []}
+                    onChange={(attributes) => onProps({ attributes })}
+                />
+            </div>
+        </Group>
     );
 }
 
@@ -1377,143 +1930,503 @@ function BezierEditor({ value, onChange }: { value: string; onChange: (value: st
     return <div className="rounded-xl bg-white/5 p-2"><svg viewBox="0 0 160 100" className="h-36 w-full touch-none overflow-visible"><path d="M20 84H140M20 16V84" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="1"/><line x1="20" y1="84" x2={px(points[0])} y2={py(points[1])} stroke="#52525b"/><line x1="140" y1="16" x2={px(points[2])} y2={py(points[3])} stroke="#52525b"/><path d={`M20 84 C${px(points[0])} ${py(points[1])}, ${px(points[2])} ${py(points[3])}, 140 16`} fill="none" stroke="#a1a1aa" strokeWidth="2.2"/><circle cx="20" cy="84" r="4" fill="#fff"/><circle cx="140" cy="16" r="4" fill="#fff"/><circle cx={px(points[0])} cy={py(points[1])} r="6" fill="#4f8cff" stroke="white" strokeWidth="2" className="cursor-grab active:cursor-grabbing" onPointerDown={(event) => begin(event, 0)}/><circle cx={px(points[2])} cy={py(points[3])} r="6" fill="#4f8cff" stroke="white" strokeWidth="2" className="cursor-grab active:cursor-grabbing" onPointerDown={(event) => begin(event, 1)}/></svg><div className="grid grid-cols-4 gap-1">{points.map((number, index) => <label key={index} className="rounded-md bg-black/20 px-1.5 py-1 text-center font-mono text-[9px] text-zinc-400"><span className="mr-1 text-zinc-600">{["X1", "Y1", "X2", "Y2"][index]}</span>{number}</label>)}</div></div>;
 }
 
-function HoverTab({ element, style, onProps, onStyle }: Ctx) {
-    const hover = element.hover ?? {};
-    const active = Object.keys(hover).length > 0;
-    const [addOpen, setAddOpen] = useState(false);
-    const [transitionOpen, setTransitionOpen] = useState(false);
-    const setHover = (patch: Partial<ElementStyle>) =>
-        onProps({ hover: { ...hover, ...patch } });
-    const clearHoverProperty = (key: keyof ElementStyle) => {
-        const next = { ...hover };
-        delete next[key];
-        onProps({ hover: Object.keys(next).length > 0 ? next : undefined });
-    };
-    const addEffect = (name: string) => {
-        setAddOpen(false);
-        if (name === "Appear") setTransitionOpen(true);
-        if (name === "Hover") onProps({ hover: { ...hover, scale: hover.scale ?? 103 } });
-        if (name === "Press") onProps({ press: { ...(element.press ?? {}), scale: element.press?.scale ?? 96, opacity: element.press?.opacity ?? 92 } });
-        if (name === "Loop") onProps({ loop: element.loop ?? { type: "pulse", duration: 1600 } });
-        if (name === "Drag") onProps({ draggable: true });
-        if (name === "Scroll") { onStyle({ entrance: style.entrance === "none" ? "up" : style.entrance }); setTransitionOpen(true); }
-    };
-    const previewEntrance = () => {
-        const frames = Array.from(document.querySelectorAll<HTMLElement>(`[data-canvas-element="${element.id}"]`));
-        const from: Keyframe = style.entrance === "zoom" ? { opacity: 0, scale: 0.94 } : style.entrance === "left" ? { opacity: 0, translate: "-32px 0" } : style.entrance === "right" ? { opacity: 0, translate: "32px 0" } : style.entrance === "down" ? { opacity: 0, translate: "0 -28px" } : style.entrance === "fade" ? { opacity: 0 } : { opacity: 0, translate: "0 28px" };
-        const easing = style.entranceCurve === "spring" ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)` : `cubic-bezier(${style.entranceBezier})`;
-        for (const frame of frames) frame.animate([from, { opacity: 1, translate: "none", scale: 1 }], { duration: style.entranceDuration, delay: style.entranceDelay, easing, fill: "both" });
-    };
-
+/**
+ * Everything that happens *after* the page has loaded: what a click does, how
+ * the element answers a pointer, and the motion it plays on its own.
+ *
+ * Each behaviour is one group with an explicit on/off, rather than the
+ * summary cards and pop-over menu this panel used to open with — those listed
+ * the same effects the groups below already showed, so the state of an element
+ * was readable in two places that could disagree.
+ */
+function InteractTab(ctx: Ctx) {
     return (
-        <div className="relative flex flex-col gap-3">
-            <div className="relative rounded-xl border border-ed-border bg-ed-subtle">
-                <div className="flex items-center justify-between border-b border-ed-border px-3 py-2.5"><span className="text-[11px] font-semibold text-ed-text">Effects</span><button type="button" onClick={() => setAddOpen((value) => !value)} className="rounded-md p-1 text-ed-muted hover:bg-ed-field hover:text-ed-text"><IconPlus size={14} /></button></div>
-                <button type="button" onClick={() => setTransitionOpen(true)} className="flex w-full items-center justify-between border-b border-ed-border px-3 py-2.5 text-left"><span><span className="block text-[10px] font-medium text-ed-text">Appear</span><span className="mt-0.5 block text-[9px] text-ed-faint">{style.entrance === "none" ? "None" : `${style.entrance} · ${style.entranceDuration / 1000}s`}</span></span><IconChevronRight size={13} className="text-ed-faint" /></button>
-                <div className="flex items-center justify-between px-3 py-2.5"><span><span className="block text-[10px] font-medium text-ed-text">Hover</span><span className="mt-0.5 block text-[9px] text-ed-faint">{active ? `${Object.keys(hover).length} properties` : "Not configured"}</span></span><span className={`size-1.5 rounded-full ${active ? "bg-ed-accent" : "bg-ed-border"}`} /></div>
-                {addOpen && <div className="absolute right-2 top-10 z-30 w-36 rounded-xl border border-ed-border bg-ed-surface p-1.5 shadow-2xl">{["Appear", "Hover", "Press", "Loop", "Drag", "Scroll"].map((name) => <button key={name} type="button" onClick={() => addEffect(name)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[10px] font-medium text-ed-muted hover:bg-ed-field hover:text-ed-text"><span>{name}</span>{name === "Scroll" && <IconChevronRight size={12} />}</button>)}</div>}
-            </div>
-            <div className="rounded-xl border border-ed-border bg-ed-subtle"><div className="flex items-center justify-between border-b border-ed-border px-3 py-2.5"><span className="text-[10px] font-medium text-ed-text">Overlays</span><IconPlus size={13} className="text-ed-faint" /></div><div className="border-b border-ed-border px-3 py-2.5"><SelectInput label="Cursor" value={style.cursor} options={[{ label: "Automatic", value: "auto" as const }, { label: "Pointer", value: "pointer" as const }, { label: "Text", value: "text" as const }, { label: "Grab", value: "grab" as const }, { label: "Zoom in", value: "zoom-in" as const }, { label: "Hidden", value: "none" as const }]} onChange={(cursor) => onStyle({ cursor })} /></div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-[10px] font-medium text-ed-text">Styles</span><IconPlus size={13} className="text-ed-faint" /></div></div>
-
-            <Group
-                title="Hover state"
-                action={
-                    active ? (
-                        <button
-                            type="button"
-                            onClick={() => onProps({ hover: undefined })}
-                            className="text-[10px] text-ed-muted transition-colors hover:text-ed-text"
-                        >
-                            Clear
-                        </button>
-                    ) : null
-                }
-            >
-                {element.parentId && (
-                    <Segmented
-                        label="Trigger"
-                        value={element.hoverTrigger ?? "self"}
-                        options={[
-                            { label: "Self", value: "self" as const },
-                            { label: "Parent", value: "parent" as const },
-                        ]}
-                        onChange={(hoverTrigger) => onProps({ hoverTrigger })}
-                    />
-                )}
-                <ColorInput
-                    label="Background"
-                    value={hover.bg ?? style.bg}
-                    onChange={(bg) => setHover({ bg })}
-                />
-                <ColorInput
-                    label="Text"
-                    value={hover.color ?? style.color}
-                    onChange={(color) => setHover({ color })}
-                />
-                <SliderInput
-                    label="Opacity"
-                    min={0}
-                    max={100}
-                    suffix="%"
-                    value={hover.opacity ?? style.opacity}
-                    onChange={(opacity) => setHover({ opacity })}
-                />
-                <Segmented
-                    label="Scale effect"
-                    value={hover.scale === undefined ? "off" : "on"}
-                    options={[
-                        { label: "Off", value: "off" as const },
-                        { label: "On", value: "on" as const },
-                    ]}
-                    onChange={(value) => value === "off" ? clearHoverProperty("scale") : setHover({ scale: 103 })}
-                />
-                {hover.scale !== undefined && (
-                    <SliderInput
-                        label="Hover scale"
-                        min={10}
-                        max={150}
-                        suffix="%"
-                        value={hover.scale}
-                        onChange={(scale) => setHover({ scale })}
-                    />
-                )}
-                <More>
-                    <ColorInput
-                        label="Border"
-                        value={hover.borderC ?? style.borderC}
-                        onChange={(borderC) => setHover({ borderC })}
-                    />
-                    <SelectInput
-                        label="Shadow"
-                        value={hover.shadow ?? style.shadow}
-                        options={SHADOW_PRESETS}
-                        onChange={(shadow) => setHover({ shadow })}
-                    />
-                    <NumberInput
-                        label="Corner radius"
-                        suffix="px"
-                        min={0}
-                        value={hover.radius ?? style.radius}
-                        onChange={(radius) => setHover({ radius })}
-                    />
-                </More>
-            </Group>
-
-            {element.press && <Group title="Press state" action={<button type="button" onClick={() => onProps({ press: undefined })} className="text-[10px] text-ed-muted hover:text-red-400">Remove</button>}><SliderInput label="Scale" min={10} max={150} suffix="%" value={element.press.scale ?? 96} onChange={(scale) => onProps({ press: { ...element.press, scale } })} /><SliderInput label="Opacity" min={0} max={100} suffix="%" value={element.press.opacity ?? 92} onChange={(opacity) => onProps({ press: { ...element.press, opacity } })} /></Group>}
-            {element.loop && <Group title="Loop" action={<button type="button" onClick={() => onProps({ loop: undefined })} className="text-[10px] text-ed-muted hover:text-red-400">Remove</button>}><SelectInput label="Motion" value={element.loop.type} options={[{ label: "Pulse", value: "pulse" as const }, { label: "Float", value: "float" as const }, { label: "Spin", value: "spin" as const }]} onChange={(type) => onProps({ loop: { ...element.loop!, type } })} /><SliderInput label="Duration" min={100} max={10000} suffix="ms" value={element.loop.duration} onChange={(duration) => onProps({ loop: { ...element.loop!, duration } })} /></Group>}
-            {element.draggable && <Group title="Drag" action={<button type="button" onClick={() => onProps({ draggable: undefined })} className="text-[10px] text-ed-muted hover:text-red-400">Remove</button>}><p className="text-[10px] leading-relaxed text-ed-muted">Visitors can drag this element freely on Preview and the published page.</p></Group>}
-
-            {active && (
-                <p className="text-[10px] text-ed-faint">
-                    Overriding: {Object.keys(hover).join(", ")}
-                </p>
-            )}
-            {transitionOpen && <div className="absolute inset-x-0 top-0 z-40 max-h-[calc(100vh-150px)] overflow-y-auto rounded-2xl border border-ed-border bg-[#151515] p-3 shadow-2xl"><div className="mb-3 flex items-center justify-between"><button type="button" onClick={previewEntrance} className="flex items-center gap-1.5 rounded-lg bg-white/5 px-2 py-1.5 text-[10px] font-semibold text-white hover:bg-white/10"><IconPlayerPlay size={12} /> Preview</button><span className="text-[11px] font-semibold text-white">Transition</span><button type="button" onClick={() => setTransitionOpen(false)} className="rounded-md p-1 text-zinc-500 hover:bg-white/5 hover:text-white"><IconX size={13} /></button></div><div className="mb-3 grid grid-cols-2 rounded-lg bg-white/5 p-0.5"><button type="button" onClick={() => onStyle({ entranceCurve: "ease" })} className={`rounded-md py-1.5 text-[10px] ${style.entranceCurve === "ease" ? "bg-white/15 text-white" : "text-zinc-500"}`}>Ease</button><button type="button" onClick={() => onStyle({ entranceCurve: "spring" })} className={`rounded-md py-1.5 text-[10px] ${style.entranceCurve === "spring" ? "bg-white/15 text-white" : "text-zinc-500"}`}>Spring</button></div>{style.entranceCurve === "ease" ? <><BezierEditor value={style.entranceBezier} onChange={(entranceBezier) => onStyle({ entranceBezier })} /><SelectInput label="Preset" value="custom" options={[{ label: "Custom", value: "custom" }, { label: "Ease", value: "0.25, 0.1, 0.25, 1" }, { label: "Ease in", value: "0.42, 0, 1, 1" }, { label: "Ease out", value: "0, 0, 0.58, 1" }, { label: "Ease in out", value: "0.42, 0, 0.58, 1" }, { label: "Snappy", value: "0.2, 0.8, 0.2, 1" }, { label: "Overshoot", value: "0.34, 1.56, 0.64, 1" }]} onChange={(preset) => preset !== "custom" && onStyle({ entranceBezier: preset })} /><TextInput label="Bezier" value={style.entranceBezier} onChange={(entranceBezier) => onStyle({ entranceBezier })} /></> : <div className="rounded-xl bg-white/5 p-3"><svg viewBox="0 0 160 90" className="h-28 w-full"><path d="M15 75 C48 75 54 8 98 18 C124 25 130 10 145 15" fill="none" stroke="#a1a1aa" strokeWidth="2"/><circle cx="15" cy="75" r="4" fill="white"/><circle cx="145" cy="15" r="4" fill="white"/></svg><SliderInput label="Stiffness" min={1} max={1000} value={style.springStiffness} onChange={(springStiffness) => onStyle({ springStiffness })} /><SliderInput label="Damping" min={1} max={100} value={style.springDamping} onChange={(springDamping) => onStyle({ springDamping })} /></div>}<div className="mt-3 space-y-2"><SelectInput label="Effect" value={style.entrance} options={ENTRANCES} onChange={(entrance) => onStyle({ entrance })} /><SliderInput label="Time" min={50} max={5000} suffix="ms" value={style.entranceDuration} onChange={(entranceDuration) => onStyle({ entranceDuration })} /><SliderInput label="Delay" min={0} max={5000} suffix="ms" value={style.entranceDelay} onChange={(entranceDelay) => onStyle({ entranceDelay })} /></div></div>}
+        <div className="flex flex-col divide-y divide-ed-border">
+            <ClickGroup {...ctx} />
+            <HoverGroup {...ctx} />
+            <PressGroup {...ctx} />
+            <EntranceGroup {...ctx} />
+            <LoopGroup {...ctx} />
         </div>
     );
 }
 
-/* ---------------------------------------------------------------- page tab */
+const CLICK_ACTIONS = [
+    { label: "Nothing", value: "none" },
+    { label: "Open a link", value: "link" },
+    { label: "Scroll to a layer", value: "scroll-to" },
+    { label: "Toggle a layer", value: "toggle-layer" },
+    { label: "Show a layer", value: "show-layer" },
+    { label: "Hide a layer", value: "hide-layer" },
+] as const;
+
+type ClickAction = (typeof CLICK_ACTIONS)[number]["value"];
+
+/**
+ * One control for what a click does.
+ *
+ * "Open a link" writes `href`, so the element publishes as a real anchor a
+ * visitor can middle-click and a crawler can follow; the layer actions write
+ * `interaction`. Before they shared a panel there was a Link field in Content
+ * and a Navigate action here, both setting a URL, and only one of them won.
+ */
+function ClickGroup({ element, style, elements, onProps, onStyle }: Ctx) {
+    const interaction = element.interaction;
+    const action: ClickAction = element.href
+        ? "link"
+        : interaction?.action === "navigate"
+          ? "link"
+          : (interaction?.action ?? "none");
+    const targetsLayer = action !== "none" && action !== "link";
+
+    const choose = (next: ClickAction) => {
+        if (next === "none") return onProps({ href: "", target: undefined, interaction: undefined });
+        if (next === "link")
+            return onProps({
+                interaction: undefined,
+                href: element.href || (interaction?.action === "navigate" ? interaction.value : ""),
+            });
+        onProps({
+            href: "",
+            interaction: {
+                trigger: "click",
+                action: next,
+                value: targetsLayer ? (interaction?.value ?? "") : "",
+                target: "_self",
+            },
+        });
+    };
+
+    return (
+        <Group title="On click">
+            <SelectInput
+                label="Does"
+                value={action}
+                options={[...CLICK_ACTIONS]}
+                onChange={choose}
+            />
+
+            {action === "link" && (
+                <>
+                    <TextInput
+                        label="URL"
+                        value={element.href ?? ""}
+                        placeholder="https://… or /s/about"
+                        onChange={(href) => onProps({ href })}
+                    />
+                    <SelectInput
+                        label="Opens"
+                        value={element.target ?? "_self"}
+                        options={[
+                            { label: "Same tab", value: "_self" as const },
+                            { label: "New tab", value: "_blank" as const },
+                        ]}
+                        onChange={(target) => onProps({ target })}
+                    />
+                </>
+            )}
+
+            {targetsLayer && (
+                <>
+                    <SelectInput
+                        label="Layer"
+                        value={interaction?.value ?? ""}
+                        options={[
+                            { label: "Choose a layer…", value: "" },
+                            ...elements
+                                .filter((candidate) => candidate.id !== element.id)
+                                .map((candidate) => ({ label: displayName(candidate), value: candidate.id })),
+                        ]}
+                        onChange={(value) =>
+                            onProps({ interaction: { trigger: "click", action, value, target: "_self" } })
+                        }
+                    />
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        Toggle, show and hide are what menus, dropdowns, accordions and
+                        overlays are built from. Use Preview to try them.
+                    </p>
+                </>
+            )}
+
+            <More>
+                <SelectInput
+                    label="Cursor"
+                    value={style.cursor}
+                    options={[
+                        { label: "Automatic", value: "auto" as const },
+                        { label: "Pointer", value: "pointer" as const },
+                        { label: "Text", value: "text" as const },
+                        { label: "Grab", value: "grab" as const },
+                        { label: "Zoom in", value: "zoom-in" as const },
+                        { label: "Hidden", value: "none" as const },
+                    ]}
+                    onChange={(cursor) => onStyle({ cursor })}
+                />
+                <Segmented
+                    label="Draggable"
+                    value={element.draggable ? "yes" : "no"}
+                    options={[
+                        { label: "No", value: "no" as const },
+                        { label: "Yes", value: "yes" as const },
+                    ]}
+                    onChange={(value) => onProps({ draggable: value === "yes" || undefined })}
+                />
+                {element.draggable && (
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        Visitors can drag this element freely on Preview and on the
+                        published page.
+                    </p>
+                )}
+            </More>
+        </Group>
+    );
+}
+
+/** The style the element takes while the pointer is over it. */
+function HoverGroup({ element, style, onProps }: Ctx) {
+    const hover = element.hover ?? {};
+    const active = Object.keys(hover).length > 0;
+    const setHover = (patch: Partial<ElementStyle>) => onProps({ hover: { ...hover, ...patch } });
+    const clear = (key: keyof ElementStyle) => {
+        const next = { ...hover };
+        delete next[key];
+        onProps({ hover: Object.keys(next).length > 0 ? next : undefined });
+    };
+
+    return (
+        <Group
+            title="Hover"
+            defaultOpen={false}
+            action={
+                active ? (
+                    <button
+                        type="button"
+                        onClick={() => onProps({ hover: undefined })}
+                        className="text-[10px] text-ed-muted transition-colors hover:text-ed-text"
+                    >
+                        Clear
+                    </button>
+                ) : null
+            }
+        >
+            {element.parentId && (
+                <Segmented
+                    label="Triggered by"
+                    value={element.hoverTrigger ?? "self"}
+                    options={[
+                        { label: "This layer", value: "self" as const },
+                        { label: "Its parent", value: "parent" as const },
+                    ]}
+                    onChange={(hoverTrigger) => onProps({ hoverTrigger })}
+                />
+            )}
+            <ColorInput label="Background" value={hover.bg ?? style.bg} onChange={(bg) => setHover({ bg })} />
+            <ColorInput label="Text" value={hover.color ?? style.color} onChange={(color) => setHover({ color })} />
+            <SliderInput
+                label="Opacity"
+                min={0}
+                max={100}
+                suffix="%"
+                value={hover.opacity ?? style.opacity}
+                onChange={(opacity) => setHover({ opacity })}
+            />
+            <Segmented
+                label="Grow"
+                value={hover.scale === undefined ? "off" : "on"}
+                options={[
+                    { label: "Off", value: "off" as const },
+                    { label: "On", value: "on" as const },
+                ]}
+                onChange={(value) => (value === "off" ? clear("scale") : setHover({ scale: 103 }))}
+            />
+            {hover.scale !== undefined && (
+                <SliderInput
+                    label="Scale"
+                    min={10}
+                    max={150}
+                    suffix="%"
+                    value={hover.scale}
+                    onChange={(scale) => setHover({ scale })}
+                />
+            )}
+            <More>
+                <ColorInput label="Border" value={hover.borderC ?? style.borderC} onChange={(borderC) => setHover({ borderC })} />
+                <SelectInput
+                    label="Shadow"
+                    value={hover.shadow ?? style.shadow}
+                    options={SHADOW_PRESETS}
+                    onChange={(shadow) => setHover({ shadow })}
+                />
+                <NumberInput
+                    label="Corner radius"
+                    suffix="px"
+                    min={0}
+                    value={hover.radius ?? style.radius}
+                    onChange={(radius) => setHover({ radius })}
+                />
+            </More>
+            {active && (
+                <p className="text-[10px] text-ed-faint">Overriding: {Object.keys(hover).join(", ")}</p>
+            )}
+        </Group>
+    );
+}
+
+/** The style the element takes while the pointer is held down on it. */
+function PressGroup({ element, onProps }: Ctx) {
+    const press = element.press;
+
+    return (
+        <Group
+            title="Press"
+            defaultOpen={false}
+            action={
+                press ? (
+                    <button
+                        type="button"
+                        onClick={() => onProps({ press: undefined })}
+                        className="text-[10px] text-ed-muted transition-colors hover:text-red-400"
+                    >
+                        Clear
+                    </button>
+                ) : null
+            }
+        >
+            {press ? (
+                <>
+                    <SliderInput
+                        label="Scale"
+                        min={10}
+                        max={150}
+                        suffix="%"
+                        value={press.scale ?? 96}
+                        onChange={(scale) => onProps({ press: { ...press, scale } })}
+                    />
+                    <SliderInput
+                        label="Opacity"
+                        min={0}
+                        max={100}
+                        suffix="%"
+                        value={press.opacity ?? 92}
+                        onChange={(opacity) => onProps({ press: { ...press, opacity } })}
+                    />
+                </>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => onProps({ press: { scale: 96, opacity: 92 } })}
+                    className="rounded-lg border border-dashed border-ed-border py-2 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text"
+                >
+                    Add a press effect
+                </button>
+            )}
+        </Group>
+    );
+}
+
+/**
+ * The animation played once as the element scrolls into view.
+ *
+ * The curve editor lives inside this group rather than behind the modal it
+ * used to open: a modal that covers the panel hides the effect being tuned.
+ */
+function EntranceGroup(ctx: Ctx) {
+    const { element, style, onStyle } = ctx;
+    const ov = makeOverridable(ctx);
+
+    const preview = () => {
+        const nodes = Array.from(
+            document.querySelectorAll<HTMLElement>(`[data-canvas-element="${element.id}"]`),
+        );
+        const from: Keyframe =
+            style.entrance === "zoom"
+                ? { opacity: 0, scale: 0.94 }
+                : style.entrance === "left"
+                  ? { opacity: 0, translate: "-32px 0" }
+                  : style.entrance === "right"
+                    ? { opacity: 0, translate: "32px 0" }
+                    : style.entrance === "down"
+                      ? { opacity: 0, translate: "0 -28px" }
+                      : style.entrance === "fade"
+                        ? { opacity: 0 }
+                        : { opacity: 0, translate: "0 28px" };
+        const easing =
+            style.entranceCurve === "spring"
+                ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)`
+                : `cubic-bezier(${style.entranceBezier})`;
+        for (const node of nodes) {
+            node.animate([from, { opacity: 1, translate: "none", scale: 1 }], {
+                duration: style.entranceDuration,
+                delay: style.entranceDelay,
+                easing,
+                fill: "both",
+            });
+        }
+    };
+
+    return (
+        <Group
+            title="Entrance"
+            defaultOpen={false}
+            action={
+                style.entrance !== "none" ? (
+                    <button
+                        type="button"
+                        onClick={preview}
+                        className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
+                    >
+                        <IconPlayerPlay size={11} /> Play
+                    </button>
+                ) : null
+            }
+        >
+            {ov(
+                ["entrance"],
+                <SelectInput
+                    label="Effect"
+                    value={style.entrance}
+                    options={ENTRANCES}
+                    onChange={(entrance) => onStyle({ entrance })}
+                />,
+            )}
+            {style.entrance !== "none" && (
+                <>
+                    {ov(
+                        ["entranceDuration"],
+                        <SliderInput
+                            label="Duration"
+                            min={50}
+                            max={5000}
+                            suffix="ms"
+                            value={style.entranceDuration}
+                            onChange={(entranceDuration) => onStyle({ entranceDuration })}
+                        />,
+                    )}
+                    {ov(
+                        ["entranceDelay"],
+                        <SliderInput
+                            label="Delay"
+                            min={0}
+                            max={5000}
+                            suffix="ms"
+                            value={style.entranceDelay}
+                            onChange={(entranceDelay) => onStyle({ entranceDelay })}
+                        />,
+                    )}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        The canvas shows the finished state — use Play, or Preview, to
+                        watch it run.
+                    </p>
+
+                    <More label="Curve">
+                        <Segmented
+                            label="Shape"
+                            value={style.entranceCurve}
+                            options={[
+                                { label: "Ease", value: "ease" as const },
+                                { label: "Spring", value: "spring" as const },
+                            ]}
+                            onChange={(entranceCurve) => onStyle({ entranceCurve })}
+                        />
+                        {style.entranceCurve === "ease" ? (
+                            <>
+                                <BezierEditor
+                                    value={style.entranceBezier}
+                                    onChange={(entranceBezier) => onStyle({ entranceBezier })}
+                                />
+                                <SelectInput
+                                    label="Preset"
+                                    value="custom"
+                                    options={[
+                                        { label: "Custom", value: "custom" },
+                                        { label: "Ease", value: "0.25, 0.1, 0.25, 1" },
+                                        { label: "Ease in", value: "0.42, 0, 1, 1" },
+                                        { label: "Ease out", value: "0, 0, 0.58, 1" },
+                                        { label: "Ease in out", value: "0.42, 0, 0.58, 1" },
+                                        { label: "Snappy", value: "0.2, 0.8, 0.2, 1" },
+                                        { label: "Overshoot", value: "0.34, 1.56, 0.64, 1" },
+                                    ]}
+                                    onChange={(preset) => preset !== "custom" && onStyle({ entranceBezier: preset })}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <SliderInput
+                                    label="Stiffness"
+                                    min={1}
+                                    max={1000}
+                                    value={style.springStiffness}
+                                    onChange={(springStiffness) => onStyle({ springStiffness })}
+                                />
+                                <SliderInput
+                                    label="Damping"
+                                    min={1}
+                                    max={100}
+                                    value={style.springDamping}
+                                    onChange={(springDamping) => onStyle({ springDamping })}
+                                />
+                            </>
+                        )}
+                    </More>
+                </>
+            )}
+        </Group>
+    );
+}
+
+/** Motion that runs forever, rather than once on arrival. */
+function LoopGroup({ element, onProps }: Ctx) {
+    const loop = element.loop;
+
+    return (
+        <Group
+            title="Loop"
+            defaultOpen={false}
+            action={
+                loop ? (
+                    <button
+                        type="button"
+                        onClick={() => onProps({ loop: undefined })}
+                        className="text-[10px] text-ed-muted transition-colors hover:text-red-400"
+                    >
+                        Clear
+                    </button>
+                ) : null
+            }
+        >
+            {loop ? (
+                <>
+                    <SelectInput
+                        label="Motion"
+                        value={loop.type}
+                        options={[
+                            { label: "Pulse", value: "pulse" as const },
+                            { label: "Float", value: "float" as const },
+                            { label: "Spin", value: "spin" as const },
+                        ]}
+                        onChange={(type) => onProps({ loop: { ...loop, type } })}
+                    />
+                    <SliderInput
+                        label="Duration"
+                        min={100}
+                        max={10000}
+                        suffix="ms"
+                        value={loop.duration}
+                        onChange={(duration) => onProps({ loop: { ...loop, duration } })}
+                    />
+                </>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => onProps({ loop: { type: "pulse", duration: 1600 } })}
+                    className="rounded-lg border border-dashed border-ed-border py-2 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text"
+                >
+                    Add a looping motion
+                </button>
+            )}
+        </Group>
+    );
+}
 
 export function PageInspector({
     rootStyle,

@@ -5,6 +5,8 @@ import {
     IconArrowUp,
     IconArrowsMove,
     IconBox,
+    IconCheck,
+    IconCircleDot,
     IconChevronRight,
     IconCopy,
     IconCloudDownload,
@@ -13,6 +15,7 @@ import {
     IconEyeOff,
     IconExternalLink,
     IconFile,
+    IconFrame,
     IconGridDots,
     IconHandClick,
     IconHome,
@@ -20,17 +23,25 @@ import {
     IconLock,
     IconLockOpen,
     IconLayoutRows,
+    IconList,
+    IconPaperclip,
     IconPencil,
     IconPhoto,
     IconPlayerPlay,
     IconPlus,
+    IconPoint,
+    IconQuote,
     IconRepeat,
     IconSection,
+    IconSeparator,
+    IconSelector,
+    IconSquareCheck,
+    IconSpace,
     IconSparkles,
-    IconDots,
     IconDownload,
     IconUpload,
     IconTrash,
+    IconTag,
     IconTypography,
     IconVideo,
 } from "@tabler/icons-react";
@@ -69,9 +80,21 @@ const TYPE_ICONS: Record<
     Button: IconHandClick,
     Video: IconVideo,
     Icon: IconSparkles,
+    Divider: IconSeparator,
+    Spacer: IconSpace,
+    List: IconList,
+    ListItem: IconPoint,
+    Quote: IconQuote,
+    Embed: IconFrame,
     Form: IconLayoutRows,
+    Fieldset: IconBox,
+    Label: IconTag,
     Input: IconPencil,
     Textarea: IconTypography,
+    Select: IconSelector,
+    Checkbox: IconSquareCheck,
+    Radio: IconCircleDot,
+    FileInput: IconPaperclip,
     Request: IconCloudDownload,
     Repeat: IconRepeat,
 };
@@ -116,8 +139,35 @@ export function ElementBody({ element }: { element: CanvasElement }) {
 
     if (element.type === "Icon") return <span className="pointer-events-none block size-full"><IconGlyph element={element} /></span>;
 
-    if (element.type === "Input" || element.type === "Textarea") {
-        return <span className="pointer-events-none block w-full select-none truncate opacity-65">{element.placeholder || (element.type === "Input" ? "Input" : "Textarea")}</span>;
+    if (element.type === "Spacer") {
+        return <span className="pointer-events-none flex size-full items-center justify-center text-[9px] tracking-wide text-ed-faint opacity-0 transition-opacity group-hover/canvas:opacity-100">Spacer</span>;
+    }
+
+    if (element.type === "Embed") {
+        return <span className="pointer-events-none flex size-full flex-col items-center justify-center gap-1 text-ed-muted"><IconFrame size={26} stroke={1.5} />{element.src && <span className="max-w-full truncate px-2 text-[9px]">{element.src}</span>}</span>;
+    }
+
+    if (element.type === "ListItem") {
+        return <span className="pointer-events-none flex w-full select-none items-baseline gap-2"><span className="opacity-50">•</span><span className="min-w-0 flex-1 whitespace-pre-wrap">{element.content}</span></span>;
+    }
+
+    if (element.type === "Input" || element.type === "Textarea" || element.type === "Select") {
+        // A field shows the text a visitor would see before they touch it: its
+        // placeholder, or the value it is pre-filled with.
+        const preview = element.defaultValue || element.placeholder || element.type;
+        return <span className="pointer-events-none flex w-full select-none items-center gap-1 truncate opacity-65"><span className="min-w-0 flex-1 truncate">{preview}</span>{element.type === "Select" && <IconSelector size={13} className="shrink-0" />}</span>;
+    }
+
+    if (element.type === "FileInput") {
+        return <span className="pointer-events-none flex w-full select-none items-center gap-1.5 truncate opacity-65"><IconPaperclip size={13} className="shrink-0" /><span className="min-w-0 flex-1 truncate">{element.placeholder || element.accept || "Choose a file…"}</span></span>;
+    }
+
+    if (element.type === "Checkbox") {
+        return <span className="pointer-events-none flex size-full items-center justify-center rounded-[3px] border border-current"><IconCheck size={12} className="opacity-70" /></span>;
+    }
+
+    if (element.type === "Radio") {
+        return <span className="pointer-events-none flex w-full select-none flex-col gap-2">{(element.options ?? []).map((option, index) => <span key={`${index}:${option.value}`} className="flex items-center gap-2"><span className="flex size-[13px] shrink-0 items-center justify-center rounded-full border border-current">{index === 0 && <span className="size-[6px] rounded-full bg-current" />}</span><span className="truncate">{option.label || option.value}</span></span>)}</span>;
     }
 
     if (!element.content) return null;
@@ -268,8 +318,9 @@ export function SaveIndicator({
 
 const ELEMENT_GROUPS: Array<{ title: string; types: ElementType[] }> = [
     { title: "Layout", types: ["Frame", "Stack", "Grid", "Section", "Container"] },
-    { title: "Basic", types: ["Heading", "Text", "Image", "Button", "Video"] },
-    { title: "Forms", types: ["Form", "Input", "Textarea"] },
+    { title: "Basic", types: ["Heading", "Text", "Quote", "Image", "Button", "Video", "Embed"] },
+    { title: "Structure", types: ["Divider", "Spacer", "List", "ListItem"] },
+    { title: "Forms", types: ["Form", "Fieldset", "Label", "Input", "Textarea", "Select", "Checkbox", "Radio", "FileInput"] },
     { title: "Data", types: ["Request", "Repeat"] },
 ];
 
@@ -291,13 +342,13 @@ export function ElementsPanel({
     }
 
     return (
-        <div className="flex flex-col gap-6 p-3.5">
+        <div className="flex flex-col gap-4 p-2.5">
             {groups.map((group) => (
                 <div key={group.title}>
-                    <h3 className="mb-3 px-1 text-[9px] font-bold uppercase tracking-[0.18em] text-ed-faint">
+                    <h3 className="px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-ed-faint">
                         {group.title}
                     </h3>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5">
                         {group.types.map((type) => {
                             const Icon = TYPE_ICONS[type];
                             return (
@@ -310,9 +361,9 @@ export function ElementsPanel({
                                         event.dataTransfer.effectAllowed = "copy";
                                     }}
                                     onClick={() => onInsert(type)}
-                                    className="pg-chrome-card group relative flex cursor-grab flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-ed-border bg-gradient-to-b from-ed-subtle to-ed-surface p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ed-accent/40 hover:from-ed-field active:scale-[.97] active:cursor-grabbing"
+                                    className="group flex cursor-grab flex-col items-center justify-center gap-2 rounded-xl border border-ed-border bg-ed-surface p-3.5 transition-colors duration-150 hover:border-ed-accent/40 hover:bg-ed-subtle active:cursor-grabbing"
                                 >
-                                    <span className="pointer-events-none flex size-8 items-center justify-center rounded-xl bg-ed-field text-ed-muted ring-1 ring-inset ring-white/[.03] transition-all group-hover:scale-105 group-hover:bg-ed-accent/15 group-hover:text-ed-accent">
+                                    <span className="pointer-events-none flex size-8 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors group-hover:bg-ed-accent/15 group-hover:text-ed-accent">
                                         <Icon size={20} stroke={1.5} />
                                     </span>
                                     <span className="pointer-events-none text-[10px] font-medium text-ed-muted group-hover:text-ed-text">
@@ -339,7 +390,7 @@ export function IconsPanel({ search, onInsert }: {
     const categories = Array.from(new Set(icons.map((item) => item.category)));
 
     return (
-        <div className="space-y-5 p-3">
+        <div className="flex flex-col gap-4 p-2.5">
             <div className="flex items-center justify-between px-1">
                 <p className="text-[10px] text-ed-faint">
                     {query ? `${icons.length} results` : `${ICON_CATALOG.length} icons`}
@@ -350,12 +401,9 @@ export function IconsPanel({ search, onInsert }: {
             </div>
             {categories.map((category) => (
                 <section key={category}>
-                    <div className="mb-2 flex items-center gap-2 px-1">
-                        <h3 className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">
-                            {category}
-                        </h3>
-                        <span className="h-px flex-1 bg-ed-border" />
-                    </div>
+                    <h3 className="px-1 pb-2 text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">
+                        {category}
+                    </h3>
                     <div className="grid grid-cols-4 gap-1.5">
                         {icons.filter((item) => item.category === category).map(({ name, value, icon: Icon }) => (
                             <button
@@ -363,7 +411,7 @@ export function IconsPanel({ search, onInsert }: {
                                 type="button"
                                 title={name}
                                 onClick={() => onInsert(value)}
-                                className="group flex aspect-square min-w-0 select-none flex-col items-center justify-center gap-1.5 rounded-xl bg-ed-subtle text-ed-muted transition-all hover:-translate-y-0.5 hover:bg-ed-field hover:text-ed-accent active:scale-95"
+                                className="group flex aspect-square min-w-0 select-none flex-col items-center justify-center gap-1.5 rounded-xl bg-ed-subtle text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-accent"
                             >
                                 <Icon size={20} stroke={1.7} />
                                 <span className="w-full truncate px-1 text-center text-[7px] text-ed-faint group-hover:text-ed-muted">
@@ -731,6 +779,34 @@ export type PageEntry = {
     published: boolean;
 };
 
+/**
+ * A slug the router will accept, derived as the author types a name.
+ *
+ * The server normalises whatever it is sent, but doing it here means the URL
+ * the page will live at is visible before it is created rather than after.
+ */
+function slugify(value: string) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * What the panel is doing right now.
+ *
+ * One value rather than the four independent flags this used to keep, because
+ * the states are mutually exclusive in the interface and were not in the code:
+ * a create form, a row's action strip and a rename form could all be open at
+ * once, each pushing the list somewhere different.
+ */
+type PagesMode =
+    | { kind: "idle" }
+    | { kind: "create"; name: string; slug: string; slugTouched: boolean }
+    | { kind: "edit"; id: string; name: string; slug: string }
+    | { kind: "delete"; id: string };
+
 export function PagesPanel({
     pages,
     currentId,
@@ -749,238 +825,330 @@ export function PagesPanel({
     navigatingId?: string | null;
     busy: boolean;
     error: string | null;
-    onCreate: (name: string) => void;
+    onCreate: (name: string, slug: string) => void;
     onRename: (id: string, name: string, slug: string) => void;
     onDuplicate: (id: string, name: string) => void;
     onDelete: (id: string) => void;
     onNavigate: (id: string) => void;
     publishedHref: (slug: string) => string;
 }) {
-    const [newName, setNewName] = useState("");
-    const [creating, setCreating] = useState(false);
-    const [editing, setEditing] = useState<string | null>(null);
-    const [menuPage, setMenuPage] = useState<string | null>(null);
-    const [draft, setDraft] = useState({ name: "", slug: "" });
-    const publishedCount = pages.filter((page) => page.published).length;
+    const [mode, setMode] = useState<PagesMode>({ kind: "idle" });
+    const idle = () => setMode({ kind: "idle" });
 
     return (
         <div className="flex min-h-0 flex-1 flex-col">
-            <div className="border-b border-ed-border p-3">
-                <div className="rounded-2xl bg-ed-subtle p-3">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="text-[12px] font-semibold tracking-[-.02em] text-ed-text">Project pages</p>
-                            <p className="mt-1 text-[9px] leading-relaxed text-ed-faint">
-                                {pages.length} page{pages.length === 1 ? "" : "s"} · {publishedCount} published
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setCreating((value) => !value)}
-                            aria-expanded={creating}
-                            className={`flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[10px] font-semibold transition-colors ${creating ? "bg-ed-field text-ed-text" : "bg-ed-accent text-white hover:opacity-90"}`}
-                        >
-                            <IconPlus size={12} className={`transition-transform ${creating ? "rotate-45" : ""}`} />
-                            {creating ? "Close" : "New page"}
-                        </button>
-                    </div>
-
-                    <AnimatePresence initial={false}>
-                        {creating && (
-                            <motion.form
-                                initial={{ height: 0, opacity: 0, y: -4 }}
-                                animate={{ height: "auto", opacity: 1, y: 0 }}
-                                exit={{ height: 0, opacity: 0, y: -4 }}
-                                transition={{ duration: 0.16 }}
-                                className="overflow-hidden"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    if (!newName.trim()) return;
-                                    onCreate(newName.trim());
-                                    setNewName("");
-                                    setCreating(false);
-                                }}
-                            >
-                                <div className="mt-3 flex gap-1.5">
-                                    <input
-                                        autoFocus
-                                        type="text"
-                                        value={newName}
-                                        placeholder="Page name"
-                                        onChange={(event) => setNewName(event.target.value)}
-                                        className="h-8 min-w-0 flex-1 rounded-full bg-ed-field px-3 text-[11px] text-ed-text outline-none placeholder:text-ed-faint focus:ring-1 focus:ring-ed-accent"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={busy || !newName.trim()}
-                                        className="h-8 rounded-full bg-ed-text px-3 text-[10px] font-semibold text-ed-surface transition-opacity hover:opacity-85 disabled:pointer-events-none disabled:opacity-35"
-                                    >
-                                        Create
-                                    </button>
-                                </div>
-                            </motion.form>
-                        )}
-                    </AnimatePresence>
-                </div>
+            <div className="flex items-center justify-between px-3.5 pb-2 pt-3">
+                <span className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">
+                    Pages
+                </span>
+                <span className="flex items-center gap-2">
+                    <span className="font-mono text-[9px] text-ed-faint">{pages.length}</span>
+                    <button
+                        type="button"
+                        aria-label="New page"
+                        onClick={() =>
+                            setMode(
+                                mode.kind === "create"
+                                    ? { kind: "idle" }
+                                    : { kind: "create", name: "", slug: "", slugTouched: false },
+                            )
+                        }
+                        className={`flex size-6 items-center justify-center rounded-lg transition-colors ${mode.kind === "create"
+                            ? "bg-ed-accent text-white"
+                            : "bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"
+                            }`}
+                    >
+                        <IconPlus size={12} className={`transition-transform ${mode.kind === "create" ? "rotate-45" : ""}`} />
+                    </button>
+                </span>
             </div>
 
             {error && (
-                <p className="mx-3 mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-[10px] leading-relaxed text-red-400">
+                <p className="mx-2.5 mb-1 rounded-lg bg-red-500/10 px-3 py-2 text-[10px] leading-relaxed text-red-400">
                     {error}
                 </p>
             )}
 
-            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
-                <div className="mb-2 flex items-center justify-between px-1">
-                    <span className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">Pages</span>
-                    <span className="rounded-full bg-ed-field px-2 py-0.5 font-mono text-[9px] text-ed-faint">{pages.length}</span>
-                </div>
-                <motion.div layout className="flex flex-col gap-1.5">
-                {pages.map((page) => {
-                    const isCurrent = page.id === currentId;
-                    const isNavigating = page.id === navigatingId;
-                    const isHome = page.slug === "home";
-                    const menuOpen = menuPage === page.id;
-                    const PageIcon = isHome ? IconHome : IconFile;
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+                {/* A new page is written in the same form a rename uses, in the
+                    place the page is about to appear. */}
+                {mode.kind === "create" && (
+                    <PageForm
+                        title="New page"
+                        name={mode.name}
+                        slug={mode.slug}
+                        busy={busy}
+                        submitLabel="Create"
+                        onName={(name) =>
+                            setMode({
+                                ...mode,
+                                name,
+                                // The slug follows the name until the author
+                                // takes it over; after that it is theirs.
+                                slug: mode.slugTouched ? mode.slug : slugify(name),
+                            })
+                        }
+                        onSlug={(slug) => setMode({ ...mode, slug, slugTouched: true })}
+                        onCancel={idle}
+                        onSubmit={() => {
+                            const name = mode.name.trim();
+                            if (!name) return;
+                            onCreate(name, slugify(mode.slug) || slugify(name));
+                            idle();
+                        }}
+                    />
+                )}
 
-                    if (editing === page.id) {
-                        return (
-                            <motion.form
-                                layout
-                                key={page.id}
-                                initial={{ opacity: 0, scale: 0.98 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex flex-col gap-2 rounded-2xl bg-ed-subtle p-2.5 ring-1 ring-inset ring-ed-accent/35"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    onRename(page.id, draft.name, draft.slug);
-                                    setEditing(null);
-                                }}
-                            >
-                                <input
-                                    type="text"
-                                    value={draft.name}
-                                    aria-label="Page name"
-                                    onChange={(e) =>
-                                        setDraft((d) => ({ ...d, name: e.target.value }))
-                                    }
-                                    className="h-8 rounded-full bg-ed-field px-3 text-[11px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent"
+                <div className="flex flex-col gap-1 px-2.5 pb-2.5">
+                    {pages.map((page) => {
+                        const isCurrent = page.id === currentId;
+                        const isNavigating = page.id === navigatingId;
+                        // The home page is what the site resolves to at `/`;
+                        // renaming its slug or deleting it would take that away.
+                        const isHome = page.slug === "home";
+
+                        if (mode.kind === "edit" && mode.id === page.id) {
+                            return (
+                                <PageForm
+                                    key={page.id}
+                                    title={`Editing ${page.name}`}
+                                    name={mode.name}
+                                    slug={mode.slug}
+                                    busy={busy}
+                                    lockSlug={isHome}
+                                    submitLabel="Save"
+                                    onName={(name) => setMode({ ...mode, name })}
+                                    onSlug={(slug) => setMode({ ...mode, slug })}
+                                    onCancel={idle}
+                                    onSubmit={() => {
+                                        const name = mode.name.trim();
+                                        if (!name) return;
+                                        onRename(page.id, name, isHome ? page.slug : slugify(mode.slug));
+                                        idle();
+                                    }}
                                 />
-                                <div className="flex h-8 items-center gap-1.5 rounded-full bg-ed-field px-3">
-                                    <span className="text-[10px] text-ed-faint">/</span>
-                                    <input
-                                        type="text"
-                                        value={draft.slug}
-                                        aria-label="Page URL slug"
-                                        onChange={(e) =>
-                                            setDraft((d) => ({ ...d, slug: e.target.value }))
-                                        }
-                                        className="min-w-0 flex-1 bg-transparent text-[11px] text-ed-text outline-none"
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-1.5">
+                            );
+                        }
+
+                        if (mode.kind === "delete" && mode.id === page.id) {
+                            return (
+                                <div key={page.id} className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2.5">
+                                    <span className="min-w-0 flex-1 text-[10px] leading-relaxed text-ed-text">
+                                        Delete <b>{page.name}</b> and everything on it?
+                                    </span>
                                     <button
                                         type="button"
-                                        onClick={() => setEditing(null)}
-                                        className="rounded-full px-3 py-1.5 text-[10px] text-ed-muted hover:bg-ed-field hover:text-ed-text"
+                                        onClick={idle}
+                                        className="shrink-0 rounded-lg px-2 py-1 text-[10px] text-ed-muted hover:bg-ed-field hover:text-ed-text"
                                     >
                                         Cancel
                                     </button>
                                     <button
-                                        type="submit"
-                                        className="rounded-full bg-ed-accent px-3 py-1.5 text-[10px] font-semibold text-white hover:opacity-90"
+                                        type="button"
+                                        onClick={() => { onDelete(page.id); idle(); }}
+                                        className="shrink-0 rounded-lg bg-red-500 px-2.5 py-1 text-[10px] font-semibold text-white hover:opacity-90"
                                     >
-                                        Save changes
+                                        Delete
                                     </button>
                                 </div>
-                            </motion.form>
-                        );
-                    }
+                            );
+                        }
 
-                    return (
-                        <motion.div
-                            layout
-                            key={page.id}
-                            className={`overflow-hidden rounded-2xl transition-colors ${isCurrent
-                                    ? "bg-[var(--ed-accent-soft)] ring-1 ring-inset ring-ed-accent/25"
-                                    : isNavigating ? "bg-ed-subtle ring-1 ring-inset ring-ed-accent/20" : "bg-ed-subtle/65 hover:bg-ed-subtle"
-                                }`}
-                        >
-                            <div className="flex items-center gap-1.5 p-1.5">
+                        return (
+                            <div
+                                key={page.id}
+                                className={`group flex items-center rounded-lg transition-colors ${isCurrent
+                                    ? "bg-ed-accent text-white"
+                                    : isNavigating ? "bg-ed-field" : "hover:bg-ed-subtle"
+                                    }`}
+                            >
                                 <button
                                     type="button"
                                     onClick={() => onNavigate(page.id)}
                                     disabled={busy || isCurrent}
-                                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1 text-left"
+                                    className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left"
                                 >
-                                    <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${isCurrent ? "bg-ed-accent text-white" : "bg-ed-field text-ed-muted"}`}>
-                                        <PageIcon size={14} stroke={1.6} />
+                                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${isCurrent ? "bg-white/20 text-white" : "bg-ed-field text-ed-muted"}`}>
+                                        {isHome ? <IconHome size={13} stroke={1.6} /> : <IconFile size={13} stroke={1.6} />}
                                     </span>
                                     <span className="min-w-0 flex-1">
                                         <span className="flex items-center gap-1.5">
-                                            <span className="truncate text-[11px] font-semibold text-ed-text">{page.name}</span>
-                                            {page.published && <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" title="Published" />}
+                                            <span className={`truncate text-[11px] font-semibold ${isCurrent ? "text-white" : "text-ed-text"}`}>{page.name}</span>
+                                            {page.published && (
+                                                <span className={`size-1.5 shrink-0 rounded-full ${isCurrent ? "bg-white/80" : "bg-emerald-500"}`} title="Published" />
+                                            )}
                                         </span>
-                                        <span className="mt-0.5 block truncate font-mono text-[9px] text-ed-faint">{isHome ? "/" : `/${page.slug}`}</span>
+                                        <span className={`mt-0.5 block truncate font-mono text-[9px] ${isCurrent ? "text-white/70" : "text-ed-faint"}`}>
+                                            {isHome ? "/" : `/${page.slug}`}
+                                        </span>
                                     </span>
                                     {isNavigating && (
                                         <motion.span
                                             aria-label="Opening page"
-                                            className="mr-1 size-1.5 shrink-0 rounded-full bg-ed-accent"
-                                            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
-                                            transition={{ duration: 0.9, repeat: Infinity }}
+                                            className="size-1.5 shrink-0 rounded-full bg-ed-accent"
+                                            animate={{ opacity: [0.3, 1, 0.3] }}
+                                            transition={{ duration: 0.9, repeat: Number.POSITIVE_INFINITY }}
                                         />
                                     )}
                                 </button>
-                                <button
-                                    type="button"
-                                    aria-label={`Page actions for ${page.name}`}
-                                    aria-expanded={menuOpen}
-                                    onClick={() => setMenuPage(menuOpen ? null : page.id)}
-                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full transition-colors ${menuOpen ? "bg-ed-field-hover text-ed-text" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}
-                                >
-                                    <IconDots size={15} />
-                                </button>
-                            </div>
 
-                            <AnimatePresence initial={false}>
-                                {menuOpen && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.14 }}
-                                        className="overflow-hidden"
+                                {/* The actions sit in the row itself. They used to be
+                                    behind a per-row menu that expanded downward, which
+                                    moved every page below the one being acted on.
+                                    Hidden until the row is hovered or focused, so a
+                                    long list still reads as names and URLs. */}
+                                <span className={`flex shrink-0 items-center pr-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${isCurrent ? "[&_a]:text-white/70 [&_button]:text-white/70" : ""}`}>
+                                    <RowAction
+                                        label={`Edit ${page.name}`}
+                                        onClick={() => setMode({ kind: "edit", id: page.id, name: page.name, slug: page.slug })}
                                     >
-                                        <div className="flex items-center gap-1 border-t border-ed-border/70 px-2 py-1.5">
-                                            {!isHome && (
-                                                <button type="button" onClick={() => { setDraft({ name: page.name, slug: page.slug }); setEditing(page.id); setMenuPage(null); }} className="flex h-7 items-center gap-1.5 rounded-full px-2 text-[9px] text-ed-muted hover:bg-ed-field hover:text-ed-text">
-                                                    <IconPencil size={11} /> Rename
-                                                </button>
-                                            )}
-                                            <button type="button" onClick={() => { onDuplicate(page.id, `${page.name} copy`); setMenuPage(null); }} className="flex h-7 items-center gap-1.5 rounded-full px-2 text-[9px] text-ed-muted hover:bg-ed-field hover:text-ed-text">
-                                                <IconCopy size={11} /> Duplicate
-                                            </button>
-                                            {page.published && (
-                                                <a href={publishedHref(page.slug)} target="_blank" rel="noopener noreferrer" aria-label={`Open published ${page.name}`} className="ml-auto flex size-7 items-center justify-center rounded-full text-ed-faint hover:bg-ed-field hover:text-ed-text">
-                                                    <IconExternalLink size={11} />
-                                                </a>
-                                            )}
-                                            {!isHome && (
-                                                <button type="button" onClick={() => { onDelete(page.id); setMenuPage(null); }} aria-label={`Delete ${page.name}`} className="ml-auto flex size-7 items-center justify-center rounded-full text-ed-faint hover:bg-red-500/10 hover:text-red-400">
-                                                    <IconTrash size={11} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </motion.div>
-                    );
-                })}
-                </motion.div>
+                                        <IconPencil size={12} />
+                                    </RowAction>
+                                    <RowAction
+                                        label={`Duplicate ${page.name}`}
+                                        onClick={() => onDuplicate(page.id, `${page.name} copy`)}
+                                    >
+                                        <IconCopy size={12} />
+                                    </RowAction>
+                                    {page.published && (
+                                        <a
+                                            href={publishedHref(page.slug)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            aria-label={`Open published ${page.name}`}
+                                            className="flex size-6 items-center justify-center rounded-md text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text"
+                                        >
+                                            <IconExternalLink size={12} />
+                                        </a>
+                                    )}
+                                    {!isHome && (
+                                        <RowAction
+                                            label={`Delete ${page.name}`}
+                                            danger
+                                            onClick={() => setMode({ kind: "delete", id: page.id })}
+                                        >
+                                            <IconTrash size={12} />
+                                        </RowAction>
+                                    )}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
+    );
+}
+
+function RowAction({
+    label,
+    onClick,
+    danger,
+    children,
+}: {
+    label: string;
+    onClick: () => void;
+    danger?: boolean;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            aria-label={label}
+            title={label}
+            onClick={onClick}
+            className={`flex size-6 items-center justify-center rounded-md text-ed-faint transition-colors ${danger ? "hover:bg-red-500/10 hover:text-red-400" : "hover:bg-ed-field hover:text-ed-text"}`}
+        >
+            {children}
+        </button>
+    );
+}
+
+/**
+ * The one form for naming a page, used by both create and rename.
+ *
+ * Creating and renaming ask for exactly the same two things, so they are the
+ * same form. Previously they were two different shapes in two different places
+ * — a name-only strip in the header, and a name-and-slug card inside the row —
+ * which is why the slug could only be set after the page already existed.
+ */
+function PageForm({
+    title,
+    name,
+    slug,
+    busy,
+    lockSlug,
+    submitLabel,
+    onName,
+    onSlug,
+    onCancel,
+    onSubmit,
+}: {
+    title: string;
+    name: string;
+    slug: string;
+    busy: boolean;
+    lockSlug?: boolean;
+    submitLabel: string;
+    onName: (value: string) => void;
+    onSlug: (value: string) => void;
+    onCancel: () => void;
+    onSubmit: () => void;
+}) {
+    return (
+        <form
+            className="mb-1 flex flex-col gap-2 rounded-lg border border-ed-border bg-ed-subtle p-3"
+            onSubmit={(event) => {
+                event.preventDefault();
+                onSubmit();
+            }}
+        >
+            <p className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">{title}</p>
+            <input
+                // biome-ignore lint/a11y/noAutofocus: the form only exists because the author just asked for it
+                autoFocus
+                type="text"
+                value={name}
+                aria-label="Page name"
+                placeholder="Page name"
+                onChange={(event) => onName(event.target.value)}
+                className="h-8 rounded-lg bg-ed-field px-2.5 text-[11px] text-ed-text outline-none placeholder:text-ed-faint focus:ring-1 focus:ring-inset focus:ring-ed-accent"
+            />
+            <label className={`flex h-8 items-center gap-1 rounded-lg bg-ed-field px-2.5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-ed-accent ${lockSlug ? "opacity-55" : ""}`}>
+                <span className="font-mono text-[10px] text-ed-faint">/</span>
+                <input
+                    type="text"
+                    value={slug}
+                    aria-label="Page URL"
+                    placeholder="url-path"
+                    disabled={lockSlug}
+                    onChange={(event) => onSlug(event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent font-mono text-[10px] text-ed-text outline-none placeholder:text-ed-faint"
+                />
+            </label>
+            {lockSlug && (
+                <p className="text-[9px] leading-relaxed text-ed-faint">
+                    The home page is what the site serves at <code className="text-ed-muted">/</code>, so its
+                    URL is fixed.
+                </p>
+            )}
+            <div className="flex justify-end gap-1.5">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="rounded-lg px-2.5 py-1.5 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    disabled={busy || !name.trim()}
+                    className="rounded-lg bg-ed-accent px-3 py-1.5 text-[10px] font-semibold text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-35"
+                >
+                    {submitLabel}
+                </button>
+            </div>
+        </form>
     );
 }
 

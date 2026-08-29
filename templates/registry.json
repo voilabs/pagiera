@@ -91,6 +91,35 @@
         "eyebrow": "X (Formerly Twitter) Clone",
         "headline": "X (Formerly Twitter) Clone"
       }
+    },
+    {
+      "id": "nexthive",
+      "version": "1.0.0",
+      "name": "NextHive",
+      "description": "A local-first desktop backup concept that records changes, keeps readable versions, and sends them to repositories you control.",
+      "category": "App",
+      "tags": [
+        "Backup",
+        "Desktop",
+        "Local-first",
+        "Light"
+      ],
+      "pages": [
+        "Home"
+      ],
+      "file": "./nexthive/template.json",
+      "thumbnail": "./nexthive/thumbnail.svg",
+      "font": {
+        "title": "Newsreader",
+        "family": "\"Newsreader\", serif"
+      },
+      "preview": {
+        "background": "#f6f5f2",
+        "foreground": "#27272a",
+        "accent": "#75e9a1",
+        "eyebrow": "DESKTOP BACKUP / EARLY ACCESS",
+        "headline": "Your files keep moving. Your history stays."
+      }
     }
   ]
 }

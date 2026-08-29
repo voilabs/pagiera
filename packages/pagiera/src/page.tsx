@@ -3,6 +3,7 @@
 import { createElement, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import type { PagieraDocument, PagieraElement } from "./document.js";
 import { IconGlyph } from "./internal/lib/editor/icon.js";
+import { customTagOf, withCustom } from "./internal/lib/render/custom.js";
 
 export type PagieraPageProps = {
     document: PagieraDocument;
@@ -97,7 +98,9 @@ function declarationMap(style: Record<string, unknown>, type: string) {
         justifyContent: style.justify === "between" ? "space-between" : style.justify === "center" ? "center" : style.justify === "end" ? "flex-end" : "flex-start",
         alignItems: style.align === "center" ? "center" : style.align === "end" ? "flex-end" : style.align === "stretch" ? "stretch" : "flex-start",
         gridTemplateColumns: type === "Grid" || type === "Repeat" ? `repeat(${Number(style.columns ?? 1)}, minmax(0, 1fr))` : undefined,
-        background: String(style.gradient || style.bg || "transparent"),
+        // The fill carries its own alpha so a translucent background can sit
+        // over a blurred backdrop without `opacity` fading the blur too.
+        background: String(style.gradient || fillOf(style.bg, style.bgOpacity) || "transparent"),
         color: String(style.color || "inherit"),
         border: Number(style.borderW ?? 0) > 0 ? `${Number(style.borderW)}px ${String(style.borderStyle || "solid")} ${String(style.borderC || "transparent")}` : undefined,
         borderRadius: px(style.radius),
@@ -125,6 +128,14 @@ function declarationMap(style: Record<string, unknown>, type: string) {
 
 function serializeDeclarations(rules: Record<string, string | number | undefined>) {
     return Object.entries(rules).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}:${value}`).join(";");
+}
+
+function fillOf(bg: unknown, bgOpacity: unknown) {
+    const colour = String(bg ?? "");
+    const alpha = Number(bgOpacity ?? 100);
+    if (!colour || colour === "transparent" || !Number.isFinite(alpha) || alpha >= 100) return colour;
+    if (alpha <= 0) return "transparent";
+    return `color-mix(in srgb, ${colour} ${alpha}%, transparent)`;
 }
 
 function declarations(style: Record<string, unknown>, type: string) {
@@ -160,7 +171,7 @@ html{scrollbar-gutter:stable}
 }
 
 function stylesheet(document: PagieraDocument) {
-    const parts: string[] = [pageTransitionCss(document), ".pg-node{box-sizing:border-box}.pg-node:is(input,textarea,button){font:inherit}.pg-node:is(input,textarea){outline:none}.pg-node:is(textarea){resize:none}.pg-form-status:empty{display:none}.pg-form-status{font-size:12px;line-height:1.4}.pg-node[data-pg-state=success] .pg-form-status{color:#22c55e}.pg-node[data-pg-state=error] .pg-form-status{color:#ef4444}"];
+    const parts: string[] = [pageTransitionCss(document), ".pg-node{box-sizing:border-box}.pg-node:is(input,textarea,button){font:inherit}.pg-node:is(input,textarea){outline:none}.pg-node:is(textarea){resize:none}.pg-form-status:empty{display:none}.pg-form-status{font-size:12px;line-height:1.4}.pg-node[data-pg-state=success] .pg-form-status{color:#22c55e}.pg-node[data-pg-state=error] .pg-form-status{color:#ef4444}.pg-svg-glyph>svg{display:block;width:100%;height:100%}.pg-node[role=radiogroup]{display:flex;flex-direction:column;gap:8px}.pg-choice{display:flex;align-items:center;gap:8px;cursor:pointer}.pg-choice input{accent-color:currentColor;margin:0}.pg-node:is(input[type=checkbox],input[type=radio]){accent-color:currentColor}.pg-node:is(ul,ol){list-style:none}.pg-list{counter-reset:pg-list}.pg-list>li{position:relative}.pg-list-bullet>li::before{content:'\\2022';position:absolute;left:-1em;opacity:.65}.pg-list-number>li::before{counter-increment:pg-list;content:counter(pg-list) '.';position:absolute;left:-1.6em;opacity:.65;font-variant-numeric:tabular-nums}.pg-node hr{border:0;width:100%;height:100%}.pg-node iframe{display:block;width:100%;height:100%;border:0}"];
     for (const font of document.rootStyle.customFonts ?? []) parts.push(`@font-face{font-family:"${font.name.replace(/["'{};]/g, "")}";src:url("${font.url.replace(/["'()\\]/g, "")}");font-weight:${font.weight};font-style:${font.style};font-display:swap}`);
     for (const element of document.elements) {
         const selector = `.${safeClass(element.id)}`;
@@ -190,7 +201,7 @@ function ElementContent({ element }: { element: PagieraElement }) {
     if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox="" style={{ width: "100%", height: "100%", border: 0 }} />;
     if (element.type === "Image") return element.src ? <img src={element.src} alt={element.alt ?? ""} style={{ display: "block", width: "100%", height: "100%", objectFit: element.objectFit ?? "cover" }} /> : null;
     if (element.type === "Video") return element.src ? <iframe src={element.src} title={element.name ?? "Video"} style={{ width: "100%", height: "100%", border: 0 }} /> : null;
-    if (element.type === "Icon") return <IconGlyph name={element.iconName} />;
+    if (element.type === "Icon") return <IconGlyph element={element} name={element.iconName} />;
     return element.content ? <span style={{ display: "block", width: "100%", whiteSpace: "pre-wrap" }}>{element.content}</span> : null;
 }
 
@@ -198,6 +209,8 @@ function semanticTag(element: PagieraElement) {
     const name = (element.name ?? "").toLowerCase();
     if (element.type === "Button") return "button";
     if (element.type === "Form") return "form";
+    if (element.type === "Fieldset") return "fieldset";
+    if (element.type === "Label") return "label";
     if (element.type === "Heading") {
         const level = name.match(/(?:^|\s)h([1-6])(?:\s|$)/)?.[1] ?? "2";
         return `h${level}`;
@@ -206,8 +219,27 @@ function semanticTag(element: PagieraElement) {
     if (name.includes("navbar") || name === "nav" || name.includes("navigation")) return "nav";
     if (name.includes("footer")) return "footer";
     if (name.includes("header")) return "header";
+    if (element.type === "List") return element.listStyle === "number" ? "ol" : "ul";
+    if (element.type === "ListItem") return "li";
+    if (element.type === "Quote") return "blockquote";
     if (element.type === "Section") return "section";
     return "div";
+}
+
+/** The validation and state attributes shared by every field type. */
+function constraints(element: PagieraElement) {
+    return {
+        name: element.fieldName || undefined,
+        required: element.required,
+        disabled: element.disabled,
+        autoComplete: element.autocomplete || undefined,
+        pattern: element.pattern || undefined,
+        minLength: element.minLength,
+        maxLength: element.maxLength,
+        min: element.minValue || undefined,
+        max: element.maxValue || undefined,
+        step: element.step || undefined,
+    };
 }
 
 export function PagieraPage({ document, className, interactive = true, onElementSelect }: PagieraPageProps) {
@@ -236,14 +268,29 @@ export function PagieraPage({ document, className, interactive = true, onElement
         const onClick = onElementSelect || runInteraction ? (event: { stopPropagation(): void }) => { if (onElementSelect) { event.stopPropagation(); onElementSelect(element.id); } if (runInteraction) runInteraction(); } : undefined;
         const style: CSSProperties = hidden ? { display: "none" } : {};
         const body = <><ElementContent element={element} />{(children.get(element.id) ?? []).map(render)}{element.type === "Form" && <span className="pg-form-status" data-pg-form-status aria-live="polite" />}</>;
-        const props = { id: safeClass(element.id), "data-pagiera-id": element.id, className: `pg-node ${safeClass(element.id)}`, style, onClick, "aria-hidden": hidden || undefined };
-        if (element.type === "Input") return createElement("input", { ...props, type: element.inputType ?? "text", name: element.fieldName, placeholder: element.placeholder, required: element.required });
-        if (element.type === "Textarea") return createElement("textarea", { ...props, name: element.fieldName, placeholder: element.placeholder, required: element.required, defaultValue: element.content });
+        const props = withCustom(element, { id: safeClass(element.id), "data-pagiera-id": element.id, className: `pg-node ${safeClass(element.id)}${element.type === "List" && element.listStyle !== "none" ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}` : ""}`, style, onClick, "aria-hidden": hidden || undefined });
+        if (element.type === "Divider") return createElement("hr", props);
+        if (element.type === "Embed") return element.src ? createElement("iframe", { ...props, src: element.src, title: element.name ?? "Embedded content", loading: "lazy", sandbox: "allow-scripts allow-same-origin allow-popups allow-forms", referrerPolicy: "no-referrer-when-downgrade" }) : null;
+        if (element.type === "Input") return createElement("input", { ...props, ...constraints(element), type: element.inputType ?? "text", readOnly: element.readOnly, defaultValue: element.defaultValue, placeholder: element.placeholder });
+        if (element.type === "Textarea") return createElement("textarea", { ...props, ...constraints(element), readOnly: element.readOnly, placeholder: element.placeholder, defaultValue: element.defaultValue ?? element.content });
+        if (element.type === "FileInput") return createElement("input", { ...props, ...constraints(element), type: "file", accept: element.accept || undefined, multiple: element.multiple });
+        if (element.type === "Checkbox") return createElement("input", { ...props, ...constraints(element), type: "checkbox", value: element.defaultValue || "on", defaultChecked: element.checked });
+        if (element.type === "Select") return createElement("select", { ...props, ...constraints(element), multiple: element.multiple, defaultValue: element.defaultValue ?? (element.placeholder ? "" : undefined) }, [
+            element.placeholder ? createElement("option", { key: "placeholder", value: "", disabled: true }, element.placeholder) : null,
+            ...(element.options ?? []).map((option, index) => createElement("option", { key: `${index}:${option.value}`, value: option.value }, option.label || option.value)),
+        ]);
+        // A radio group is one layer but several inputs: the alternatives only
+        // mean anything together, so they are not separate elements.
+        if (element.type === "Radio") return createElement("div", { ...props, role: "radiogroup" }, (element.options ?? []).map((option, index) => createElement("label", { key: `${index}:${option.value}`, className: "pg-choice" },
+            createElement("input", { type: "radio", name: element.fieldName || safeClass(element.id), value: option.value, required: element.required, disabled: element.disabled, defaultChecked: element.defaultValue ? element.defaultValue === option.value : element.checked && index === 0 }),
+            createElement("span", null, option.label || option.value),
+        )));
         if ((element.href || interaction?.action === "navigate") && !onClick) return createElement("a", { ...props, href: element.href, target: element.target }, body);
-        const tag = semanticTag(element);
+        const tag = customTagOf(element) ?? semanticTag(element);
         return createElement(tag, {
             ...props,
             type: tag === "button" ? (element.buttonType ?? "button") : undefined,
+            htmlFor: tag === "label" && element.labelFor ? safeClass(element.labelFor) : undefined,
             action: tag === "form" ? element.formAction : undefined,
             method: tag === "form" ? (element.formMethod === "GET" ? "get" : "post") : undefined,
             onSubmit: tag === "form" && (!interactive || element.formSubmitMode !== "native") ? (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (interactive) void submitBackgroundForm(element, event.currentTarget); } : undefined,

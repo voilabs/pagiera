@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 import { baseOf, type Cascade, chainFor, DEFAULT_CASCADE } from "./cascade";
 import {
     type Align,
+    type AlignContent,
+    type AlignSelf,
+    BASE_STYLE,
     type Breakpoint,
     type CanvasElement,
     type ElementStyle,
@@ -19,7 +22,12 @@ export function resolveStyle(
     breakpoint: Breakpoint,
     cascade: Cascade = DEFAULT_CASCADE,
 ): ElementStyle {
-    let style = element.base;
+    // Persisted pages and installed templates may predate newly introduced
+    // style keys. Resolve against the current defaults at render time so an
+    // older complete-looking `base` cannot produce invalid CSS (for example
+    // `bgOpacity: undefined` inside color-mix()). This also keeps published
+    // documents working before they have been opened and re-saved.
+    let style: ElementStyle = { ...BASE_STYLE, ...element.base };
     for (const step of chainFor(cascade, breakpoint)) {
         const override = element.overrides?.[step];
         if (override) style = { ...style, ...override };
@@ -147,6 +155,38 @@ const JUSTIFY_MAP: Record<Justify, CSSProperties["justifyContent"]> = {
     between: "space-between",
 };
 
+/**
+ * The fill, with its own alpha folded in.
+ *
+ * `color-mix` rather than parsing the colour: `bg` is a free-form CSS value —
+ * a hex, an `rgb()`, a named colour, a `var()` from the page's palette — and
+ * the browser is better at reading all of those than a regex would be.
+ */
+function backgroundColorOf(style: ElementStyle) {
+    if (!style.bg || style.bg === "transparent") return undefined;
+    const opacity = Number.isFinite(style.bgOpacity) ? style.bgOpacity : 100;
+    if (opacity >= 100) return style.bg;
+    if (opacity <= 0) return "transparent";
+    return `color-mix(in srgb, ${style.bg} ${opacity}%, transparent)`;
+}
+
+const ALIGN_SELF_MAP: Record<AlignSelf, CSSProperties["alignSelf"]> = {
+    auto: "auto",
+    start: "flex-start",
+    center: "center",
+    end: "flex-end",
+    stretch: "stretch",
+    baseline: "baseline",
+};
+
+const ALIGN_CONTENT_MAP: Record<AlignContent, CSSProperties["alignContent"]> = {
+    start: "flex-start",
+    center: "center",
+    end: "flex-end",
+    stretch: "stretch",
+    between: "space-between",
+};
+
 const ALIGN_MAP: Record<Align, CSSProperties["alignItems"]> = {
     start: "flex-start",
     center: "center",
@@ -181,9 +221,15 @@ export function styleToCss(
         display: "flex",
         flexDirection: style.direction,
         gap: style.gap || undefined,
+        // -1 means the author never split the axes, so `gap` stands alone.
+        rowGap: style.rowGap >= 0 ? style.rowGap : undefined,
+        columnGap: style.columnGap >= 0 ? style.columnGap : undefined,
         justifyContent: JUSTIFY_MAP[style.justify],
         alignItems: ALIGN_MAP[style.align],
         flexWrap: style.wrap ? "wrap" : "nowrap",
+        // Only meaningful once lines can wrap; harmless otherwise.
+        alignContent: style.wrap ? ALIGN_CONTENT_MAP[style.alignContent] : undefined,
+        order: style.order || undefined,
 
         paddingTop: style.padT || undefined,
         paddingRight: style.padR || undefined,
@@ -191,7 +237,7 @@ export function styleToCss(
         marginBottom: style.marginB || undefined,
         paddingLeft: style.padL || undefined,
 
-        backgroundColor: style.bg || undefined,
+        backgroundColor: backgroundColorOf(style),
         // A gradient and a photo can be layered; the gradient is painted first
         // so it reads as a scrim over the image.
         backgroundImage:
@@ -323,6 +369,21 @@ export function styleToCss(
 
     applySize(css, "width", style.widthMode, style.w, mainAxisIsWidth, context.parentAlign);
     applySize(css, "height", style.heightMode, style.h, !mainAxisIsWidth, context.parentAlign);
+
+    // The child's own layout wishes, applied last so they beat what the size
+    // modes inferred. Each stays at its "unset" value until the author touches
+    // it, so nothing here changes a document that never asked for it.
+    if (style.alignSelf !== "auto") css.alignSelf = ALIGN_SELF_MAP[style.alignSelf];
+    if (style.grow >= 0) {
+        css.flexGrow = style.grow;
+        // Growing from a content-sized basis is what makes a 2:1 split behave
+        // as a ratio; leaving basis at auto sizes the shares by their content
+        // instead, which is the usual reason "flex: 2" looks like it did
+        // nothing.
+        css.flexBasis = 0;
+        if (style.grow > 0) css.flexShrink = 1;
+    }
+    if (style.gridSpan > 1) css.gridColumn = `span ${style.gridSpan}`;
 
     return css;
 }

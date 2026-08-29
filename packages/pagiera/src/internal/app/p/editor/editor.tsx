@@ -18,15 +18,12 @@ import {
     IconPlus,
     IconSearch,
     IconSettings,
-    IconSparkles,
     IconTrash,
     IconWorld,
     IconLayersLinked,
     IconLayoutColumns,
     IconBox,
     IconFile,
-    IconLibrary,
-    IconIcons,
     IconMoon,
     IconPalette,
     IconPin,
@@ -58,6 +55,7 @@ import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import type { AiDesignPlan } from "@/lib/editor/ai-types";
 import { bindElement, type Row, rowsFor } from "@/lib/render/bind";
 import { resolveFont } from "@/lib/render/css";
+import { inlineStyleObject } from "@/lib/render/custom";
 import { type Guide, snapPosition } from "@/lib/editor/snap";
 import {
     applyStyle,
@@ -101,7 +99,7 @@ import {
     STYLE_KEYS,
     type StyleKey,
 } from "@/lib/editor/types";
-import { Inspector, MultiSelectPanel, PageInspector } from "./inspector";
+import { Inspector, INSPECTOR_TABS, MultiSelectPanel, PageInspector } from "./inspector";
 import { DataPanel, type SourceSample } from "./data-panel";
 import type { SourcePreviewer } from "./data-modal";
 import { type LibraryPage, type LibraryPick, LibraryPanel } from "./library";
@@ -124,6 +122,7 @@ import { type DropPlan, resolveDrop } from "./drop-target";
 import { useCanvasView } from "./use-canvas-view";
 import { useEditorDocument } from "./use-editor";
 import { AiPanel, type AiDesignGenerator, type AiFocus } from "./ai-panel";
+import { LumaMark } from "./brand";
 import { VariablesPanel } from "./variables-panel";
 import { TemplatesPanel } from "./templates-panel";
 
@@ -133,13 +132,19 @@ const SNAP_FILL = 12;
 const COMPONENT_MIME = "application/pagiera-component";
 const EDITOR_TABS_STORAGE_KEY = "pagiera:editor-tabs";
 
+/**
+ * The left rail, in the order it is drawn.
+ *
+ * "Insert" is one panel with its own Elements / Components / Icons sub-tabs.
+ * They used to be three separate rail entries, which put four different
+ * buttons — counting the + at the top — in front of the same question, and two
+ * of the panels behind them listed the same element types.
+ */
 const LEFT_EDITOR_TABS = [
+    "Insert",
     "Layers",
-    "Elements",
     "Components",
     "Assets",
-    "Library",
-    "Icons",
     "Templates",
     "Variables",
     "AI",
@@ -147,7 +152,11 @@ const LEFT_EDITOR_TABS = [
     "Pages",
     "Settings",
 ] as const;
-const RIGHT_EDITOR_TABS = ["Design", "Content", "Hover", "Interact"] as const;
+
+/** The sections of the Insert panel. */
+const INSERT_VIEWS = ["Elements", "Components", "Icons"] as const;
+type InsertView = (typeof INSERT_VIEWS)[number];
+const RIGHT_EDITOR_TABS = INSPECTOR_TABS;
 
 type LeftEditorTab = (typeof LEFT_EDITOR_TABS)[number];
 type RightEditorTab = (typeof RIGHT_EDITOR_TABS)[number];
@@ -438,7 +447,14 @@ export default function Editor({
 
     const serverLeftTab = tabForDocumentMode(leftTabFromValue(initialPanel ?? null) ?? "Layers", componentMode);
     const [leftTab, setLeftTab] = useState<LeftEditorTab>(serverLeftTab);
-    const [rightTab, setRightTab] = useState<RightEditorTab>("Design");
+    const [rightTab, setRightTab] = useState<RightEditorTab>("Content");
+    const [insertView, setInsertView] = useState<InsertView>("Elements");
+    /** The Luma chat currently open, so the panel header can name it. */
+    const [aiChatTitle, setAiChatTitle] = useState<string>();
+    /** The component library brings its own scrolling; see the panel body below. */
+    const libraryFillsPanel = leftTab === "Insert" && insertView === "Components";
+    /** The left panel's scroll box, so switching Insert views can rewind it. */
+    const leftPanelScrollRef = useRef<HTMLDivElement>(null);
     const [tabsRestored, setTabsRestored] = useState(false);
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(serverLeftTab === "Templates");
     const [isRightCollapsed, setIsRightCollapsed] = useState(true);
@@ -737,6 +753,8 @@ export default function Editor({
         window.addEventListener("mouseup", up);
     };
 
+    const aiStreamRefs = useRef(new Map<string, Map<string, string>>());
+
     const applyAiPlan = (plan: AiDesignPlan) => {
         const pagePatch = plan.operations
             .filter((operation) => operation.kind === "page")
@@ -746,15 +764,24 @@ export default function Editor({
             );
         if (Object.keys(pagePatch).length) setRootStyle(pagePatch);
 
+        const refs = plan.streamKey
+            ? (() => {
+                if (plan.streamReset || !aiStreamRefs.current.has(plan.streamKey)) {
+                    aiStreamRefs.current.set(plan.streamKey, new Map());
+                }
+                return aiStreamRefs.current.get(plan.streamKey)!;
+            })()
+            : new Map<string, string>();
+
         setElements((current) => {
             let next = [...current];
-            const refs = new Map<string, string>();
             const addedIds = new Set<string>();
             for (const operation of plan.operations) {
                 if (operation.kind === "page") continue;
                 if (operation.kind === "remove") {
-                    if (next.some((element) => element.id === operation.id))
-                        next = removeSubtree(next, operation.id);
+                    const id = refs.get(operation.id) ?? operation.id;
+                    if (next.some((element) => element.id === id))
+                        next = removeSubtree(next, id);
                     continue;
                 }
                 if (operation.kind === "add") {
@@ -789,14 +816,17 @@ export default function Editor({
                     };
                     if (operation.content !== undefined) created.content = operation.content;
                     if (operation.src !== undefined) created.src = operation.src;
+                    if (operation.name !== undefined) created.name = operation.name;
+                    if (operation.alt !== undefined) created.alt = operation.alt;
                     if (operation.href !== undefined) created.href = operation.href;
                     refs.set(operation.ref, created.id);
                     addedIds.add(created.id);
                     next.push(created);
                     continue;
                 }
+                const updateId = refs.get(operation.id) ?? operation.id;
                 next = next.map((element) => {
-                    if (element.id !== operation.id) return element;
+                    if (element.id !== updateId) return element;
                     const updated = operation.style
                         ? applyStyle(element, cascade.baseId, operation.style, cascade)
                         : element;
@@ -842,6 +872,8 @@ export default function Editor({
                             ? { content: operation.content }
                             : {}),
                         ...(operation.src !== undefined ? { src: operation.src } : {}),
+                        ...(operation.name !== undefined ? { name: operation.name } : {}),
+                        ...(operation.alt !== undefined ? { alt: operation.alt } : {}),
                         ...(operation.href !== undefined ? { href: operation.href } : {}),
                     };
                 });
@@ -1899,7 +1931,8 @@ export default function Editor({
 
             if (!mod && key === "a") {
                 event.preventDefault();
-                setLeftTab("Elements");
+                setLeftTab("Insert");
+                setInsertView("Elements");
                 setIsLeftCollapsed(false);
                 return;
             }
@@ -2110,6 +2143,10 @@ export default function Editor({
         const note = isNote(el, byId, frame.bp, frame.width, rootStyle.layout, cascade);
         const band = isBand(el.type, style, rootStyle);
         const css = styleToCss(style, contextFor(el, frame.bp), el);
+        // The author's own declarations win over the inspector's, exactly as
+        // they do on the published page. They are merged before the editor's
+        // affordances below, so a custom `cursor` cannot hide the move handle.
+        Object.assign(css, inlineStyleObject(el.customStyle));
         // A real `fixed` would answer to the editor window and float over the
         // panels. Inside the canvas it pins to the artboard instead, which is
         // what the author is actually looking at; the published page still
@@ -2342,27 +2379,27 @@ export default function Editor({
             });
         }
     };
+    // Grouped by what the author is doing: shaping this page, then reaching
+    // for the things the whole site shares, then the tools that act on it.
     const projectRailTabs: LeftEditorTab[] = [
         "Layers",
         ...(componentMode ? [] : ["Pages" as const]),
         componentMode ? "Components" : "Assets",
-        "Library",
-        "Icons",
         ...(componentMode ? [] : ["Templates" as const]),
     ];
-    const utilityRailTabs: LeftEditorTab[] = ["Variables", "AI", "Data"];
+    const utilityRailTabs: LeftEditorTab[] = ["Variables", "Data", "AI"];
+    // Luma is the product's own face rather than a glyph from the icon set,
+    // so it is wrapped to the shape the rail expects and used like any other.
     const iconForRailTab = (tab: LeftEditorTab) => tab === "Layers"
             ? IconLayersLinked
-            : tab === "Library"
-                ? IconLibrary
-                : tab === "Icons"
-                    ? IconIcons
-                    : tab === "Templates"
+            : tab === "Insert"
+                ? IconPlus
+                : tab === "Templates"
                         ? IconTemplate
                         : tab === "Variables"
                             ? IconPalette
                             : tab === "AI"
-                                ? IconSparkles
+                                ? LumaMark
                                 : tab === "Components" || tab === "Assets"
                                     ? IconComponents
                                     : tab === "Data"
@@ -2393,12 +2430,12 @@ export default function Editor({
                     ? "bg-ed-accent text-white"
                     : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"
                 }`}
-                title={tab}
-                aria-label={tab}
+                title={tab === "AI" ? "Luma" : tab}
+                aria-label={tab === "AI" ? "Luma" : tab}
                 aria-pressed={active}
             >
                 <Icon size={15} stroke={1.65} />
-                <span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{tab}</span>
+                <span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{tab === "AI" ? "Luma" : tab}</span>
             </button>
         );
     };
@@ -2553,7 +2590,7 @@ export default function Editor({
                 {/* Thin Toolbar */}
                 <aside className="z-20 flex w-12 shrink-0 flex-col items-center border-r border-ed-border bg-ed-surface p-1.5">
                     <div className="flex w-full items-center justify-center">
-                        <button type="button" title="Insert elements (A)" aria-label="Insert elements" aria-pressed={leftTab === "Elements" && !isLeftCollapsed} className={`group relative flex size-8 items-center justify-center rounded-full transition-colors ${leftTab === "Elements" && !isLeftCollapsed ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`} onClick={() => { setLeftTab("Elements"); setIsLeftCollapsed(false); }}><IconPlus size={14} stroke={1.8} /><span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">Insert · A</span></button>
+                        <button type="button" title="Insert elements (A)" aria-label="Insert elements" aria-pressed={leftTab === "Insert" && !isLeftCollapsed} className={`group relative flex size-8 items-center justify-center rounded-full transition-colors ${leftTab === "Insert" && !isLeftCollapsed ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`} onClick={() => { setLeftTab("Insert"); setIsLeftCollapsed(false); }}><IconPlus size={14} stroke={1.8} /><span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">Insert · A</span></button>
                     </div>
 
                     <div className="my-1.5 h-px w-5 bg-ed-border" />
@@ -2570,21 +2607,50 @@ export default function Editor({
                 {!isLeftCollapsed && leftTab !== "Templates" && (
                     <motion.aside initial={{ width: 0, opacity: 0, x: -12 }} animate={{ width: leftTab === "AI" ? 380 : 292, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: -12 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="relative z-10 flex shrink-0 flex-col overflow-hidden border-r border-ed-border bg-ed-surface/95 backdrop-blur-xl">
                         <div className="flex h-12 shrink-0 items-center justify-between border-b border-ed-border px-3.5">
-                            <span className="flex min-w-0 items-center gap-2.5"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ed-accent-soft text-ed-accent"><ActiveLeftIcon size={13} stroke={1.7} /></span><span className="truncate text-[11px] font-semibold text-ed-text">{leftTab}</span></span>
+                            <span className="flex min-w-0 items-center gap-2.5"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ed-accent-soft text-ed-accent"><ActiveLeftIcon size={13} stroke={1.7} /></span><span className="truncate text-[11px] font-semibold text-ed-text">{leftTab === "AI" ? (aiChatTitle ?? "Luma") : leftTab}</span></span>
                             <button type="button" onClick={() => setIsLeftCollapsed(true)} className="rounded-full p-1 text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-muted">
                                 <IconX size={16} />
                             </button>
                         </div>
 
-                        {leftTab !== "Pages" && leftTab !== "Components" && leftTab !== "Assets" && leftTab !== "Library" && leftTab !== "Variables" && leftTab !== "Data" && leftTab !== "AI" && (
-                            <div className="border-b border-ed-border p-3 bg-ed-subtle">
-                                <div className="flex items-center gap-2 rounded-md border border-ed-border bg-ed-surface px-2.5 py-1.5 transition-all focus-within:border-ed-accent/50 focus-within:ring-1 focus-within:ring-blue-500/20">
+                        {/* The Insert views are chosen from the panel shell, not
+                            from inside the scrolling list: a scroll container
+                            reserves room for its scrollbar, which left the strip
+                            ten pixels narrower than the rows above it. */}
+                        {leftTab === "Insert" && (
+                            <div className="grid shrink-0 grid-cols-3 gap-0.5 border-b border-ed-border bg-ed-surface p-1.5">
+                                {INSERT_VIEWS.map((view) => (
+                                    <button
+                                        type="button"
+                                        key={view}
+                                        onClick={() => {
+                                            setInsertView(view);
+                                            setSearch("");
+                                            // Each view is a different list; carrying the
+                                            // last one's scroll position into it drops the
+                                            // reader somewhere arbitrary.
+                                            leftPanelScrollRef.current?.scrollTo({ top: 0 });
+                                        }}
+                                        aria-pressed={insertView === view}
+                                        className={`rounded-lg py-1.5 text-[10px] font-medium transition-colors ${insertView === view ? "bg-ed-field text-ed-text" : "text-ed-muted hover:bg-ed-field/60 hover:text-ed-text"}`}
+                                    >
+                                        {view}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Only the lists that filter by name get a search box;
+                            the Components view carries its own. */}
+                        {((leftTab === "Insert" && insertView !== "Components") || leftTab === "Layers") && (
+                            <div className="border-b border-ed-border p-2.5">
+                                <div className="flex items-center gap-2 rounded-lg bg-ed-field px-2.5 py-1.5 transition-colors focus-within:bg-ed-field-hover">
                                     <IconSearch size={14} className="text-ed-faint" />
                                     <input
                                         type="text"
                                         value={search}
                                         onChange={(event) => setSearch(event.target.value)}
-                                        placeholder={`Search ${leftTab.toLowerCase()}...`}
+                                        placeholder={`Search ${(leftTab === "Insert" ? insertView : leftTab).toLowerCase()}…`}
                                         className="w-full bg-transparent text-xs text-ed-text outline-none placeholder:text-ed-faint"
                                     />
                                     <IconCommand size={12} className="text-ed-faint" />
@@ -2592,7 +2658,12 @@ export default function Editor({
                             </div>
                         )}
 
-                        <div className="custom-scrollbar flex-1 overflow-y-auto">
+                        <div
+                            ref={leftPanelScrollRef}
+                            className={libraryFillsPanel
+                                ? "flex min-h-0 flex-1 flex-col"
+                                : "custom-scrollbar flex-1 overflow-y-auto"}
+                        >
                             {leftTab === "Layers" ? (
                                 <LayersPanel
                                     elements={visibleEditorElements}
@@ -2620,10 +2691,32 @@ export default function Editor({
                                     onReparent={doReparent}
                                     onOpenComponent={openComponentEditor}
                                 />
-                            ) : leftTab === "Elements" ? (
-                                <ElementsPanel search={search} onInsert={insertElement} />
-                            ) : leftTab === "Icons" ? (
-                                <IconsPanel search={search} onInsert={(iconName) => insertElement("Icon", { iconName })} />
+                            ) : leftTab === "Insert" ? (
+                                <div className={`flex flex-col ${libraryFillsPanel ? "min-h-0 flex-1" : ""}`}>
+                                    {/* Keyed on the view so each list animates in
+                                        rather than swapping in place. `mode="wait"`
+                                        would leave the panel empty for the length of
+                                        the exit, which reads as a stall on a click. */}
+                                    <motion.div
+                                        key={insertView}
+                                        className={`flex flex-col ${libraryFillsPanel ? "min-h-0 flex-1" : ""}`}
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                                    >
+                                        {insertView === "Elements" ? (
+                                            <ElementsPanel search={search} onInsert={insertElement} />
+                                        ) : insertView === "Icons" ? (
+                                            <IconsPanel search={search} onInsert={(iconName) => insertElement("Icon", { iconName })} />
+                                        ) : (
+                                            <LibraryPanel
+                                                pages={library}
+                                                currentPageId={page.id}
+                                                onInsert={insertFromLibrary}
+                                            />
+                                        )}
+                                    </motion.div>
+                                </div>
                             ) : leftTab === "Data" ? (
                                 <DataPanel
                                     sources={dataSources}
@@ -2633,12 +2726,6 @@ export default function Editor({
                                         setSamples((prev) => ({ ...prev, [id]: sample }))
                                     }
                                     preview={adapters?.previewSource ?? (async () => ({ status: "error", message: "No data preview adapter configured." }))}
-                                />
-                            ) : leftTab === "Library" ? (
-                                <LibraryPanel
-                                    pages={library}
-                                    currentPageId={page.id}
-                                    onInsert={insertFromLibrary}
                                 />
                             ) : leftTab === "Assets" ? (
                                 <div className="p-3"><div className="mb-3 rounded-2xl border border-ed-border bg-ed-subtle p-3"><p className="text-[11px] font-semibold text-ed-text">Assets</p><p className="mt-1 text-[9px] leading-relaxed text-ed-faint">Navbar, sidebar, footer and reusable components live here once. Drag the exact variant you need onto any page.</p></div><div className="mb-2.5 flex items-center justify-between"><span className="text-[10px] font-semibold text-ed-muted">{componentAssets.length} shared asset{componentAssets.length === 1 ? "" : "s"}</span><span className="flex gap-1"><button type="button" onClick={createBlankComponent} className="flex items-center gap-1 rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text"><IconPlus size={10} /> New</button><button type="button" onClick={() => setCodeComposerOpen(true)} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Code</button></span></div><ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }} /></div>
@@ -2651,6 +2738,7 @@ export default function Editor({
                                 />
                             ) : leftTab === "AI" ? (
                                 <AiPanel
+                                    onActiveChatChange={setAiChatTitle}
                                     pageId={page.id}
                                     elements={elements}
                                     rootStyle={rootStyle}
@@ -2680,8 +2768,8 @@ export default function Editor({
                                     busy={isPending || Boolean(pageSwitchTarget)}
                                     navigatingId={pageSwitchTarget}
                                     error={pageError}
-                                    onCreate={(name) =>
-                                        runPageAction(() => (adapters?.createPage ?? unavailable)(name, name), "push")
+                                    onCreate={(name, slug) =>
+                                        runPageAction(() => (adapters?.createPage ?? unavailable)(name, slug), "push")
                                     }
                                     onRename={(id, name, slug) =>
                                         runPageAction(() => (adapters?.renamePage ?? unavailable)(id, name, slug))
@@ -2745,7 +2833,7 @@ export default function Editor({
                     }}
                 >
                     {leftTab === "Templates" && (
-                        <div className="absolute inset-0 z-50 overflow-y-auto bg-ed-surface">
+                        <div className="custom-scrollbar absolute inset-0 z-50 overflow-y-auto bg-ed-surface">
                             <TemplatesPanel
                                 busy={isPending}
                                 registryUrl={templateRegistryUrl}
@@ -3083,7 +3171,7 @@ export default function Editor({
                 {leftTab !== "Templates" && !isRightCollapsed && hasElementSelection && (
                     <motion.aside initial={{ width: 0, opacity: 0, x: 14 }} animate={{ width: 312, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: 14 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="z-10 flex w-[312px] shrink-0 flex-col overflow-hidden border-l border-ed-border bg-ed-surface/95 backdrop-blur-xl">
                         <div className="flex h-11 shrink-0 items-end gap-0.5 border-b border-ed-border px-2">
-                            {(["Design", "Content", "Hover", "Interact"] as const).map((tab) => (
+                            {RIGHT_EDITOR_TABS.map((tab) => (
                                 <button
                                     type="button"
                                     key={tab}
@@ -3095,7 +3183,7 @@ export default function Editor({
                                             : "text-ed-muted hover:text-ed-text"
                                     }`}
                                 >
-                                    {tab === "Hover" ? "Effects" : tab === "Interact" ? "Actions" : tab}
+                                    {tab}
                                     {rightTab === tab && selectedElement && (
                                         <motion.span
                                             layoutId="inspector-tab"

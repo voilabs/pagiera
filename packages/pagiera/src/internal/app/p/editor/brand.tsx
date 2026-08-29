@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 /**
  * The Pagiera mark, drawn rather than bundled.
  *
@@ -12,8 +14,8 @@ export function PagieraMark({
     size?: number;
     className?: string;
 }) {
-    // Unique per instance: two marks on one page must not share a gradient id.
-    const gradientId = `pg-mark-${Math.random().toString(36).slice(2, 9)}`;
+    // Stable across server and client while remaining unique per instance.
+    const gradientId = `pg-mark-${useId().replace(/:/g, "")}`;
     return (
         <svg
             width={size}
@@ -46,4 +48,16 @@ export function PagieraMark({
             />
         </svg>
     );
+}
+
+/**
+ * The Pagiera mark shaped like an icon-set glyph.
+ *
+ * Luma is the product speaking, so its rail entry carries the brand rather
+ * than a generic sparkle. The signature matches the Tabler icons the rail
+ * renders — `stroke` is accepted and ignored — so it can be handed around as
+ * one of them instead of being special-cased at every call site.
+ */
+export function LumaMark({ size = 16, className = "" }: { size?: number; stroke?: number; className?: string }) {
+    return <PagieraMark size={size} className={`rounded-[5px] ${className}`} />;
 }

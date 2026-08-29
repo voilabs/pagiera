@@ -366,6 +366,7 @@ export function NumberInput({
     step = 1,
     suffix,
     disabled,
+    compact,
 }: {
     label: string;
     value: number;
@@ -377,11 +378,18 @@ export function NumberInput({
     step?: number;
     suffix?: string;
     disabled?: boolean;
+    /**
+     * Stacks the label above the field instead of beside it.
+     *
+     * The side-by-side row reserves a fixed 70px for the label, which is most
+     * of the space when two of these share a 280px panel — the four border
+     * sides used to overflow the inspector entirely.
+     */
+    compact?: boolean;
 }) {
     const id = useId();
-    return (
-        <Row label={label} htmlFor={id}>
-            <div className={FIELD}>
+    const field = (
+        <div className={FIELD}>
                 <input
                     id={id}
                     type="number"
@@ -405,7 +413,23 @@ export function NumberInput({
                     className={`${VALUE} disabled:text-ed-faint`}
                 />
                 {suffix && <span className="shrink-0 text-ed-faint">{suffix}</span>}
+        </div>
+    );
+
+    if (compact) {
+        return (
+            <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor={id} className="truncate text-[10px] text-ed-muted">
+                    {label}
+                </label>
+                {field}
             </div>
+        );
+    }
+
+    return (
+        <Row label={label} htmlFor={id}>
+            {field}
         </Row>
     );
 }

@@ -66,7 +66,7 @@ export function DataPanel({
                             layout
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="group flex items-center gap-2.5 rounded-lg border border-ed-border p-2.5 transition-colors hover:border-ed-accent/50"
+                            className="group flex items-center gap-2.5 rounded-xl border border-ed-border p-2.5 transition-colors hover:border-ed-accent/50"
                         >
                             <button
                                 type="button"
@@ -74,7 +74,7 @@ export function DataPanel({
                                 className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                             >
                                 <span
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                                         sample
                                             ? "bg-emerald-500/15 text-emerald-500"
                                             : "bg-ed-field text-ed-faint"

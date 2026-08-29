@@ -30,7 +30,11 @@ const wait = (duration: number) => new Promise((resolve) => window.setTimeout(re
 function templateThumbnailUrl(template: TemplateRegistryEntry, registryUrl: string) {
     if (!template.thumbnail) return undefined;
     try {
-        return new URL(template.thumbnail, new URL(registryUrl, window.location.href)).href;
+        const registryIsAbsolute = /^[a-z][a-z\d+.-]*:\/\//i.test(registryUrl);
+        const resolved = new URL(template.thumbnail, new URL(registryUrl, "http://pagiera.local"));
+        return registryIsAbsolute
+            ? resolved.href
+            : `${resolved.pathname}${resolved.search}${resolved.hash}`;
     } catch {
         return template.thumbnail;
     }
@@ -301,7 +305,7 @@ export function TemplatesPanel({
                                         controlsClassName="px-1"
                                     />
 
-                                <div className="min-h-0 overflow-y-auto p-3 scrollbar-none lg:pl-2">
+                                <div className="custom-scrollbar min-h-0 overflow-y-auto p-3 lg:pl-2">
                                     <AnimatePresence mode="wait" initial={false}>
                                         {installing && installStage ? (
                                             <motion.div key="progress" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} aria-live="polite">

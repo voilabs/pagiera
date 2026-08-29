@@ -172,7 +172,7 @@ export function TemplatePreviewStage({
             )}
             {body &&
                 createPortal(
-                    <RenderedPage elements={page.elements} rootStyle={page.rootStyle} />,
+                    <RenderedPage elements={page.elements} rootStyle={page.rootStyle} includeScripts={false} />,
                     body,
                 )}
         </div>

@@ -26,11 +26,14 @@ async function streamAi(
     url: string,
     request: unknown,
     onEvent?: (event: unknown) => void,
+    /** Aborting stops the request itself, not just the reading of it. */
+    signal?: AbortSignal,
 ) {
     const response = await fetcher(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
+        signal,
     });
 
     const isStream = response.headers.get("content-type")?.includes("ndjson");
@@ -100,8 +103,8 @@ export function createPagieraClient(options: PagieraClientOptions = {}) {
             publishPage: (id: string) => call(`/pages/${id}/publish`, "POST"),
             unpublishPage: (id: string) => call(`/pages/${id}/unpublish`, "POST"),
             previewSource: (source: unknown, sampleQuery: string) => call("/data/preview", "POST", { source, sampleQuery }),
-            generate: (request: unknown, onEvent?: (event: unknown) => void) =>
-                streamAi(fetcher, `${base}/ai`, request, onEvent),
+            generate: (request: unknown, onEvent?: (event: unknown) => void, signal?: AbortSignal) =>
+                streamAi(fetcher, `${base}/ai`, request, onEvent, signal),
         },
     };
 }

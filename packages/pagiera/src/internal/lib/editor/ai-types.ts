@@ -1,6 +1,8 @@
 import type { CanvasElement, ElementStyle, ElementType, RootStyle, StyleKey } from "./types";
 
 type AiElementExtras = {
+    name?: string;
+    alt?: string;
     /** Filled by the server after the image is generated and stored. */
     imagePrompt?: string;
     styleBindings?: Partial<Record<StyleKey, string>>;
@@ -42,4 +44,8 @@ export type AiDesignPlan = {
     message: string;
     steps: string[];
     operations: AiDesignOperation[];
+    /** Keeps generated refs alive while one section arrives operation by operation. */
+    streamKey?: string;
+    /** Clears an older run that happened to use the same stream key. */
+    streamReset?: boolean;
 };

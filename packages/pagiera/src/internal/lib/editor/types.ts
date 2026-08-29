@@ -10,9 +10,21 @@ export const ELEMENT_TYPES = [
     "Button",
     "Video",
     "Icon",
+    "Divider",
+    "Spacer",
+    "List",
+    "ListItem",
+    "Quote",
+    "Embed",
     "Form",
+    "Fieldset",
+    "Label",
     "Input",
     "Textarea",
+    "Select",
+    "Checkbox",
+    "Radio",
+    "FileInput",
     "Request",
     "Repeat",
 ] as const;
@@ -67,6 +79,81 @@ export type RequestContext = {
     page: { slug: string };
 };
 
+/* ------------------------------------------------------------------ fields */
+
+export const INPUT_TYPES = [
+    "text",
+    "email",
+    "password",
+    "number",
+    "tel",
+    "url",
+    "search",
+    "date",
+    "time",
+    "datetime-local",
+    "month",
+    "week",
+    "color",
+    "range",
+    "hidden",
+] as const;
+export type InputType = (typeof INPUT_TYPES)[number];
+
+/** One choice offered by a Select or a Radio group. */
+export type FieldOption = { label: string; value: string };
+
+/** A raw HTML attribute the author put on an element. */
+export type ElementAttribute = { name: string; value: string };
+
+/**
+ * Tags an element may be rendered as instead of the one its type implies.
+ *
+ * Only non-void, inert tags are listed. A void tag (`img`, `br`, `input`)
+ * cannot hold the children the canvas puts inside it, and a script-bearing one
+ * would turn a semantic choice into a way to run code on the published page.
+ */
+export const CUSTOM_TAGS = [
+    "div", "span", "p", "section", "article", "aside", "header", "footer", "main", "nav",
+    "figure", "figcaption", "blockquote", "address",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li", "dl", "dt", "dd",
+    "details", "summary", "fieldset", "legend", "label",
+    "strong", "em", "small", "mark", "code", "pre", "time",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+] as const;
+export type CustomTag = (typeof CUSTOM_TAGS)[number];
+
+/**
+ * Attributes an author may never set by hand.
+ *
+ * An `on*` handler would run typed-in script in the visitor's page, and the
+ * rest belong to the renderer: overwriting `class`, `style` or `id` would
+ * detach the element from the stylesheet generated for it. The inspector
+ * offers dedicated fields for those three instead.
+ */
+export const RESERVED_ATTRIBUTES: ReadonlySet<string> = new Set([
+    "class",
+    "classname",
+    "style",
+    "id",
+    "srcdoc",
+    "is",
+    "dangerouslysetinnerhtml",
+]);
+
+/** Attributes whose value is a URL, so it has to pass the URL safety check. */
+export const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
+    "href",
+    "src",
+    "action",
+    "formaction",
+    "poster",
+    "cite",
+    "ping",
+    "background",
+]);
+
 export type ResizeHandle = "nw" | "ne" | "sw" | "se" | "n" | "s" | "w" | "e";
 
 /* ------------------------------------------------------------- breakpoints */
@@ -112,6 +199,11 @@ export type LayoutMode = "absolute" | "stack";
 export type Direction = "row" | "column";
 export type Justify = "start" | "center" | "end" | "between";
 export type Align = "start" | "center" | "end" | "stretch";
+/** A child's own cross-axis alignment; `auto` defers to the parent's `align`. */
+export type AlignSelf = "auto" | "start" | "center" | "end" | "stretch" | "baseline";
+/** How wrapped lines are distributed along the cross axis. */
+export type AlignContent = "start" | "center" | "end" | "stretch" | "between";
+export type ListStyle = "bullet" | "number" | "none";
 export type TextAlign = "left" | "center" | "right" | "justify";
 export type TextTransform = "none" | "uppercase" | "lowercase" | "capitalize";
 export type ObjectFit = "cover" | "contain" | "fill" | "none";
@@ -173,11 +265,45 @@ export type ElementStyle = {
     justify: Justify;
     align: Align;
     wrap: boolean;
+    /**
+     * Per-axis gaps. `gap` stays the value both axes fall back to, so an
+     * author who only ever wanted one number never has to see these two; they
+     * start at -1 meaning "unset" rather than 0, which is a real gap.
+     */
+    rowGap: number;
+    columnGap: number;
+    /** Distributes wrapped lines; only meaningful once `wrap` is on. */
+    alignContent: AlignContent;
     /** Grid columns; only read when `layout` is `stack` on a Grid element. */
     columns: number;
 
+    // How this element behaves as a child of its parent's layout.
+    /** Overrides the parent's `align` for this one child. */
+    alignSelf: AlignSelf;
+    /**
+     * Share of the leftover main-axis space this child takes.
+     *
+     * -1 means "decide from the size mode", which is what `fill` and `auto`
+     * have always done. A number set here wins, so two siblings can split a row
+     * 2:1 without either of them being a fixed width.
+     */
+    grow: number;
+    /** Visual position among siblings, independent of document order. */
+    order: number;
+    /** Columns this child spans inside a Grid parent. */
+    gridSpan: number;
+
     // Appearance
     bg: string;
+    /**
+     * Alpha applied to `bg` alone, as a percentage.
+     *
+     * Distinct from `opacity`, which fades the whole element — its text, its
+     * border and the result of its own `backdropBlur` along with it. Glass is
+     * a see-through *background* over a blurred backdrop, so it needs the fill
+     * to be translucent while everything drawn on top stays solid.
+     */
+    bgOpacity: number;
     /** A full CSS gradient value, or "" for none. Painted over `bg`. */
     gradient: string;
     color: string;
@@ -263,8 +389,16 @@ export const STYLE_KEYS = [
     "justify",
     "align",
     "wrap",
+    "rowGap",
+    "columnGap",
+    "alignContent",
     "columns",
+    "alignSelf",
+    "grow",
+    "order",
+    "gridSpan",
     "bg",
+    "bgOpacity",
     "gradient",
     "color",
     "radius",
@@ -333,10 +467,42 @@ export type CanvasElement = {
     alt?: string;
     objectFit?: ObjectFit;
     iconName?: PagieraIconName;
+    /** Marker style for a List; also decides whether it publishes as ol or ul. */
+    listStyle?: ListStyle;
+    /**
+     * An author-supplied SVG glyph, used instead of `iconName` when set.
+     *
+     * Stored as sanitised markup rather than a URL so the icon inherits
+     * `currentColor` and scales with the element — an `<img>` would do
+     * neither, and a remote URL would make every visitor fetch a third party.
+     */
+    svg?: string;
     placeholder?: string;
     fieldName?: string;
-    inputType?: "text" | "email" | "password" | "number" | "tel" | "url" | "search";
+    inputType?: InputType;
     required?: boolean;
+    disabled?: boolean;
+    readOnly?: boolean;
+    /** Pre-filled value for a field; the submitted value for Checkbox/Radio. */
+    defaultValue?: string;
+    /** Whether a Checkbox or Radio starts selected. */
+    checked?: boolean;
+    /** Choices offered by Select and Radio. */
+    options?: FieldOption[];
+    /** Select and FileInput may take more than one value. */
+    multiple?: boolean;
+    /** FileInput filter, e.g. "image/*,.pdf". */
+    accept?: string;
+    /** Native constraint validation; numeric and date fields read min/max/step. */
+    minValue?: string;
+    maxValue?: string;
+    step?: string;
+    pattern?: string;
+    minLength?: number;
+    maxLength?: number;
+    autocomplete?: string;
+    /** Id of the element a Label is bound to. */
+    labelFor?: string;
     formAction?: string;
     formMethod?: HttpMethod;
     formSubmitMode?: "request" | "native";
@@ -351,6 +517,19 @@ export type CanvasElement = {
     buttonType?: "button" | "submit" | "reset";
     href?: string;
     target?: "_self" | "_blank";
+
+    /**
+     * Renders this element as a different HTML tag than its type implies — the
+     * escape hatch for semantics the type list does not model, such as a Stack
+     * that should publish as a `<ul>`.
+     */
+    tag?: CustomTag;
+    /** Extra class names, appended after the generated one. */
+    customClass?: string;
+    /** Inline CSS declarations, applied over every generated rule. */
+    customStyle?: string;
+    /** Raw HTML attributes; `RESERVED_ATTRIBUTES` lists what is refused. */
+    attributes?: ElementAttribute[];
     interaction?: {
         trigger: "click";
         action: "navigate" | "scroll-to" | "toggle-layer" | "show-layer" | "hide-layer";
@@ -403,9 +582,18 @@ export const BASE_STYLE: ElementStyle = {
     justify: "start",
     align: "start",
     wrap: false,
+    rowGap: -1,
+    columnGap: -1,
+    alignContent: "start",
     columns: 3,
 
+    alignSelf: "auto",
+    grow: -1,
+    order: 0,
+    gridSpan: 1,
+
     bg: "transparent",
+    bgOpacity: 100,
     gradient: "",
     color: "#27272a",
     radius: 0,
@@ -666,6 +854,182 @@ export const ELEMENT_DEFAULTS: Record<
         },
         props: { placeholder: "Write your message…", fieldName: "message" },
     },
+    Divider: {
+        style: {
+            w: 600,
+            h: 1,
+            widthMode: "fill",
+            heightMode: "fixed",
+            bg: "#e4e4e7",
+            marginB: 0,
+        },
+    },
+    Spacer: {
+        // Height is the whole point of a spacer, so it starts fixed; setting
+        // Grow in the inspector turns it into the flexible kind that pushes
+        // siblings apart.
+        style: {
+            w: 600,
+            h: 40,
+            widthMode: "fill",
+            heightMode: "fixed",
+            bg: "transparent",
+        },
+    },
+    List: {
+        style: {
+            w: 480,
+            h: 120,
+            widthMode: "fill",
+            heightMode: "auto",
+            layout: "stack",
+            direction: "column",
+            gap: 8,
+            align: "stretch",
+            padL: 22,
+            fontSize: 16,
+            lineHeight: 1.6,
+            color: "#52525b",
+        },
+        props: { listStyle: "bullet" },
+    },
+    ListItem: {
+        style: {
+            w: 480,
+            h: 24,
+            widthMode: "fill",
+            heightMode: "auto",
+            fontSize: 16,
+            lineHeight: 1.6,
+            color: "#52525b",
+        },
+        props: { content: "List item" },
+    },
+    Quote: {
+        style: {
+            w: 560,
+            h: 96,
+            widthMode: "fill",
+            heightMode: "auto",
+            padT: 4,
+            padL: 20,
+            borderL: 3,
+            borderC: "#d4d4d8",
+            fontSize: 20,
+            lineHeight: 1.55,
+            color: "#3f3f46",
+        },
+        props: { content: "A quotation worth pulling out of the paragraph." },
+    },
+    Embed: {
+        style: { w: 640, h: 400, widthMode: "fill", bg: "#f4f4f5", radius: 12 },
+        props: { src: "" },
+    },
+    Fieldset: {
+        style: {
+            w: 560,
+            h: 200,
+            widthMode: "fill",
+            heightMode: "auto",
+            layout: "stack",
+            direction: "column",
+            gap: 12,
+            padT: 18,
+            padR: 18,
+            padB: 18,
+            padL: 18,
+            align: "stretch",
+            borderW: 1,
+            borderC: "#e4e4e7",
+            radius: 12,
+        },
+    },
+    Label: {
+        style: {
+            w: 200,
+            h: 20,
+            widthMode: "fill",
+            heightMode: "auto",
+            fontSize: 13,
+            fontWeight: "500",
+            lineHeight: 1.4,
+            color: "#3f3f46",
+        },
+        props: { content: "Label", labelFor: "" },
+    },
+    Select: {
+        style: {
+            w: 320,
+            h: 46,
+            widthMode: "fill",
+            heightMode: "fixed",
+            padT: 0,
+            padR: 14,
+            padB: 0,
+            padL: 14,
+            bg: "#ffffff",
+            color: "#18181b",
+            borderW: 1,
+            borderC: "#d4d4d8",
+            radius: 10,
+            fontSize: 15,
+        },
+        props: {
+            fieldName: "choice",
+            placeholder: "Choose an option…",
+            options: [
+                { label: "Option one", value: "one" },
+                { label: "Option two", value: "two" },
+            ],
+        },
+    },
+    Checkbox: {
+        style: {
+            w: 18,
+            h: 18,
+            widthMode: "fixed",
+            heightMode: "fixed",
+            color: "#2563eb",
+        },
+        props: { fieldName: "accept", defaultValue: "yes" },
+    },
+    Radio: {
+        style: {
+            w: 240,
+            h: 96,
+            widthMode: "fill",
+            heightMode: "auto",
+            color: "#2563eb",
+            fontSize: 14,
+            lineHeight: 1.6,
+        },
+        props: {
+            fieldName: "plan",
+            options: [
+                { label: "Monthly", value: "monthly" },
+                { label: "Yearly", value: "yearly" },
+            ],
+        },
+    },
+    FileInput: {
+        style: {
+            w: 320,
+            h: 46,
+            widthMode: "fill",
+            heightMode: "fixed",
+            padT: 0,
+            padR: 14,
+            padB: 0,
+            padL: 14,
+            bg: "#ffffff",
+            color: "#18181b",
+            borderW: 1,
+            borderC: "#d4d4d8",
+            radius: 10,
+            fontSize: 15,
+        },
+        props: { fieldName: "file", accept: "" },
+    },
     Request: {
         style: {
             w: 900,
@@ -705,6 +1069,9 @@ const CONTAINER_TYPES: ReadonlySet<ElementType> = new Set([
     "Grid",
     "Button",
     "Form",
+    "Fieldset",
+    "List",
+    "ListItem",
     "Request",
     "Repeat",
 ]);
@@ -718,11 +1085,45 @@ const TEXTUAL_TYPES: ReadonlySet<ElementType> = new Set([
     "Heading",
     "Text",
     "Button",
+    "Label",
+    "Quote",
+    "ListItem",
 ]);
 
 /** Whether an element renders editable text. */
 export function isTextual(type: ElementType) {
     return TEXTUAL_TYPES.has(type);
+}
+
+const FIELD_TYPES: ReadonlySet<ElementType> = new Set([
+    "Input",
+    "Textarea",
+    "Select",
+    "Checkbox",
+    "Radio",
+    "FileInput",
+]);
+
+/** Whether an element submits a value with the form around it. */
+export function isField(type: ElementType) {
+    return FIELD_TYPES.has(type);
+}
+
+/** Whether an element's value is chosen from a list the author writes. */
+export function hasOptions(type: ElementType) {
+    return type === "Select" || type === "Radio";
+}
+
+/**
+ * Elements that draw nothing of their own — they exist to take up room.
+ *
+ * They are worth naming because the inspector has nothing to say about their
+ * content, and the canvas has to hint at them or they look like a bug.
+ */
+const STRUCTURAL_TYPES: ReadonlySet<ElementType> = new Set(["Divider", "Spacer"]);
+
+export function isStructural(type: ElementType) {
+    return STRUCTURAL_TYPES.has(type);
 }
 
 /** Page-level settings; the canvas behaves as the root container. */

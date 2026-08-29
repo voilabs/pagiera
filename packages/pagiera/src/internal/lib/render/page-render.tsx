@@ -5,6 +5,7 @@ import { childrenOf, indexById, noteIds } from "@/lib/editor/tree";
 import type { CanvasElement, RootStyle } from "@/lib/editor/types";
 import { bindElement, type PageData, type Row, rowsFor } from "./bind";
 import { classFor, ENTRANCE_SCRIPT, hasEntrances, stylesheetFor } from "./css";
+import { customTagOf, withCustom } from "./custom";
 import { IconGlyph } from "@/lib/editor/icon";
 
 /**
@@ -15,11 +16,14 @@ export function RenderedPage({
     elements: all,
     rootStyle,
     data = {},
+    includeScripts = true,
 }: {
     elements: CanvasElement[];
     rootStyle: RootStyle;
     /** Rows already fetched for each data source; see `loadPageData`. */
     data?: PageData;
+    /** Template thumbnails render inside a scriptless sandbox. */
+    includeScripts?: boolean;
 }) {
     const cascade = cascadeOf(rootStyle.breakpoints, rootStyle.baseBreakpointId);
     const baseId = baseOf(cascade).id;
@@ -52,16 +56,16 @@ export function RenderedPage({
                     />
                 ))}
             </main>
-            {hasEntrances(elements) && (
+            {includeScripts && hasEntrances(elements) && (
                 <script
                     // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed script with no interpolated content
                     dangerouslySetInnerHTML={{ __html: ENTRANCE_SCRIPT }}
                 />
             )}
-            {elements.some((element) => element.draggable) && <script dangerouslySetInnerHTML={{ __html: DRAG_SCRIPT }} />}
-            {elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <script dangerouslySetInnerHTML={{ __html: ACTION_SCRIPT }} />}
-            {elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <script dangerouslySetInnerHTML={{ __html: FORM_SCRIPT }} />}
-            {rootStyle.customJs && (
+            {includeScripts && elements.some((element) => element.draggable) && <script dangerouslySetInnerHTML={{ __html: DRAG_SCRIPT }} />}
+            {includeScripts && elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <script dangerouslySetInnerHTML={{ __html: ACTION_SCRIPT }} />}
+            {includeScripts && elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <script dangerouslySetInnerHTML={{ __html: FORM_SCRIPT }} />}
+            {includeScripts && rootStyle.customJs && (
                 <script
                     // Last, so the page's own behaviour is already wired up and
                     // author code can build on it rather than race it.
@@ -102,6 +106,9 @@ function RenderedNode({
     const className =
         `pg-node ${classFor(element.id)}` +
         (band ? " pg-band" : "") +
+        (element.type === "List" && element.listStyle !== "none"
+            ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}`
+            : "") +
         (style.entrance === "none" ? "" : " pg-anim");
 
     // Repeat iterates a list. Request renders once and provides the source's
@@ -149,15 +156,39 @@ function RenderedNode({
     const href = interactionHref || element.href;
     const target = element.interaction?.target || element.target;
 
+    // A rule is a void element: it can hold no children, so it never reaches
+    // the generic path that renders them.
+    if (element.type === "Divider") {
+        return <hr {...withCustom(element, { id: classFor(element.id), className })} />;
+    }
+
+    if (element.type === "Embed") {
+        if (!element.src) return null;
+        return (
+            <iframe
+                {...withCustom(element, { id: classFor(element.id), className })}
+                src={element.src}
+                title={element.name ?? "Embedded content"}
+                loading="lazy"
+                // The embed is a third party's document; it gets to draw and
+                // navigate itself and nothing else.
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                referrerPolicy="no-referrer-when-downgrade"
+            />
+        );
+    }
+
     if (element.type === "Input") {
         return (
             <input
-                id={classFor(element.id)}
-                className={className}
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    className,
+                    ...constraints(element),
+                })}
                 type={element.inputType ?? "text"}
-                name={element.fieldName}
+                defaultValue={element.defaultValue}
                 placeholder={element.placeholder}
-                required={element.required}
             />
         );
     }
@@ -165,13 +196,105 @@ function RenderedNode({
     if (element.type === "Textarea") {
         return (
             <textarea
-                id={classFor(element.id)}
-                className={className}
-                name={element.fieldName}
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    className,
+                    ...constraints(element),
+                })}
                 placeholder={element.placeholder}
-                required={element.required}
-                defaultValue={element.content}
+                defaultValue={element.defaultValue ?? element.content}
             />
+        );
+    }
+
+    if (element.type === "FileInput") {
+        return (
+            <input
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    className,
+                    ...constraints(element),
+                })}
+                type="file"
+                accept={element.accept || undefined}
+                multiple={element.multiple}
+            />
+        );
+    }
+
+    if (element.type === "Select") {
+        return (
+            <select
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    className,
+                    ...constraints(element),
+                })}
+                multiple={element.multiple}
+                defaultValue={element.defaultValue ?? (element.placeholder ? "" : undefined)}
+            >
+                {/* A placeholder has to be a real option to be the initial one,
+                    and it is disabled so it can never be submitted as an answer. */}
+                {element.placeholder && (
+                    <option value="" disabled>
+                        {element.placeholder}
+                    </option>
+                )}
+                {(element.options ?? []).map((option, index) => (
+                    <option key={`${index}:${option.value}`} value={option.value}>
+                        {option.label || option.value}
+                    </option>
+                ))}
+            </select>
+        );
+    }
+
+    if (element.type === "Checkbox") {
+        return (
+            <input
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    className,
+                    ...constraints(element),
+                })}
+                type="checkbox"
+                value={element.defaultValue || "on"}
+                defaultChecked={element.checked}
+            />
+        );
+    }
+
+    // A radio group is one element on the canvas but several inputs on the
+    // page: the alternatives only mean anything together, and giving each its
+    // own layer would let an author style them apart or delete one by mistake.
+    if (element.type === "Radio") {
+        const group = element.fieldName || classFor(element.id);
+        return (
+            <div
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    className,
+                    role: "radiogroup",
+                })}
+            >
+                {(element.options ?? []).map((option, index) => (
+                    <label key={`${index}:${option.value}`} className="pg-choice">
+                        <input
+                            type="radio"
+                            name={group}
+                            value={option.value}
+                            required={element.required}
+                            disabled={element.disabled}
+                            defaultChecked={
+                                element.defaultValue
+                                    ? element.defaultValue === option.value
+                                    : element.checked && index === 0
+                            }
+                        />
+                        <span>{option.label || option.value}</span>
+                    </label>
+                ))}
+            </div>
         );
     }
 
@@ -179,11 +302,13 @@ function RenderedNode({
     if (href) {
         return (
             <a
-                id={classFor(element.id)}
-                data-pg-drag={element.draggable ? "true" : undefined}
-                data-pg-action={element.interaction?.action}
-                data-pg-target={element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined}
-                className={`${className} pg-link`}
+                {...withCustom(element, {
+                    id: classFor(element.id),
+                    "data-pg-drag": element.draggable ? "true" : undefined,
+                    "data-pg-action": element.interaction?.action,
+                    "data-pg-target": element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined,
+                    className: `${className} pg-link`,
+                })}
                 href={href}
                 target={target}
                 rel={target === "_blank" ? "noopener noreferrer" : undefined}
@@ -193,9 +318,10 @@ function RenderedNode({
         );
     }
 
-    const tag = semanticTag(element);
-    return React.createElement(tag, {
+    const tag = customTagOf(element) ?? semanticTag(element);
+    return React.createElement(tag, withCustom(element, {
         id: classFor(element.id),
+        htmlFor: tag === "label" && element.labelFor ? classFor(element.labelFor) : undefined,
         type: tag === "button" ? (element.buttonType ?? "button") : undefined,
         "data-pg-drag": element.draggable ? "true" : undefined,
         "data-pg-action": element.interaction?.action,
@@ -212,13 +338,38 @@ function RenderedNode({
         "data-pg-form-success": tag === "form" ? (element.formSuccessMessage ?? "Sent successfully.") : undefined,
         "data-pg-form-error": tag === "form" ? (element.formErrorMessage ?? "Something went wrong.") : undefined,
         "data-pg-form-reset": tag === "form" && element.formResetOnSuccess ? "true" : undefined,
-    }, body);
+    }), body);
+}
+
+/**
+ * The validation and state attributes every field type shares, so a constraint
+ * added here reaches Input, Textarea, Select and the rest at once.
+ */
+function constraints(element: CanvasElement) {
+    return {
+        name: element.fieldName || undefined,
+        required: element.required,
+        disabled: element.disabled,
+        readOnly: element.type === "Input" || element.type === "Textarea" ? element.readOnly : undefined,
+        autoComplete: element.autocomplete || undefined,
+        pattern: element.pattern || undefined,
+        minLength: element.minLength,
+        maxLength: element.maxLength,
+        min: element.minValue || undefined,
+        max: element.maxValue || undefined,
+        step: element.step || undefined,
+    };
 }
 
 function semanticTag(element: CanvasElement) {
     const name = (element.name ?? "").toLowerCase();
     if (element.type === "Button") return "button";
     if (element.type === "Form") return "form";
+    if (element.type === "Fieldset") return "fieldset";
+    if (element.type === "Label") return "label";
+    if (element.type === "List") return element.listStyle === "number" ? "ol" : "ul";
+    if (element.type === "ListItem") return "li";
+    if (element.type === "Quote") return "blockquote";
     if (element.type === "Heading") {
         const level = name.match(/(?:^|\s)h([1-6])(?:\s|$)/)?.[1] ?? "2";
         return `h${level}` as const;
@@ -238,7 +389,7 @@ const ACTION_SCRIPT = `(function(){document.querySelectorAll('[data-pg-target]')
 const FORM_SCRIPT = `(function(){function headers(raw){var out={};String(raw||'').split(/\\r?\\n/).forEach(function(line){var at=line.indexOf(':');if(at>0)out[line.slice(0,at).trim()]=line.slice(at+1).trim()});return out}function fields(data){var out={};data.forEach(function(value,key){var next=value instanceof File?value.name:String(value);if(out[key]===undefined)out[key]=next;else if(Array.isArray(out[key]))out[key].push(next);else out[key]=[out[key],next]});return out}function tokens(value,map){return String(value||'').replace(/{{\\s*form\\.([A-Za-z0-9_.-]+)\\s*}}/g,function(_,key){var found=map[key];return found==null?'':Array.isArray(found)?found.join(','):String(found)})}document.querySelectorAll('form[data-pg-form-mode="request"]').forEach(function(form){if(form.dataset.pgFormBound)return;form.dataset.pgFormBound='true';form.addEventListener('submit',async function(event){event.preventDefault();var status=form.querySelector('[data-pg-form-status]');var submit=form.querySelector('[type="submit"]');var data=new FormData(form),map=fields(data),method=form.dataset.pgFormMethod||'POST',kind=form.dataset.pgFormContent||'json',url=form.getAttribute('action')||location.href,custom=tokens(form.dataset.pgFormBody,map),requestHeaders=headers(tokens(form.dataset.pgFormHeaders,map)),options={method:method,headers:requestHeaders};if(method==='GET'){var query=new URLSearchParams(custom||Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] }));var target=new URL(url,location.href);query.forEach(function(value,key){target.searchParams.append(key,value)});url=target.href}else if(kind==='form-data'){if(custom){try{var parsed=JSON.parse(custom);Object.keys(parsed).forEach(function(key){data.set(key,String(parsed[key]))})}catch(_){data.set('_body',custom)}}options.body=data}else if(kind==='urlencoded'){options.body=custom||new URLSearchParams(Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] })).toString();if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/x-www-form-urlencoded;charset=UTF-8'}else{options.body=custom||JSON.stringify(map);if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/json'}form.setAttribute('aria-busy','true');form.dataset.pgState='loading';if(submit)submit.disabled=true;if(status)status.textContent='';try{var response=await fetch(url,options);if(!response.ok)throw new Error('HTTP '+response.status);form.dataset.pgState='success';if(status)status.textContent=form.dataset.pgFormSuccess||'Sent successfully.';if(form.dataset.pgFormReset==='true')form.reset();form.dispatchEvent(new CustomEvent('pagiera:form-success',{bubbles:true,detail:{response:response}}))}catch(error){form.dataset.pgState='error';if(status)status.textContent=form.dataset.pgFormError||'Something went wrong.';form.dispatchEvent(new CustomEvent('pagiera:form-error',{bubbles:true,detail:{error:error}}))}finally{form.removeAttribute('aria-busy');if(submit)submit.disabled=false}})})})();`;
 
 function isContainerType(type: CanvasElement["type"]) {
-    return ["Frame", "Stack", "Container", "Form", "Request", "Repeat"].includes(type);
+    return ["Frame", "Stack", "Container", "Form", "Fieldset", "List", "Request", "Repeat"].includes(type);
 }
 
 export function ElementContent({ element }: { element: CanvasElement }) {

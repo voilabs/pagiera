@@ -19,10 +19,34 @@ export type PagieraElement = {
     alt?: string;
     objectFit?: "cover" | "contain" | "fill" | "none";
     iconName?: PagieraIconName;
+    /** Marker style for a List; also decides whether it publishes as ol or ul. */
+    listStyle?: "bullet" | "number" | "none";
+    /** A sanitised SVG glyph, drawn instead of `iconName` when set. */
+    svg?: string;
     placeholder?: string;
     fieldName?: string;
-    inputType?: "text" | "email" | "password" | "number" | "tel" | "url" | "search";
+    inputType?: string;
     required?: boolean;
+    disabled?: boolean;
+    readOnly?: boolean;
+    defaultValue?: string;
+    checked?: boolean;
+    options?: Array<{ label: string; value: string }>;
+    multiple?: boolean;
+    accept?: string;
+    minValue?: string;
+    maxValue?: string;
+    step?: string;
+    pattern?: string;
+    minLength?: number;
+    maxLength?: number;
+    autocomplete?: string;
+    labelFor?: string;
+    /** Renders the element as a different HTML tag. */
+    tag?: string;
+    customClass?: string;
+    customStyle?: string;
+    attributes?: Array<{ name: string; value: string }>;
     formAction?: string;
     formMethod?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     formSubmitMode?: "request" | "native";

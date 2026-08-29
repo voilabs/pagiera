@@ -1,5 +1,12 @@
 import {
     BASE_STYLE,
+    CUSTOM_TAGS,
+    type CustomTag,
+    type ElementAttribute,
+    type FieldOption,
+    INPUT_TYPES,
+    RESERVED_ATTRIBUTES,
+    URL_ATTRIBUTES,
     DATA_SOURCE_NOT_FOUND_BEHAVIORS,
     type DataSource,
     HTTP_METHODS,
@@ -148,6 +155,145 @@ function bindingPath(value: unknown) {
 }
 
 
+const MAX_SVG = 24_000;
+
+/**
+ * An author's own SVG, pasted in as the glyph for an Icon element.
+ *
+ * SVG is markup, not an image format: left alone it can carry scripts, fetch
+ * remote documents and script URLs. What survives here is drawing — shapes,
+ * paths, gradients, transforms — and nothing that executes or reaches off the
+ * page. It is dropped outright rather than repaired if it is not a single
+ * `<svg>` root, because a fragment that needs guessing is not one an author
+ * meant to paste.
+ */
+function safeSvg(value: unknown) {
+    const raw = str(value, MAX_SVG)?.trim();
+    if (!raw) return undefined;
+    if (!/^<svg[\s>]/i.test(raw) || !/<\/svg>$/i.test(raw)) return undefined;
+
+    const cleaned = raw
+        // A doctype can define entities, which is how an SVG reads local files.
+        .replace(/<!DOCTYPE[\s\S]*?>/gi, "")
+        // Elements that execute, embed another document, or pull in a
+        // stylesheet — with their contents, so no orphaned text is left behind.
+        .replace(
+            /<\s*(script|style|foreignObject|iframe|object|embed|handler)\b[\s\S]*?<\s*\/\s*\1\s*>/gi,
+            "",
+        )
+        // The same tags again, self-closed or unterminated, plus the ones that
+        // are only dangerous as a reference: `use` and `image` can name an
+        // external document, and `a` can carry a scripted href.
+        .replace(/<\s*\/?\s*(script|style|foreignObject|iframe|object|embed|handler|use|image|a)\b[^>]*>/gi, "")
+        // Inline event handlers, in every quoting style.
+        .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+        // References that leave the document. A same-document `#id` is how a
+        // gradient or a clip path is applied, so those stay.
+        .replace(/\s(?:xlink:)?href\s*=\s*(?:"(?!#)[^"]*"|'(?!#)[^']*'|(?!#)[^\s>]+)/gi, "")
+        .replace(/javascript\s*:/gi, "");
+
+    return cleaned.trim() || undefined;
+}
+
+const MAX_INLINE_STYLE = 2_000;
+const MAX_CLASS_LIST = 500;
+const MAX_ATTRIBUTES = 30;
+
+const CUSTOM_TAG_SET: ReadonlySet<string> = new Set(CUSTOM_TAGS);
+
+/** Rendering as a different tag is allowed; inventing one is not. */
+function customTag(value: unknown): CustomTag | undefined {
+    const raw = str(value, 40)?.trim().toLowerCase();
+    return raw && CUSTOM_TAG_SET.has(raw) ? (raw as CustomTag) : undefined;
+}
+
+/**
+ * Author-written class names, appended to the generated one.
+ *
+ * The alphabet is wide because utility frameworks build class names out of
+ * punctuation — `md:w-1/2`, `bg-[#fff]` — but it stops short of quotes and
+ * angle brackets, which are the characters that could break out of the
+ * attribute they are printed into.
+ */
+function classList(value: unknown) {
+    const raw = str(value, MAX_CLASS_LIST);
+    if (!raw) return undefined;
+    const cleaned = raw
+        .replace(/[^A-Za-z0-9_\-:/.[\]()%,#!@*+~&$ ]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .join(" ");
+    return cleaned || undefined;
+}
+
+/**
+ * Inline declarations for one element.
+ *
+ * Unlike `customCss` this never reaches a stylesheet — it is parsed into a
+ * style object and set on a single node — so a stray `}` cannot end a rule.
+ * What is removed is what could still travel: markup delimiters, and the
+ * `url(javascript:…)` and `expression()` forms that turn a value into code.
+ */
+function inlineStyle(value: unknown) {
+    const raw = str(value, MAX_INLINE_STYLE);
+    if (!raw?.trim()) return undefined;
+    const safe = raw
+        .replace(/[<>]/g, "")
+        .replace(/expression\s*\(/gi, "(")
+        .replace(/javascript\s*:/gi, "")
+        .trim();
+    return safe || undefined;
+}
+
+/**
+ * Raw HTML attributes. Anything that could execute — an `on*` handler, a
+ * `javascript:` URL — or that would fight the renderer for `class`, `style`
+ * or `id` is dropped rather than corrected, so a rejected attribute is
+ * visibly absent instead of silently rewritten.
+ */
+function parseAttributes(input: unknown): ElementAttribute[] | undefined {
+    if (!Array.isArray(input)) return undefined;
+    const seen = new Set<string>();
+    const out: ElementAttribute[] = [];
+
+    for (const raw of input.slice(0, MAX_ATTRIBUTES)) {
+        if (!raw || typeof raw !== "object") continue;
+        const row = raw as Record<string, unknown>;
+        const name = str(row.name, 60)?.trim().toLowerCase();
+        if (!name || seen.has(name)) continue;
+        if (!/^(?:data-|aria-)?[a-z][a-z0-9-]*$/.test(name)) continue;
+        if (name.startsWith("on") || RESERVED_ATTRIBUTES.has(name)) continue;
+
+        if (URL_ATTRIBUTES.has(name)) {
+            const url = safeUrl(row.value);
+            if (url === undefined) continue;
+            seen.add(name);
+            out.push({ name, value: url });
+            continue;
+        }
+
+        seen.add(name);
+        out.push({ name, value: str(row.value, MAX_SHORT_STRING)?.replace(/[<>]/g, "") ?? "" });
+    }
+
+    return out.length > 0 ? out : undefined;
+}
+
+/** Choices for a Select or Radio. A choice with no value cannot be submitted. */
+function parseOptions(input: unknown): FieldOption[] | undefined {
+    if (!Array.isArray(input)) return undefined;
+    const out: FieldOption[] = [];
+    for (const raw of input.slice(0, 100)) {
+        if (!raw || typeof raw !== "object") continue;
+        const row = raw as Record<string, unknown>;
+        const value = str(row.value, MAX_SHORT_STRING) ?? "";
+        const label = str(row.label, MAX_SHORT_STRING) ?? value;
+        if (!label && !value) continue;
+        out.push({ label, value });
+    }
+    return out.length > 0 ? out : undefined;
+}
+
 const MAX_CUSTOM_CSS = 40_000;
 const MAX_CUSTOM_JS = 20_000;
 
@@ -220,9 +366,19 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         justify: oneOf(raw.justify, ["start", "center", "end", "between"], base.justify),
         align: oneOf(raw.align, ["start", "center", "end", "stretch"], base.align),
         wrap: raw.wrap === true,
+        // -1 is "unset", so the per-axis gaps fall back to `gap`.
+        rowGap: num(raw.rowGap, base.rowGap, -1, 999),
+        columnGap: num(raw.columnGap, base.columnGap, -1, 999),
+        alignContent: oneOf(raw.alignContent, ["start", "center", "end", "stretch", "between"], base.alignContent),
         columns: num(raw.columns, base.columns, 1, 12),
 
+        alignSelf: oneOf(raw.alignSelf, ["auto", "start", "center", "end", "stretch", "baseline"], base.alignSelf),
+        grow: num(raw.grow, base.grow, -1, 100),
+        order: num(raw.order, base.order, -999, 999),
+        gridSpan: num(raw.gridSpan, base.gridSpan, 1, 12),
+
         bg: cssValue(raw.bg, base.bg),
+        bgOpacity: num(raw.bgOpacity, base.bgOpacity, 0, 100),
         gradient: cssValue(raw.gradient, base.gradient),
         color: cssValue(raw.color, base.color),
         radius: num(raw.radius, base.radius, 0, 9999),
@@ -396,10 +552,27 @@ export function parseElements(
             alt: str(el.alt, MAX_SHORT_STRING),
             objectFit: oneOf(el.objectFit, ["cover", "contain", "fill", "none"] as const, "cover"),
             iconName: oneOf(el.iconName, PAGIERA_ICON_NAMES, "star"),
+            listStyle: oneOf(el.listStyle, ["bullet", "number", "none"] as const, "bullet"),
+            svg: safeSvg(el.svg),
             placeholder: str(el.placeholder, MAX_SHORT_STRING),
             fieldName: str(el.fieldName, MAX_SHORT_STRING),
-            inputType: oneOf(el.inputType, ["text", "email", "password", "number", "tel", "url", "search"] as const, "text"),
+            inputType: oneOf(el.inputType, INPUT_TYPES, "text"),
             required: el.required === true ? true : undefined,
+            disabled: el.disabled === true ? true : undefined,
+            readOnly: el.readOnly === true ? true : undefined,
+            defaultValue: str(el.defaultValue, MAX_SHORT_STRING),
+            checked: el.checked === true ? true : undefined,
+            options: parseOptions(el.options),
+            multiple: el.multiple === true ? true : undefined,
+            accept: str(el.accept, MAX_SHORT_STRING),
+            minValue: str(el.minValue, MAX_SHORT_STRING),
+            maxValue: str(el.maxValue, MAX_SHORT_STRING),
+            step: str(el.step, MAX_SHORT_STRING),
+            pattern: str(el.pattern, MAX_SHORT_STRING),
+            minLength: el.minLength === undefined ? undefined : num(el.minLength, 0, 0, MAX_CONTENT),
+            maxLength: el.maxLength === undefined ? undefined : num(el.maxLength, 0, 0, MAX_CONTENT),
+            autocomplete: str(el.autocomplete, MAX_SHORT_STRING),
+            labelFor: str(el.labelFor, MAX_SHORT_STRING),
             formAction: safeUrl(el.formAction),
             formMethod: oneOf(el.formMethod, HTTP_METHODS, "POST"),
             formSubmitMode: oneOf(el.formSubmitMode, ["request", "native"] as const, "request"),
@@ -411,6 +584,10 @@ export function parseElements(
             formResetOnSuccess: el.formResetOnSuccess === true ? true : undefined,
             buttonType: oneOf(el.buttonType, ["button", "submit", "reset"] as const, "button"),
             href: safeUrl(el.href),
+            tag: customTag(el.tag),
+            customClass: classList(el.customClass),
+            customStyle: inlineStyle(el.customStyle),
+            attributes: parseAttributes(el.attributes),
             sourceId: str(el.sourceId, MAX_SHORT_STRING),
             binding: bindingPath(el.binding),
             hoverTrigger: oneOf(el.hoverTrigger, ["self", "parent"] as const, "self"),

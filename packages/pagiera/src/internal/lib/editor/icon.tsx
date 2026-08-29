@@ -199,9 +199,25 @@ export function IconGlyph({
     element,
     name,
 }: {
-    element?: Pick<CanvasElement, "iconName">;
+    element?: Pick<CanvasElement, "iconName" | "svg">;
     name?: PagieraIconName;
 }) {
+    // A pasted glyph wins over the catalogue: the author went out of their way
+    // for this one shape. `currentColor` is forced onto the wrapper so a
+    // custom icon answers the Colour field like every catalogue icon does —
+    // any `fill` the SVG sets for itself still overrides it.
+    if (element?.svg) {
+        return (
+            <span
+                aria-hidden
+                className="pg-svg-glyph"
+                style={{ display: "block", width: "100%", height: "100%", color: "currentColor" }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitised by `safeSvg`, which strips every executing and off-document construct
+                dangerouslySetInnerHTML={{ __html: element.svg }}
+            />
+        );
+    }
+
     const Glyph = ICON_COMPONENTS[name ?? element?.iconName ?? "star"] ?? IconStar;
     return (
         <Glyph
