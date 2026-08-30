@@ -29,6 +29,32 @@ const PRIVATE_IPV4 =
 /** Hostnames that only resolve inside a private network. */
 const PRIVATE_SUFFIXES = [".local", ".internal", ".localdomain", ".home.arpa"];
 
+/**
+ * Private hosts the operator has deliberately opened.
+ *
+ * Blocking the whole private range is right by default — an author who can type
+ * a URL should not be able to make the server read a cloud metadata endpoint —
+ * but it also blocks the ordinary case of a data source served by an API on the
+ * same machine during development. Naming the hosts in
+ * `PAGIERA_ALLOW_PRIVATE_HOSTS` opens exactly those and nothing else, so the
+ * decision is explicit, visible in configuration, and does not silently differ
+ * between a laptop and production.
+ *
+ * Read on every call rather than cached: a long-running dev server should pick
+ * up an edited `.env.local` on restart of the request, not of the process.
+ */
+function allowedPrivateHosts(): Set<string> {
+    const raw = typeof process === "undefined" ? "" : (process.env?.PAGIERA_ALLOW_PRIVATE_HOSTS ?? "");
+    return new Set(
+        raw.split(",")
+            .map((host) => host.trim().toLowerCase())
+            // A port is not part of a hostname; allowing `localhost` allows it
+            // on whatever port the author's service happens to use.
+            .map((host) => host.replace(/:\d+$/, ""))
+            .filter(Boolean),
+    );
+}
+
 export const MAX_ROWS = 200;
 const MAX_BYTES = 2_000_000;
 const TIMEOUT_MS = 8000;
@@ -54,16 +80,22 @@ export function assertFetchableUrl(raw: string): URL {
     }
 
     const host = url.hostname.toLowerCase();
-    if (BLOCKED_HOSTS.has(host) || PRIVATE_IPV4.test(host)) {
-        throw new DataSourceError(`Requests to ${host} are not allowed.`);
-    }
-    if (PRIVATE_SUFFIXES.some((suffix) => host.endsWith(suffix))) {
-        throw new DataSourceError(`Requests to ${host} are not allowed.`);
-    }
+    const allowed = allowedPrivateHosts();
+    // An explicitly opened host skips the private-address rules entirely. The
+    // protocol check above still applies, so this cannot open `file:` or
+    // anything else that is not an ordinary web request.
+    if (allowed.has(host)) return url;
+
+    const refuse = (reason: string) => {
+        throw new DataSourceError(
+            `${reason} To use it, add it to PAGIERA_ALLOW_PRIVATE_HOSTS (for example PAGIERA_ALLOW_PRIVATE_HOSTS=localhost,127.0.0.1) and restart the server.`,
+        );
+    };
+
+    if (BLOCKED_HOSTS.has(host) || PRIVATE_IPV4.test(host)) refuse(`Requests to ${host} are not allowed.`);
+    if (PRIVATE_SUFFIXES.some((suffix) => host.endsWith(suffix))) refuse(`Requests to ${host} are not allowed.`);
     // Bracketed IPv6 literals: anything link-local or unique-local.
-    if (host.startsWith("[") && /^\[(fe80|fc|fd)/i.test(host)) {
-        throw new DataSourceError("Requests to private addresses are not allowed.");
-    }
+    if (host.startsWith("[") && /^\[(fe80|fc|fd)/i.test(host)) refuse("Requests to private addresses are not allowed.");
 
     return url;
 }
