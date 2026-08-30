@@ -3,13 +3,32 @@ export type PagieraClientOptions = {
     fetch?: typeof globalThis.fetch;
 };
 
+/**
+ * A failed API call, carrying the status the server answered with.
+ *
+ * The status is the difference between "your URL is refused" and "the server
+ * fell over", and a caller that wants to show the author what happened cannot
+ * recover it from a message alone.
+ */
+export class PagieraRequestError extends Error {
+    constructor(message: string, readonly status: number) {
+        super(message);
+        this.name = "PagieraRequestError";
+    }
+}
+
 async function jsonRequest(fetcher: typeof globalThis.fetch, url: string, init?: RequestInit) {
     const response = await fetcher(url, {
         ...init,
         headers: { "Content-Type": "application/json", ...init?.headers },
     });
     const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.error ?? `Pagiera API request failed (${response.status})`);
+    if (!response.ok) {
+        throw new PagieraRequestError(
+            body?.error ?? `Pagiera API request failed (${response.status})`,
+            response.status,
+        );
+    }
     return body;
 }
 

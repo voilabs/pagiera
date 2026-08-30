@@ -27,6 +27,24 @@ export type SourcePreviewer = (source: DataSource, sampleQuery: string) => Promi
 type Tab = "params" | "body" | "headers" | "response";
 
 /**
+ * A test that did not come back with rows.
+ *
+ * Kept as a record rather than a message because the message alone rarely
+ * explains anything: "Requests to localhost are not allowed" makes sense next
+ * to the URL it was refused for, the method it was sent with, and the query it
+ * was tested against.
+ */
+type Failure = {
+    message: string;
+    status?: number;
+    method: string;
+    url: string;
+    query: string;
+    params: number;
+    headers: string[];
+};
+
+/**
  * The full request builder. A source has enough moving parts — URL, query,
  * headers, the path into the payload, and the response itself — that editing
  * it in a 240px rail meant guessing; here everything is visible at once.
@@ -54,6 +72,7 @@ export function DataSourceModal({
     );
     const [keys, setKeys] = useState<string[]>(sample?.keys ?? []);
     const [testQuery, setTestQuery] = useState("");
+    const [failure, setFailure] = useState<Failure | null>(null);
     const [busy, startTest] = useTransition();
 
     useEffect(() => {
@@ -78,18 +97,47 @@ export function DataSourceModal({
         }
     })();
 
+    const describe = (message: string, status?: number): Failure => ({
+        message,
+        status,
+        method,
+        url: source.url,
+        query: testQuery,
+        params: (source.params ?? []).filter((pair) => pair.key.trim()).length,
+        // Names only. A header's value is where an API key would be, and a
+        // failure panel is not the place to put one on screen.
+        headers: (source.headers ?? []).map((pair) => pair.key.trim()).filter(Boolean),
+    });
+
     const run = () => {
         startTest(async () => {
-            const result = await preview(source, testQuery);
-            if (result.status === "error") {
-                setError(result.message);
-                return;
+            try {
+                const result = await preview(source, testQuery);
+                if (result.status === "error") {
+                    setError(result.message);
+                    setFailure(describe(result.message));
+                    setTab("response");
+                    return;
+                }
+                setError(null);
+                setFailure(null);
+                setRows(result.rows);
+                setKeys(result.keys);
+                setTab("response");
+                onSample({ keys: result.keys, rows: result.rows });
+            } catch (reason) {
+                // A refused or failing request is an ordinary outcome of
+                // testing one, not a crash. Left unhandled it became an
+                // unhandled rejection, which the dev server presents as a
+                // full-screen error page over the editor.
+                const message = reason instanceof Error ? reason.message : String(reason);
+                const status = typeof (reason as { status?: unknown })?.status === "number"
+                    ? (reason as { status: number }).status
+                    : undefined;
+                setError(message);
+                setFailure(describe(message, status));
+                setTab("response");
             }
-            setError(null);
-            setRows(result.rows);
-            setKeys(result.keys);
-            setTab("response");
-            onSample({ keys: result.keys, rows: result.rows });
         });
     };
 
@@ -274,6 +322,7 @@ export function DataSourceModal({
                                     keys={keys}
                                     path={source.path}
                                     onPath={(path) => onChange({ path })}
+                                    failure={failure}
                                 />
                             )}
                     </motion.div>
@@ -410,17 +459,57 @@ function PairTable({
     );
 }
 
+
+/** What was sent, and what came back, when a test did not produce rows. */
+function FailureView({ failure }: { failure: Failure }) {
+    const rows: Array<[string, string]> = [
+        ["Method", failure.method],
+        ["URL", failure.url || "(empty)"],
+        ...(failure.query ? ([["Test query", failure.query]] as Array<[string, string]>) : []),
+        ...(failure.params ? ([["Query parameters", String(failure.params)]] as Array<[string, string]>) : []),
+        ...(failure.headers.length ? ([["Headers", failure.headers.join(", ")]] as Array<[string, string]>) : []),
+    ];
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5">
+                <IconAlertTriangle size={14} className="mt-0.5 shrink-0 text-red-400" />
+                <div className="min-w-0 space-y-1">
+                    <p className="text-[11px] font-semibold text-red-300">
+                        Request failed{failure.status ? ` · ${failure.status}` : ""}
+                    </p>
+                    <p className="break-words text-[11px] leading-relaxed text-ed-muted">{failure.message}</p>
+                </div>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-ed-border">
+                {rows.map(([label, value], index) => (
+                    <div
+                        key={label}
+                        className={`flex gap-3 px-3 py-2 ${index > 0 ? "border-t border-ed-border" : ""}`}
+                    >
+                        <span className="w-28 shrink-0 text-[10px] text-ed-faint">{label}</span>
+                        <span className="min-w-0 flex-1 break-all font-mono text-[10px] text-ed-text">{value}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function ResponseView({
     rows,
     keys,
     path,
     onPath,
+    failure,
 }: {
     rows: Array<Record<string, unknown>>;
     keys: string[];
     path: string;
     onPath: (path: string) => void;
+    failure?: Failure | null;
 }) {
+    if (failure) return <FailureView failure={failure} />;
     if (rows.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">

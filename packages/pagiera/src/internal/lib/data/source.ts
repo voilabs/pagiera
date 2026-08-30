@@ -30,26 +30,21 @@ const PRIVATE_IPV4 =
 const PRIVATE_SUFFIXES = [".local", ".internal", ".localdomain", ".home.arpa"];
 
 /**
- * Private hosts the operator has deliberately opened.
+ * Normalises the private hosts an operator has chosen to open.
  *
  * Blocking the whole private range is right by default — an author who can type
  * a URL should not be able to make the server read a cloud metadata endpoint —
  * but it also blocks the ordinary case of a data source served by an API on the
- * same machine during development. Naming the hosts in
- * `PAGIERA_ALLOW_PRIVATE_HOSTS` opens exactly those and nothing else, so the
- * decision is explicit, visible in configuration, and does not silently differ
- * between a laptop and production.
- *
- * Read on every call rather than cached: a long-running dev server should pick
- * up an edited `.env.local` on restart of the request, not of the process.
+ * same machine. Which hosts are exempt is a deployment decision, so it arrives
+ * as configuration rather than being read from the environment down here: a
+ * host set programmatically works identically to one set in `.env`.
  */
-function allowedPrivateHosts(): Set<string> {
-    const raw = typeof process === "undefined" ? "" : (process.env?.PAGIERA_ALLOW_PRIVATE_HOSTS ?? "");
+function normalizeHosts(hosts: readonly string[] | undefined): Set<string> {
     return new Set(
-        raw.split(",")
+        (hosts ?? [])
             .map((host) => host.trim().toLowerCase())
-            // A port is not part of a hostname; allowing `localhost` allows it
-            // on whatever port the author's service happens to use.
+            // A port is not part of a hostname; opening `localhost` opens it on
+            // whatever port the author's service happens to use.
             .map((host) => host.replace(/:\d+$/, ""))
             .filter(Boolean),
     );
@@ -67,7 +62,7 @@ export class DataSourceError extends Error {
     }
 }
 
-export function assertFetchableUrl(raw: string): URL {
+export function assertFetchableUrl(raw: string, allowPrivateHosts?: readonly string[]): URL {
     let url: URL;
     try {
         url = new URL(raw);
@@ -80,7 +75,7 @@ export function assertFetchableUrl(raw: string): URL {
     }
 
     const host = url.hostname.toLowerCase();
-    const allowed = allowedPrivateHosts();
+    const allowed = normalizeHosts(allowPrivateHosts);
     // An explicitly opened host skips the private-address rules entirely. The
     // protocol check above still applies, so this cannot open `file:` or
     // anything else that is not an ordinary web request.
@@ -88,7 +83,7 @@ export function assertFetchableUrl(raw: string): URL {
 
     const refuse = (reason: string) => {
         throw new DataSourceError(
-            `${reason} To use it, add it to PAGIERA_ALLOW_PRIVATE_HOSTS (for example PAGIERA_ALLOW_PRIVATE_HOSTS=localhost,127.0.0.1) and restart the server.`,
+            `${reason} To use it, name the host in the server's allowPrivateHosts setting — PAGIERA_ALLOW_PRIVATE_HOSTS=localhost,127.0.0.1 in the environment, or allowPrivateHosts: ["localhost"] if you build the config yourself — and restart the server.`,
         );
     };
 
@@ -156,15 +151,20 @@ export type LoadOptions = {
     revalidate?: number | false;
     /** Supplies `{{query.…}}` / `{{page.…}}` values for this request. */
     context?: RequestContext;
+    /**
+     * Private hosts this request may reach, from the server's configuration.
+     * Everything private stays blocked when it is absent.
+     */
+    allowPrivateHosts?: readonly string[];
 };
 
 export const DEFAULT_REVALIDATE = 60;
 
 export async function loadSource(
     source: DataSource,
-    { revalidate = DEFAULT_REVALIDATE, context = EMPTY_CONTEXT }: LoadOptions = {},
+    { revalidate = DEFAULT_REVALIDATE, context = EMPTY_CONTEXT, allowPrivateHosts }: LoadOptions = {},
 ): Promise<SourceResult> {
-    const request = buildRequest(source, context);
+    const request = buildRequest(source, context, allowPrivateHosts);
     let target = request.url;
 
     let response: Response | undefined;
@@ -187,7 +187,7 @@ export async function loadSource(
 
         const location = response.headers.get("location");
         if (!location) break;
-        target = assertFetchableUrl(new URL(location, target).toString());
+        target = assertFetchableUrl(new URL(location, target).toString(), allowPrivateHosts);
         response = undefined;
     }
 
@@ -272,8 +272,8 @@ function safeHeader(pair: RequestPair, context: RequestContext) {
  * Builds the final URL: tokens resolved, params appended and percent-encoded
  * by `URLSearchParams` so a value can never break out into the query grammar.
  */
-export function buildRequest(source: DataSource, context: RequestContext) {
-    const url = assertFetchableUrl(resolveTokens(source.url, context));
+export function buildRequest(source: DataSource, context: RequestContext, allowPrivateHosts?: readonly string[]) {
+    const url = assertFetchableUrl(resolveTokens(source.url, context), allowPrivateHosts);
 
     for (const pair of source.params ?? []) {
         const key = pair.key.trim();
@@ -303,7 +303,7 @@ export function buildRequest(source: DataSource, context: RequestContext) {
     }
 
     // Re-check after tokens: a token could have rewritten the host.
-    return { url: assertFetchableUrl(url.toString()), headers, method, body };
+    return { url: assertFetchableUrl(url.toString(), allowPrivateHosts), headers, method, body };
 }
 
 export const EMPTY_CONTEXT: RequestContext = { query: {}, params: {}, page: { slug: "" } };

@@ -9,6 +9,8 @@ export type PagieraServerConfig = {
     basePath?: string;
     aiRateLimitPerMinute?: number;
     templateRegistryUrl?: string;
+    /** Private hosts a page's data sources may fetch from, such as `localhost`. */
+    allowPrivateHosts?: string[];
 };
 
 export function pagieraConfigFromEnv(env?: NodeJS.ProcessEnv): PagieraServerConfig;

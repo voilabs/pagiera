@@ -13,6 +13,14 @@ export type PagieraServerConfig = {
     basePath?: string;
     aiRateLimitPerMinute?: number;
     templateRegistryUrl?: string;
+    /**
+     * Private hosts a page's data sources may fetch from, such as `localhost`.
+     *
+     * Empty by default: an author-supplied URL must not be able to reach cloud
+     * metadata endpoints or services inside the network. Naming a host here
+     * opens that host and nothing else.
+     */
+    allowPrivateHosts?: string[];
 };
 
 const DEFAULT_TEMPLATE_REGISTRY_URL = "https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json";
@@ -328,6 +336,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                     ...(context ?? {}),
                     params: { ...(page.routeParams ?? {}), ...((context as any)?.params ?? {}) },
                 },
+                allowPrivateHosts: config.allowPrivateHosts,
             });
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
@@ -352,6 +361,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             data = await renderData.loadPageData(page.elements, page.dataSources ?? [], {
                 context: { query: {}, params: {}, page: { slug: page.slug }, ...(context ?? {}) },
                 revalidate: false,
+                allowPrivateHosts: config.allowPrivateHosts,
             });
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
@@ -626,7 +636,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 const body = await bodyOf(request); const [source] = validation.parseDataSources([body.source]);
                 if (!source) return fail("Invalid source.");
                 const query = Object.fromEntries(new URLSearchParams(typeof body.sampleQuery === "string" ? body.sampleQuery.slice(0, 500) : ""));
-                const result = await sourceRuntime.loadSource(source, { context: { query, params: {}, page: { slug: "preview" } }, revalidate: false });
+                const result = await sourceRuntime.loadSource(source, { context: { query, params: {}, page: { slug: "preview" } }, revalidate: false, allowPrivateHosts: config.allowPrivateHosts });
                 return ok({ status: "ok", ...result, total: result.rows.length });
             }
             if (path === "/ai" && request.method === "POST") {
@@ -653,6 +663,10 @@ export function pagieraConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Pagi
         openRouterApiKey: env.OPENROUTER_API_KEY ?? "",
         openRouterModel: env.OPENROUTER_MODEL ?? "",
         templateRegistryUrl: env.PAGIERA_TEMPLATE_REGISTRY_URL ?? (env.NODE_ENV === "production" ? DEFAULT_TEMPLATE_REGISTRY_URL : LOCAL_TEMPLATE_REGISTRY),
+        allowPrivateHosts: (env.PAGIERA_ALLOW_PRIVATE_HOSTS ?? "")
+            .split(",")
+            .map((host) => host.trim())
+            .filter(Boolean),
     };
 }
 
@@ -674,13 +688,25 @@ export function createPagieraRouteHandlers(config: PagieraServerConfig) {
 }
 
 const globalServers = globalThis as typeof globalThis & { __pagieraServers?: Map<string, ReturnType<typeof createPagieraServer>> };
-const SERVER_RUNTIME_REVISION = 14;
+const SERVER_RUNTIME_REVISION = 15;
 
 /** Reuses pools and Redis connections across API routes, SSR and development reloads. */
 export function getPagieraServer(config: PagieraServerConfig) {
     // Include the runtime shape so a Turbopack hot reload cannot hand a newer
     // package an older server object that is missing recently added methods.
-    const key = `${SERVER_RUNTIME_REVISION}\n${config.postgresUrl}\n${config.redisUrl}\n${config.openRouterModel}\n${config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL}`;
+    // Every setting that changes how the server behaves belongs in the key.
+    // `allowPrivateHosts` did not, and because this map outlives a hot reload —
+    // and outlives Next re-reading `.env.local` — a server built before the
+    // setting existed kept answering with its old configuration. Adding a host
+    // appeared to do nothing at all until the process itself was killed.
+    const key = [
+        SERVER_RUNTIME_REVISION,
+        config.postgresUrl,
+        config.redisUrl,
+        config.openRouterModel,
+        config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL,
+        (config.allowPrivateHosts ?? []).join(","),
+    ].join("\n");
     const servers = globalServers.__pagieraServers ??= new Map();
     let server = servers.get(key);
     if (!server) {
