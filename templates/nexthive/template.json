@@ -41284,7 +41284,7 @@
               "borderW": 1,
               "position": "static",
               "direction": "column",
-              "widthMode": "fixed",
+              "widthMode": "fill",
               "heightMode": "fixed"
             },
             "tablet": {

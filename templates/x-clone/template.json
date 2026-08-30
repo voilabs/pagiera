@@ -612,8 +612,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -875,8 +875,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -1138,8 +1138,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -1401,8 +1401,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -1664,8 +1664,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -1927,8 +1927,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -2190,8 +2190,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -2453,8 +2453,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -2716,8 +2716,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -2979,8 +2979,8 @@
             "tablet": {
               "w": 52,
               "gap": 0,
-              "padL": 14,
-              "padR": 14
+              "padL": 13,
+              "padR": 13
             }
           },
           "buttonType": "button",
@@ -5581,7 +5581,12 @@
           "formMethod": "POST",
           "hoverTrigger": "self",
           "formSubmitMode": "request",
-          "formContentType": "json"
+          "formContentType": "json",
+          "overrides": {
+            "mobile": {
+              "wrap": true
+            }
+          }
         },
         {
           "z": 0,
@@ -15932,7 +15937,7 @@
             "blendMode": "normal",
             "direction": "row",
             "textAlign": "left",
-            "widthMode": "fixed",
+            "widthMode": "fill",
             "bgPosition": "center",
             "fontFamily": "inherit",
             "fontWeight": "normal",
@@ -16177,7 +16182,7 @@
             "blendMode": "normal",
             "direction": "column",
             "textAlign": "left",
-            "widthMode": "fixed",
+            "widthMode": "fill",
             "bgPosition": "center",
             "fontFamily": "inherit",
             "fontWeight": "normal",
@@ -16519,7 +16524,7 @@
             "blendMode": "normal",
             "direction": "column",
             "textAlign": "left",
-            "widthMode": "fixed",
+            "widthMode": "fill",
             "bgPosition": "center",
             "fontFamily": "inherit",
             "fontWeight": "normal",
@@ -18816,7 +18821,7 @@
             "blendMode": "normal",
             "direction": "column",
             "textAlign": "left",
-            "widthMode": "fixed",
+            "widthMode": "fill",
             "bgPosition": "center",
             "fontFamily": "inherit",
             "fontWeight": "normal",
@@ -21197,7 +21202,7 @@
             "blendMode": "normal",
             "direction": "row",
             "textAlign": "left",
-            "widthMode": "fixed",
+            "widthMode": "fill",
             "bgPosition": "center",
             "fontFamily": "inherit",
             "fontWeight": "normal",

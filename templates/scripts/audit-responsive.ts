@@ -66,7 +66,12 @@ for (const target of targets) {
                 const contentWidth = Math.max(0, context.available);
                 const styles = new Map(visible.map((element) => [element.id, resolveStyle(element, breakpoint.id)]));
 
-                if (!isAbsolute && isRow) {
+                // A row that wraps cannot overflow: what does not fit on one
+                // line moves to the next. Measuring it against a single line
+                // reported every deliberately wrapping row as broken.
+                const wraps = parentStyle?.wrap === true;
+
+                if (!isAbsolute && isRow && !wraps) {
                     const fixed = visible.reduce((sum, element) => {
                         const style = styles.get(element.id)!;
                         return sum + (style.widthMode === "fixed" ? style.w : 0);
