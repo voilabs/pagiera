@@ -986,9 +986,14 @@ export default function Editor({
     const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
     const selectedElement = selectedId ? byId.get(selectedId) : undefined;
     const deviceWidth = frameWidthForBreakpoint;
-    const frameWidth = rootStyle.fullWidth
-        ? deviceWidth
-        : Math.min(deviceWidth, rootStyle.maxWidth);
+    // The artboard is as wide as the device, exactly as the published page is.
+    // `maxWidth` caps a band's *content*, not the page, and applying it to the
+    // artboard made every full-bleed section stop short of the frame edge in
+    // the editor while reaching it on the site. Only a freely placed page is
+    // genuinely fixed-width, because its coordinates were drawn on one.
+    const frameWidth = rootStyle.layout === "absolute" && !rootStyle.fullWidth
+        ? Math.min(deviceWidth, rootStyle.maxWidth)
+        : deviceWidth;
 
     useEffect(() => setCanvasHeight(rootStyle.canvasHeight), [rootStyle.canvasHeight]);
     useEffect(() => {

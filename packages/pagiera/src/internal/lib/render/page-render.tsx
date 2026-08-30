@@ -319,7 +319,20 @@ function RenderedNode({
     }
 
     const tag = customTagOf(element) ?? semanticTag(element);
+    const animates = style.entrance !== "none";
     return React.createElement(tag, withCustom(element, {
+        /**
+         * The entrance script runs while the document is still parsing, which
+         * is before React hydrates, and it reveals whatever is already on
+         * screen by adding `pg-in` to the element's class list. React then
+         * finds a `class` it did not write and reports a hydration mismatch on
+         * every visible animated node.
+         *
+         * The difference is intentional and client-only, so it is declared as
+         * such. Only animated elements are excused: a mismatch anywhere else is
+         * a real bug and must keep surfacing.
+         */
+        suppressHydrationWarning: animates || undefined,
         id: classFor(element.id),
         htmlFor: tag === "label" && element.labelFor ? classFor(element.labelFor) : undefined,
         type: tag === "button" ? (element.buttonType ?? "button") : undefined,

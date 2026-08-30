@@ -311,6 +311,14 @@ export function stylesheetFor(
             `.pg-root{font-family:${resolveFont(rootStyle.fontFamily)}}` +
             ".pg-node{box-sizing:border-box}" +
             ".pg-node:is(input,textarea,button){font:inherit}" +
+            // A Button publishes as a native <button>, which arrives with the
+            // platform's own grey fill and bevelled border. The editor emits a
+            // background only when one was set and a border-width only when it
+            // is non-zero, so a deliberately transparent, unbordered button was
+            // rendering as the operating system's default control. `:where`
+            // keeps this at zero specificity, and it is emitted before the
+            // per-element rules, so anything the author did set still wins.
+            ".pg-node:where(button){appearance:none;background-color:transparent;border-width:0;color:inherit;text-align:inherit}" +
             ".pg-node:is(input,textarea){outline:none}" +
             ".pg-node:is(select){outline:none;appearance:none;background-image:url(\"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27 fill=%27none%27 stroke=%27%23888%27 stroke-width=%271.6%27><path d=%27M4 6.5 8 10.5 12 6.5%27/></svg>\");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}" +
             // A radio group is several inputs inside one styled box, so the

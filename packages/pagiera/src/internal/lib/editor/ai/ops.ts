@@ -31,14 +31,3 @@ export function toAddOperations(elements: CanvasElement[]): AiDesignOperation[] 
         interaction: element.interaction,
     }));
 }
-
-/** Marks the one element in a section that should receive a generated image. */
-export function attachImagePrompt(operations: AiDesignOperation[], prompt: string | undefined) {
-    if (!prompt) return operations;
-    let assigned = false;
-    return operations.map((operation) => {
-        if (assigned || operation.kind !== "add" || operation.type !== "Image") return operation;
-        assigned = true;
-        return { ...operation, imagePrompt: prompt };
-    });
-}

@@ -405,7 +405,12 @@ export function AiPanel({
                             id: event.id,
                             label: event.label,
                             status: event.status === "start" ? "running" : event.status,
-                            facts: event.status === "start" ? turn.sections[at]?.facts : event.facts,
+                            // A second "start" for the same section is a retry,
+                            // and it carries the reason the last attempt was
+                            // discarded. Facts sent with a start are therefore
+                            // kept; only a start with nothing to say leaves the
+                            // section's existing facts alone.
+                            facts: event.facts ?? (event.status === "start" ? turn.sections[at]?.facts : undefined),
                         };
                         const sections = at >= 0 ? turn.sections.slice() : [...turn.sections, next];
                         if (at >= 0) sections[at] = next;
