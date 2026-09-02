@@ -651,6 +651,60 @@ export async function deletePage(pageId: string) {
     return { deleted: true as const, fallbackId: remaining[0].id };
 }
 
+/**
+ * A page's saved revisions, newest first.
+ *
+ * The bodies are left out: a list is for choosing, and a document carries its
+ * whole element tree — sending every version's tree to draw a list of dates
+ * would be megabytes for a decision that needs kilobytes.
+ */
+export async function listRevisions(pageId: string) {
+    const rows = await db
+        .select({
+            id: pageRevisions.id,
+            version: pageRevisions.version,
+            createdAt: pageRevisions.createdAt,
+        })
+        .from(pageRevisions)
+        .where(eq(pageRevisions.pageId, pageId))
+        .orderBy(desc(pageRevisions.createdAt))
+        .limit(REVISION_LIMIT);
+    return rows;
+}
+
+/**
+ * Puts an older revision back into the draft.
+ *
+ * Restoring is itself a save, so the version advances and the state being
+ * replaced is written to the history first — an author who restores the wrong
+ * revision can walk back out of it.
+ *
+ * The published copy is untouched: bringing an old draft back is not the same
+ * as publishing it, and the two decisions belong to the author separately.
+ */
+export async function restoreRevision(pageId: string, revisionId: string) {
+    const [revision] = await db
+        .select()
+        .from(pageRevisions)
+        .where(and(eq(pageRevisions.id, revisionId), eq(pageRevisions.pageId, pageId)))
+        .limit(1);
+    if (!revision) return { status: "not-found" as const };
+
+    const page = await getPage(pageId);
+    if (!page) return { status: "not-found" as const };
+
+    return savePageDocument(
+        pageId,
+        revision.elements as CanvasElement[],
+        (revision.rootStyle as RootStyle | null) ?? page.rootStyle,
+        // Data sources are not versioned with the document, so the page keeps
+        // the ones it has: restoring a layout must not silently unhook the
+        // sources the author wired up since.
+        page.dataSources ?? [],
+        page.version,
+    );
+}
+
 async function pruneRevisions(pageId: string) {
     const keep = await db
         .select({ id: pageRevisions.id })

@@ -21,6 +21,15 @@ export type PagieraServerConfig = {
      * opens that host and nothing else.
      */
     allowPrivateHosts?: string[];
+    /**
+     * Largest data-source response to accept, in bytes. Defaults to 2 MB.
+     *
+     * The default suits the lists most pages bind to and keeps a runaway
+     * endpoint from exhausting memory. A site whose articles carry their images
+     * inline needs more, and that is a property of the content rather than
+     * something an author should be able to raise from the editor.
+     */
+    maxSourceBytes?: number;
 };
 
 const DEFAULT_TEMPLATE_REGISTRY_URL = "https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json";
@@ -337,6 +346,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                     params: { ...(page.routeParams ?? {}), ...((context as any)?.params ?? {}) },
                 },
                 allowPrivateHosts: config.allowPrivateHosts,
+                maxBytes: config.maxSourceBytes,
             });
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
@@ -362,6 +372,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 context: { query: {}, params: {}, page: { slug: page.slug }, ...(context ?? {}) },
                 revalidate: false,
                 allowPrivateHosts: config.allowPrivateHosts,
+                maxBytes: config.maxSourceBytes,
             });
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
@@ -522,7 +533,9 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 if (!page) return fail("Published page not found", 404);
                 return ok(page);
             }
-            if (request.method === "GET" && parts[0] === "pages" && parts[1]) {
+            // Exactly `/pages/:id` — without the length guard this also swallowed
+            // `/pages/:id/revisions` and answered it with the page document.
+            if (request.method === "GET" && parts[0] === "pages" && parts[1] && parts.length === 2) {
                 const page = await pages.getPage(parts[1]);
                 return page ? ok(page) : fail("Page not found", 404);
             }
@@ -549,6 +562,19 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 const saved = await pages.savePageDocument(parts[1], validation.parseElements(document.elements), validation.parseRootStyle(document.rootStyle), validation.parseDataSources(document.dataSources), Number(body.expectedVersion));
                 if (saved.status === "saved" && saved.componentsPublished) await invalidate();
                 return ok(saved);
+            }
+            if (parts[0] === "pages" && parts[1] && parts[2] === "revisions" && parts.length === 3 && request.method === "GET") {
+                return ok({ status: "ok", revisions: await pages.listRevisions(parts[1]) });
+            }
+            if (parts[0] === "pages" && parts[1] && parts[2] === "revisions" && parts[3] && parts[4] === "restore" && request.method === "POST") {
+                const restored = await pages.restoreRevision(parts[1], parts[3]);
+                if (restored.status === "not-found") return fail("Revision not found", 404);
+                // A restore replaces the draft, so anything cached for the
+                // published page is unaffected — but a restored page that was
+                // then published would be, and invalidating here keeps the two
+                // paths from diverging.
+                if (restored.status === "saved") await invalidate();
+                return ok({ status: "ok", ...restored });
             }
             if (parts[0] === "pages" && parts[1] && parts[2] === "duplicate" && request.method === "POST") {
                 const body = await bodyOf(request); const name = validation.parseName(body.name); const slug = validation.parseSlug(body.slug);
@@ -636,7 +662,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 const body = await bodyOf(request); const [source] = validation.parseDataSources([body.source]);
                 if (!source) return fail("Invalid source.");
                 const query = Object.fromEntries(new URLSearchParams(typeof body.sampleQuery === "string" ? body.sampleQuery.slice(0, 500) : ""));
-                const result = await sourceRuntime.loadSource(source, { context: { query, params: {}, page: { slug: "preview" } }, revalidate: false, allowPrivateHosts: config.allowPrivateHosts });
+                const result = await sourceRuntime.loadSource(source, { context: { origin: url.origin, query, params: {}, page: { slug: "preview" } }, revalidate: false, allowPrivateHosts: config.allowPrivateHosts, maxBytes: config.maxSourceBytes });
                 return ok({ status: "ok", ...result, total: result.rows.length });
             }
             if (path === "/ai" && request.method === "POST") {
@@ -667,6 +693,7 @@ export function pagieraConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Pagi
             .split(",")
             .map((host) => host.trim())
             .filter(Boolean),
+        maxSourceBytes: Number.parseInt(env.PAGIERA_MAX_SOURCE_BYTES ?? "", 10) || undefined,
     };
 }
 
@@ -706,6 +733,7 @@ export function getPagieraServer(config: PagieraServerConfig) {
         config.openRouterModel,
         config.templateRegistryUrl ?? DEFAULT_TEMPLATE_REGISTRY_URL,
         (config.allowPrivateHosts ?? []).join(","),
+        config.maxSourceBytes ?? "",
     ].join("\n");
     const servers = globalServers.__pagieraServers ??= new Map();
     let server = servers.get(key);

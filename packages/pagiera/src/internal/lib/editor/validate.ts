@@ -50,6 +50,11 @@ function borderSide(value: unknown, fallback: number | null) {
     return num(value, fallback ?? 0, 0, 999);
 }
 
+function horizontalMargin(value: unknown, fallback: number | "auto") {
+    if (value === "auto") return "auto" as const;
+    return num(value, typeof fallback === "number" ? fallback : 0, 0, 9999);
+}
+
 /** Older AI/preset builds wrote CSS scale multipliers (1.03) while the editor
  * stores percentages (103). Normalize those documents as they are loaded. */
 function scalePercent(value: unknown, fallback: number) {
@@ -362,7 +367,10 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         padR: num(raw.padR, base.padR, 0, 9999),
         padB: num(raw.padB, base.padB, 0, 9999),
         padL: num(raw.padL, base.padL, 0, 9999),
+        marginT: num(raw.marginT, base.marginT, 0, 9999),
+        marginR: horizontalMargin(raw.marginR, base.marginR),
         marginB: num(raw.marginB, base.marginB, 0, 9999),
+        marginL: horizontalMargin(raw.marginL, base.marginL),
         justify: oneOf(raw.justify, ["start", "center", "end", "between"], base.justify),
         align: oneOf(raw.align, ["start", "center", "end", "stretch"], base.align),
         wrap: raw.wrap === true,

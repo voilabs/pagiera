@@ -30,6 +30,7 @@ import {
     IconPlayerPlay,
     IconPlus,
     IconPoint,
+    IconMarkdown,
     IconQuote,
     IconRepeat,
     IconSection,
@@ -62,6 +63,7 @@ import {
     MOVE_MIME,
     type ResizeHandle,
 } from "@/lib/editor/types";
+import { markdownToHtml } from "@/lib/render/markdown";
 import { PagieraMark } from "./brand";
 import type { SaveStatus } from "./use-editor";
 
@@ -85,6 +87,7 @@ const TYPE_ICONS: Record<
     List: IconList,
     ListItem: IconPoint,
     Quote: IconQuote,
+    Markdown: IconMarkdown,
     Embed: IconFrame,
     Form: IconLayoutRows,
     Fieldset: IconBox,
@@ -168,6 +171,20 @@ export function ElementBody({ element }: { element: CanvasElement }) {
 
     if (element.type === "Radio") {
         return <span className="pointer-events-none flex w-full select-none flex-col gap-2">{(element.options ?? []).map((option, index) => <span key={`${index}:${option.value}`} className="flex items-center gap-2"><span className="flex size-[13px] shrink-0 items-center justify-center rounded-full border border-current">{index === 0 && <span className="size-[6px] rounded-full bg-current" />}</span><span className="truncate">{option.label || option.value}</span></span>)}</span>;
+    }
+
+    // The canvas shows the rendered result, not the source. An author editing a
+    // Markdown block is arranging a page, and `##` on screen would tell them
+    // nothing about how the published page looks.
+    if (element.type === "Markdown") {
+        if (!element.content) return null;
+        return (
+            <div
+                className="pg-md pointer-events-none w-full select-none"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: markdownToHtml escapes raw HTML before parsing
+                dangerouslySetInnerHTML={{ __html: markdownToHtml(element.content) }}
+            />
+        );
     }
 
     if (!element.content) return null;
@@ -318,7 +335,7 @@ export function SaveIndicator({
 
 const ELEMENT_GROUPS: Array<{ title: string; types: ElementType[] }> = [
     { title: "Layout", types: ["Frame", "Stack", "Grid", "Section", "Container"] },
-    { title: "Basic", types: ["Heading", "Text", "Quote", "Image", "Button", "Video", "Embed"] },
+    { title: "Basic", types: ["Heading", "Text", "Quote", "Markdown", "Image", "Button", "Video", "Embed"] },
     { title: "Structure", types: ["Divider", "Spacer", "List", "ListItem"] },
     { title: "Forms", types: ["Form", "Fieldset", "Label", "Input", "Textarea", "Select", "Checkbox", "Radio", "FileInput"] },
     { title: "Data", types: ["Request", "Repeat"] },

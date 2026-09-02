@@ -7,7 +7,6 @@ import {
 import Image from "next/image";
 import { useState } from "react";
 import { Icon } from "@/components/icons";
-import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
 const links = [
@@ -19,53 +18,49 @@ const links = [
 
 const REPO = "https://github.com/voilabs/pagiera";
 
-/**
- * A floating capsule rather than a full-width bar: at the top of the page it
- * is invisible chrome over the hero, and it only materialises—background,
- * hairline and shadow—once the page scrolls under it.
- */
+/** A calm hero navigation that becomes a compact glass capsule on scroll. */
 export function SiteHeader({ active }: { active?: "templates" }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (value) => {
-    setScrolled(value > 24);
+    setScrolled(value > 80);
   });
 
-  const solid = scrolled || open;
+  const dark = scrolled || open;
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] px-4 pt-4 max-md:px-3 max-md:pt-3">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] px-5 max-md:px-3">
       <div
         className={cn(
-          "pointer-events-auto mx-auto flex h-14 max-w-[1180px] items-center gap-2 rounded-full border px-3 transition-[background-color,border-color,box-shadow] duration-300",
-          solid
-            ? "border-black/[.07] bg-white/85 shadow-[0_14px_44px_rgba(43,24,86,.10)] backdrop-blur-xl"
-            : "border-transparent bg-transparent",
+          "pointer-events-auto relative mx-auto flex w-full items-center gap-2 border px-3.5 transition-[max-width,height,margin,border-radius,color,background-color,border-color,box-shadow,backdrop-filter] duration-500 max-md:px-3",
+          dark
+            ? "mt-6 h-16 max-w-[980px] rounded-full border-white/[.12] bg-[#160f26]/88 text-white shadow-[0_18px_55px_rgba(20,8,42,.28)] backdrop-blur-2xl max-md:mt-3 max-md:h-14"
+            : "mt-2 h-20 max-w-[1320px] rounded-none border-transparent bg-transparent text-[#21182b] shadow-none backdrop-blur-none max-md:mt-1 max-md:h-16",
         )}
       >
         <a
           aria-label="Pagiera home"
-          className="flex shrink-0 items-center gap-2.5"
+          className="flex shrink-0 items-center gap-2"
           href="/"
         >
           <Image
             alt=""
-            className="rounded-[9px]"
-            height={32}
+            className="rounded-[8px]"
+            height={28}
             priority
             src="/logo.png"
-            width={32}
+            width={28}
           />
-          <span className="text-[16px] font-bold tracking-[-.035em]">
+          <span className="text-[15px] font-semibold tracking-[-.03em]">
             Pagiera
           </span>
         </a>
 
         <nav
           aria-label="Main navigation"
-          className="ml-5 flex items-center gap-0.5 max-md:hidden"
+          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-0.5 max-md:hidden"
         >
           {links.map(([label, href]) => {
             const selected = active === "templates" && label === "Templates";
@@ -73,10 +68,12 @@ export function SiteHeader({ active }: { active?: "templates" }) {
               <a
                 aria-current={selected ? "page" : undefined}
                 className={cn(
-                  "rounded-full px-3 py-2 text-[13px] font-medium transition-colors",
+                  "rounded-full px-2.5 py-2 text-xs font-medium transition-colors",
                   selected
-                    ? "bg-[#5402e6]/[.08] text-[#5402e6]"
-                    : "text-[#544d61] hover:bg-black/[.04] hover:text-[#121018]",
+                    ? "bg-[#6a25f0] text-white"
+                    : dark
+                      ? "text-white/62 hover:bg-white/[.07] hover:text-white"
+                      : "text-[#21182b]/58 hover:bg-black/[.045] hover:text-[#21182b]",
                 )}
                 href={href}
                 key={label}
@@ -89,24 +86,30 @@ export function SiteHeader({ active }: { active?: "templates" }) {
 
         <div className="ml-auto flex items-center gap-1.5 max-md:hidden">
           <a
-            aria-label="Pagiera on GitHub"
-            className="grid size-9 place-items-center rounded-full text-[#544d61] transition-colors hover:bg-black/[.05] hover:text-[#121018]"
+            className={cn(
+              "flex h-10 items-center gap-2 rounded-full border px-4 text-xs font-medium transition-colors",
+              dark
+                ? "border-white/10 bg-white/[.045] text-white/68 hover:border-white/20 hover:bg-white/[.08] hover:text-white"
+                : "border-transparent bg-transparent text-[#21182b]/64 hover:border-black/[.08] hover:bg-black/[.035] hover:text-[#21182b]",
+            )}
             href={REPO}
             rel="noreferrer"
             target="_blank"
-            title="GitHub"
           >
-            <Icon name="github" size={18} />
+            <Icon name="github" size={15} />
+            Source code
           </a>
-          <ButtonLink href={REPO} size="sm" variant="purple">
-            Start building <Icon name="arrow" size={15} />
-          </ButtonLink>
         </div>
 
         <button
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
-          className="ml-auto hidden size-10 cursor-pointer place-items-center rounded-full bg-[#17141b] text-white max-md:grid"
+          className={cn(
+            "ml-auto hidden size-10 cursor-pointer place-items-center rounded-full transition-colors max-md:grid",
+            dark
+              ? "bg-white/[.07] text-white"
+              : "bg-black/[.045] text-[#21182b]",
+          )}
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
@@ -119,14 +122,14 @@ export function SiteHeader({ active }: { active?: "templates" }) {
           <motion.nav
             animate={{ opacity: 1, scale: 1, y: 0 }}
             aria-label="Mobile navigation"
-            className="pointer-events-auto mx-auto mt-2 hidden origin-top flex-col gap-1 rounded-[26px] border border-black/[.07] bg-white/95 p-2 shadow-[0_18px_50px_rgba(43,24,86,.14)] backdrop-blur-xl max-md:flex"
+            className="pointer-events-auto mx-auto mt-2 hidden origin-top flex-col gap-1 rounded-[26px] border border-white/10 bg-[#160f26]/95 p-2 text-white shadow-[0_18px_50px_rgba(20,8,42,.28)] backdrop-blur-xl max-md:flex"
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
             initial={{ opacity: 0, scale: 0.98, y: -10 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           >
             {links.map(([label, href]) => (
               <a
-                className="flex h-12 items-center justify-between rounded-2xl px-4 text-sm font-semibold text-[#4f4858] transition-colors hover:bg-[#eee9fa] hover:text-[#5402e6]"
+                className="flex h-12 items-center justify-between rounded-2xl px-4 text-sm font-semibold text-white/70 transition-colors hover:bg-white/[.07] hover:text-[#a982ff]"
                 href={href}
                 key={label}
                 onClick={() => setOpen(false)}
@@ -135,24 +138,17 @@ export function SiteHeader({ active }: { active?: "templates" }) {
                 <Icon name="chevron" size={16} />
               </a>
             ))}
-            <div className="mt-1 grid grid-cols-[auto_1fr] gap-2 border-t border-black/[.07] pt-2">
+            <div className="mt-1 border-t border-white/10 pt-2">
               <a
                 aria-label="Pagiera on GitHub"
-                className="grid size-12 place-items-center rounded-2xl border border-black/10 text-[#4f4858]"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.04] text-sm font-medium text-white/70"
                 href={REPO}
                 rel="noreferrer"
                 target="_blank"
               >
                 <Icon name="github" size={18} />
+                Source code
               </a>
-              <ButtonLink
-                className="w-full"
-                href={REPO}
-                size="md"
-                variant="purple"
-              >
-                Start building <Icon name="arrow" size={15} />
-              </ButtonLink>
             </div>
           </motion.nav>
         )}

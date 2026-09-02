@@ -19,6 +19,8 @@ import {
     IconSearch,
     IconSettings,
     IconTrash,
+    IconUnlink,
+    IconRefresh,
     IconWorld,
     IconLayersLinked,
     IconLayoutColumns,
@@ -104,7 +106,6 @@ import { DataPanel, type SourceSample } from "./data-panel";
 import type { SourcePreviewer } from "./data-modal";
 import { type LibraryPage, type LibraryPick, LibraryPanel } from "./library";
 import {
-    Breadcrumbs,
     ContextMenu,
     ElementBody,
     ElementsPanel,
@@ -122,6 +123,7 @@ import { type DropPlan, resolveDrop } from "./drop-target";
 import { useCanvasView } from "./use-canvas-view";
 import { useEditorDocument } from "./use-editor";
 import { AiPanel, type AiDesignGenerator, type AiFocus } from "./ai-panel";
+import { HistoryPanel } from "./history-panel";
 import { LumaMark } from "./brand";
 import { VariablesPanel } from "./variables-panel";
 import { TemplatesPanel } from "./templates-panel";
@@ -150,6 +152,7 @@ const LEFT_EDITOR_TABS = [
     "AI",
     "Data",
     "Pages",
+    "History",
     "Settings",
 ] as const;
 
@@ -264,6 +267,12 @@ export type EditorAdapters = {
     editorHref?: (pageId: string, panel?: string) => string;
     refresh?: () => void;
     previewHref?: (pageId: string) => string;
+    /** Saved versions of a page, newest first. */
+    listRevisions?: (pageId: string) => Promise<unknown>;
+    /** Puts a saved version back into the draft. */
+    restoreRevision?: (pageId: string, revisionId: string) => Promise<unknown>;
+    /** Stores an image and answers with its URL; without it images are inlined. */
+    uploadImage?: (file: File) => Promise<string>;
     publishedHref?: (slug: string) => string;
     previewSource?: SourcePreviewer;
 };
@@ -406,10 +415,17 @@ export default function Editor({
         return [...grouped.values()];
     }, [elements]);
     const [activeComponentMasterId, setActiveComponentMasterId] = useState<string | null>(null);
+    const [openComponentTabIds, setOpenComponentTabIds] = useState<string[]>([]);
     const activeComponentMaster = componentMasters.find((element) => element.id === activeComponentMasterId) ?? componentMasters[0];
     const activeComponentVariants = activeComponentMaster
         ? componentMasters.filter((element) => element.componentId === activeComponentMaster.componentId)
         : [];
+    useEffect(() => {
+        if (!componentMode || !activeComponentMaster?.id) return;
+        setOpenComponentTabIds((current) => current.includes(activeComponentMaster.id)
+            ? current
+            : [...current, activeComponentMaster.id]);
+    }, [activeComponentMaster?.id, componentMode]);
     const breakpointDefs = rootStyle.breakpoints?.length
         ? rootStyle.breakpoints
         : DEFAULT_BREAKPOINTS;
@@ -1188,7 +1204,7 @@ export default function Editor({
         master.componentId = master.id;
         master.componentSourceId = master.id;
         master.variant = "Default";
-        master.base = { ...master.base, w: 360, h: 220, widthMode: "fixed", heightMode: "fixed", overflow: "hidden", bg: "#ffffff", radius: 16 };
+        master.base = { ...master.base, w: 360, h: 220, widthMode: "fixed", heightMode: "fixed", overflow: "visible", bg: "transparent", borderW: 0, radius: 0 };
         setElements((current) => [...current, master]);
         setRootStyle({ ...rootStyle, documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
         setActiveComponentMasterId(master.id);
@@ -1204,7 +1220,7 @@ export default function Editor({
         master.componentId = master.id;
         master.componentSourceId = master.id;
         master.variant = "Default";
-        master.base = { ...master.base, w: 320, h: 180, widthMode: "fixed", heightMode: "fixed", layout: "absolute", bg: "#ffffff", radius: 16, overflow: "hidden" };
+        master.base = { ...master.base, w: 320, h: 180, widthMode: "fixed", heightMode: "fixed", layout: "absolute", bg: "transparent", borderW: 0, radius: 0, overflow: "visible" };
         setElements((current) => [...current, master]);
         setRootStyle({ ...rootStyle, documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
         setActiveComponentMasterId(master.id);
@@ -1322,6 +1338,68 @@ export default function Editor({
         },
         [elements, selectedElement, setElements],
     );
+
+    const resetComponentInstance = useCallback(() => {
+        if (selectedElement?.componentRole !== "instance") return;
+        switchInstanceVariant(selectedElement.variant ?? "Default");
+    }, [selectedElement, switchInstanceVariant]);
+
+    const detachComponentInstance = useCallback(() => {
+        if (selectedElement?.componentRole !== "instance") return;
+        const instanceIds = subtreeIds(elements, selectedElement.id);
+        setElements((current) => current.map((element) => {
+            if (!instanceIds.has(element.id)) return element;
+            return {
+                ...element,
+                componentRole: undefined,
+                componentId: undefined,
+                componentSourceId: undefined,
+                variant: undefined,
+            };
+        }));
+    }, [elements, selectedElement, setElements]);
+
+    const createComponentFromSelection = useCallback(() => {
+        if (!selectedElement || componentMode || selectedElement.componentRole) return;
+        const selectedSubtree = elements.filter((element) => subtreeIds(elements, selectedElement.id).has(element.id));
+        const clone = cloneSubtree(elements, selectedElement.id, {
+            x: -selectedElement.base.x,
+            y: -selectedElement.base.y,
+        });
+        if (!clone) return;
+
+        const sourceIdByOriginalId = new Map<string, string>();
+        selectedSubtree.forEach((element, index) => {
+            const copy = clone.elements[index];
+            if (copy) sourceIdByOriginalId.set(element.id, copy.id);
+        });
+        const componentId = clone.rootId;
+        const masterCopies = clone.elements.map((element) => ({
+            ...element,
+            name: element.id === clone.rootId
+                ? (selectedElement.name?.trim() || `${selectedElement.type} Component`)
+                : element.name,
+            componentRole: element.id === clone.rootId ? ("master" as const) : undefined,
+            componentId: element.id === clone.rootId ? componentId : undefined,
+            componentSourceId: element.id,
+            variant: element.id === clone.rootId ? "Default" : undefined,
+        }));
+        const selectedIds = new Set(selectedSubtree.map((element) => element.id));
+        setElements((current) => [
+            ...current.map((element) => {
+                if (!selectedIds.has(element.id)) return element;
+                return {
+                    ...element,
+                    componentRole: element.id === selectedElement.id ? ("instance" as const) : undefined,
+                    componentId: element.id === selectedElement.id ? componentId : undefined,
+                    componentSourceId: sourceIdByOriginalId.get(element.id),
+                    variant: element.id === selectedElement.id ? "Default" : undefined,
+                };
+            }),
+            ...masterCopies,
+        ]);
+        setOpenComponentTabIds((current) => current.includes(componentId) ? current : [...current, componentId]);
+    }, [componentMode, elements, selectedElement, setElements]);
 
     const nudge = useCallback(
         (dx: number, dy: number) => {
@@ -2152,6 +2230,16 @@ export default function Editor({
         // they do on the published page. They are merged before the editor's
         // affordances below, so a custom `cursor` cannot hide the move handle.
         Object.assign(css, inlineStyleObject(el.customStyle));
+        // A component master is a transparent coordinate system, not a
+        // design layer. Visible surfaces belong to its children so cards,
+        // menus and overlays can extend beyond the component bounds.
+        if (el.componentRole === "master") {
+            css.background = "transparent";
+            css.backgroundImage = "none";
+            css.borderWidth = 0;
+            css.boxShadow = "none";
+            css.overflow = "visible";
+        }
         // A real `fixed` would answer to the editor window and float over the
         // panels. Inside the canvas it pins to the artboard instead, which is
         // what the author is actually looking at; the published page still
@@ -2392,7 +2480,7 @@ export default function Editor({
         componentMode ? "Components" : "Assets",
         ...(componentMode ? [] : ["Templates" as const]),
     ];
-    const utilityRailTabs: LeftEditorTab[] = ["Variables", "Data", "AI"];
+    const utilityRailTabs: LeftEditorTab[] = ["Variables", "Data", "History", "AI"];
     // Luma is the product's own face rather than a glyph from the icon set,
     // so it is wrapped to the shape the rail expects and used like any other.
     const iconForRailTab = (tab: LeftEditorTab) => tab === "Layers"
@@ -2452,7 +2540,32 @@ export default function Editor({
             data-ed-theme={chromeTheme === "light" ? "light" : undefined}
         >
             <header className="relative z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-ed-border bg-ed-surface/95 px-2.5 backdrop-blur-xl">
-                <button type="button" onClick={() => setIsLeftCollapsed((current) => !current)} title="Toggle sidebar" className="w-fit select-none rounded-full px-2 py-1 text-[12px] font-semibold tracking-[-.02em] text-ed-text transition-colors hover:bg-ed-field">Pagiera</button>
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <button type="button" onClick={() => setIsLeftCollapsed((current) => !current)} title="Toggle sidebar" className="w-fit select-none rounded-full px-2 py-1 text-[12px] font-semibold tracking-[-.02em] text-ed-text transition-colors hover:bg-ed-field">Pagiera</button>
+                    <div className="h-5 w-px bg-ed-border" />
+                    <div className="flex items-center gap-0.5 rounded-full bg-ed-subtle p-0.5">
+                        <button
+                            type="button"
+                            aria-label={effectsPreview ? "Stop interaction preview" : "Preview interactions"}
+                            aria-pressed={effectsPreview}
+                            onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }}
+                            className={`group/preview relative flex size-7 items-center justify-center rounded-full transition-colors ${effectsPreview ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
+                        >
+                            <IconPlayerPlay size={13} stroke={1.7} />
+                            <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[100] w-max translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/preview:translate-y-0 group-hover/preview:opacity-100 group-focus-visible/preview:translate-y-0 group-focus-visible/preview:opacity-100">{effectsPreview ? "Stop interaction preview" : "Preview hover, press and actions"}</span>
+                        </button>
+                        <button
+                            type="button"
+                            aria-label={stickyPreview ? "Disable sticky preview" : "Preview sticky positioning"}
+                            aria-pressed={stickyPreview}
+                            onClick={() => setStickyPreview((value) => !value)}
+                            className={`group/sticky relative flex size-7 items-center justify-center rounded-full transition-colors ${stickyPreview ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
+                        >
+                            {stickyPreview ? <IconPinFilled size={13} stroke={1.7} /> : <IconPin size={13} stroke={1.7} />}
+                            <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[100] w-max translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/sticky:translate-y-0 group-hover/sticky:opacity-100 group-focus-visible/sticky:translate-y-0 group-focus-visible/sticky:opacity-100">{stickyPreview ? "Disable sticky preview" : "Preview sticky positioning"}</span>
+                        </button>
+                    </div>
+                </div>
 
                 <div className="flex h-8 items-center gap-1 rounded-full bg-ed-subtle p-0.5">
                     {leftTab === "Templates" ? (
@@ -2590,6 +2703,68 @@ export default function Editor({
                     </>}
                 </div>
             </header>
+
+            {leftTab !== "Templates" && (
+                <nav aria-label="Open documents" className="z-20 flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-ed-border bg-ed-surface scrollbar-none">
+                    <button
+                        type="button"
+                        aria-current={!componentMode ? "page" : undefined}
+                        onClick={() => {
+                            setRootStyle({ documentMode: "page" });
+                            setSelectedIds([]);
+                            setEditingId(null);
+                            setLeftTab("Layers");
+                        }}
+                        className={`relative flex h-9 min-w-[144px] max-w-[220px] items-center gap-2 border-r border-ed-border px-3 text-left text-[11px] transition-colors ${!componentMode ? "bg-ed-canvas font-medium text-ed-text" : "text-ed-muted hover:bg-ed-subtle hover:text-ed-text"}`}
+                    >
+                        <IconFile size={12} className="shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">{page.name}</span>
+                        {!componentMode && <span className="absolute inset-x-0 top-0 h-0.5 bg-ed-accent" />}
+                    </button>
+                    {openComponentTabIds.map((id) => {
+                        const master = componentMasters.find((candidate) => candidate.id === id);
+                        if (!master) return null;
+                        const active = componentMode && activeComponentMaster?.id === id;
+                        return (
+                            <div key={id} className={`group/document-tab relative flex h-9 min-w-[144px] max-w-[220px] items-stretch border-r border-ed-border transition-colors ${active ? "bg-ed-canvas text-ed-text" : "text-ed-muted hover:bg-ed-subtle hover:text-ed-text"}`}>
+                                <button
+                                    type="button"
+                                    aria-current={active ? "page" : undefined}
+                                    onClick={() => {
+                                        setRootStyle({ documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
+                                        setActiveComponentMasterId(id);
+                                        setSelectedIds([id]);
+                                        setBreakpoint("desktop");
+                                        setLeftTab("Components");
+                                    }}
+                                    className="flex min-w-0 flex-1 items-center gap-2 px-3 text-left text-[11px]"
+                                >
+                                    <IconComponents size={12} className="shrink-0" />
+                                    <span className="min-w-0 flex-1 truncate">{master.name?.trim() || "Untitled component"}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-label={`Close ${master.name?.trim() || "component"}`}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        setOpenComponentTabIds((current) => current.filter((tabId) => tabId !== id));
+                                        if (active) {
+                                            setRootStyle({ documentMode: "page" });
+                                            setSelectedIds([]);
+                                            setLeftTab("Layers");
+                                        }
+                                    }}
+                                    className="mr-1 flex w-7 shrink-0 items-center justify-center text-ed-faint opacity-0 transition-colors hover:bg-ed-field-hover hover:text-ed-text focus:opacity-100 group-hover/document-tab:opacity-100"
+                                >
+                                    <IconX size={11} />
+                                </button>
+                                {active && <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-ed-accent" />}
+                            </div>
+                        );
+                    })}
+                    <button type="button" aria-label="Open components" onClick={() => openLeftPanel(componentMode ? "Components" : "Assets")} className="flex w-9 shrink-0 items-center justify-center border-r border-ed-border text-ed-faint transition-colors hover:bg-ed-field-hover hover:text-ed-text"><IconPlus size={13} /></button>
+                </nav>
+            )}
 
             <div className="flex flex-1 overflow-hidden bg-ed-canvas">
                 {/* Thin Toolbar */}
@@ -2734,6 +2909,14 @@ export default function Editor({
                                 />
                             ) : leftTab === "Assets" ? (
                                 <div className="p-3"><div className="mb-3 rounded-2xl border border-ed-border bg-ed-subtle p-3"><p className="text-[11px] font-semibold text-ed-text">Assets</p><p className="mt-1 text-[9px] leading-relaxed text-ed-faint">Navbar, sidebar, footer and reusable components live here once. Drag the exact variant you need onto any page.</p></div><div className="mb-2.5 flex items-center justify-between"><span className="text-[10px] font-semibold text-ed-muted">{componentAssets.length} shared asset{componentAssets.length === 1 ? "" : "s"}</span><span className="flex gap-1"><button type="button" onClick={createBlankComponent} className="flex items-center gap-1 rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text"><IconPlus size={10} /> New</button><button type="button" onClick={() => setCodeComposerOpen(true)} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Code</button></span></div><ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }} /></div>
+                            ) : leftTab === "History" ? (
+                                <HistoryPanel
+                                    pageId={page.id}
+                                    currentVersion={page.version}
+                                    listRevisions={adapters?.listRevisions}
+                                    restoreRevision={adapters?.restoreRevision}
+                                    onRestored={() => adapters?.refresh?.()}
+                                />
                             ) : leftTab === "Variables" ? (
                                 <VariablesPanel
                                     rootStyle={rootStyle}
@@ -3020,11 +3203,13 @@ export default function Editor({
                                             <div
                                                 ref={primary ? frameRef : undefined}
                                                 data-canvas-page
-                                                className="shadow-2xl"
+                                                className={componentMode ? "shadow-[0_0_0_1px_var(--ed-border)]" : "shadow-2xl"}
                                                 style={{
                                                     width: frame.width,
                                                     minHeight: frameCanvasHeight,
-                                                    background: rootStyle.bg,
+                                                    background: componentMode
+                                                        ? "repeating-conic-gradient(var(--ed-field) 0 25%, var(--ed-surface) 0 50%) 0 / 16px 16px"
+                                                        : rootStyle.bg,
                                                     transform: `scale(${scale})`,
                                                     transformOrigin: "top left",
                                                     outline:
@@ -3053,6 +3238,7 @@ export default function Editor({
                                                         // content width comes from bands.
                                                         maxWidth: "none",
                                                         minHeight: frameCanvasHeight,
+                                                        background: componentMode ? "transparent" : rootStyle.bg,
                                                     }}
                                                     onDragOver={(event) => {
                                                         event.preventDefault();
@@ -3126,25 +3312,7 @@ export default function Editor({
                         </AnimatePresence>
                     </div>
 
-                    <div className="absolute bottom-0 left-0 z-20 flex h-8 w-full items-center gap-2 border-t border-ed-border bg-ed-surface px-4 text-[11px] text-ed-muted shadow-sm">
-                        <Breadcrumbs
-                            byId={byId}
-                            selectedId={selectedId}
-                            onSelect={(id) => setSelectedIds([id])}
-                        />
-                    </div>
-
-                    <div className="absolute bottom-12 right-6 z-20 flex items-center gap-0.5 rounded-lg border border-ed-border bg-ed-surface/90 p-1 backdrop-blur">
-                        <button type="button" title={effectsPreview ? "Stop interaction preview" : "Preview hover, press and layer actions"} onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }} className={`rounded-md p-1.5 transition-colors ${effectsPreview ? "bg-ed-accent text-white" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}><IconPlayerPlay size={14} stroke={1.5} /></button>
-                        <button
-                            type="button"
-                            aria-pressed={stickyPreview}
-                            title={stickyPreview ? "Disable sticky positioning on the canvas" : "Preview sticky positioning on the canvas"}
-                            onClick={() => setStickyPreview((value) => !value)}
-                            className={`rounded-md p-1.5 transition-colors ${stickyPreview ? "bg-ed-accent text-white" : "text-ed-faint hover:bg-ed-field hover:text-ed-text"}`}
-                        >
-                            {stickyPreview ? <IconPinFilled size={14} stroke={1.5} /> : <IconPin size={14} stroke={1.5} />}
-                        </button>
+                    <div className="absolute bottom-6 right-6 z-20 flex items-center gap-0.5 rounded-lg border border-ed-border bg-ed-surface/90 p-1 backdrop-blur">
                         <button
                             type="button"
                             title="Recentre the canvas"
@@ -3174,15 +3342,15 @@ export default function Editor({
 
                 <AnimatePresence initial={false}>
                 {leftTab !== "Templates" && !isRightCollapsed && hasElementSelection && (
-                    <motion.aside initial={{ width: 0, opacity: 0, x: 14 }} animate={{ width: 312, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: 14 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="z-10 flex w-[312px] shrink-0 flex-col overflow-hidden border-l border-ed-border bg-ed-surface/95 backdrop-blur-xl">
-                        <div className="flex h-11 shrink-0 items-end gap-0.5 border-b border-ed-border px-2">
+                    <motion.aside initial={{ width: 0, opacity: 0, x: 14 }} animate={{ width: 320, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: 14 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="z-10 flex w-[320px] shrink-0 flex-col overflow-hidden border-l border-ed-border bg-ed-surface/95 shadow-[-8px_0_24px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+                        <div className="flex h-10 shrink-0 items-stretch border-b border-ed-border px-2">
                             {RIGHT_EDITOR_TABS.map((tab) => (
                                 <button
                                     type="button"
                                     key={tab}
                                     onClick={() => setRightTab(tab)}
                                     disabled={!selectedElement}
-                                    className={`relative flex-1 px-2 pb-3 pt-2 text-[11px] font-medium transition-colors disabled:opacity-30 ${
+                                    className={`relative flex flex-1 items-center justify-center px-2 text-[10px] font-medium transition-colors disabled:opacity-30 ${
                                         rightTab === tab
                                             ? "text-ed-text"
                                             : "text-ed-muted hover:text-ed-text"
@@ -3192,7 +3360,7 @@ export default function Editor({
                                     {rightTab === tab && selectedElement && (
                                         <motion.span
                                             layoutId="inspector-tab"
-                                            className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-ed-accent"
+                                            className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-ed-accent"
                                             transition={{ type: "spring", stiffness: 500, damping: 40 }}
                                         />
                                     )}
@@ -3207,10 +3375,10 @@ export default function Editor({
                             </p>
                         )}
 
-                        <div className="custom-scrollbar flex flex-1 flex-col overflow-y-auto px-4 py-3">
+                        <div className="custom-scrollbar flex flex-1 flex-col overflow-y-auto px-3 py-2">
                             {selectedElement ? (
                                 <>
-                                    <div className="mb-1 flex items-baseline justify-between">
+                                    <div className="mb-1 flex items-center justify-between rounded-lg border border-ed-border/70 bg-ed-subtle/60 px-3 py-2.5">
                                         <span className="text-[15px] font-semibold tracking-tight text-ed-text">
                                             {selectedElement.type}
                                         </span>
@@ -3220,6 +3388,11 @@ export default function Editor({
                                     </div>
                                     <div className="mb-3 flex items-center gap-1.5">
                                         {!componentMode && rootStyle.layout === "absolute" && selectedElement.parentId && <button type="button" onClick={() => doReparent(selectedElement.id, undefined)} className="flex-1 rounded-lg border border-ed-border bg-ed-subtle px-2.5 py-2 text-[10px] font-medium text-ed-muted hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-text">Detach to canvas</button>}
+                                        {!componentMode && !selectedElement.componentRole && (
+                                            <button type="button" onClick={createComponentFromSelection} className="flex-1 rounded-lg border border-ed-border bg-ed-subtle px-2.5 py-2 text-[10px] font-medium text-ed-muted hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-text">
+                                                Create component
+                                            </button>
+                                        )}
                                         {selectedElement.componentRole === "master" && (
                                             <>
                                                 <span className="rounded-md bg-ed-accent/15 px-2 py-1 text-[9px] font-semibold uppercase text-ed-accent">
@@ -3230,31 +3403,19 @@ export default function Editor({
                                             </>
                                         )}
                                         {selectedElement.componentRole === "instance" && (
-                                            <Select
-                                                value={selectedElement.variant ?? "Default"}
-                                                onValueChange={switchInstanceVariant}
-                                            >
-                                                <SelectTrigger className="h-8 min-w-0 flex-1" aria-label="Component variant">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {elements
-                                                        .filter(
-                                                            (element) =>
-                                                                element.componentRole === "master" &&
-                                                                element.componentId ===
-                                                                    selectedElement.componentId,
-                                                        )
-                                                        .map((element) => (
-                                                            <SelectItem
-                                                                key={element.id}
-                                                                value={element.variant ?? "Default"}
-                                                            >
-                                                                {element.variant ?? "Default"}
-                                                            </SelectItem>
+                                            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-1">
+                                                <Select value={selectedElement.variant ?? "Default"} onValueChange={switchInstanceVariant}>
+                                                    <SelectTrigger className="h-8 min-w-0" aria-label="Component variant"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {elements.filter((element) => element.componentRole === "master" && element.componentId === selectedElement.componentId).map((element) => (
+                                                            <SelectItem key={element.id} value={element.variant ?? "Default"}>{element.variant ?? "Default"}</SelectItem>
                                                         ))}
-                                                </SelectContent>
-                                            </Select>
+                                                    </SelectContent>
+                                                </Select>
+                                                <button type="button" onClick={() => openComponentEditor(selectedElement)} aria-label="Edit main component" className="flex size-8 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"><IconComponents size={13} /></button>
+                                                <button type="button" onClick={resetComponentInstance} aria-label="Reset instance" className="flex size-8 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"><IconRefresh size={13} /></button>
+                                                <button type="button" onClick={detachComponentInstance} aria-label="Detach instance" className="flex size-8 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"><IconUnlink size={13} /></button>
+                                            </div>
                                         )}
                                     </div>
                                     <motion.div
@@ -3277,6 +3438,7 @@ export default function Editor({
                                         sources={dataSources}
                                         bindingKeys={bindingKeys}
                                         insideRepeat={enclosingDataBlock !== undefined}
+                                        uploadImage={adapters?.uploadImage}
                                     /></motion.div>
                                 </>
                             ) : selectedIds.length > 1 ? (

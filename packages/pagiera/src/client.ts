@@ -121,6 +121,9 @@ export function createPagieraClient(options: PagieraClientOptions = {}) {
             setSiteTransition: (pageTransition: string, pageTransitionDuration: number) => call("/settings/transition", "POST", { pageTransition, pageTransitionDuration }),
             publishPage: (id: string) => call(`/pages/${id}/publish`, "POST"),
             unpublishPage: (id: string) => call(`/pages/${id}/unpublish`, "POST"),
+            listRevisions: (id: string) => call(`/pages/${id}/revisions`, "GET"),
+            restoreRevision: (id: string, revisionId: string) =>
+                call(`/pages/${id}/revisions/${revisionId}/restore`, "POST"),
             previewSource: (source: unknown, sampleQuery: string) => call("/data/preview", "POST", { source, sampleQuery }),
             generate: (request: unknown, onEvent?: (event: unknown) => void, signal?: AbortSignal) =>
                 streamAi(fetcher, `${base}/ai`, request, onEvent, signal),

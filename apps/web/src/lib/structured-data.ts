@@ -111,3 +111,53 @@ export function templateCollectionSchema(
     url: absoluteUrl("/templates"),
   };
 }
+
+/**
+ * Answer engines and Google's FAQ treatment both read this, and it is the one
+ * block on a comparison page that maps a literal question to a literal answer.
+ */
+export function faqSchema(
+  entries: Array<{ question: string; answer: string }>,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: entries.map((entry) => ({
+      "@type": "Question",
+      acceptedAnswer: { "@type": "Answer", text: entry.answer },
+      name: entry.question,
+    })),
+  };
+}
+
+/**
+ * A comparison is stated as its own page entity rather than as a review: we
+ * are a party to the comparison, so `Review` markup would be self-serving and
+ * is exactly what rich-result guidelines exclude.
+ */
+export function comparisonPageSchema({
+  description,
+  path,
+  rival,
+  title,
+}: {
+  description: string;
+  path: string;
+  rival: string;
+  title: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    about: [
+      { "@type": "SoftwareApplication", name: SITE_NAME },
+      { "@type": "SoftwareApplication", name: rival },
+    ],
+    description,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+    name: title,
+    publisher: { "@id": ORGANIZATION_ID },
+    url: absoluteUrl(path),
+  };
+}

@@ -8,6 +8,8 @@ import {
     IconArrowsVertical,
     IconLayoutAlignBottom,
     IconLayoutAlignTop,
+    IconLink,
+    IconUnlink,
     IconPlus,
     IconPlayerPlay,
     IconUpload,
@@ -58,10 +60,12 @@ import {
 import {
     CodeInput,
     ColorInput,
+    Field,
     Group,
     More,
     NumberInput,
     Overridable,
+    Pair,
     Segmented,
     SelectInput,
     SizeField,
@@ -87,6 +91,16 @@ type Ctx = {
     bindingKeys: string[];
     /** Whether this element sits inside a Repeat, so binding is meaningful. */
     insideRepeat: boolean;
+    /**
+     * Stores an image somewhere durable and answers with its URL.
+     *
+     * Without one, an uploaded image is inlined into the document as a data
+     * URI — fine for a logo, ruinous for photography: the bytes then travel
+     * with every read of the page, in the editor and on the published site
+     * alike. A host that has file storage supplies this and the document keeps
+     * a URL instead.
+     */
+    uploadImage?: (file: File) => Promise<string>;
 };
 
 type Wrap = (keys: StyleKey[], node: React.ReactNode) => React.ReactNode;
@@ -94,19 +108,56 @@ type Wrap = (keys: StyleKey[], node: React.ReactNode) => React.ReactNode;
 const INLINE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"]);
 const MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
 
-function ImageUpload({ src, onChange }: { src?: string; onChange: (src: string) => void }) {
+/**
+ * Puts an image on an element.
+ *
+ * Two modes, decided by whether the host gave an `uploadImage` adapter. With
+ * one, the file goes to the host's storage and the document keeps a URL — the
+ * only shape that stays sane as a site fills with photography. Without one, the
+ * image is inlined as a data URI and the 2 MB cap applies, because those bytes
+ * are then carried by the document itself on every read.
+ */
+function ImageUpload({
+    src,
+    onChange,
+    uploadImage,
+}: {
+    src?: string;
+    onChange: (src: string) => void;
+    uploadImage?: (file: File) => Promise<string>;
+}) {
     const [error, setError] = useState("");
-    const uploaded = src?.startsWith("data:image/") ?? false;
+    const [busy, setBusy] = useState(false);
+    const inlined = src?.startsWith("data:image/") ?? false;
 
-    const choose = (file?: File) => {
+    const choose = async (file?: File) => {
         setError("");
         if (!file) return;
         if (!INLINE_IMAGE_TYPES.has(file.type)) {
-            setError("Use PNG, JPG, WebP, GIF or AVIF. SVG is not accepted for inline uploads.");
+            setError("Use PNG, JPG, WebP, GIF or AVIF.");
             return;
         }
+
+        if (uploadImage) {
+            setBusy(true);
+            try {
+                const url = await uploadImage(file);
+                if (!url) throw new Error("The upload returned no address.");
+                onChange(url);
+            } catch (uploadError) {
+                setError(
+                    uploadError instanceof Error
+                        ? uploadError.message
+                        : "The image could not be uploaded.",
+                );
+            } finally {
+                setBusy(false);
+            }
+            return;
+        }
+
         if (file.size > MAX_INLINE_IMAGE_BYTES) {
-            setError("The image must be 2 MB or smaller.");
+            setError("The image must be 2 MB or smaller when it is stored in the page.");
             return;
         }
         const reader = new FileReader();
@@ -117,21 +168,32 @@ function ImageUpload({ src, onChange }: { src?: string; onChange: (src: string) 
         reader.readAsDataURL(file);
     };
 
+    const label = busy
+        ? "Uploading…"
+        : uploadImage
+          ? src
+              ? "Replace image"
+              : "Upload image"
+          : inlined
+            ? "Replace uploaded image"
+            : "Upload image as base64";
+
     return (
         <div className="flex flex-col gap-2">
-            <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-ed-border bg-ed-field px-3 py-3 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text">
-                <IconUpload size={14} /> {uploaded ? "Replace uploaded image" : "Upload image as base64"}
+            <label className={`flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-ed-border bg-ed-field px-3 py-3 text-[10px] font-medium text-ed-muted transition-colors ${busy ? "opacity-60" : "cursor-pointer hover:border-ed-accent/60 hover:text-ed-text"}`}>
+                <IconUpload size={14} /> {label}
                 <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
                     className="hidden"
+                    disabled={busy}
                     onChange={(event) => {
-                        choose(event.target.files?.[0]);
+                        void choose(event.target.files?.[0]);
                         event.target.value = "";
                     }}
                 />
             </label>
-            {uploaded && (
+            {inlined && (
                 <div className="flex items-center justify-between rounded-lg bg-ed-subtle px-2.5 py-2 text-[9px] text-ed-faint">
                     <span>Stored inside the page JSON</span>
                     <button type="button" onClick={() => onChange("")} className="text-ed-muted hover:text-red-400">Remove</button>
@@ -328,7 +390,8 @@ function StyleTab(ctx: Ctx) {
     const textual = isTextual(element.type);
 
     return (
-        <div className="flex flex-col divide-y divide-ed-border">
+        <div className="flex flex-col divide-y divide-ed-border/80">
+            <CompositionGroup ctx={ctx} ov={ov} />
             <SizeGroup ctx={ctx} ov={ov} />
             {ctx.parentLayout === "stack" && <FlexChildGroup ctx={ctx} ov={ov} />}
             {isContainer(element.type) && <LayoutGroup ctx={ctx} ov={ov} />}
@@ -337,94 +400,115 @@ function StyleTab(ctx: Ctx) {
             {textual && <TypographyGroup ctx={ctx} ov={ov} />}
             <FillGroup ctx={ctx} ov={ov} defaultOpen={!textual} />
             <BorderGroup ctx={ctx} ov={ov} />
-            <CompositionGroup ctx={ctx} ov={ov} />
         </div>
     );
 }
 
+/**
+ * Where the box sits and how big it is.
+ *
+ * Labels sit above their controls rather than beside them: coordinates and the
+ * two size axes belong together and are read as pairs, and a left-hand label
+ * column would leave each half of the pair too narrow to compare against the
+ * other.
+ */
 function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, parentLayout, onStyle, onCommitStart, onCommitEnd } = ctx;
+    const placed = parentLayout === "absolute";
 
     return (
-        <Group title="Size">
-            {ov(
-                ["widthMode", "w"],
-                <SizeField
-                    axis="W"
-                    mode={style.widthMode}
-                    value={style.w}
-                    onMode={(widthMode) => onStyle({ widthMode })}
-                    onValue={(w) => onStyle({ w })}
-                    onCommitStart={onCommitStart}
-                    onCommitEnd={onCommitEnd}
-                />,
-            )}
-            {ov(
-                ["heightMode", "h"],
-                <SizeField
-                    axis="H"
-                    mode={style.heightMode}
-                    value={style.h}
-                    onMode={(heightMode) => onStyle({ heightMode })}
-                    onValue={(h) => onStyle({ h })}
-                    onCommitStart={onCommitStart}
-                    onCommitEnd={onCommitEnd}
-                />,
+        <Group title="Layout">
+            {placed && (
+                <Field label="Coordinates">
+                    <Pair>
+                        {ov(
+                            ["x"],
+                            <NumberInput
+                                compact
+                                label="X"
+                                suffix="px"
+                                value={style.x}
+                                onChange={(x) => onStyle({ x })}
+                                onCommitStart={onCommitStart}
+                                onCommitEnd={onCommitEnd}
+                            />,
+                        )}
+                        {ov(
+                            ["y"],
+                            <NumberInput
+                                compact
+                                label="Y"
+                                suffix="px"
+                                value={style.y}
+                                onChange={(y) => onStyle({ y })}
+                                onCommitStart={onCommitStart}
+                                onCommitEnd={onCommitEnd}
+                            />,
+                        )}
+                    </Pair>
+                </Field>
             )}
 
-            {/* x/y only mean anything when the parent positions absolutely. */}
-            {parentLayout === "absolute" && (
-                <More label="Position">
-                    {ov(
-                        ["x"],
-                        <NumberInput
-                            label="X"
-                            suffix="px"
-                            value={style.x}
-                            onChange={(x) => onStyle({ x })}
-                            onCommitStart={onCommitStart}
-                            onCommitEnd={onCommitEnd}
-                        />,
-                    )}
-                    {ov(
-                        ["y"],
-                        <NumberInput
-                            label="Y"
-                            suffix="px"
-                            value={style.y}
-                            onChange={(y) => onStyle({ y })}
-                            onCommitStart={onCommitStart}
-                            onCommitEnd={onCommitEnd}
-                        />,
-                    )}
-                    {ov(
-                        ["constraintX"],
-                        <SelectInput
-                            label="Horizontal"
-                            value={style.constraintX}
-                            options={[
-                                { label: "Left", value: "start" as Constraint },
-                                { label: "Center", value: "center" as Constraint },
-                                { label: "Right", value: "end" as Constraint },
-                                { label: "Left & right", value: "stretch" as Constraint },
-                            ]}
-                            onChange={(constraintX) => onStyle({ constraintX })}
-                        />,
-                    )}
-                    {ov(
-                        ["constraintY"],
-                        <SelectInput
-                            label="Vertical"
-                            value={style.constraintY}
-                            options={[
-                                { label: "Top", value: "start" as Constraint },
-                                { label: "Center", value: "center" as Constraint },
-                                { label: "Bottom", value: "end" as Constraint },
-                                { label: "Top & bottom", value: "stretch" as Constraint },
-                            ]}
-                            onChange={(constraintY) => onStyle({ constraintY })}
-                        />,
-                    )}
+            <Field label="Size">
+                {ov(
+                    ["widthMode", "w"],
+                    <SizeField
+                        axis="W"
+                        mode={style.widthMode}
+                        value={style.w}
+                        onMode={(widthMode) => onStyle({ widthMode })}
+                        onValue={(w) => onStyle({ w })}
+                        onCommitStart={onCommitStart}
+                        onCommitEnd={onCommitEnd}
+                    />,
+                )}
+                {ov(
+                    ["heightMode", "h"],
+                    <SizeField
+                        axis="H"
+                        mode={style.heightMode}
+                        value={style.h}
+                        onMode={(heightMode) => onStyle({ heightMode })}
+                        onValue={(h) => onStyle({ h })}
+                        onCommitStart={onCommitStart}
+                        onCommitEnd={onCommitEnd}
+                    />,
+                )}
+            </Field>
+
+            {/* Constraints only mean anything when the parent positions absolutely. */}
+            {placed && (
+                <More label="Constraints">
+                    <Field label="Horizontal">
+                        {ov(
+                            ["constraintX"],
+                            <SelectInput
+                                value={style.constraintX}
+                                options={[
+                                    { label: "Left", value: "start" as Constraint },
+                                    { label: "Center", value: "center" as Constraint },
+                                    { label: "Right", value: "end" as Constraint },
+                                    { label: "Left & right", value: "stretch" as Constraint },
+                                ]}
+                                onChange={(constraintX) => onStyle({ constraintX })}
+                            />,
+                        )}
+                    </Field>
+                    <Field label="Vertical">
+                        {ov(
+                            ["constraintY"],
+                            <SelectInput
+                                value={style.constraintY}
+                                options={[
+                                    { label: "Top", value: "start" as Constraint },
+                                    { label: "Center", value: "center" as Constraint },
+                                    { label: "Bottom", value: "end" as Constraint },
+                                    { label: "Top & bottom", value: "stretch" as Constraint },
+                                ]}
+                                onChange={(constraintY) => onStyle({ constraintY })}
+                            />,
+                        )}
+                    </Field>
                 </More>
             )}
         </Group>
@@ -520,7 +604,7 @@ function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const isGrid = element.type === "Grid" || element.type === "Repeat";
 
     return (
-        <Group title="Layout">
+        <Group title="Flow">
             {ov(
                 ["layout"],
                 <Segmented
@@ -672,82 +756,124 @@ function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     );
 }
 
+/**
+ * The room around and inside this layer.
+ *
+ * Padding and margin are one control with two tabs rather than two stacked
+ * sections: an author adjusting the space around a box is choosing between
+ * inside and outside, and showing both at once doubles the panel for a choice
+ * that is one or the other.
+ *
+ * Each side gets its own field in a 2x2 grid laid out the way the box is —
+ * top above, bottom below — so the field an author reaches for is where the
+ * edge it changes actually is. The old "Per side" disclosure hid the same four
+ * values behind a click and listed them vertically, which read as a form
+ * rather than a box.
+ */
 function SpacingGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle } = ctx;
+    const [tab, setTab] = useState<"padding" | "margin">("padding");
+    const [linkMarginX, setLinkMarginX] = useState(style.marginL === style.marginR);
+    const [linkMarginY, setLinkMarginY] = useState(style.marginT === style.marginB);
+    const horizontallyCentered = style.marginL === "auto" && style.marginR === "auto";
+
     const uniform =
         style.padT === style.padR &&
         style.padR === style.padB &&
         style.padB === style.padL;
 
+    const side = (
+        key: "padT" | "padR" | "padB" | "padL",
+        label: string,
+        value: number,
+    ) =>
+        ov(
+            [key],
+            <NumberInput
+                compact
+                label={label}
+                suffix="px"
+                min={0}
+                value={value}
+                onChange={(next) => onStyle({ [key]: next } as Partial<ElementStyle>)}
+            />,
+        );
+
     return (
         <Group title="Spacing" defaultOpen={false}>
-            {ov(
-                ["padT", "padR", "padB", "padL"],
-                <NumberInput
-                    label={uniform ? "Padding" : "Padding (mixed)"}
-                    suffix="px"
-                    min={0}
-                    value={style.padT}
-                    onChange={(value) =>
-                        onStyle({ padT: value, padR: value, padB: value, padL: value })
-                    }
-                />,
+            <div className="flex border-b border-ed-border">
+                {(["padding", "margin"] as const).map((value) => (
+                    <button
+                        type="button"
+                        key={value}
+                        onClick={() => setTab(value)}
+                        className={`relative px-1 pb-2 pt-1 text-[11px] font-medium transition-colors ${value === "margin" ? "ml-5" : ""} ${tab === value ? "text-ed-text" : "text-ed-muted hover:text-ed-text"}`}
+                    >
+                        {value === "padding" ? "Padding" : "Margin"}
+                        {tab === value && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-ed-accent" />}
+                    </button>
+                ))}
+            </div>
+
+            {tab === "padding" ? (
+                <>
+                    <Field label={uniform ? "All sides" : "All sides (mixed)"}>
+                        {ov(
+                            ["padT", "padR", "padB", "padL"],
+                            <NumberInput
+                                compact
+                                suffix="px"
+                                min={0}
+                                value={style.padT}
+                                onChange={(value) =>
+                                    onStyle({
+                                        padT: value,
+                                        padR: value,
+                                        padB: value,
+                                        padL: value,
+                                    })
+                                }
+                            />,
+                        )}
+                    </Field>
+                    <Field label="Per side">
+                        <div className="grid grid-cols-2 gap-2">
+                            {side("padT", "T", style.padT)}
+                            {side("padR", "R", style.padR)}
+                            {side("padL", "L", style.padL)}
+                            {side("padB", "B", style.padB)}
+                        </div>
+                    </Field>
+                </>
+            ) : (
+                <Field label="Per side">
+                    <div className="space-y-2">
+                        <button
+                            type="button"
+                            aria-pressed={horizontallyCentered}
+                            onClick={() => onStyle(horizontallyCentered ? { marginL: 0, marginR: 0 } : { marginL: "auto", marginR: "auto" })}
+                            className={`flex h-8 w-full items-center justify-center gap-2 rounded-md border text-[10px] font-medium transition-colors ${horizontallyCentered ? "border-ed-accent/40 bg-ed-accent/10 text-ed-accent" : "border-ed-border bg-ed-field text-ed-muted hover:text-ed-text"}`}
+                        >
+                            <IconAlignBoxCenterMiddle size={13} />
+                            {horizontallyCentered ? "Horizontally centered" : "Center horizontally"}
+                        </button>
+                        <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-1.5">
+                            {ov(["marginT"], <NumberInput compact label="T" suffix="px" min={0} value={style.marginT} onChange={(value) => onStyle(linkMarginY ? { marginT: value, marginB: value } : { marginT: value })} />)}
+                            <button type="button" aria-label={linkMarginY ? "Unlink top and bottom margins" : "Link top and bottom margins"} aria-pressed={linkMarginY} onClick={() => setLinkMarginY((current) => !current)} className={`mb-px flex size-7 self-end items-center justify-center rounded-md border transition-colors ${linkMarginY ? "border-ed-accent/40 bg-ed-accent/10 text-ed-accent" : "border-ed-border bg-ed-field text-ed-faint hover:text-ed-text"}`}>
+                                {linkMarginY ? <IconLink size={12} /> : <IconUnlink size={12} />}
+                            </button>
+                            {ov(["marginB"], <NumberInput compact label="B" suffix="px" min={0} value={style.marginB} onChange={(value) => onStyle(linkMarginY ? { marginT: value, marginB: value } : { marginB: value })} />)}
+                        </div>
+                        <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-1.5">
+                            {ov(["marginL"], <NumberInput compact label={style.marginL === "auto" ? "L · auto" : "L"} suffix="px" min={0} disabled={style.marginL === "auto"} value={typeof style.marginL === "number" ? style.marginL : 0} onChange={(value) => onStyle(linkMarginX ? { marginL: value, marginR: value } : { marginL: value })} />)}
+                            <button type="button" aria-label={linkMarginX ? "Unlink left and right margins" : "Link left and right margins"} aria-pressed={linkMarginX} onClick={() => setLinkMarginX((current) => !current)} className={`mb-px flex size-7 self-end items-center justify-center rounded-md border transition-colors ${linkMarginX ? "border-ed-accent/40 bg-ed-accent/10 text-ed-accent" : "border-ed-border bg-ed-field text-ed-faint hover:text-ed-text"}`}>
+                                {linkMarginX ? <IconLink size={12} /> : <IconUnlink size={12} />}
+                            </button>
+                            {ov(["marginR"], <NumberInput compact label={style.marginR === "auto" ? "R · auto" : "R"} suffix="px" min={0} disabled={style.marginR === "auto"} value={typeof style.marginR === "number" ? style.marginR : 0} onChange={(value) => onStyle(linkMarginX ? { marginL: value, marginR: value } : { marginR: value })} />)}
+                        </div>
+                    </div>
+                </Field>
             )}
-            {ov(
-                ["marginB"],
-                <NumberInput
-                    label="Space after"
-                    suffix="px"
-                    min={0}
-                    value={style.marginB}
-                    onChange={(marginB) => onStyle({ marginB })}
-                />,
-            )}
-            <p className="text-[10px] leading-relaxed text-ed-faint">
-                Padding is the room inside this layer; space after is the distance to the next one.
-            </p>
-            <More label="Per side">
-                    {ov(
-                        ["padT"],
-                        <NumberInput
-                            label="Top"
-                            suffix="px"
-                            min={0}
-                            value={style.padT}
-                            onChange={(padT) => onStyle({ padT })}
-                        />,
-                    )}
-                    {ov(
-                        ["padR"],
-                        <NumberInput
-                            label="Right"
-                            suffix="px"
-                            min={0}
-                            value={style.padR}
-                            onChange={(padR) => onStyle({ padR })}
-                        />,
-                    )}
-                    {ov(
-                        ["padB"],
-                        <NumberInput
-                            label="Bottom"
-                            suffix="px"
-                            min={0}
-                            value={style.padB}
-                            onChange={(padB) => onStyle({ padB })}
-                        />,
-                    )}
-                    {ov(
-                        ["padL"],
-                        <NumberInput
-                            label="Left"
-                            suffix="px"
-                            min={0}
-                            value={style.padL}
-                            onChange={(padL) => onStyle({ padL })}
-                        />,
-                    )}
-            </More>
         </Group>
     );
 }
@@ -775,7 +901,7 @@ function FillGroup({
     const paintsForeground = ctx.element.type === "Icon";
 
     return (
-        <Group title="Fill" defaultOpen={defaultOpen}>
+        <Group title="Appearance" defaultOpen={defaultOpen}>
             {ov(
                 ["bg"],
                 <ColorInput
@@ -1108,7 +1234,21 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const stickyWarning = stickyBlocker(ctx);
 
     return (
-        <Group title="Composition" defaultOpen={false}>
+        <Group title="Position">
+            {ov(
+                ["position"],
+                <SelectInput
+                    label="Type"
+                    value={style.position}
+                    options={[
+                        { label: "Default", value: "static" as PositionMode },
+                        { label: "Sticky", value: "sticky" as PositionMode },
+                        { label: "Fixed", value: "fixed" as PositionMode },
+                        { label: "Absolute", value: "absolute" as PositionMode },
+                    ]}
+                    onChange={(position) => onStyle({ position })}
+                />,
+            )}
             {ov(
                 ["zIndex"],
                 <NumberInput
@@ -1142,20 +1282,6 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     value={style.aspectRatio}
                     options={ASPECT_RATIOS}
                     onChange={(aspectRatio) => onStyle({ aspectRatio })}
-                />,
-            )}
-            {ov(
-                ["position"],
-                <Segmented
-                    label="Pin"
-                    value={style.position}
-                    options={[
-                        { label: "Off", value: "static" as PositionMode },
-                        { label: "Sticky", value: "sticky" as PositionMode },
-                        { label: "Fixed", value: "fixed" as PositionMode },
-                        { label: "Free", value: "absolute" as PositionMode },
-                    ]}
-                    onChange={(position) => onStyle({ position })}
                 />,
             )}
             {style.position !== "static" && (
@@ -1310,7 +1436,7 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
 /** Entrance effects play on the published page and in Preview, not on canvas. */
 /* ------------------------------------------------------------------ content */
 
-function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRepeat }: Ctx) {
+function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRepeat, uploadImage }: Ctx) {
     return (
         <div className="flex flex-col divide-y divide-ed-border">
             {(element.type === "Repeat" || element.type === "Request") && (
@@ -1492,7 +1618,7 @@ function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRe
 
             {element.type === "Image" && (
                 <Group title="Image">
-                    <ImageUpload src={element.src} onChange={(src) => onProps({ src })} />
+                    <ImageUpload src={element.src} onChange={(src) => onProps({ src })} uploadImage={uploadImage} />
                     <TextInput
                         label="Source"
                         value={element.src ?? ""}
@@ -1972,9 +2098,9 @@ type ClickAction = (typeof CLICK_ACTIONS)[number]["value"];
  */
 function ClickGroup({ element, style, elements, onProps, onStyle }: Ctx) {
     const interaction = element.interaction;
-    const action: ClickAction = element.href
+    const action: ClickAction = interaction?.action === "navigate"
         ? "link"
-        : interaction?.action === "navigate"
+        : element.href
           ? "link"
           : (interaction?.action ?? "none");
     const targetsLayer = action !== "none" && action !== "link";
@@ -1983,15 +2109,22 @@ function ClickGroup({ element, style, elements, onProps, onStyle }: Ctx) {
         if (next === "none") return onProps({ href: "", target: undefined, interaction: undefined });
         if (next === "link")
             return onProps({
-                interaction: undefined,
-                href: element.href || (interaction?.action === "navigate" ? interaction.value : ""),
+                href: "",
+                target: undefined,
+                interaction: {
+                    trigger: "click",
+                    action: "navigate",
+                    value: interaction?.action === "navigate" ? interaction.value : (element.href ?? ""),
+                    target: interaction?.target ?? element.target ?? "_self",
+                },
             });
         onProps({
             href: "",
+            target: undefined,
             interaction: {
                 trigger: "click",
                 action: next,
-                value: targetsLayer ? (interaction?.value ?? "") : "",
+                value: interaction?.action !== "navigate" ? (interaction?.value ?? "") : "",
                 target: "_self",
             },
         });
@@ -2010,18 +2143,29 @@ function ClickGroup({ element, style, elements, onProps, onStyle }: Ctx) {
                 <>
                     <TextInput
                         label="URL"
-                        value={element.href ?? ""}
+                        value={interaction?.action === "navigate" ? interaction.value : (element.href ?? "")}
                         placeholder="https://… or /s/about"
-                        onChange={(href) => onProps({ href })}
+                        onChange={(value) => onProps({
+                            href: "",
+                            interaction: { trigger: "click", action: "navigate", value, target: interaction?.target ?? element.target ?? "_self" },
+                        })}
                     />
                     <SelectInput
                         label="Opens"
-                        value={element.target ?? "_self"}
+                        value={interaction?.action === "navigate" ? (interaction.target ?? "_self") : (element.target ?? "_self")}
                         options={[
                             { label: "Same tab", value: "_self" as const },
                             { label: "New tab", value: "_blank" as const },
                         ]}
-                        onChange={(target) => onProps({ target })}
+                        onChange={(target) => onProps({
+                            target: undefined,
+                            interaction: {
+                                trigger: "click",
+                                action: "navigate",
+                                value: interaction?.action === "navigate" ? interaction.value : (element.href ?? ""),
+                                target,
+                            },
+                        })}
                     />
                 </>
             )}

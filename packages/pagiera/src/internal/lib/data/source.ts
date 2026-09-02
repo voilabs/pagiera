@@ -109,8 +109,15 @@ export function selectPath(payload: unknown, path: string): unknown {
     return cursor;
 }
 
-/** Reads a body with a hard cap so a huge response cannot exhaust memory. */
-async function readCapped(response: Response): Promise<string> {
+/**
+ * Reads a body with a hard cap so a huge response cannot exhaust memory.
+ *
+ * The cap is a setting rather than a constant because what counts as "huge"
+ * depends on the source: a list of products is a few kilobytes, while one
+ * article whose images are stored inline can be several megabytes and is still
+ * a legitimate thing to render.
+ */
+async function readCapped(response: Response, maxBytes: number): Promise<string> {
     const reader = response.body?.getReader();
     if (!reader) return "";
 
@@ -120,9 +127,11 @@ async function readCapped(response: Response): Promise<string> {
         const { done, value } = await reader.read();
         if (done) break;
         total += value.byteLength;
-        if (total > MAX_BYTES) {
+        if (total > maxBytes) {
             await reader.cancel();
-            throw new DataSourceError("That response is too large (over 2 MB).");
+            throw new DataSourceError(
+                `That response is too large (over ${Math.round(maxBytes / 1_000_000)} MB).`,
+            );
         }
         chunks.push(value);
     }
@@ -152,6 +161,13 @@ export type LoadOptions = {
     /** Supplies `{{query.…}}` / `{{page.…}}` values for this request. */
     context?: RequestContext;
     /**
+     * Largest response body to accept, in bytes. Defaults to 2 MB — enough for
+     * the lists most pages bind to, and small enough that a runaway endpoint
+     * cannot exhaust memory. Raise it for a source that legitimately returns a
+     * long document, such as an article whose images are stored inline.
+     */
+    maxBytes?: number;
+    /**
      * Private hosts this request may reach, from the server's configuration.
      * Everything private stays blocked when it is absent.
      */
@@ -162,7 +178,7 @@ export const DEFAULT_REVALIDATE = 60;
 
 export async function loadSource(
     source: DataSource,
-    { revalidate = DEFAULT_REVALIDATE, context = EMPTY_CONTEXT, allowPrivateHosts }: LoadOptions = {},
+    { revalidate = DEFAULT_REVALIDATE, context = EMPTY_CONTEXT, allowPrivateHosts, maxBytes = MAX_BYTES }: LoadOptions = {},
 ): Promise<SourceResult> {
     const request = buildRequest(source, context, allowPrivateHosts);
     let target = request.url;
@@ -196,7 +212,7 @@ export async function loadSource(
         throw new DataSourceError(`The API replied ${response.status}.`, response.status);
     }
 
-    const text = await readCapped(response);
+    const text = await readCapped(response, maxBytes);
     let payload: unknown;
     try {
         payload = JSON.parse(text);
@@ -231,9 +247,16 @@ export async function loadSource(
     return { rows, keys };
 }
 
-/** Reads one binding path off a row and flattens it to something renderable. */
+/**
+ * Reads one binding path off a row and flattens it to something renderable.
+ *
+ * A leading `$` names the row itself, so `{{$.id}}` and `{{id}}` resolve to the
+ * same field. The alias is here because `$` is what most template languages use
+ * for the current item, and an author who reaches for it should get the field
+ * rather than a silent empty string.
+ */
 export function readBinding(row: Record<string, unknown>, path: string): string {
-    const value = selectPath(row, path);
+    const value = selectPath(row, path.replace(/^\s*\$\.?/, ""));
     if (value === null || value === undefined) return "";
     if (typeof value === "object") return "";
     return String(value);
@@ -250,6 +273,7 @@ export function readBinding(row: Record<string, unknown>, path: string): string 
  */
 export function resolveTokens(value: string, context: RequestContext): string {
     return value.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_, token: string) => {
+        if (token === "WINDOW_URL") return context.origin?.replace(/\/$/, "") ?? "";
         const [namespace, ...rest] = token.split(".");
         const key = rest.join(".");
         if (namespace === "query") return context.query[key] ?? "";

@@ -1,6 +1,6 @@
 {
   "name": "pagiera",
-  "version": "0.2.0-alpha.50",
+  "version": "0.2.0-alpha.51",
   "description": "Full-stack visual website editor with PostgreSQL, Redis and OpenRouter",
   "homepage": "https://pagiera.com",
   "repository": {
@@ -87,9 +87,10 @@
     "ai": "^7.0.74",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^1.0.0-rc.4",
+    "drizzle-orm": "^0.45.2",
     "esbuild": "^0.25.12",
-    "motion": "^13.1.1",
+    "marked": "^18.0.11",
+    "motion": "^13.1.0",
     "pg": "^8.23.0",
     "postcss": "^8.5.8",
     "radix-ui": "^1.6.7",

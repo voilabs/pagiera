@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from "next";
+import { COMPARISON_SLUGS } from "@/lib/comparisons";
 import { absoluteUrl } from "@/lib/site";
 
 /**
@@ -9,6 +10,11 @@ import { absoluteUrl } from "@/lib/site";
 const ROUTES: Array<{ changefreq: string; path: string; priority: string }> = [
   { changefreq: "weekly", path: "/", priority: "1.0" },
   { changefreq: "weekly", path: "/templates", priority: "0.8" },
+  ...COMPARISON_SLUGS.map((slug) => ({
+    changefreq: "monthly",
+    path: `/compare/${slug}`,
+    priority: "0.7",
+  })),
 ];
 
 function body() {

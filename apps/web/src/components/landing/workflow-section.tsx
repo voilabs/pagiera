@@ -2,68 +2,96 @@ import { motion } from "framer-motion";
 import { Icon } from "@/components/icons";
 
 const steps = [
-  [
-    "01",
-    "Compose",
-    "Start from a blank canvas or a complete responsive template.",
-  ],
-  [
-    "02",
-    "Connect",
-    "Bind real APIs, route params and forms without losing server rendering.",
-  ],
-  [
-    "03",
-    "Refine",
-    "Tune breakpoints, variants, typography and motion in one visual system.",
-  ],
-  [
-    "04",
-    "Publish",
-    "Ship exactly what you saw on the canvas—with semantic production output.",
-  ],
+  {
+    number: "01",
+    title: "Compose",
+    copy: "Start with a blank canvas or a complete responsive system.",
+    detail: "Canvas · Components",
+  },
+  {
+    number: "02",
+    title: "Connect",
+    copy: "Bind APIs, route parameters and forms directly to the page.",
+    detail: "Data · Routes · Forms",
+  },
+  {
+    number: "03",
+    title: "Refine",
+    copy: "Tune breakpoints, variants, typography and motion in context.",
+    detail: "Responsive · Motion",
+  },
+  {
+    number: "04",
+    title: "Publish",
+    copy: "Ship the exact experience as semantic, server-rendered output.",
+    detail: "SSR · Production",
+  },
 ];
 
 export function WorkflowSection() {
   return (
     <section
-      className="grid grid-cols-[.85fr_1.35fr] gap-24 bg-[#f8f7fb] px-[max(24px,calc((100vw-1200px)/2))] py-36 max-lg:grid-cols-1 max-lg:gap-14 max-lg:py-24"
+      className="bg-[#0d0915] px-[max(24px,calc((100vw-1240px)/2))] py-36 text-white max-md:py-24"
       id="workflow"
     >
-      <div>
-        <span className="text-[11px] font-bold tracking-[.1em] text-[#655e6e] uppercase">
-          From idea to live site
+      <div className="grid grid-cols-[.8fr_1.4fr] gap-20 max-lg:grid-cols-1 max-lg:gap-8">
+        <span className="text-[10px] font-bold tracking-[.13em] text-[#6a25f0] uppercase">
+          From first frame to live URL
         </span>
-        <h2 className="sticky top-28 mt-6 text-[clamp(48px,6vw,82px)] leading-[.94] font-medium tracking-[-.07em] max-lg:static">
-          A workflow that keeps momentum.
-        </h2>
+        <div>
+          <h2 className="text-[clamp(50px,7vw,100px)] leading-[.88] font-medium tracking-[-.08em]">
+            Four moves.
+            <br />
+            One continuous flow.
+          </h2>
+          <p className="mt-8 max-w-[620px] text-base leading-8 text-white/52">
+            No handoff theatre and no rebuilding the same decision in three
+            different tools. Every step happens on the page that will ship.
+          </p>
+        </div>
       </div>
-      <div className="divide-y divide-black/10 border-y border-black/10">
-        {steps.map(([number, title, copy], index) => (
+
+      <div className="mt-20 grid grid-cols-4 overflow-hidden rounded-[34px] border border-white/10 bg-[#171020] max-lg:grid-cols-2 max-md:grid-cols-1 max-md:rounded-[26px]">
+        {steps.map((step, index) => (
           <motion.article
-            className="group grid min-h-[190px] grid-cols-[48px_1fr_auto] items-center gap-5"
-            key={number}
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ delay: index * 0.05 }}
+            className="group relative min-h-[420px] border-white/10 p-7 not-first:border-l max-lg:nth-[3]:border-l-0 max-md:min-h-[330px] max-md:border-t max-md:border-l-0 max-md:first:border-t-0"
+            initial={{ opacity: 0, y: 26 }}
+            key={step.number}
+            transition={{ delay: index * 0.07, duration: 0.55 }}
+            viewport={{ amount: 0.25, once: true }}
+            whileInView={{ opacity: 1, y: 0 }}
           >
-            <span className="font-mono text-[10px] text-[#5402e6]">
-              {number}
-            </span>
-            <div>
-              <h3 className="text-[32px] font-medium tracking-[-.05em]">
-                {title}
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] text-[#6a25f0]">
+                {step.number}
+              </span>
+              <span className="grid size-10 place-items-center rounded-full border border-white/10 text-[#a982ff] transition group-hover:bg-[#6a25f0] group-hover:text-white">
+                <Icon name="arrow" size={15} />
+              </span>
+            </div>
+            <div className="mt-24 max-md:mt-16">
+              <h3 className="text-[clamp(34px,3vw,46px)] font-medium tracking-[-.06em]">
+                {step.title}
               </h3>
-              <p className="mt-3 max-w-[480px] text-sm leading-6 text-[#746d7c]">
-                {copy}
+              <p className="mt-4 text-sm leading-7 text-white/46">
+                {step.copy}
               </p>
             </div>
-            <span className="grid size-11 place-items-center rounded-full border border-black/10 transition-colors group-hover:bg-[#5402e6] group-hover:text-white">
-              <Icon name="arrow" />
+            <span className="absolute right-7 bottom-7 left-7 border-t border-white/10 pt-4 font-mono text-[9px] tracking-[.08em] text-white/30 uppercase">
+              {step.detail}
             </span>
           </motion.article>
         ))}
+      </div>
+
+      <div className="mt-8 flex items-center justify-between rounded-full bg-[#171020] px-7 py-5 text-sm text-white max-md:items-start max-md:gap-4 max-md:rounded-[24px]">
+        <span className="flex items-center gap-3">
+          <i className="size-2 rounded-full bg-[#8f5cff]" /> Every stage remains
+          editable.
+        </span>
+        <span className="text-white/45 max-sm:hidden">
+          Nothing gets flattened on the way to production.
+        </span>
       </div>
     </section>
   );

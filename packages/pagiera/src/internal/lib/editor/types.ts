@@ -15,6 +15,7 @@ export const ELEMENT_TYPES = [
     "List",
     "ListItem",
     "Quote",
+    "Markdown",
     "Embed",
     "Form",
     "Fieldset",
@@ -71,6 +72,8 @@ export type DataSource = {
  * string, so a typo cannot leak an unrelated value into the URL.
  */
 export type RequestContext = {
+    /** Public origin of the rendered site, exposed as `{{WINDOW_URL}}`. */
+    origin?: string;
     /** The visitor's query string, e.g. `{{query.id}}` on /post?id=5. */
     query: Record<string, string>;
     /** Values captured by a dynamic page path, e.g. `{{params.slug}}`. */
@@ -253,15 +256,11 @@ export type ElementStyle = {
     padR: number;
     padB: number;
     padL: number;
-    /**
-     * Space held below the element, outside its own box.
-     *
-     * Separate from `padB` on purpose: padding is the breathing room the
-     * author gave the content inside a section, while this is the distance to
-     * whatever comes next. Sharing one value would make adjusting the rhythm
-     * between sections quietly reflow their insides.
-     */
+    /** Space outside each edge of the element. */
+    marginT: number;
+    marginR: number | "auto";
     marginB: number;
+    marginL: number | "auto";
     justify: Justify;
     align: Align;
     wrap: boolean;
@@ -385,7 +384,10 @@ export const STYLE_KEYS = [
     "padR",
     "padB",
     "padL",
+    "marginT",
+    "marginR",
     "marginB",
+    "marginL",
     "justify",
     "align",
     "wrap",
@@ -578,7 +580,10 @@ export const BASE_STYLE: ElementStyle = {
     padR: 0,
     padB: 0,
     padL: 0,
+    marginT: 0,
+    marginR: 0,
     marginB: 0,
+    marginL: 0,
     justify: "start",
     align: "start",
     wrap: false,
@@ -920,6 +925,23 @@ export const ELEMENT_DEFAULTS: Record<
             color: "#3f3f46",
         },
         props: { content: "A quotation worth pulling out of the paragraph." },
+    },
+    Markdown: {
+        // A body of writing: it fills its column and grows with the text, and
+        // its own font settings cascade into the headings and lists it renders.
+        style: {
+            w: 640,
+            h: 200,
+            widthMode: "fill",
+            heightMode: "auto",
+            fontSize: 16,
+            lineHeight: 1.7,
+            color: "#3f3f46",
+        },
+        props: {
+            content:
+                "## A heading\n\nMarkdown is written here, or bound to a field so the page renders whatever the source returns.\n\n- One point\n- Another point",
+        },
     },
     Embed: {
         style: { w: 640, h: 400, widthMode: "fill", bg: "#f4f4f5", radius: 12 },

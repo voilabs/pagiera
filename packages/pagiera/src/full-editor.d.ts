@@ -43,6 +43,18 @@ export type PagieraStudioAdapters = {
     editorHref?(pageId: string, panel?: string): string;
     refresh?(): void;
     previewHref?(pageId: string): string;
+    /** Saved versions of a page, newest first. */
+    listRevisions?(pageId: string): Promise<unknown>;
+    /** Puts a saved version back into the draft. */
+    restoreRevision?(pageId: string, revisionId: string): Promise<unknown>;
+    /**
+     * Stores an image somewhere durable and answers with its URL.
+     *
+     * Without it an uploaded image is inlined into the document as a data URI,
+     * which the document then carries on every read. A host with file storage
+     * supplies this and the document keeps a URL instead.
+     */
+    uploadImage?(file: File): Promise<string>;
     publishedHref?(slug: string): string;
 };
 

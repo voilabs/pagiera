@@ -11,6 +11,8 @@ export type PagieraServerConfig = {
     templateRegistryUrl?: string;
     /** Private hosts a page's data sources may fetch from, such as `localhost`. */
     allowPrivateHosts?: string[];
+    /** Largest data-source response to accept, in bytes. Defaults to 2 MB. */
+    maxSourceBytes?: number;
 };
 
 export function pagieraConfigFromEnv(env?: NodeJS.ProcessEnv): PagieraServerConfig;

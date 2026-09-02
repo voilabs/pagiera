@@ -3,10 +3,39 @@ import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import { isBand, resolveStyle } from "@/lib/editor/style";
 import { childrenOf, indexById, noteIds } from "@/lib/editor/tree";
 import type { CanvasElement, RootStyle } from "@/lib/editor/types";
-import { bindElement, type PageData, type Row, rowsFor } from "./bind";
+import { bindElement, bindPageContext, type PageContext, type PageData, type Row, rowsFor } from "./bind";
 import { classFor, ENTRANCE_SCRIPT, hasEntrances, stylesheetFor } from "./css";
 import { customTagOf, withCustom } from "./custom";
+import { markdownToHtml } from "./markdown";
 import { IconGlyph } from "@/lib/editor/icon";
+
+/**
+ * Host components a page may be rendered with.
+ *
+ * The renderer emits plain HTML on its own, which is correct everywhere but
+ * gives up the host framework's client-side navigation. Naming a component
+ * here lets the host keep it: in Next.js, `{ Link }` from `next/link` turns an
+ * authored link into a prefetched client transition instead of a full reload.
+ *
+ * The component receives the same props the plain tag would — `href`,
+ * `className`, `target`, `rel`, the `data-pg-*` attributes — so a drop-in
+ * anchor replacement needs no adapter.
+ */
+export type PagieraComponents = {
+    Link?: React.ElementType;
+};
+
+/**
+ * Links a host component must not be given.
+ *
+ * A router link is for navigating this app. A fragment stays on the page, an
+ * absolute or `mailto:`/`tel:` URL leaves it, and `target="_blank"` opens
+ * elsewhere entirely — a router would either break these or gain nothing, so
+ * they keep the plain anchor.
+ */
+function isRoutable(href: string, target: string | undefined) {
+    return href.startsWith("/") && !href.startsWith("//") && target !== "_blank";
+}
 
 /**
  * Read-only rendering of a document, shared by the preview route and the
@@ -17,6 +46,8 @@ export function RenderedPage({
     rootStyle,
     data = {},
     includeScripts = true,
+    components,
+    context,
 }: {
     elements: CanvasElement[];
     rootStyle: RootStyle;
@@ -24,6 +55,14 @@ export function RenderedPage({
     data?: PageData;
     /** Template thumbnails render inside a scriptless sandbox. */
     includeScripts?: boolean;
+    /** Host components to render with, such as the framework's own link. */
+    components?: PagieraComponents;
+    /**
+     * The address this page was requested at, so an element can refer to it
+     * with `{{params.slug}}`, `{{query.q}}` or `{{page.slug}}` — the same
+     * tokens a data source URL already understands.
+     */
+    context?: PageContext;
 }) {
     const cascade = cascadeOf(rootStyle.breakpoints, rootStyle.baseBreakpointId);
     const baseId = baseOf(cascade).id;
@@ -53,6 +92,8 @@ export function RenderedPage({
                         elements={elements}
                         rootStyle={rootStyle}
                         data={data}
+                        components={components}
+                        context={context}
                     />
                 ))}
             </main>
@@ -83,6 +124,8 @@ function RenderedNode({
     rootStyle,
     data,
     row,
+    components,
+    context,
 }: {
     element: CanvasElement;
     elements: CanvasElement[];
@@ -90,6 +133,8 @@ function RenderedNode({
     data: PageData;
     /** The data row this subtree is being rendered for, inside a Repeat. */
     row?: Row;
+    components?: PagieraComponents;
+    context?: PageContext;
 }): React.ReactNode {
     // Derived here rather than threaded down: the node already has the page
     // style, and a second prop is one more thing that can fall out of step.
@@ -99,12 +144,25 @@ function RenderedNode({
     // Outside a Repeat, a bound element reads the first row/object from its
     // own source. Repeat descendants still receive the current list row.
     const directRow = row ?? (raw.sourceId ? data[raw.sourceId]?.[0] : undefined);
-    const element = bindElement(raw, directRow);
+    // Page-address tokens first, row binding second: the row may legitimately
+    // contain a field called `slug`, and resolving in the other order would let
+    // one shadow the other.
+    const addressed = context
+        ? {
+              ...raw,
+              href: bindPageContext(raw.href, context),
+              defaultValue: bindPageContext(raw.defaultValue, context),
+              content: bindPageContext(raw.content, context),
+              formAction: bindPageContext(raw.formAction, context),
+          }
+        : raw;
+    const element = bindElement(addressed, directRow);
     const children = childrenOf(elements, element.id);
     const style = resolveStyle(element, baseId, cascade);
     const band = isBand(element.type, style, rootStyle);
     const className =
         `pg-node ${classFor(element.id)}` +
+        (element.componentRole === "master" || element.componentRole === "instance" ? " pg-component-root" : "") +
         (band ? " pg-band" : "") +
         (element.type === "List" && element.listStyle !== "none"
             ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}`
@@ -115,7 +173,11 @@ function RenderedNode({
     // first object as the binding context for its entire subtree.
     const renderChildren = () =>
         element.type === "Repeat"
-            ? rowsFor(element, data, true).flatMap((dataRow, index) =>
+            // No placeholder row here, unlike the editor canvas: an author
+            // needs to see the template of an empty list to lay it out, but a
+            // visitor seeing one blank card on a search that found nothing is
+            // reading a result that does not exist.
+            ? rowsFor(element, data, false).flatMap((dataRow, index) =>
                   children.map((child) => (
                       <RenderedNode
                           key={`${index}:${child.id}`}
@@ -124,6 +186,8 @@ function RenderedNode({
                           rootStyle={rootStyle}
                           data={data}
                           row={dataRow}
+                          components={components}
+                          context={context}
                       />
                   )),
               )
@@ -135,6 +199,8 @@ function RenderedNode({
                       rootStyle={rootStyle}
                       data={data}
                       row={element.type === "Request" ? data[element.sourceId ?? ""]?.[0] : row}
+                      components={components}
+                      context={context}
                   />
               ));
 
@@ -300,9 +366,26 @@ function RenderedNode({
 
     // A link wraps rather than replaces the box, so styling stays on one node.
     if (href) {
+        // The host's link handles in-app navigation when one was given; every
+        // other kind of href stays an anchor, so an external URL or a fragment
+        // cannot end up inside a router that has nowhere to route it.
+        const Anchor =
+            components?.Link && isRoutable(href, target) ? components.Link : "a";
         return (
-            <a
+            <Anchor
                 {...withCustom(element, {
+                    // Same reason as the generic path below: the entrance script
+                    // adds `pg-in` before React hydrates, and an animated link
+                    // reported a mismatch on every card in a list.
+                    //
+                    // This covers the plain anchor. A host component such as
+                    // `next/link` creates the anchor itself and does not forward
+                    // this prop, so an animated router link still logs the
+                    // warning in development. It is cosmetic — React leaves the
+                    // class the script wrote, which is the visible result we
+                    // want — and silencing it would mean the host component
+                    // accepting the prop.
+                    suppressHydrationWarning: style.entrance !== "none" || undefined,
                     id: classFor(element.id),
                     "data-pg-drag": element.draggable ? "true" : undefined,
                     "data-pg-action": element.interaction?.action,
@@ -314,7 +397,7 @@ function RenderedNode({
                 rel={target === "_blank" ? "noopener noreferrer" : undefined}
             >
                 {body}
-            </a>
+            </Anchor>
         );
     }
 
@@ -433,6 +516,21 @@ export function ElementContent({ element }: { element: CanvasElement }) {
     }
 
     if (element.type === "Icon") return <IconGlyph element={element} />;
+
+    // Markdown is the one element whose text is markup rather than prose. It
+    // exists because a body of writing — a blog post, a docs page — arrives
+    // from a data source already formatted, and every other textual element
+    // would print the `##` and `**` as characters on the page.
+    if (element.type === "Markdown") {
+        if (!element.content) return null;
+        return (
+            <div
+                className="pg-md"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: markdownToHtml escapes raw HTML before parsing
+                dangerouslySetInnerHTML={{ __html: markdownToHtml(element.content) }}
+            />
+        );
+    }
 
     if (!element.content) return null;
     return (

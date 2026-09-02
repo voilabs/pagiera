@@ -26,7 +26,7 @@ export default function TemplatesPage({
 }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <div
-      className={`${manrope.variable} min-w-80 overflow-clip bg-[#f8f7fb] font-sans text-[#121018]`}
+      className={`${manrope.variable} min-w-80 overflow-clip bg-[#0d0915] font-sans text-[#f7f3ff]`}
     >
       <Seo
         description={`Explore ${templates.length} responsive Pagiera templates—complete multi-page systems you can preview as real rendered websites, then open and edit on the canvas.`}

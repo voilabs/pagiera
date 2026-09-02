@@ -11,6 +11,7 @@ export const PAGIERA_EDITOR_PANELS = [
     "ai",
     "data",
     "pages",
+    "history",
     "settings",
 ] as const;
 

@@ -310,6 +310,7 @@ export function stylesheetFor(
         // band's inner box, so section backgrounds reach both edges.
             `.pg-root{font-family:${resolveFont(rootStyle.fontFamily)}}` +
             ".pg-node{box-sizing:border-box}" +
+            ".pg-component-root{background:transparent!important;background-image:none!important;border-width:0!important;box-shadow:none!important;overflow:visible!important}" +
             ".pg-node:is(input,textarea,button){font:inherit}" +
             // A Button publishes as a native <button>, which arrives with the
             // platform's own grey fill and bevelled border. The editor emits a
@@ -344,6 +345,29 @@ export function stylesheetFor(
             // A pasted glyph carries whatever width the author copied it with;
             // the element box is what should decide its size.
             ".pg-svg-glyph>svg{display:block;width:100%;height:100%}" +
+            // A Markdown element produces tags nobody styled: its headings and
+            // lists are generated at render time, so they never get an element
+            // rule of their own. These defaults inherit the element's own font
+            // and colour and only set the rhythm — the author still controls
+            // size and colour from the element box, as with any other text.
+            ".pg-md{width:100%}" +
+            ".pg-md>*{margin:0}" +
+            ".pg-md>*+*{margin-top:1em}" +
+            ".pg-md h1,.pg-md h2,.pg-md h3,.pg-md h4,.pg-md h5,.pg-md h6{font-weight:600;line-height:1.25;margin-top:1.6em;text-wrap:balance}" +
+            ".pg-md h1{font-size:1.9em}.pg-md h2{font-size:1.55em}.pg-md h3{font-size:1.25em}.pg-md h4{font-size:1.1em}" +
+            ".pg-md :is(ul,ol){padding-left:1.4em}" +
+            ".pg-md ul{list-style:disc}.pg-md ol{list-style:decimal}" +
+            ".pg-md li+li{margin-top:.35em}" +
+            ".pg-md a{color:inherit;text-decoration:underline;text-underline-offset:2px}" +
+            ".pg-md img{max-width:100%;height:auto;border-radius:inherit}" +
+            ".pg-md blockquote{border-left:3px solid currentColor;padding-left:1em;opacity:.85}" +
+            ".pg-md :is(code,pre){font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}" +
+            ".pg-md pre{overflow-x:auto;padding:1em;border-radius:.5em;background:rgba(127,127,127,.12)}" +
+            ".pg-md pre code{background:none;padding:0}" +
+            ".pg-md code{background:rgba(127,127,127,.15);border-radius:.3em;padding:.1em .35em}" +
+            ".pg-md table{width:100%;border-collapse:collapse}" +
+            ".pg-md :is(th,td){border:1px solid rgba(127,127,127,.35);padding:.45em .7em;text-align:left}" +
+            ".pg-md hr{border:0;border-top:1px solid rgba(127,127,127,.35);margin:2em 0}" +
             ".pg-link{text-decoration:none;color:inherit}",
     );
 

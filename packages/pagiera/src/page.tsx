@@ -4,6 +4,7 @@ import { createElement, useMemo, useState, type CSSProperties, type FormEvent, t
 import type { PagieraDocument, PagieraElement } from "./document.js";
 import { IconGlyph } from "./internal/lib/editor/icon.js";
 import { customTagOf, withCustom } from "./internal/lib/render/custom.js";
+import { markdownToHtml } from "./internal/lib/render/markdown.js";
 
 export type PagieraPageProps = {
     document: PagieraDocument;
@@ -202,6 +203,17 @@ function ElementContent({ element }: { element: PagieraElement }) {
     if (element.type === "Image") return element.src ? <img src={element.src} alt={element.alt ?? ""} style={{ display: "block", width: "100%", height: "100%", objectFit: element.objectFit ?? "cover" }} /> : null;
     if (element.type === "Video") return element.src ? <iframe src={element.src} title={element.name ?? "Video"} style={{ width: "100%", height: "100%", border: 0 }} /> : null;
     if (element.type === "Icon") return <IconGlyph element={element} name={element.iconName} />;
+    // Markup rather than prose: every other textual element would print the
+    // `##` and `**` as characters on the page.
+    if (element.type === "Markdown") {
+        return element.content ? (
+            <div
+                className="pg-md"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: markdownToHtml escapes raw HTML before parsing
+                dangerouslySetInnerHTML={{ __html: markdownToHtml(element.content) }}
+            />
+        ) : null;
+    }
     return element.content ? <span style={{ display: "block", width: "100%", whiteSpace: "pre-wrap" }}>{element.content}</span> : null;
 }
 

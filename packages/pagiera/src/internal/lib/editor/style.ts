@@ -234,7 +234,10 @@ export function styleToCss(
         paddingTop: style.padT || undefined,
         paddingRight: style.padR || undefined,
         paddingBottom: style.padB || undefined,
+        marginTop: style.marginT || undefined,
+        marginRight: style.marginR || undefined,
         marginBottom: style.marginB || undefined,
+        marginLeft: style.marginL || undefined,
         paddingLeft: style.padL || undefined,
 
         backgroundColor: backgroundColorOf(style),

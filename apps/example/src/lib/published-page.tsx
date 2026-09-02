@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RenderedPage } from "pagiera/runtime";
 import { getPagieraServer, pagieraConfigFromEnv } from "pagiera/server";
@@ -29,6 +30,10 @@ export async function renderPublishedPage(
       elements={page.elements}
       rootStyle={page.rootStyle}
       data={page.data}
+      // An authored link to another page of this site becomes a client-side
+      // transition. External URLs, fragments and `_blank` links are left as
+      // plain anchors by the renderer, so nothing needs excluding here.
+      components={{ Link }}
     />
   );
 }

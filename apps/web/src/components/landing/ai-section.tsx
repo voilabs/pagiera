@@ -1,85 +1,113 @@
 import { motion } from "framer-motion";
 import { Icon } from "@/components/icons";
 
+const actions = [
+  "Set an editorial type scale",
+  "Create responsive project cards",
+  "Bind the featured-project query",
+];
+
 export function AiSection() {
   return (
-    <section className="grid min-h-[850px] grid-cols-2 items-center gap-24 mx-4 rounded-[48px] bg-[#eee8ff] px-[max(24px,calc((100vw-1200px)/2))] py-32 max-lg:grid-cols-1 max-lg:gap-14 max-lg:py-24">
-      <div>
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/60 px-3 py-2 text-[10px] font-bold tracking-wider text-[#5402e6] uppercase">
-          <Icon name="sparkles" size={14} /> Pagiera AI
-        </span>
-        <h2 className="mt-6 text-[clamp(48px,6vw,82px)] leading-[.94] font-medium tracking-[-.07em]">
-          A creative partner inside the canvas.
-        </h2>
-        <p className="mt-6 max-w-[520px] text-sm leading-7 text-[#6e6578]">
-          Describe a direction, watch every step and keep editing the real
-          result. AI uses the same responsive components, data and motion system
-          you do.
-        </p>
-      </div>
-      <motion.div
-        className="overflow-hidden rounded-[28px] border border-white/10 bg-[#15121a] text-white shadow-[0_40px_90px_rgba(64,33,110,.2)]"
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-      >
-        <div className="flex h-16 items-center gap-3 border-b border-white/8 px-5">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#5402e6]">
-            <Icon name="sparkles" size={15} />
-          </span>
+    <section className="bg-[#0d0915] px-3 pb-3">
+      <div className="relative overflow-hidden rounded-[48px] border border-white/[.08] bg-[#171020] px-[max(24px,calc((100vw-1240px)/2))] py-32 text-white max-md:rounded-[30px] max-md:py-24">
+        <div className="pointer-events-none absolute top-[-30%] right-[-12%] size-[720px] rounded-full bg-[#6a25f0]/28 blur-[140px]" />
+        <div className="relative grid grid-cols-[.88fr_1.12fr] items-center gap-24 max-lg:grid-cols-1 max-lg:gap-14">
           <div>
-            <strong className="block text-xs">Pagiera AI</strong>
-            <span className="text-[8px] text-white/40">
-              Design agent · Ready
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.05] px-3 py-2 text-[10px] font-bold tracking-[.1em] text-[#a982ff] uppercase backdrop-blur">
+              <Icon name="sparkles" size={14} /> Pagiera AI
             </span>
-          </div>
-          <i className="ml-auto size-2 rounded-full bg-[#4bd58a]" />
-        </div>
-        <div className="min-h-[390px] p-6">
-          <div className="ml-auto w-fit max-w-[80%] rounded-2xl rounded-br-sm bg-white px-4 py-3 text-[11px] leading-5 text-[#251e2e]">
-            Create a cinematic portfolio for an architecture studio.
-          </div>
-          <div className="mt-7 grid grid-cols-[32px_1fr] gap-3">
-            <span className="grid size-8 place-items-center rounded-xl bg-[#5402e6]">
-              <Icon name="sparkles" size={14} />
-            </span>
-            <div>
-              <p className="mt-1 text-[11px] leading-5 text-white/70">
-                I’ll build a restrained editorial system with warm stone tones
-                and spatial motion.
-              </p>
-              <div className="mt-4 grid gap-2">
-                {[
-                  "Creating design direction",
-                  "Composing responsive sections",
-                  "Adding entrance motion",
-                ].map((item, i) => (
+            <h2 className="mt-7 text-[clamp(50px,6.5vw,92px)] leading-[.9] font-medium tracking-[-.075em]">
+              Ask for direction.
+              <br />
+              Keep the decisions.
+            </h2>
+            <p className="mt-7 max-w-[560px] text-base leading-8 text-white/52">
+              AI works inside the same component, data and responsive system you
+              edit by hand. Every result remains visible, inspectable and yours
+              to change.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-2">
+              {["Visible steps", "Real components", "Editable output"].map(
+                (item) => (
                   <span
-                    className={`flex min-h-10 items-center gap-2 rounded-xl px-3 text-[9px] ${i === 2 ? "border border-[#7c41ff]/30 bg-[#5402e6]/10 text-[#c5b1f0]" : "bg-white/5 text-white/45"}`}
+                    className="rounded-full border border-white/10 bg-white/[.04] px-3.5 py-2 text-[10px] font-semibold text-white/62"
                     key={item}
                   >
-                    {i < 2 ? (
-                      <Icon className="text-[#50d28a]" name="check" size={12} />
-                    ) : (
-                      <i className="size-2 animate-spin rounded-full border border-[#a37bff] border-t-transparent" />
-                    )}
                     {item}
                   </span>
-                ))}
-              </div>
+                ),
+              )}
             </div>
           </div>
-        </div>
-        <div className="m-4 flex h-14 items-center rounded-2xl border border-white/8 bg-white/[.03] px-4 text-[10px] text-white/35">
-          Ask Pagiera to change anything…
-          <button
-            className="ml-auto grid size-9 cursor-pointer place-items-center rounded-xl bg-[#6d2cf0] text-white"
-            type="button"
+
+          <motion.div
+            className="overflow-hidden rounded-[34px] border border-white/10 bg-white/[.055] p-3 shadow-[0_45px_100px_rgba(0,0,0,.28)] backdrop-blur-xl max-md:rounded-[26px]"
+            initial={{ opacity: 0, y: 34 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            viewport={{ amount: 0.2, once: true }}
+            whileInView={{ opacity: 1, y: 0 }}
           >
-            <Icon name="arrow" size={15} />
-          </button>
+            <div className="rounded-[25px] bg-[#151020] p-5 text-white max-md:p-4">
+              <div className="flex items-center border-b border-white/10 pb-4">
+                <span className="grid size-9 place-items-center rounded-xl bg-[#6a25f0]">
+                  <Icon name="sparkles" size={15} />
+                </span>
+                <span className="ml-3">
+                  <strong className="block text-xs">Design agent</strong>
+                  <i className="mt-1 block text-[9px] not-italic text-white/35">
+                    Working in this page
+                  </i>
+                </span>
+                <i className="ml-auto size-2 rounded-full bg-[#7ee2a8]" />
+              </div>
+
+              <div className="py-7">
+                <div className="ml-auto max-w-[78%] rounded-2xl rounded-br-sm bg-white px-4 py-3 text-[11px] leading-5 text-[#20162d]">
+                  Build a restrained portfolio system for an architecture
+                  studio.
+                </div>
+                <div className="mt-7 grid grid-cols-[32px_1fr] gap-3">
+                  <span className="grid size-8 place-items-center rounded-xl bg-[#6a25f0]">
+                    <Icon name="sparkles" size={13} />
+                  </span>
+                  <div>
+                    <p className="text-[11px] leading-5 text-white/65">
+                      I’ll create the system in three visible steps.
+                    </p>
+                    <div className="mt-4 space-y-2">
+                      {actions.map((action, index) => (
+                        <motion.div
+                          className="flex min-h-12 items-center gap-3 rounded-xl border border-white/[.07] bg-white/[.04] px-3"
+                          initial={{ opacity: 0.35 }}
+                          key={action}
+                          transition={{ delay: index * 0.35, duration: 0.4 }}
+                          viewport={{ once: true }}
+                          whileInView={{ opacity: 1 }}
+                        >
+                          <span className="grid size-5 place-items-center rounded-full bg-[#6a25f0]/20 text-[#b99dff]">
+                            <Icon name="check" size={11} />
+                          </span>
+                          <span className="text-[10px] text-white/55">
+                            {action}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex h-14 items-center rounded-2xl border border-white/10 bg-white/[.04] px-4 text-[10px] text-white/30">
+                Ask for a change…
+                <span className="ml-auto grid size-9 place-items-center rounded-full bg-[#6a25f0] text-white">
+                  <Icon name="arrow" size={14} />
+                </span>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }

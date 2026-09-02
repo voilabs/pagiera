@@ -3,7 +3,7 @@
 import { IconChevronRight } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
     Select,
     SelectContent,
@@ -22,7 +22,7 @@ import {
  */
 
 const FIELD =
-    "flex h-8 items-center gap-2 rounded-lg bg-ed-field px-2.5 text-[12px] text-ed-text transition-colors hover:bg-ed-field-hover focus-within:bg-ed-surface focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--ed-accent)]/60";
+    "flex h-9 items-center gap-2 rounded-lg border border-ed-border/70 bg-ed-field px-2.5 text-[11px] text-ed-text shadow-[0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-ed-border hover:bg-ed-field-hover focus-within:border-ed-accent/70 focus-within:bg-ed-surface focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--ed-accent)]/25";
 const LABEL = "shrink-0 text-[11px] text-ed-muted";
 const VALUE =
     "min-w-0 flex-1 bg-transparent text-right tabular-nums outline-none placeholder:text-ed-faint";
@@ -80,19 +80,19 @@ export function Group({
     }
 
     return (
-        <div className="flex flex-col py-1.5">
+        <section className="flex flex-col py-3.5">
             <div className="flex items-center justify-between">
                 <button
                     type="button"
                     onClick={toggle}
                     aria-expanded={open}
-                    className="-ml-1 flex flex-1 items-center gap-1.5 rounded-md py-2 pl-1 text-left text-[11px] font-semibold uppercase tracking-wide text-ed-muted transition-colors hover:text-ed-text"
+                    className="flex flex-1 items-center justify-between py-1 text-left text-[12px] font-semibold tracking-[-0.01em] text-ed-text transition-colors hover:text-ed-accent"
                 >
+                    {title}
                     <IconChevronRight
                         size={12}
-                        className={`shrink-0 text-ed-faint transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+                        className={`ml-2 shrink-0 text-ed-faint transition-transform duration-200 ${open ? "rotate-90 text-ed-muted" : ""}`}
                     />
-                    {title}
                 </button>
                 {action}
             </div>
@@ -106,11 +106,11 @@ export function Group({
                         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                         className="overflow-hidden"
                     >
-                        <div className="flex flex-col gap-2 pb-3 pt-0.5">{children}</div>
+                        <div className="flex flex-col gap-2.5 pb-1 pt-2.5">{children}</div>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </section>
     );
 }
 
@@ -184,6 +184,39 @@ export function Overridable({
 }
 
 /** A labelled row; the label column keeps every control aligned. */
+/**
+ * A control with its label above it.
+ *
+ * `Row` puts the label in a fixed-width column beside the control, which reads
+ * well for a single value but wastes the panel's width as soon as two controls
+ * belong together — the pair ends up squeezed into what is left after the
+ * label. Stacking the label frees the full width for the controls, so
+ * coordinates, sizes and paddings can sit side by side and be compared.
+ */
+export function Field({
+    label,
+    children,
+    hint,
+}: {
+    label: string;
+    children: React.ReactNode;
+    hint?: string;
+}) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <span className={LABEL} title={hint}>
+                {label}
+            </span>
+            {children}
+        </div>
+    );
+}
+
+/** Two controls of equal weight, side by side. */
+export function Pair({ children }: { children: React.ReactNode }) {
+    return <div className="grid grid-cols-2 gap-2">{children}</div>;
+}
+
 export function Row({
     label,
     children,
@@ -194,7 +227,7 @@ export function Row({
     htmlFor?: string;
 }) {
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
             {htmlFor ? (
                 <label htmlFor={htmlFor} className={`${LABEL} ${LABEL_W}`}>
                     {label}
@@ -258,15 +291,21 @@ export function SelectInput<T extends string>({
     options,
     onChange,
 }: {
-    label: string;
+    /** Omitted inside a `Field`, which already names the control above it. */
+    label?: string;
     value: T;
     options: ReadonlyArray<{ label: string; value: T }>;
     onChange: (value: T) => void;
 }) {
     const id = useId();
-    return (
+    const select = (
+        <SelectShell id={id} value={value} options={options} onChange={onChange} />
+    );
+    return label === undefined ? (
+        select
+    ) : (
         <Row label={label} htmlFor={id}>
-            <SelectShell id={id} value={value} options={options} onChange={onChange} />
+            {select}
         </Row>
     );
 }
@@ -368,7 +407,8 @@ export function NumberInput({
     disabled,
     compact,
 }: {
-    label: string;
+    /** Omitted inside a `Field`, which already names the control above it. */
+    label?: string;
     value: number;
     onChange: (value: number) => void;
     onCommitStart?: () => void;
@@ -417,7 +457,9 @@ export function NumberInput({
     );
 
     if (compact) {
-        return (
+        return label === undefined ? (
+            field
+        ) : (
             <div className="flex min-w-0 flex-col gap-1">
                 <label htmlFor={id} className="truncate text-[10px] text-ed-muted">
                     {label}
@@ -427,7 +469,9 @@ export function NumberInput({
         );
     }
 
-    return (
+    return label === undefined ? (
+        field
+    ) : (
         <Row label={label} htmlFor={id}>
             {field}
         </Row>
@@ -507,14 +551,17 @@ export function Segmented<T extends string>({
     value,
     options,
     onChange,
+    comfortable = false,
 }: {
     label?: string;
     value: T;
     options: ReadonlyArray<{ label: string; value: T; icon?: React.ReactNode }>;
     onChange: (value: T) => void;
+    /** Adds breathing room for prominent tab switches. */
+    comfortable?: boolean;
 }) {
     const control = (
-        <div className="flex h-8 min-w-0 flex-1 gap-0.5 rounded-lg bg-ed-field p-1">
+        <div className={`flex w-full min-w-0 flex-1 gap-0.5 rounded-full border border-ed-border/70 bg-ed-field ${comfortable ? "min-h-10 p-0.5" : "h-9 p-0.5"}`}>
             {options.map((option) => (
                 <button
                     type="button"
@@ -522,7 +569,7 @@ export function Segmented<T extends string>({
                     title={option.label}
                     aria-pressed={value === option.value}
                     onClick={() => onChange(option.value)}
-                    className={`flex min-w-0 flex-1 items-center justify-center rounded-md px-1 text-[11px] transition-colors ${
+                    className={`flex min-w-0 flex-1 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors ${comfortable ? "py-1.5" : ""} ${
                         value === option.value
                             ? "bg-ed-surface text-ed-text shadow-sm"
                             : "text-ed-muted hover:text-ed-text"
@@ -565,20 +612,59 @@ export function SliderInput({
     onCommitEnd?: () => void;
 }) {
     const id = useId();
+    const animationFrame = useRef<number | null>(null);
+    const pendingValue = useRef(value);
+    const range = max - min;
+    const progress = range > 0 ? Math.min(100, Math.max(0, ((value - min) / range) * 100)) : 0;
+
+    useEffect(
+        () => () => {
+            if (animationFrame.current !== null) cancelAnimationFrame(animationFrame.current);
+        },
+        [],
+    );
+
+    const queueChange = (next: number) => {
+        pendingValue.current = next;
+        if (animationFrame.current !== null) return;
+        animationFrame.current = requestAnimationFrame(() => {
+            animationFrame.current = null;
+            onChange(pendingValue.current);
+        });
+    };
+
+    const finishChange = () => {
+        if (animationFrame.current !== null) {
+            cancelAnimationFrame(animationFrame.current);
+            animationFrame.current = null;
+            onChange(pendingValue.current);
+        }
+        onCommitEnd?.();
+    };
+
     return (
         <Row label={label} htmlFor={id}>
-            <input
-                id={id}
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={value}
-                onPointerDown={onCommitStart}
-                onPointerUp={onCommitEnd}
-                onChange={(event) => onChange(Number(event.target.value))}
-                className="h-7 min-w-0 flex-1 accent-blue-600"
-            />
+            <div className="group/slider relative flex h-8 min-w-0 flex-1 items-center">
+                <div className="pointer-events-none absolute inset-x-0 h-1 rounded-full bg-ed-field shadow-[inset_0_0_0_1px_var(--ed-border)]">
+                    <div
+                        className="h-full rounded-full bg-ed-accent"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+                <input
+                    id={id}
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={value}
+                    onPointerDown={onCommitStart}
+                    onPointerUp={finishChange}
+                    onPointerCancel={finishChange}
+                    onChange={(event) => queueChange(Number(event.target.value))}
+                    className="relative h-8 w-full cursor-ew-resize appearance-none bg-transparent outline-none [&::-moz-range-progress]:bg-transparent [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-ed-surface [&::-moz-range-thumb]:bg-ed-accent [&::-moz-range-thumb]:shadow-md [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-ed-surface [&::-webkit-slider-thumb]:bg-ed-accent [&::-webkit-slider-thumb]:shadow-md hover:[&::-moz-range-thumb]:scale-110 hover:[&::-webkit-slider-thumb]:scale-110 focus-visible:[&::-moz-range-thumb]:ring-2 focus-visible:[&::-moz-range-thumb]:ring-ed-accent/30 focus-visible:[&::-webkit-slider-thumb]:ring-2 focus-visible:[&::-webkit-slider-thumb]:ring-ed-accent/30"
+                />
+            </div>
             <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-ed-muted">
                 {Math.round(value)}
                 {suffix}

@@ -24,7 +24,7 @@ export default function Home() {
 
   return (
     <div
-      className={`${manrope.variable} min-w-80 overflow-clip bg-[#f8f7fb] font-sans text-[#121018]`}
+      className={`${manrope.variable} min-w-80 overflow-clip font-sans`}
     >
       <Seo
         description={SITE_DESCRIPTION}
@@ -37,7 +37,7 @@ export default function Home() {
         title="Pagiera — the open visual website builder"
       />
       <motion.div
-        className="fixed inset-x-0 top-0 z-[200] h-[3px] origin-left bg-[linear-gradient(90deg,#5402e6,#9b72ff)]"
+        className="fixed inset-x-0 top-0 z-[200] h-[3px] origin-left bg-[linear-gradient(90deg,#6a25f0,#a982ff)]"
         style={{ scaleX: progress }}
       />
       <SiteHeader />

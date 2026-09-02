@@ -7,6 +7,40 @@ export type Row = Record<string, unknown>;
 /** Resolved data for every source on the page, keyed by source id. */
 export type PageData = Record<string, Row[]>;
 
+/** The page's own address, as an element may refer to it. */
+export type PageContext = {
+    query?: Record<string, string>;
+    params?: Record<string, string>;
+    page?: { slug?: string };
+};
+
+const PAGE_TOKEN = /\{\{\s*(query|params|page)\.([a-zA-Z0-9_]+)\s*\}\}/g;
+
+/**
+ * Resolves `{{params.slug}}`, `{{query.q}}` and `{{page.slug}}` in an element's
+ * text.
+ *
+ * A data source URL has always understood these; an element could not, so a
+ * form had no way to carry the address it was submitted from — a comment box on
+ * `/blog/:slug` could not tell the server which post it belonged to.
+ *
+ * Only these three namespaces are touched. Anything else in braces is left
+ * exactly as written, because `{{title}}` and `{{$.title}}` belong to the row
+ * binding that runs afterwards and eating them here would blank every bound
+ * value on the page.
+ */
+export function bindPageContext<T extends string | undefined>(
+    value: T,
+    context: PageContext | undefined,
+): T {
+    if (!value || !context || !value.includes("{{")) return value;
+    return value.replace(PAGE_TOKEN, (_match, namespace: string, key: string) => {
+        if (namespace === "query") return context.query?.[key] ?? "";
+        if (namespace === "params") return context.params?.[key] ?? "";
+        return key === "slug" ? (context.page?.slug ?? "") : "";
+    }) as T;
+}
+
 function bindTemplate(value: string | undefined, row: Row) {
     if (!value?.includes("{{")) return value;
     return value.replace(/{{\s*([^{}]+?)\s*}}/g, (_match, path: string) => readBinding(row, path));

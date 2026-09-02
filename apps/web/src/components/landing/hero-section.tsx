@@ -1,244 +1,96 @@
-import {
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-} from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { ButtonLink } from "@/components/ui/button";
 
+/** The product floats inside the generated pixel landscape, never a screenshot. */
 export function HeroSection() {
   const reduced = useReducedMotion();
-  const { scrollYProgress } = useScroll();
-  const skyY = useTransform(scrollYProgress, [0, 0.2], [0, 100]);
-  const cloudX = useTransform(scrollYProgress, [0, 0.2], [0, -28]);
-  const cloudY = useTransform(scrollYProgress, [0, 0.2], [0, 145]);
-  const copyY = useTransform(scrollYProgress, [0, 0.16], [0, 54]);
-  const copyOpacity = useTransform(scrollYProgress, [0, 0.16], [1, 0.18]);
-  const stageY = useSpring(useTransform(scrollYProgress, [0, 0.25], [0, 80]), {
-    stiffness: 120,
-    damping: 30,
-  });
-  const pointerX = useMotionValue(0);
-  const pointerY = useMotionValue(0);
-  const rotateX = useSpring(useTransform(pointerY, [-0.5, 0.5], [5, -5]), {
-    stiffness: 110,
-    damping: 22,
-  });
-  const rotateY = useSpring(useTransform(pointerX, [-0.5, 0.5], [-7, 7]), {
-    stiffness: 110,
-    damping: 22,
-  });
+  const [copied, setCopied] = useState(false);
+  async function copyInstallCommand() {
+    try {
+      await navigator.clipboard.writeText("bun add pagiera");
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: Pointer tracking only drives decorative motion.
     <section
-      className="relative min-h-[1080px] overflow-hidden bg-[#f5f3ff] px-6 pt-[170px] pb-20 max-md:min-h-[940px] max-md:px-4 max-md:pt-32"
+      className="relative m-2 min-h-[calc(100vh-16px)] overflow-hidden rounded-[36px] bg-[#f8faf2] px-6 pt-[170px] text-[#11130f] max-md:m-1 max-md:min-h-[820px] max-md:rounded-[28px] max-md:px-4 max-md:pt-28"
       id="top"
-      onMouseLeave={() => {
-        pointerX.set(0);
-        pointerY.set(0);
-      }}
-      onMouseMove={(event) => {
-        if (reduced) return;
-        const bounds = event.currentTarget.getBoundingClientRect();
-        pointerX.set((event.clientX - bounds.left) / bounds.width - 0.5);
-        pointerY.set((event.clientY - bounds.top) / bounds.height - 0.5);
-      }}
     >
-      <motion.div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={reduced ? undefined : { y: skyY }}
-      >
-        <Image
-          className="object-cover object-top"
-          src="/sky.png"
-          alt=""
-          fill
-          priority
-          quality={70}
-          sizes="100vw"
-        />
-      </motion.div>
-      <motion.div
-        className="pointer-events-none absolute inset-0 z-[1]"
-        style={reduced ? undefined : { x: cloudX, y: cloudY }}
-      >
-        {/* Eager, but deliberately not `priority`: preloading both 1.1MB
-            backdrops made them race the heading for the LCP. */}
-        <Image
-          className="object-cover object-top mix-blend-multiply"
-          src="/clouds.png"
-          alt=""
-          fill
-          loading="eager"
-          quality={70}
-          sizes="100vw"
-        />
-      </motion.div>
-      <motion.div
-        animate={
-          reduced
-            ? undefined
-            : { opacity: [0.22, 0.34, 0.22], scale: [1, 1.08, 1] }
-        }
-        className="pointer-events-none absolute top-[8%] left-1/2 z-[1] h-[570px] w-[850px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,.95),rgba(236,230,255,.35)_45%,transparent_73%)] blur-2xl"
-        transition={{ duration: 5.5, ease: "easeInOut", repeat: Infinity }}
+      <Image
+        alt=""
+        className="object-cover object-center"
+        fill
+        priority
+        sizes="100vw"
+        src="/pagiera-hero-landscape-purple.png"
       />
+      <div className="pointer-events-none absolute inset-0 bg-white/[.04]" />
 
       <motion.div
-        className="relative z-[2] mx-auto max-w-[950px] text-center"
-        style={reduced ? undefined : { opacity: copyOpacity, y: copyY }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-[3] mx-auto max-w-[1000px] text-center"
+        initial={{ opacity: 0, y: 24 }}
+        transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* <motion.div
-          className="inline-flex items-center gap-2.5 rounded-full border border-[#5402e6]/10 bg-white/60 px-3 py-2 text-[11px] font-bold tracking-[0.09em] text-[#554c66] uppercase backdrop-blur-xl"
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <span className="size-2 rounded-full bg-[#5402e6] ring-[5px] ring-[#5402e6]/10" />
-          The open visual website builder
-        </motion.div> */}
-        <motion.h1
-          className="mt-6 mb-5 text-[clamp(58px,7.3vw,108px)] leading-[0.91] font-medium tracking-[-0.075em] max-md:text-[clamp(52px,15vw,76px)]"
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08, duration: 0.7 }}
-        >
-          Design the web.
-          <span className="block font-bold text-[#5402e6]">
-            Keep the freedom.
+        <h1 className="mt-8 text-[clamp(54px,7vw,96px)] font-semibold leading-[.9] tracking-[-0.075em] text-[#0d0f0b] max-md:mt-6 max-md:text-[clamp(48px,13vw,66px)]">
+          Build visually.
+          <span className="block">
+            Ship with{" "}
+            <em className="font-serif font-normal text-[#6a25f0]">
+              confidence.
+            </em>
           </span>
-        </motion.h1>
-        <motion.p
-          className="mx-auto max-w-[650px] text-[clamp(15px,1.4vw,19px)] leading-8 tracking-[-0.02em] text-[#665f70]"
-          initial={{ opacity: 0, y: 22 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.16, duration: 0.65 }}
-        >
-          A freeform, responsive and data-aware visual builder that turns
-          expressive ideas into production-ready websites.
-        </motion.p>
-        <motion.div
-          className="mt-8 flex justify-center gap-2.5 max-sm:mx-auto max-sm:w-full max-sm:max-w-[330px] max-sm:flex-col"
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.24 }}
-        >
-          <ButtonLink
-            size="lg"
-            variant="purple"
-            href="https://github.com/voilabs/pagiera"
+        </h1>
+        <p className="mx-auto mt-7 max-w-[600px] text-[clamp(15px,1.35vw,18px)] leading-[1.65] tracking-[-0.015em] text-[#5f5a6b]">
+          Design freeform, bind real data and publish responsive pages—without
+          giving up ownership of the code underneath.
+        </p>
+
+        <div className="justify-center flex mt-3">
+          <button
+            className="flex cursor-pointer items-center gap-4 rounded-full border border-dashed border-black/5 bg-black/5 py-2 pr-2.5 pl-4 text-black"
+            type="button"
+            onClick={copyInstallCommand}
           >
-            Start building <Icon name="arrow" size={17} />
+            <code className="font-mono text-sm font-semibold tracking-[-0.025em]">
+              bun add pagiera
+            </code>
+            <span className="flex items-center gap-1.5 rounded-full bg-black/10 px-2.5 py-1.5 text-[10px] font-semibold text-black">
+              <Icon name="copy" size={15} /> {copied ? "Copied" : "Copy"}
+            </span>
+          </button>
+        </div>
+        <div className="mt-3 flex justify-center gap-2.5 max-sm:mx-auto max-sm:w-full max-sm:max-w-[320px] max-sm:flex-col">
+          <ButtonLink
+            href="https://github.com/voilabs/pagiera"
+            size="lg"
+            variant="accent"
+          >
+            Start building <Icon name="arrow" size={16} />
           </ButtonLink>
-          <ButtonLink size="lg" variant="secondary" href="/templates">
+          <ButtonLink href="/templates" size="lg" variant="secondary">
             Explore templates
           </ButtonLink>
-        </motion.div>
+        </div>
       </motion.div>
 
-      <div className="relative z-[3] mx-auto mt-20 w-[min(1220px,96%)] [perspective:1400px] max-md:mt-14 max-md:w-[132%] max-md:-translate-x-[12%]">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.965 }}
-          animate={{ opacity: 1, scale: 1 }}
-          style={
-            reduced
-              ? undefined
-              : {
-                  rotateX,
-                  rotateY,
-                  transformStyle: "preserve-3d",
-                  y: stageY,
-                }
-          }
-          transition={{ delay: 0.35, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <EditorPreview reduced={Boolean(reduced)} />
-        </motion.div>
-
-        <FloatingChip
-          className="-left-10 top-[18%]"
-          delay={0.9}
-          icon="grid"
-          reduced={Boolean(reduced)}
-        >
-          Free canvas
-        </FloatingChip>
-        <FloatingChip
-          className="-right-12 top-[57%]"
-          delay={1.2}
-          icon="layers"
-          reduced={Boolean(reduced)}
-          reverse
-        >
-          Reusable components
-        </FloatingChip>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-8 left-8 z-[4] hidden items-center gap-3 text-[10px] font-bold tracking-[0.14em] text-[#655d70] uppercase lg:flex">
-        <span>Scroll to explore</span>
-        <span className="relative h-10 w-px overflow-hidden bg-black/10">
-          <motion.i
-            animate={reduced ? undefined : { y: [-16, 40] }}
-            className="absolute inset-x-0 top-0 h-4 bg-[#5402e6]"
-            transition={{ duration: 1.7, ease: "easeInOut", repeat: Infinity }}
-          />
-        </span>
-      </div>
-      <div className="pointer-events-none absolute right-8 bottom-8 z-[4] hidden gap-4 text-[10px] font-semibold tracking-[0.1em] text-[#71697a] uppercase lg:flex">
-        <span>Open source</span>
-        <span>Responsive</span>
-        <span>SSR</span>
-      </div>
+      <motion.div
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-[3] mx-auto mt-14 h-[350px] bg-gradient-to-b from-black/20 to-white/20 p-3 backdrop-blur-xl w-[min(1040px,84%)] overflow-hidden rounded-t-[20px] max-md:mt-10 max-md:h-[260px] max-md:w-[96%]"
+        initial={{ opacity: 0, y: 46 }}
+        transition={{ delay: 0.22, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <EditorPreview reduced={Boolean(reduced)} />
+      </motion.div>
     </section>
-  );
-}
-
-function FloatingChip({
-  children,
-  className,
-  delay,
-  icon,
-  reduced,
-  reverse = false,
-}: {
-  children: ReactNode;
-  className: string;
-  delay: number;
-  icon: "grid" | "layers";
-  reduced: boolean;
-  reverse?: boolean;
-}) {
-  return (
-    <motion.div
-      animate={
-        reduced
-          ? { opacity: 1, rotate: 0, scale: 1, y: 0 }
-          : {
-              opacity: 1,
-              rotate: reverse ? [2, -1, 2] : [-2, 1, -2],
-              scale: 1,
-              y: reverse ? [8, -8, 8] : [-8, 8, -8],
-            }
-      }
-      className={`pointer-events-none absolute z-10 hidden items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2.5 text-xs font-semibold text-[#352f3c] shadow-[0_18px_45px_rgba(64,45,96,.16)] backdrop-blur-xl lg:flex ${className}`}
-      initial={{ opacity: 0, scale: 0.8, y: 12 }}
-      transition={{
-        delay,
-        duration: reduced ? 0 : 4.2,
-        ease: "easeInOut",
-        repeat: reduced ? 0 : Infinity,
-      }}
-    >
-      <span className="grid size-7 place-items-center rounded-full bg-[#eee7ff] text-[#5402e6]">
-        <Icon name={icon} size={14} />
-      </span>
-      {children}
-    </motion.div>
   );
 }
 
@@ -262,28 +114,18 @@ const EDITOR_CHROME = {
   "--ed-grid": "rgb(0 0 0 / .045)",
 } as CSSProperties;
 
-const RAIL_PANELS: IconName[] = ["frame", "layers", "copy", "image", "grid"];
+const RAIL_PANELS: IconName[] = ["frame", "layers", "grid", "image"];
 const RAIL_TOOLS: IconName[] = ["brackets", "globe", "sparkles"];
 
-const LAYERS: Array<{
-  depth: number;
-  icon: IconName;
-  label: string;
-  active?: boolean;
-  branch?: boolean;
-}> = [
-  { branch: true, depth: 0, icon: "frame", label: "Navigation" },
-  { branch: true, depth: 0, icon: "frame", label: "Hero" },
-  { branch: true, depth: 1, icon: "frame", label: "Hero composition" },
-  { branch: true, depth: 2, icon: "frame", label: "Hero copy" },
-  { depth: 3, icon: "text", label: "Hero eyebrow" },
-  { active: true, depth: 3, icon: "heading", label: "Hero title" },
-  { depth: 3, icon: "text", label: "Hero body" },
-  { depth: 3, icon: "frame", label: "Hero actions" },
-  { branch: true, depth: 2, icon: "image", label: "Hero artwork" },
-  { branch: true, depth: 0, icon: "frame", label: "Marquee" },
-  { branch: true, depth: 0, icon: "frame", label: "Manifesto" },
-];
+const PAGES = [
+  ["Home", "/"],
+  ["About", "/about"],
+  ["Services", "/services"],
+  ["Journal", "/journal"],
+  ["Categories", "/journal/tag/:tag"],
+  ["Contact", "/contact"],
+  ["Article", "/journal/:slug"],
+] as const;
 
 const BREADCRUMB = ["Hero", "Hero composition", "Hero copy", "Hero title"];
 
@@ -291,13 +133,14 @@ function EditorPreview({ reduced }: { reduced: boolean }) {
   return (
     <div
       aria-hidden="true"
-      className="overflow-hidden rounded-[26px] border border-[var(--ed-border)] bg-[var(--ed-surface)] text-[var(--ed-text)] shadow-[0_65px_140px_rgba(55,35,88,.28),0_12px_34px_rgba(55,35,88,.14)]"
+      className="group relative overflow-hidden rounded-[13px] bg-[var(--ed-surface)] text-[var(--ed-text)] shadow-[0_65px_140px_rgba(55,35,88,.24),0_12px_34px_rgba(55,35,88,.12)]"
       style={EDITOR_CHROME}
     >
       <EditorHeader />
-      <div className="grid h-[610px] grid-cols-[48px_236px_minmax(0,1fr)_256px] bg-[var(--ed-canvas)] max-xl:h-[540px] max-xl:grid-cols-[46px_200px_minmax(0,1fr)_222px] max-lg:grid-cols-[44px_minmax(0,1fr)_208px] max-md:h-[420px] max-md:grid-cols-[40px_minmax(0,1fr)]">
+      <DocumentTabs />
+      <div className="grid h-[610px] grid-cols-[48px_230px_minmax(0,1fr)_256px] bg-[var(--ed-canvas)] max-xl:h-[540px] max-xl:grid-cols-[46px_200px_minmax(0,1fr)_222px] max-lg:grid-cols-[44px_minmax(0,1fr)_208px] max-md:h-[420px] max-md:grid-cols-[40px_minmax(0,1fr)]">
         <EditorRail />
-        <LayersPanel />
+        <PagesPanel />
         <EditorCanvas reduced={reduced} />
         <EditorInspector reduced={reduced} />
       </div>
@@ -308,15 +151,24 @@ function EditorPreview({ reduced }: { reduced: boolean }) {
 function EditorHeader() {
   return (
     <header className="grid h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-[var(--ed-border)] bg-[var(--ed-surface)] px-2.5">
-      <span className="w-fit rounded-full px-2 py-1 text-[12px] font-semibold tracking-[-.02em]">
-        Pagiera
-      </span>
+      <div className="flex items-center gap-1.5">
+        <span className="w-fit rounded-full px-2 py-1 text-[12px] font-semibold tracking-[-.02em]">
+          Pagiera
+        </span>
+        <i className="h-5 w-px bg-[var(--ed-border)]" />
+        <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ed-subtle)] text-[var(--ed-muted)]">
+          <Icon name="play" size={12} />
+        </span>
+        <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ed-subtle)] text-[var(--ed-muted)]">
+          <Icon name="pin" size={12} />
+        </span>
+      </div>
       <div className="flex h-8 items-center gap-1 rounded-full bg-[var(--ed-subtle)] p-0.5 text-[var(--ed-muted)] max-sm:hidden">
         <div className="flex items-center gap-0.5">
           <span className="flex size-6 items-center justify-center rounded-full">
             <Icon name="minus" size={12} />
           </span>
-          <span className="w-9 text-center text-[10px] tabular-nums">46%</span>
+          <span className="w-9 text-center text-[10px] tabular-nums">71%</span>
           <span className="flex size-6 items-center justify-center rounded-full">
             <Icon name="plus" size={12} />
           </span>
@@ -336,7 +188,10 @@ function EditorHeader() {
           Saved
         </span>
         <span className="h-7 rounded-full bg-[var(--ed-accent)] px-3 text-[10px] font-semibold leading-7 text-white">
-          Publish
+          Republish
+        </span>
+        <span className="px-1.5 text-[10px] text-[var(--ed-muted)] max-xl:hidden">
+          Unpublish
         </span>
         <span className="flex size-7 items-center justify-center rounded-full text-[var(--ed-muted)]">
           <Icon name="moon" size={14} />
@@ -349,6 +204,21 @@ function EditorHeader() {
   );
 }
 
+function DocumentTabs() {
+  return (
+    <div className="flex h-9 items-stretch border-b border-[var(--ed-border)] bg-[var(--ed-surface)]">
+      <span className="relative flex min-w-[142px] items-center gap-2 border-r border-[var(--ed-border)] bg-[var(--ed-canvas)] px-3 text-[11px] font-medium">
+        <Icon name="frame" size={12} />
+        Home
+        <i className="absolute inset-x-0 top-0 h-0.5 bg-[var(--ed-accent)]" />
+      </span>
+      <span className="grid w-9 place-items-center border-r border-[var(--ed-border)] text-[var(--ed-faint)]">
+        <Icon name="plus" size={12} />
+      </span>
+    </div>
+  );
+}
+
 function EditorRail() {
   return (
     <aside className="flex flex-col items-center border-r border-[var(--ed-border)] bg-[var(--ed-surface)] p-1.5">
@@ -358,7 +228,7 @@ function EditorRail() {
       <span className="my-1.5 h-px w-5 bg-[var(--ed-border)]" />
       <nav className="flex w-full flex-col items-center gap-1 rounded-full bg-[var(--ed-subtle)] p-0.5">
         {RAIL_PANELS.map((name) => (
-          <RailButton active={name === "layers"} icon={name} key={name} />
+          <RailButton active={name === "frame"} icon={name} key={name} />
         ))}
       </nav>
       <span className="my-1.5 h-px w-5 bg-[var(--ed-border)]" />
@@ -383,86 +253,62 @@ function RailButton({
 }) {
   return (
     <span
-      className={`flex size-8 items-center justify-center rounded-full max-md:size-7 ${
-        active ? "bg-[var(--ed-accent)] text-white" : "text-[var(--ed-muted)]"
-      }`}
+      className={`flex size-8 items-center justify-center rounded-full max-md:size-7 ${active ? "bg-[var(--ed-accent)] text-white" : "text-[var(--ed-muted)]"
+        }`}
     >
       <Icon name={icon} size={15} />
     </span>
   );
 }
 
-function LayersPanel() {
+function PagesPanel() {
   return (
     <aside className="flex min-w-0 flex-col overflow-hidden border-r border-[var(--ed-border)] bg-[var(--ed-surface)] max-lg:hidden">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--ed-border)] px-3.5">
         <span className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--ed-accent-soft)] text-[var(--ed-accent)]">
-            <Icon name="layers" size={13} />
+            <Icon name="frame" size={13} />
           </span>
-          <span className="truncate text-[11px] font-semibold">Layers</span>
+          <span className="truncate text-[11px] font-semibold">Pages</span>
         </span>
         <Icon className="text-[var(--ed-faint)]" name="close" size={14} />
       </div>
-      <div className="border-b border-[var(--ed-border)] bg-[var(--ed-subtle)] p-3">
-        <div className="flex items-center gap-2 rounded-md border border-[var(--ed-border)] bg-[var(--ed-surface)] px-2.5 py-1.5">
-          <Icon className="text-[var(--ed-faint)]" name="search" size={13} />
-          <span className="flex-1 truncate text-[11px] text-[var(--ed-faint)]">
-            Search layers...
-          </span>
-          <span className="text-[11px] text-[var(--ed-faint)]">⌘</span>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-hidden py-1">
-        {LAYERS.map((layer) => (
-          <LayerRow key={layer.label} {...layer} />
-        ))}
-      </div>
-      <div className="flex items-center justify-between border-t border-[var(--ed-border)] px-3 py-2 text-[var(--ed-muted)]">
-        <span className="text-[10px] tabular-nums">28 elements</span>
-        <span className="flex items-center gap-1.5">
-          <Icon name="copy" size={15} />
-          <Icon name="trash" size={15} />
+      <div className="flex items-center justify-between px-3.5 pt-4 pb-2 text-[9px] font-bold tracking-[.14em] text-[var(--ed-faint)] uppercase">
+        <span>Pages</span>
+        <span className="flex items-center gap-2">
+          {PAGES.length}
+          <i className="grid size-6 place-items-center rounded-full bg-[var(--ed-field)] text-[var(--ed-muted)]">
+            <Icon name="plus" size={11} />
+          </i>
         </span>
       </div>
+      <div className="min-h-0 flex-1 space-y-1 overflow-hidden px-2">
+        {PAGES.map(([name, path], index) => (
+          <div
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2 ${index === 0
+              ? "bg-[var(--ed-accent)] text-white"
+              : "text-[var(--ed-muted)]"
+              }`}
+            key={name}
+          >
+            <span
+              className={`grid size-7 shrink-0 place-items-center rounded-full ${index === 0 ? "bg-white/15" : "bg-[var(--ed-field)]"
+                }`}
+            >
+              <Icon name="frame" size={12} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <strong className="block truncate text-[11px] font-semibold">
+                {name}
+              </strong>
+              <i className="block truncate text-[9px] not-italic opacity-65">
+                {path}
+              </i>
+            </span>
+          </div>
+        ))}
+      </div>
     </aside>
-  );
-}
-
-function LayerRow({
-  active = false,
-  branch = false,
-  depth,
-  icon,
-  label,
-}: {
-  active?: boolean;
-  branch?: boolean;
-  depth: number;
-  icon: IconName;
-  label: string;
-}) {
-  return (
-    <div
-      className={`flex h-8 items-center gap-2 pr-2 text-[11px] ${
-        active
-          ? "bg-[var(--ed-accent-soft)] text-[var(--ed-text)]"
-          : "text-[var(--ed-muted)]"
-      }`}
-      style={{ paddingLeft: 12 + depth * 14 }}
-    >
-      {branch ? (
-        <Icon
-          className="shrink-0 rotate-90 text-[var(--ed-faint)]"
-          name="chevron"
-          size={11}
-        />
-      ) : (
-        <span className="w-[11px] shrink-0" />
-      )}
-      <Icon className="shrink-0" name={icon} size={13} />
-      <span className="truncate">{label}</span>
-    </div>
   );
 }
 
@@ -477,27 +323,14 @@ function EditorCanvas({ reduced }: { reduced: boolean }) {
         backgroundSize: "28px 28px",
       }}
     >
-      <div className="flex h-full items-start justify-center gap-[3%] px-5 pt-6 max-md:gap-[4%] max-md:px-3 max-md:pt-4">
+      <div className="flex h-full items-start justify-center px-5 pt-3 max-md:px-3 max-md:pt-3">
         <motion.div
-          animate={reduced ? undefined : { y: [0, -4, 0] }}
-          className="w-[63%] max-md:w-[68%]"
+          animate={reduced ? undefined : { y: [0, -3, 0] }}
+          className="w-[94%] max-md:w-full"
           transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
         >
           <FrameLabel base label="Desktop" range="1280+" width="1280" />
           <DesktopFrame reduced={reduced} />
-        </motion.div>
-        <motion.div
-          animate={reduced ? undefined : { y: [0, -4, 0] }}
-          className="w-[25%] max-md:w-[26%] max-sm:hidden"
-          transition={{
-            delay: 0.4,
-            duration: 6,
-            ease: "easeInOut",
-            repeat: Infinity,
-          }}
-        >
-          <FrameLabel label="Mobile" range="480 — 1279" width="480" />
-          <MobileFrame />
         </motion.div>
       </div>
 
@@ -516,13 +349,10 @@ function EditorCanvas({ reduced }: { reduced: boolean }) {
 
       <div className="absolute right-4 bottom-11 flex items-center gap-0.5 rounded-lg border border-[var(--ed-border)] bg-[var(--ed-surface)]/90 p-1 text-[var(--ed-faint)] backdrop-blur max-md:hidden">
         <span className="rounded-md p-1.5">
-          <Icon name="play" size={14} />
+          <Icon name="focus" size={14} />
         </span>
         <span className="rounded-md p-1.5">
-          <Icon name="focus" size={15} />
-        </span>
-        <span className="rounded-md px-1.5 py-1.5 font-mono text-[11px] leading-none">
-          1:1
+          <span className="font-mono text-[10px]">1:1</span>
         </span>
         <span className="rounded-md p-1.5">
           <Icon name="maximize" size={15} />
@@ -558,11 +388,10 @@ function FrameLabel({
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-1 max-lg:hidden">
         <span
-          className={`flex size-5 items-center justify-center rounded-md ${
-            base
-              ? "bg-[var(--ed-accent-soft)] text-[var(--ed-accent)]"
-              : "bg-[var(--ed-field)] text-[var(--ed-muted)]"
-          }`}
+          className={`flex size-5 items-center justify-center rounded-md ${base
+            ? "bg-[var(--ed-accent-soft)] text-[var(--ed-accent)]"
+            : "bg-[var(--ed-field)] text-[var(--ed-muted)]"
+            }`}
         >
           <Icon name="pin" size={11} />
         </span>
@@ -677,69 +506,20 @@ function DesktopFrame({ reduced }: { reduced: boolean }) {
   );
 }
 
-function MobileFrame() {
-  return (
-    <div className="relative h-[600px] overflow-hidden bg-[#f1ede4] text-[#141117] shadow-2xl max-xl:h-[540px] max-md:h-[400px]">
-      <div className="relative h-[52%] overflow-hidden">
-        <div className="flex h-5 items-center justify-between border-b border-black/10 px-[7%] text-[7px]">
-          <strong className="tracking-[-.02em]">PAGIERA®</strong>
-          <Icon name="menu" size={9} />
-        </div>
-        <div className="px-[7%] pt-[9%]">
-          <span className="text-[6px] font-bold uppercase tracking-[.14em]">
-            Independent creative studio
-          </span>
-          <p className="mt-[6%] text-[clamp(11px,1.5vw,20px)] font-medium leading-[.9] tracking-[-.07em]">
-            MAKE THE WEB
-            <span className="block text-[#5402e6]">FEEL ALIVE.</span>
-          </p>
-          <p className="mt-[7%] text-[6px] leading-[1.8] text-black/55">
-            Digital experiences with character, rhythm and motion—built for
-            brands that refuse to blend in.
-          </p>
-          <span className="mt-[8%] block w-fit rounded-full bg-[#141117] px-2.5 py-1 text-[6px] font-medium text-white">
-            Start a project
-          </span>
-        </div>
-        <div className="absolute -bottom-[8%] left-1/2 aspect-square w-[70%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,#a87aff_0%,#5402e6_32%,transparent_70%)] opacity-90 blur-[6px]" />
-      </div>
-
-      <div className="flex h-[4%] items-center gap-[4%] overflow-hidden bg-[#141117] px-[7%] text-[6px] font-bold uppercase tracking-[.14em] whitespace-nowrap text-[#f1ede4]">
-        <span>Brand systems</span>
-        <span className="text-[#a87aff]">+</span>
-        <span>Digital direction</span>
-      </div>
-
-      <div className="px-[7%] pt-[7%]">
-        <span className="text-[6px] font-bold uppercase tracking-[.16em] text-black/45">
-          01 / Our point of view
-        </span>
-        <p className="mt-[5%] text-[clamp(9px,1.1vw,15px)] font-medium leading-[1.15] tracking-[-.05em]">
-          Craft is a discipline, not a decoration.
-        </p>
-        <p className="mt-[7%] text-[6px] leading-[1.9] text-black/50">
-          Strategy first, so every visual decision carries an argument.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function EditorInspector({ reduced }: { reduced: boolean }) {
   return (
     <aside className="flex min-w-0 flex-col overflow-hidden border-l border-[var(--ed-border)] bg-[var(--ed-surface)] max-md:hidden">
       <div className="flex h-11 shrink-0 items-end gap-0.5 border-b border-[var(--ed-border)] px-2">
-        {["Design", "Content", "Effects", "Actions"].map((tab) => (
+        {["Content", "Style", "Interact"].map((tab) => (
           <span
-            className={`relative flex-1 px-2 pb-3 pt-2 text-center text-[11px] font-medium ${
-              tab === "Design"
-                ? "text-[var(--ed-text)]"
-                : "text-[var(--ed-muted)]"
-            }`}
+            className={`relative flex-1 px-2 pb-3 pt-2 text-center text-[11px] font-medium ${tab === "Content"
+              ? "text-[var(--ed-text)]"
+              : "text-[var(--ed-muted)]"
+              }`}
             key={tab}
           >
             {tab}
-            {tab === "Design" && (
+            {tab === "Content" && (
               <i className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-[var(--ed-accent)]" />
             )}
           </span>
@@ -751,63 +531,41 @@ function EditorInspector({ reduced }: { reduced: boolean }) {
             Heading
           </span>
           <span className="font-mono text-[10px] text-[var(--ed-faint)]">
-            ef8430
+            364bc6
           </span>
         </div>
-        <InspectorGroup title="Size">
-          <InspectorRow label="W">
-            <InspectorField value="Fill" />
-            <InspectorSelect value="Fill" />
+        <span className="mt-2 grid h-8 place-items-center rounded-full border border-[var(--ed-border)] bg-[var(--ed-subtle)] text-[10px] font-medium text-[var(--ed-muted)]">
+          Create component
+        </span>
+        <InspectorGroup title="Request result">
+          <InspectorRow label="Source">
+            <InspectorSelect value="None" />
           </InspectorRow>
-          <InspectorRow label="H">
-            <InspectorField value="Hug" />
-            <InspectorSelect value="Hug" />
+          <p className="text-[9px] leading-4 text-[var(--ed-faint)]">
+            Bind a request result directly, or repeat this layer for every item.
+          </p>
+        </InspectorGroup>
+        <InspectorGroup title="Text">
+          <InspectorRow label="Content">
+            <motion.span
+              animate={reduced ? undefined : { opacity: [0.72, 1, 0.72] }}
+              className="flex min-h-16 flex-1 items-start rounded-xl bg-[var(--ed-field)] p-2.5 text-[11px] leading-5 text-[var(--ed-text)]"
+              transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
+            >
+              Make the web feel alive.
+            </motion.span>
           </InspectorRow>
         </InspectorGroup>
-        <InspectorGroup title="Text" />
-        <InspectorGroup title="Fill">
-          <InspectorRow label="Background">
-            <span className="flex h-8 flex-1 items-center gap-2 rounded-lg bg-[var(--ed-field)] px-2.5 text-[12px]">
-              <i className="size-4 rounded border border-black/10 bg-[#141117]" />
-              <span className="flex-1 text-right text-[var(--ed-muted)]">
-                transparent
-              </span>
-            </span>
+        <InspectorGroup title="Layer name">
+          <InspectorRow label="Name">
+            <InspectorField value="hero-title" />
           </InspectorRow>
         </InspectorGroup>
-        <InspectorGroup title="Spacing">
-          <InspectorRow label="Padding">
-            <InspectorField suffix="px" value="0" />
+        <InspectorGroup title="HTML">
+          <InspectorRow label="Tag">
+            <InspectorSelect value="h1" />
           </InspectorRow>
         </InspectorGroup>
-        <InspectorGroup title="Effects">
-          <InspectorRow label="Corner radius">
-            <InspectorField suffix="px" value="0" />
-          </InspectorRow>
-          <InspectorRow label="Opacity">
-            <span className="flex flex-1 items-center gap-2">
-              <span className="h-1 flex-1 rounded-full bg-[var(--ed-field)]">
-                <motion.i
-                  animate={
-                    reduced
-                      ? { width: "100%" }
-                      : { width: ["62%", "100%", "62%"] }
-                  }
-                  className="block h-full rounded-full bg-[var(--ed-accent)]"
-                  transition={{
-                    duration: 4.6,
-                    ease: "easeInOut",
-                    repeat: Infinity,
-                  }}
-                />
-              </span>
-              <span className="w-9 text-right text-[11px] tabular-nums text-[var(--ed-muted)]">
-                100%
-              </span>
-            </span>
-          </InspectorRow>
-        </InspectorGroup>
-        <InspectorGroup title="Composition" />
       </div>
     </aside>
   );

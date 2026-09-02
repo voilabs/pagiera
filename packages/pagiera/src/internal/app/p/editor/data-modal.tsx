@@ -204,7 +204,7 @@ export function DataSourceModal({
                         type="text"
                         value={source.url}
                         aria-label="Request URL"
-                        placeholder="https://api.example.com/posts"
+                        placeholder="{{WINDOW_URL}}/api/posts"
                         onChange={(e) => onChange({ url: e.target.value })}
                         className="min-w-0 flex-1 rounded-md bg-ed-field px-3 py-1.5 font-mono text-[12px] text-ed-text outline-none transition-colors focus:bg-ed-field-hover placeholder:text-ed-faint"
                     />
