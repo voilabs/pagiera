@@ -1,6 +1,6 @@
 {
   "name": "pagiera",
-  "version": "0.2.0-alpha.52",
+  "version": "0.2.0-alpha.53",
   "description": "Full-stack visual website editor with PostgreSQL, Redis and OpenRouter",
   "homepage": "https://pagiera.com",
   "repository": {
@@ -26,7 +26,9 @@
   ],
   "license": "MIT",
   "type": "module",
-  "bin": { "pagiera": "./cli/main.mjs" },
+  "bin": {
+    "pagiera": "./cli/main.mjs"
+  },
   "sideEffects": [
     "./dist/styles.css",
     "./dist/full.css"
@@ -35,6 +37,7 @@
     "cli",
     "dist",
     "AGENTS.md",
+    "AI-WORKSPACE.md",
     "README.md"
   ],
   "main": "./dist/index.js",
