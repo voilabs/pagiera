@@ -49,7 +49,13 @@ export function softwareApplicationSchema() {
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
+    alternateName: [
+      "Pagiera CMS",
+      "Pagiera visual CMS",
+      "Pagiera page builder",
+    ],
     applicationCategory: "DeveloperApplication",
+    applicationSubCategory: "Content Management System",
     description: SITE_DESCRIPTION,
     featureList: [
       "Freeform responsive canvas",
@@ -63,6 +69,8 @@ export function softwareApplicationSchema() {
       "Targeted AI proposals with before-and-after review",
     ],
     isAccessibleForFree: true,
+    keywords:
+      "visual CMS, self-hosted CMS, headless CMS alternative, Next.js CMS, React CMS, page builder, website builder, open source CMS",
     license: "https://opensource.org/licenses/MIT",
     name: SITE_NAME,
     offers: {

@@ -14,7 +14,7 @@ export const SITE_NAME = "Pagiera";
 export const SITE_LOCALE = "en_US";
 
 export const SITE_DESCRIPTION =
-  "Build editable websites with Pagiera, the open-source React and Next.js builder. Reuse layouts, customize interactions and review targeted AI edits before publishing.";
+  "Pagiera is an open-source visual page builder and self-hosted CMS for React and Next.js. Edit pages on a real canvas, keep them in your own database, publish server-rendered.";
 
 export const REPO_URL = "https://github.com/voilabs/pagiera";
 

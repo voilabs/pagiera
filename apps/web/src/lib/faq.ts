@@ -25,6 +25,16 @@ export const FAQ_GROUPS: FaqGroup[] = [
     entries: [
       ...pick("What is Pagiera?", "Is Pagiera free to use?"),
       {
+        question: "Is Pagiera a CMS?",
+        answer:
+          "For pages, yes. Pagiera stores every page as a document in your own PostgreSQL database, keeps drafts separate from published revisions, and gives non-developers a visual editor to change them — which is the job a CMS does. It is not a headless CMS in the content-modelling sense: you do not define arbitrary collections and query them over an API. Instead, pages bind to the APIs you already have through Request and Repeat blocks.",
+      },
+      {
+        question: "Can I use Pagiera as a CMS for a Next.js site?",
+        answer:
+          "Yes, and that is the common case. Install the package in your Next.js app, mount the editor behind your authentication, and render published documents on the server with pagiera/runtime. Marketing edits a page visually, previews the draft and publishes it; the content never leaves your infrastructure and no separate CMS service sits in the request path.",
+      },
+      {
         question: "Is Pagiera a website builder or a developer tool?",
         answer:
           "Both, deliberately. Pagiera is an npm package a developer installs into a React and Next.js application, and the thing it installs is a visual editor that non-developers can use. The developer owns the integration; the editor is where the pages get designed.",

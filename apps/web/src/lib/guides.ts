@@ -197,7 +197,7 @@ export async function editorBootstrap(pageId?: string) {
           "No. Pagiera does not ship an authentication layer. You mount the editor route and the API route inside your application and protect them with the authentication you already use.",
       },
     ],
-    related: ["bind-api-data-to-a-page", "preview-and-publish-pages"],
+    related: ["use-pagiera-as-a-cms", "bind-api-data-to-a-page"],
   },
 
   {
@@ -403,7 +403,7 @@ if (!page) notFound();`,
           "Pagiera keeps page documents and revisions in PostgreSQL, and the editor exposes a History tab. Check the behaviour of the version you installed before relying on a specific rollback flow.",
       },
     ],
-    related: ["add-a-visual-editor-to-nextjs", "bind-api-data-to-a-page"],
+    related: ["add-a-visual-editor-to-nextjs", "use-pagiera-as-a-cms"],
   },
 
   {
@@ -568,6 +568,132 @@ if (!page) notFound();`,
       },
     ],
     related: ["add-a-visual-editor-to-nextjs", "build-with-a-coding-agent"],
+  },
+
+  {
+    slug: "use-pagiera-as-a-cms",
+    navLabel: "Pagiera as a CMS",
+    category: "CMS",
+    title: "Use Pagiera as a self-hosted CMS for a Next.js site",
+    question: "Can you use Pagiera as a CMS for a Next.js site?",
+    answer:
+      "Yes, for pages. Pagiera stores every page as a document in your own PostgreSQL database, separates drafts from published revisions, and gives non-developers a visual editor to change them — the job a CMS does. It is not a headless CMS in the content-modelling sense: instead of defining collections and querying them over an API, pages bind to the APIs you already have. Nothing leaves your infrastructure and no CMS service sits in the request path.",
+    description:
+      "Run Pagiera as the CMS behind a Next.js site: where page content is stored, who edits what, how drafts and publishing work, and how it differs from a headless CMS.",
+    updated: "2026-09-13",
+    minutes: 5,
+    takeaways: [
+      "Page documents live in your PostgreSQL database, not in a vendor's cloud.",
+      "Drafts are private until published, and revisions are kept.",
+      "There are no content models or collections — pages read the APIs you already run.",
+      "Published pages render on the server, so editors' changes are in the first HTML response.",
+    ],
+    sections: [
+      {
+        heading: "What Pagiera manages, and what it does not",
+        blocks: [
+          {
+            type: "table",
+            head: ["Pagiera owns this", "You still own this"],
+            rows: [
+              [
+                "Page documents, drafts, published revisions",
+                "Product data, users, orders — whatever your APIs already hold",
+              ],
+              [
+                "The visual editor and the publishing step",
+                "Authentication, hosting, deployment and your domain",
+              ],
+              [
+                "Server-side resolution of a page's data blocks",
+                "The endpoints those blocks call",
+              ],
+            ],
+          },
+          {
+            type: "note",
+            body: "If you need arbitrary content types with their own schemas and a query API, that is a headless CMS, and Pagiera is not one. If you need pages that marketing can edit and that read your existing data, that is exactly this.",
+          },
+        ],
+      },
+      {
+        heading: "How it compares to a headless CMS",
+        blocks: [
+          {
+            type: "table",
+            head: ["Headless CMS", "Pagiera"],
+            rows: [
+              [
+                "Content lives in the vendor's cloud and is fetched over their API.",
+                "Content lives in your database and is read by your own server.",
+              ],
+              [
+                "Editors fill in fields; a developer decides how they render.",
+                "Editors change the page itself, on the canvas that produces it.",
+              ],
+              [
+                "A new layout usually means a developer ships code.",
+                "A new layout is a visual edit, published without a deploy.",
+              ],
+              [
+                "Billed per seat, record or API call.",
+                "MIT-licensed; you pay for your own Postgres and Redis.",
+              ],
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Who touches what",
+        blocks: [
+          {
+            type: "ordered",
+            items: [
+              "A developer installs the package, mounts the API route and puts the editor behind your authentication.",
+              "An editor opens the studio, changes the page and saves — which only updates the draft.",
+              "Anyone with access reviews the draft on a preview route before it is public.",
+              "Publishing promotes the approved revision and refreshes the cached page.",
+            ],
+          },
+          {
+            type: "text",
+            body: "Because publishing changes page content rather than code, an editorial change does not wait on a deployment — but it also does not deploy your application, so your release pipeline stays exactly as it was.",
+          },
+        ],
+      },
+      {
+        heading: "Keeping editor-made pages indexable",
+        blocks: [
+          {
+            type: "text",
+            body: "The usual failure of visually built pages is that their content arrives after the first response, so crawlers and answer engines see an empty shell. Published Pagiera pages are loaded on the server and their Request blocks finish before HTML is returned, so what a crawler reads is what an editor published.",
+          },
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Is Pagiera a CMS?",
+        answer:
+          "For pages, yes. It stores page documents in your own PostgreSQL database, keeps drafts separate from published revisions and gives non-developers a visual editor. It is not a headless CMS in the content-modelling sense: you do not define arbitrary collections and query them over an API.",
+      },
+      {
+        question: "Where is the content stored?",
+        answer:
+          "In the PostgreSQL database you configure with PAGIERA_POSTGRES_URL. Redis caches published pages. Both run on your own infrastructure; there is no Pagiera-hosted content service.",
+      },
+      {
+        question: "Can non-developers publish without a deploy?",
+        answer:
+          "Yes. Saving updates a draft and publishing promotes it to the public page, which is a content change rather than a code change. Deploying the host application remains a separate, developer-owned step.",
+      },
+      {
+        question: "Can I migrate off it?",
+        answer:
+          "The package is MIT-licensed and the pages are JSON documents in your own database, so the content is readable without Pagiera running. There is no vendor account to close or export queue to wait on.",
+      },
+    ],
+    related: ["add-a-visual-editor-to-nextjs", "preview-and-publish-pages"],
   },
 ];
 

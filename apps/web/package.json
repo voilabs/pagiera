@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node ../../scripts/check-docs.cjs && next build",
-    "docs:check": "node ../../scripts/check-docs.cjs",
+    "build": "node scripts/check-docs.mjs && next build",
+    "docs:check": "node scripts/check-docs.mjs",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
