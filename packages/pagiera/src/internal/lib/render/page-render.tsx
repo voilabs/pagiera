@@ -1,8 +1,14 @@
 import React from "react";
+import { TextEffectsContent } from "./text-effects";
+import { shaderDocument } from "../editor/shaders";
+import { interactiveDocument, restoreInteractiveElement, upgradeCarouselElements } from "../editor/interactive";
+import { CarouselContent } from "./carousel-content";
+import { MarqueeContent } from "./marquee";
+import { MarqueeRuntime } from "./marquee-runtime";
 import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import { isBand, resolveStyle } from "@/lib/editor/style";
-import { childrenOf, indexById, noteIds } from "@/lib/editor/tree";
-import type { CanvasElement, RootStyle } from "@/lib/editor/types";
+import { childrenOf, parkedIds } from "@/lib/editor/tree";
+import type { CanvasElement, EntranceSplit, RootStyle } from "@/lib/editor/types";
 import { bindElement, bindPageContext, type PageContext, type PageData, type Row, rowsFor } from "./bind";
 import { classFor, ENTRANCE_SCRIPT, hasEntrances, stylesheetFor } from "./css";
 import { customTagOf, withCustom } from "./custom";
@@ -42,7 +48,7 @@ function isRoutable(href: string, target: string | undefined) {
  * published site so what the author previews is what visitors get.
  */
 export function RenderedPage({
-    elements: all,
+    elements: inputElements,
     rootStyle,
     data = {},
     includeScripts = true,
@@ -64,19 +70,18 @@ export function RenderedPage({
      */
     context?: PageContext;
 }) {
+    const all = upgradeCarouselElements(inputElements.map(restoreInteractiveElement));
     const cascade = cascadeOf(rootStyle.breakpoints, rootStyle.baseBreakpointId);
     const baseId = baseOf(cascade).id;
 
-    // Anything parked beside the canvas is a note the author kept for
-    // themselves; it never reaches the page. The reference has to be the width
-    // the canvas measured against — the breakpoint's own — and not the content
-    // cap: measuring against a smaller `maxWidth` would classify elements the
-    // author can plainly see on the artboard as notes and silently drop them.
-    const frameWidth = rootStyle.fullWidth
-        ? Number.POSITIVE_INFINITY
-        : baseOf(cascade).width;
-    const notes = noteIds(all, indexById(all), baseId, frameWidth, rootStyle.layout, cascade);
-    const elements = all.filter((element) => !notes.has(element.id) && element.componentRole !== "master");
+    // A frame parked beside the artboards is not part of the page and does not
+    // publish. Only that explicit mark counts: an earlier rule also guessed
+    // from coordinates, and content the author could plainly see on an artboard
+    // disappearing from the live page is not a trade worth making.
+    const parked = parkedIds(all);
+    const elements = all.filter(
+        (element) => !parked.has(element.id) && element.componentRole !== "master",
+    );
 
     return (
         <>
@@ -84,7 +89,7 @@ export function RenderedPage({
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: the sheet is generated from validated style values, never raw user markup
                 dangerouslySetInnerHTML={{ __html: stylesheetFor(elements, rootStyle) }}
             />
-            <main className="pg-root">
+            <MarqueeRuntime enabled={includeScripts && elements.some(element => element.interactive || element.disclosure)}>
                 {childrenOf(elements, undefined).map((el) => (
                     <RenderedNode
                         key={el.id}
@@ -96,7 +101,7 @@ export function RenderedPage({
                         context={context}
                     />
                 ))}
-            </main>
+            </MarqueeRuntime>
             {includeScripts && hasEntrances(elements) && (
                 <script
                     // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed script with no interpolated content
@@ -167,11 +172,11 @@ function RenderedNode({
         (element.type === "List" && element.listStyle !== "none"
             ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}`
             : "") +
-        (style.entrance === "none" ? "" : " pg-anim");
+        (style.entrance === "none" || style.scrollEffect !== "none" ? "" : " pg-anim");
 
     // Repeat iterates a list. Request renders once and provides the source's
     // first object as the binding context for its entire subtree.
-    const renderChildren = () =>
+    const renderChildren = (subset = children) =>
         element.type === "Repeat"
             // No placeholder row here, unlike the editor canvas: an author
             // needs to see the template of an empty list to lay it out, but a
@@ -191,7 +196,7 @@ function RenderedNode({
                       />
                   )),
               )
-            : children.map((child) => (
+            : subset.map((child) => (
                   <RenderedNode
                       key={child.id}
                       element={child}
@@ -206,8 +211,11 @@ function RenderedNode({
 
     const content = (
         <>
-            <ElementContent element={element} />
-            {renderChildren()}
+            <ElementContent
+                element={element}
+                split={style.entrance === "none" || style.scrollEffect !== "none" ? "none" : style.entranceSplit}
+            />
+            {element.interactive?.kind === "marquee" ? <MarqueeContent settings={element.interactive}>{renderChildren()}</MarqueeContent> : element.interactive?.kind === "carousel" ? <CarouselContent settings={element.interactive} controls={renderChildren(children.filter(child => child.carouselControl))}>{renderChildren(children.filter(child => !child.carouselControl))}</CarouselContent> : renderChildren()}
             {element.type === "Form" && <span className="pg-form-status" data-pg-form-status aria-live="polite" />}
         </>
     );
@@ -488,8 +496,50 @@ function isContainerType(type: CanvasElement["type"]) {
     return ["Frame", "Stack", "Container", "Form", "Fieldset", "List", "Request", "Repeat"].includes(type);
 }
 
-export function ElementContent({ element }: { element: CanvasElement }) {
-    if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox="" style={{ width: "100%", height: "100%", border: 0, borderRadius: "inherit" }} />;
+/**
+ * Text broken into the pieces a split entrance animates, each carrying its own
+ * index so a single CSS rule can stagger the whole line.
+ *
+ * Whitespace stays outside the pieces: a space that arrives late leaves the
+ * words visibly jumping as it lands, and a space is not something a reader
+ * watches anyway.
+ */
+export function splitTextParts(content: string, split: EntranceSplit) {
+    const chunks = content.split(/(\s+)/);
+    let index = 0;
+    return chunks.map((chunk, at) => {
+        if (!chunk) return null;
+        if (/^\s+$/.test(chunk)) return <React.Fragment key={at}>{chunk}</React.Fragment>;
+        if (split === "words") {
+            return (
+                <span key={at} className="pg-part" style={{ "--i": index++, display: "inline-block", whiteSpace: "pre-wrap" } as React.CSSProperties}>
+                    {chunk}
+                </span>
+            );
+        }
+        return Array.from(chunk).map((letter, position) => (
+            <span
+                key={`${at}-${position}`}
+                className="pg-part"
+                style={{ "--i": index++, display: "inline-block", whiteSpace: "pre-wrap" } as React.CSSProperties}
+            >
+                {letter}
+            </span>
+        ));
+    });
+}
+
+export function ElementContent({
+    element,
+    split = "none",
+}: {
+    element: CanvasElement;
+    /** Break the text up so an entrance can arrive piece by piece. */
+    split?: EntranceSplit;
+}) {
+    if (element.interactive) return null;
+    if (element.shader) return <iframe title={element.name ?? "Shader"} srcDoc={shaderDocument(element.shader.preset, element.shader)} sandbox="allow-scripts" style={{ width: "100%", height: "100%", border: 0, borderRadius: "inherit" }} />;
+if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox={element.codeLanguage === "tsx" ? "allow-scripts" : ""} style={{ width: "100%", height: "100%", border: 0, borderRadius: "inherit" }} />;
     if (element.type === "Image") {
         if (!element.src) return null;
         return (
@@ -535,7 +585,7 @@ export function ElementContent({ element }: { element: CanvasElement }) {
     if (!element.content) return null;
     return (
         <span style={{ display: "block", width: "100%", whiteSpace: "pre-wrap" }}>
-            {element.content}
+            {element.textEffects && (element.textEffects.hover !== "none" || element.textEffects.scroll !== "none") ? <TextEffectsContent content={element.content} effects={element.textEffects} /> : split === "none" ? element.content : splitTextParts(element.content, split)}
         </span>
     );
 }

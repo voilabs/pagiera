@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 export type IconName =
   | "arrow"
   | "bolt"
+  | "book"
   | "brackets"
   | "check"
   | "chevron"
@@ -10,6 +11,7 @@ export type IconName =
   | "code"
   | "copy"
   | "cursor"
+  | "database"
   | "focus"
   | "frame"
   | "github"
@@ -27,9 +29,12 @@ export type IconName =
   | "play"
   | "plus"
   | "redo"
+  | "rocket"
   | "search"
   | "settings"
+  | "shield"
   | "sparkles"
+  | "terminal"
   | "text"
   | "trash"
   | "undo";
@@ -37,6 +42,9 @@ export type IconName =
 const paths: Record<IconName, ReactNode> = {
   arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,
   bolt: <path d="m13 2-8 11h7l-1 9 8-12h-7l1-8Z" />,
+  book: (
+    <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v14H6.5A1.5 1.5 0 0 0 5 18.5v-14ZM5 18.5A1.5 1.5 0 0 0 6.5 20H19v-3" />
+  ),
   brackets: (
     <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3m8-18h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
   ),
@@ -51,6 +59,9 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   cursor: <path d="m5 3 12 9-6 1-3 6L5 3Z" />,
+  database: (
+    <path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3ZM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+  ),
   focus: (
     <>
       <circle cx="12" cy="12" r="6.5" />
@@ -99,6 +110,9 @@ const paths: Record<IconName, ReactNode> = {
   pin: <path d="M9 4h6l-1 5 3 3v2H7v-2l3-3-1-5ZM12 14v6" />,
   play: <path d="m8 5 11 7-11 7V5Z" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  rocket: (
+    <path d="M12 3c3.5 2 5.5 5.5 5.5 9.5L15 15H9l-2.5-2.5C6.5 8.5 8.5 5 12 3ZM9 15l-2 4 4-2M15 15l2 4-4-2M12 10h.01" />
+  ),
   redo: <path d="m15 14 5-5-5-5M20 9H9.5a5 5 0 0 0 0 10H13" />,
   search: (
     <>
@@ -113,9 +127,11 @@ const paths: Record<IconName, ReactNode> = {
       <circle cx="9" cy="16" r="2" />
     </>
   ),
+  shield: <path d="M12 3 5 6v5.5c0 4 3 7.6 7 9.5 4-1.9 7-5.5 7-9.5V6l-7-3Z" />,
   sparkles: (
     <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Zm6 10 .8 2.2L21 16l-2.2.8L18 19l-.8-2.2L15 16l2.2-.8L18 13ZM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" />
   ),
+  terminal: <path d="m5 7 4 4-4 4M12 16h7" />,
   text: <path d="m5 19 6-14 6 14M8 13h6" />,
   trash: <path d="M4 7h16M9 7V5h6v2M6.5 7l.9 12h9.2l.9-12" />,
   undo: <path d="M9 14 4 9l5-5M4 9h10.5a5 5 0 0 1 0 10H11" />,

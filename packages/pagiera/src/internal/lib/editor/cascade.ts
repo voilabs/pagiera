@@ -124,3 +124,61 @@ export function chainFor(cascade: Cascade, targetId: string): string[] {
     byTarget.set(targetId, chain);
     return chain;
 }
+
+/**
+ * The window widths an artboard governs, as numbers rather than as a label.
+ *
+ * `from` is the artboard's own threshold and `to` is one pixel below the next
+ * wider threshold, so the ranges tile the whole axis with no gap. The
+ * narrowest artboard reaches down to 0 and the widest has no upper bound.
+ */
+export function windowRange(
+    cascade: Cascade,
+    id: string,
+): { from: number; to?: number } | undefined {
+    const item = cascade.breakpoints.find((entry) => entry.id === id);
+    if (!item) return undefined;
+    const narrowest = cascade.breakpoints.reduce(
+        (lowest, entry) => Math.min(lowest, entry.width),
+        Number.POSITIVE_INFINITY,
+    );
+    const ceiling = cascade.breakpoints
+        .filter((other) => other.width > item.width)
+        .reduce((lowest, other) => Math.min(lowest, other.width), Number.POSITIVE_INFINITY);
+    return {
+        from: item.width === narrowest ? 0 : item.width,
+        to: Number.isFinite(ceiling) ? ceiling - 1 : undefined,
+    };
+}
+
+/** The same range as a sentence, for labels and tooltips. */
+export function windowRangeLabel(cascade: Cascade, id: string): string {
+    const range = windowRange(cascade, id);
+    if (!range) return "";
+    // A lone artboard governs everything; naming a threshold of 0 would
+    // describe a rule the author never set.
+    if (range.to === undefined) return range.from === 0 ? "Every window width" : `Windows ${range.from}px and wider`;
+    if (range.from === 0) return `Windows up to ${range.to}px`;
+    return `Windows ${range.from}–${range.to}px`;
+}
+
+/** Short form for the artboard header, where there is no room for a sentence. */
+export function windowRangeChip(cascade: Cascade, id: string): string {
+    const range = windowRange(cascade, id);
+    if (!range) return "";
+    if (range.to === undefined) return range.from === 0 ? "All widths" : `≥ ${range.from}px`;
+    if (range.from === 0) return `≤ ${range.to}px`;
+    return `${range.from}–${range.to}px`;
+}
+
+/**
+ * Two artboards claiming the same threshold both match the same windows and
+ * the later rule silently wins, so the editor has to be able to say so.
+ */
+export function duplicateThresholds(cascade: Cascade): number[] {
+    const counts = new Map<number, number>();
+    for (const item of cascade.breakpoints) {
+        counts.set(item.width, (counts.get(item.width) ?? 0) + 1);
+    }
+    return [...counts.entries()].filter(([, count]) => count > 1).map(([width]) => width);
+}

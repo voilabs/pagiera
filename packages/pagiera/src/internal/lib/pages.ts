@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, isNotNull, ne, notInArray, sql } from "drizzle-orm";
 import { db } from "@/drizzle";
+import { applyPageLayout, unwrapPageLayout } from "@/lib/editor/page-layout";
 import { type Page, pageRevisions, pages, sites } from "@/drizzle/schema";
 import {
     type CanvasElement,
@@ -95,8 +96,14 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
             const isRoot = source.id === master.id;
             const parent = source.parentId ? components.find((candidate) => candidate.id === source.parentId) : undefined;
             const parentSlot = parent?.componentSourceId ?? parent?.id;
+            // The master owns the shape; the instance owns its own words. A
+            // rebuild would otherwise put the master's text back every time
+            // the page is read, which is what made text inside a placed
+            // component impossible to change.
+            const ownWords = instance.componentContent?.[slot];
             const clone: CanvasElement = {
                 ...source,
+                ...(ownWords === undefined ? undefined : { content: ownWords }),
                 id: idBySource.get(slot)!,
                 parentId: isRoot ? instance.parentId : parentSlot ? idBySource.get(parentSlot) : undefined,
                 z: isRoot ? instance.z : source.z,
@@ -104,6 +111,9 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
                 componentId: isRoot ? componentId : undefined,
                 componentSourceId: slot,
                 variant: isRoot ? (instance.variant ?? master.variant) : undefined,
+                // The instance's own words survive the rebuild that produced
+                // this clone; the master never carries them.
+                componentContent: isRoot ? instance.componentContent : undefined,
                 interaction: source.interaction && source.interaction.action !== "navigate"
                     ? { ...source.interaction, value: idBySource.get(source.interaction.value) ?? source.interaction.value }
                     : source.interaction,
@@ -129,6 +139,132 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
         result = [...result.filter((element) => !oldIds.has(element.id)), ...clones];
     }
     return result;
+}
+
+/* --------------------------------------------------------------- site layout */
+
+/** Which shared components wrap every page. */
+export type SiteLayout = { headerId?: string; footerId?: string };
+
+/**
+ * Builds one layout band — the header or the footer — from its component.
+ *
+ * These are copies of a shared component, made as the page is read and thrown
+ * away before it is written, so a site with forty pages holds one navbar
+ * rather than forty. Their ids are derived from the master's slots instead of
+ * being random, so the same band keeps the same identity across loads and the
+ * editor's selection survives a reload.
+ */
+function layoutBand(
+    components: CanvasElement[],
+    componentId: string,
+    role: "header" | "footer",
+    z: number,
+): CanvasElement[] {
+    const master = components.find(
+        (element) => element.componentRole === "master" && (element.componentId ?? element.id) === componentId,
+    );
+    if (!master) return [];
+
+    const ids = subtreeIds(components, master.id);
+    const nodes = components.filter((element) => ids.has(element.id));
+    const slotOf = (id: string) => components.find((element) => element.id === id)?.componentSourceId ?? id;
+    const idFor = (slot: string) => `${LAYOUT_ID_PREFIX}${role}-${slot}`;
+
+    return nodes.map((source) => {
+        const isRoot = source.id === master.id;
+        const slot = source.componentSourceId ?? source.id;
+        return {
+            ...source,
+            id: idFor(slot),
+            parentId: isRoot ? undefined : source.parentId ? idFor(slotOf(source.parentId)) : undefined,
+            z: isRoot ? z : source.z,
+            componentRole: isRoot ? ("instance" as const) : undefined,
+            componentId: isRoot ? componentId : undefined,
+            componentSourceId: slot,
+            variant: isRoot ? master.variant : undefined,
+            layoutRole: role,
+            // The page is not where a layout is edited: it is edited once, in
+            // the component it is made of, and every page follows.
+            locked: true,
+        };
+    });
+}
+
+/** The page as the site dresses it: header above, footer below. */
+function withLayout(
+    elements: CanvasElement[],
+    components: CanvasElement[],
+    layout: SiteLayout,
+    rootStyle: RootStyle,
+) {
+    // A band's id says where it came from, so a page carrying one has a copy
+    // it should never have been given — an older save, or one written before
+    // the marker survived validation. The fresh band replaces it rather than
+    // sitting beside it under the same id.
+    const own = unwrapPageLayout(elements).filter((element) => !isLayoutId(element.id));
+    if (rootStyle.pageLayoutId) return applyPageLayout(own, components, rootStyle.pageLayoutId);
+    const roots = own.filter((element) => !element.parentId);
+    const zs = roots.map((element) => element.z);
+    const bands = [
+        ...(layout.headerId && rootStyle.useSiteHeader !== false
+            ? layoutBand(components, layout.headerId, "header", Math.min(0, ...zs) - 1)
+            : []),
+        ...(layout.footerId && rootStyle.useSiteFooter !== false
+            ? layoutBand(components, layout.footerId, "footer", Math.max(0, ...zs) + 1)
+            : []),
+    ];
+    return bands.length ? [...own, ...bands] : own;
+}
+
+/**
+ * Ids the layout hands out. Nothing else may use this shape, which is what
+ * lets a stray band be recognised even after its marker has been lost.
+ */
+const LAYOUT_ID_PREFIX = "layout-";
+
+function isLayoutId(id: string) {
+    return id.startsWith(LAYOUT_ID_PREFIX);
+}
+
+/** The page's own document: what the site put around it does not belong to it. */
+function withoutLayout(elements: CanvasElement[]) {
+    return unwrapPageLayout(elements).filter((element) => !element.layoutRole && !isLayoutId(element.id));
+}
+
+/** The layout is site-wide, so the editor reads it off the page's root style. */
+function withSiteLayout(rootStyle: RootStyle, layout: SiteLayout): RootStyle {
+    return { ...rootStyle, siteHeaderId: layout.headerId, siteFooterId: layout.footerId };
+}
+
+async function getSiteLayout(siteId: string, published = false): Promise<SiteLayout> {
+    const [site] = await db
+        .select({ layout: sites.layout, publishedLayout: sites.publishedLayout })
+        .from(sites)
+        .where(eq(sites.id, siteId))
+        .limit(1);
+    const stored = (published ? site?.publishedLayout : site?.layout) ?? {};
+    return {
+        headerId: typeof stored.headerId === "string" ? stored.headerId : undefined,
+        footerId: typeof stored.footerId === "string" ? stored.footerId : undefined,
+    };
+}
+
+/**
+ * Names the site's header and footer.
+ *
+ * It publishes as it saves. A layout is chrome rather than content: leaving
+ * the live site with the previous navbar until every page happens to be
+ * republished is the confusing half-state, not a safeguard.
+ */
+export async function setSiteLayout(layout: SiteLayout) {
+    const siteId = await getDefaultSiteId();
+    const next: SiteLayout = { headerId: layout.headerId || undefined, footerId: layout.footerId || undefined };
+    await db
+        .update(sites)
+        .set({ layout: next, publishedLayout: next, updatedAt: new Date() })
+        .where(eq(sites.id, siteId));
+    return next;
 }
 
 async function getSiteComponents(siteId: string, published = false) {
@@ -333,11 +469,13 @@ export async function getPage(pageId: string): Promise<Page | undefined> {
     const transition = await getSiteTransition(page.siteId);
     const storedComponents = await getSiteComponents(page.siteId);
     const components = storedComponents.length ? storedComponents : componentMastersFrom(page.elements);
+    const layout = await getSiteLayout(page.siteId);
+    const rootStyle = withSiteLayout(withSiteTransition(withSiteFont(page.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition), layout);
     return {
         ...page,
-        elements: withSharedComponents(syncComponentInstances(page.elements, components), components),
+        elements: withLayout(withSharedComponents(syncComponentInstances(page.elements, components), components), components, layout, rootStyle),
         publishedElements: page.publishedElements ? syncComponentInstances(page.publishedElements, components) : null,
-        rootStyle: withSiteTransition(withSiteFont(page.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition),
+        rootStyle,
         publishedRootStyle: page.publishedRootStyle ? withSiteTransition(withSiteFont(page.publishedRootStyle, font), transition) : null,
     };
 }
@@ -368,9 +506,11 @@ export async function getPublishedPage(slug: string) {
     const transition = await getSiteTransition(siteId);
     const storedComponents = await getSiteComponents(siteId, true);
     const components = storedComponents.length ? storedComponents : componentMastersFrom(page.elements);
+    const layout = await getSiteLayout(siteId, true);
+    const publishedRootStyle = page.rootStyle ?? DEFAULT_ROOT_STYLE;
     return {
         name: page.name,
-        elements: syncComponentInstances(page.elements, components),
+        elements: withLayout(syncComponentInstances(page.elements, components), components, layout, publishedRootStyle),
         rootStyle: withSiteTransition(withSiteFont(page.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition),
         dataSources: page.dataSources ?? [],
         publishedAt: page.publishedAt,
@@ -402,7 +542,13 @@ export async function getOrCreateDefaultPage(): Promise<Page> {
     if (existing) {
         const storedComponents = await getSiteComponents(siteId);
         const components = storedComponents.length ? storedComponents : componentMastersFrom(existing.elements);
-        return { ...existing, elements: withSharedComponents(syncComponentInstances(existing.elements, components), components), rootStyle: withSiteTransition(withSiteFont(existing.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition) };
+        const layout = await getSiteLayout(siteId);
+        const rootStyle = withSiteLayout(withSiteTransition(withSiteFont(existing.rootStyle ?? DEFAULT_ROOT_STYLE, font), transition), layout);
+        return {
+            ...existing,
+            elements: withLayout(withSharedComponents(syncComponentInstances(existing.elements, components), components), components, layout, rootStyle),
+            rootStyle,
+        };
     }
 
     await db
@@ -450,10 +596,14 @@ export async function savePageDocument(
     if (!currentPage) throw new Error(`Page ${pageId} no longer exists`);
     const siteFont = await getSiteFont(currentPage.siteId);
     const siteTransition = await getSiteTransition(currentPage.siteId);
-    const components = componentMastersFrom(elements);
+    // The header and footer came from the site as this page was read; they
+    // are not this page's to store, and writing them back would give every
+    // page its own frozen copy of the navbar.
+    const authored = withoutLayout(elements);
+    const components = componentMastersFrom(authored);
     const previousComponents = componentMastersFrom(currentPage.elements);
     const componentsChanged = JSON.stringify(previousComponents) !== JSON.stringify(components);
-    const pageElements = syncComponentInstances(withoutComponentMasters(elements), components);
+    const pageElements = syncComponentInstances(withoutComponentMasters(authored), components);
     const normalizedRootStyle = withSiteTransition(withSiteFont(rootStyle, siteFont), siteTransition);
     const [updated] = await db.transaction(async (tx) => {
         const saved = await tx
@@ -524,7 +674,7 @@ export async function publishPage(pageId: string) {
             })
             .where(eq(pages.id, pageId))
             .returning({ slug: pages.slug, publishedAt: pages.publishedAt, siteId: pages.siteId });
-        if (result[0]) await tx.update(sites).set({ publishedComponents: sql`${sites.components}`, updatedAt: new Date() }).where(eq(sites.id, result[0].siteId));
+        if (result[0]) await tx.update(sites).set({ publishedComponents: sql`${sites.components}`, publishedLayout: sql`${sites.layout}`, updatedAt: new Date() }).where(eq(sites.id, result[0].siteId));
         return result;
     });
 

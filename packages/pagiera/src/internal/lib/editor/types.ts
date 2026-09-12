@@ -167,7 +167,17 @@ export type Breakpoint = string;
 export type BreakpointDefinition = {
     id: string;
     name: string;
+    /**
+     * The window width this artboard governs from.
+     *
+     * This is the published behaviour: which visitor windows get this
+     * artboard's overrides. It is deliberately separate from how wide the
+     * artboard is drawn, so widening one to work on it comfortably cannot
+     * silently change what visitors see.
+     */
     width: number;
+    /** How wide the artboard is drawn on the canvas. Defaults to `width`. */
+    canvasWidth?: number;
 };
 
 export const DEFAULT_BREAKPOINTS: BreakpointDefinition[] = [
@@ -175,6 +185,15 @@ export const DEFAULT_BREAKPOINTS: BreakpointDefinition[] = [
     { id: "tablet", name: "Tablet", width: 768 },
     { id: "mobile", name: "Mobile", width: 375 },
 ];
+
+/**
+ * The three artboards every page keeps.
+ *
+ * A page with no wide artboard, or none narrow enough for a phone, publishes
+ * CSS with a hole in it — and the hole only shows up on a visitor's device.
+ * These can be renamed, resized and reordered, but not removed.
+ */
+export const REQUIRED_BREAKPOINT_IDS = ["desktop", "tablet", "mobile"] as const;
 
 export const BREAKPOINT_WIDTHS: Record<string, number> = {
     desktop: 1280,
@@ -355,6 +374,24 @@ export type ElementStyle = {
 
     /** Entrance effect, played once when the element scrolls into view. */
     entrance: Entrance;
+    /**
+     * How the entrance is broken up.
+     *
+     * A headline that arrives letter by letter is a different effect from the
+     * same headline arriving whole, and it is the same animation either way —
+     * only the number of things running it changes.
+     */
+    entranceSplit: EntranceSplit;
+    /** Milliseconds between one split unit and the next. */
+    entranceStagger: number;
+    /**
+     * An effect driven by scroll position rather than by arrival: it runs
+     * forwards as the element crosses the viewport and backwards as it leaves,
+     * so it is tied to where the page is, not to when it was first seen.
+     */
+    scrollEffect: ScrollEffect;
+    /** How far the scroll effect travels: px for movement, % for the rest. */
+    scrollAmount: number;
     /** Milliseconds. */
     entranceDuration: number;
     entranceDelay: number;
@@ -435,6 +472,10 @@ export const STYLE_KEYS = [
     "scale",
     "aspectRatio",
     "entrance",
+    "entranceSplit",
+    "entranceStagger",
+    "scrollEffect",
+    "scrollAmount",
     "entranceDuration",
     "entranceDelay",
     "entranceCurve",
@@ -448,6 +489,18 @@ export const STYLE_KEYS = [
 export type StyleKey = (typeof STYLE_KEYS)[number];
 
 export type CanvasElement = {
+    disclosure?: import('./disclosure').Disclosure;
+    fieldAppearance?: import('./field-appearance').FieldAppearance;
+    textEffects?: import('./text-effects').TextEffects;
+    /**
+     * Parked on the canvas beside the artboards rather than inside one.
+     *
+     * A frame in its own right: drawn, selected and styled like any other, and
+     * not part of the page — so it is left out of what gets published — until
+     * it is dragged onto an artboard. Its `x`/`y` are canvas coordinates,
+     * because no page ever lays it out.
+     */
+    parked?: boolean;
     id: string;
     type: ElementType;
     name?: string;
@@ -459,12 +512,38 @@ export type CanvasElement = {
     componentId?: string;
     componentSourceId?: string;
     variant?: string;
+    /**
+     * Text this instance says instead of what its master says, keyed by the
+     * master slot it replaces (`componentSourceId`).
+     *
+     * An instance is rebuilt from its master every time the page is read, so a
+     * word typed into one would be thrown away on the next load unless it is
+     * kept somewhere the rebuild reads. This is that place: the master owns the
+     * shape, each instance owns its own words. Only on an instance root.
+     */
+    componentContent?: Record<string, string>;
+    /**
+     * Drawn from the site's layout rather than stored on this page.
+     *
+     * The header and footer belong to the site, so they are added to every
+     * page as it is read and taken off again before it is written. Nothing
+     * carrying this ever reaches the page's own document.
+     */
+    layoutRole?: "header" | "footer" | "layout";
+    isLayout?: boolean;
+    childrenSlot?: boolean;
     styleBindings?: Partial<Record<StyleKey, string>>;
 
     // Content is shared across breakpoints.
     content?: string;
-    /** Sandboxed HTML/CSS used by code components. */
+    /** Compiled sandbox document used by code components. */
     code?: string;
+    /** Authoring source retained so code components can be reopened and edited. */
+    codeSource?: string;
+    codeLanguage?: "html" | "tsx";
+    shader?: import("./shaders").ShaderSettings;
+    interactive?: import("./interactive").InteractiveSettings;
+    carouselControl?: import("./carousel-controls").CarouselControl;
     src?: string;
     alt?: string;
     objectFit?: ObjectFit;
@@ -636,6 +715,10 @@ export const BASE_STYLE: ElementStyle = {
     aspectRatio: "",
 
     entrance: "none",
+    entranceSplit: "none",
+    entranceStagger: 60,
+    scrollEffect: "none",
+    scrollAmount: 40,
     entranceDuration: 600,
     entranceDelay: 0,
     entranceCurve: "ease",
@@ -1190,6 +1273,21 @@ export type RootStyle = {
      * the editor it is being built in.
      */
     customJs?: string;
+    /*
+     * The site's layout: what wraps every page.
+     *
+     * A navbar belongs to the site, not to each page that happens to show
+     * one, so the header and footer are named here by the shared component
+     * they are made of, and every page draws them without carrying a copy.
+     * These two are site-wide — changing them on one page changes them
+     * everywhere — while the two flags below are the page's own opt-out, for
+     * the landing page that wants no chrome around it.
+     */
+    siteHeaderId?: string;
+    pageLayoutId?: string;
+    siteFooterId?: string;
+    useSiteHeader?: boolean;
+    useSiteFooter?: boolean;
 };
 
 export type CustomFont = { id: string; name: string; url: string; weight: number; style: "normal" | "italic" };
@@ -1242,6 +1340,23 @@ export const ASPECT_RATIOS: Array<{ label: string; value: string }> = [
     { label: "Wide 16:9", value: "16/9" },
     { label: "Ultra 21:9", value: "21/9" },
     { label: "Portrait 3:4", value: "3/4" },
+];
+
+export type EntranceSplit = "none" | "words" | "letters";
+export const ENTRANCE_SPLITS: Array<{ label: string; value: EntranceSplit }> = [
+    { label: "All at once", value: "none" },
+    { label: "Word by word", value: "words" },
+    { label: "Letter by letter", value: "letters" },
+];
+
+export type ScrollEffect = "none" | "fade" | "rise" | "parallax" | "zoom" | "blur";
+export const SCROLL_EFFECTS: Array<{ label: string; value: ScrollEffect }> = [
+    { label: "None", value: "none" },
+    { label: "Fade in", value: "fade" },
+    { label: "Rise", value: "rise" },
+    { label: "Parallax", value: "parallax" },
+    { label: "Zoom", value: "zoom" },
+    { label: "Blur in", value: "blur" },
 ];
 
 export const ENTRANCES: Array<{ label: string; value: Entrance }> = [

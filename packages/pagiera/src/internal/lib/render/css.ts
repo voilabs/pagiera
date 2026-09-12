@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { fieldAppearanceCss } from "../editor/field-appearance";
 import {
     isBand,
     resolveStyle,
@@ -204,8 +205,42 @@ const ENTRANCE_KEYFRAMES = `
    keyframe: if animations are disabled or never get to run, the content still
    shows rather than staying at zero opacity. */
 .pg-ready .pg-anim.pg-in{opacity:1}
-@media (prefers-reduced-motion:reduce){.pg-ready .pg-anim{opacity:1;animation:none!important}}
+/* A split entrance animates the pieces, so the pieces carry the hidden state.
+   Each piece is inline-block because translate and scale do nothing to an
+   inline box. */
+.pg-part{display:inline-block;white-space:pre-wrap}
+.pg-ready .pg-anim .pg-part{opacity:0}
+.pg-ready .pg-anim.pg-in .pg-part{opacity:1}
+@media (prefers-reduced-motion:reduce){.pg-ready .pg-anim,.pg-ready .pg-anim .pg-part{opacity:1;animation:none!important}}
 `.trim();
+
+/**
+ * Scroll-linked effects run on a view timeline rather than on a reveal: the
+ * animation's progress *is* the element's progress across the viewport, so it
+ * plays backwards when the visitor scrolls back up.
+ *
+ * The whole sheet sits behind `@supports`, and there is no JavaScript
+ * fallback on purpose — a browser without view timelines shows the finished
+ * element, which is the content, rather than a hidden one waiting on a
+ * feature it does not have.
+ */
+const SCROLL_KEYFRAMES = `
+@keyframes pg-s-fade{from{opacity:0}to{opacity:1}}
+@keyframes pg-s-rise{from{opacity:0;translate:0 var(--pg-amt,40px)}to{opacity:1;translate:none}}
+@keyframes pg-s-parallax{from{translate:0 var(--pg-amt,40px)}to{translate:0 calc(var(--pg-amt,40px) * -1)}}
+@keyframes pg-s-zoom{from{opacity:0;scale:var(--pg-scale,.9)}to{opacity:1;scale:1}}
+@keyframes pg-s-blur{from{opacity:0;filter:blur(var(--pg-blur,10px))}to{opacity:1;filter:blur(0)}}
+`.trim();
+
+export function hasScrollEffects(
+    elements: CanvasElement[],
+    cascade: Cascade = DEFAULT_CASCADE,
+) {
+    const baseId = baseOf(cascade).id;
+    return elements.some(
+        (el) => resolveStyle(el, baseId, cascade).scrollEffect !== "none",
+    );
+}
 
 /**
  * The reveal script; static, with no interpolated content.
@@ -254,7 +289,10 @@ export function hasEntrances(
 ) {
     const baseId = baseOf(cascade).id;
     return elements.some(
-        (el) => resolveStyle(el, baseId, cascade).entrance !== "none",
+        (el) => {
+            const style = resolveStyle(el, baseId, cascade);
+            return style.entrance !== "none" && style.scrollEffect === "none";
+        },
     );
 }
 
@@ -296,10 +334,14 @@ export function stylesheetFor(
     // A stacked page needs none of this — flex reflows to whatever width it
     // gets, which is the point of it.
     if (rootStyle.layout === "absolute") {
-        parts.push(`.pg-root{width:${baseOf(cascade).width}px;margin-left:auto;margin-right:auto}`);
+        // The width is the artboard`s drawing width, not its threshold: the
+        // coordinates were laid out on the canvas the author saw, so that is
+        // the only width that keeps them where they were put.
+        const drawn = (item: { width: number; canvasWidth?: number }) => item.canvasWidth ?? item.width;
+        parts.push(`.pg-root{width:${drawn(baseOf(cascade))}px;margin-left:auto;margin-right:auto}`);
         for (const plan of mediaPlan(cascade)) {
             const definition = cascade.breakpoints.find((item) => item.id === plan.id);
-            if (definition) parts.push(`@media ${plan.query}{.pg-root{width:${definition.width}px}}`);
+            if (definition) parts.push(`@media ${plan.query}{.pg-root{width:${drawn(definition)}px}}`);
         }
     }
     parts.push(
@@ -311,7 +353,12 @@ export function stylesheetFor(
             `.pg-root{font-family:${resolveFont(rootStyle.fontFamily)}}` +
             ".pg-node{box-sizing:border-box}" +
             ".pg-component-root{background:transparent!important;background-image:none!important;border-width:0!important;box-shadow:none!important;overflow:visible!important}" +
-            ".pg-node:is(input,textarea,button){font:inherit}" +
+            // `:is()` contributes the specificity of `button`, so this reset
+            // used to beat an element's generated class rule. The editor
+            // showed the authored font size/weight while the renderer fell
+            // back to the page's 16px/400. `:where()` keeps the reset at zero
+            // extra specificity; the per-element rule emitted below wins.
+            ".pg-node:where(input,textarea,button){font:inherit}" +
             // A Button publishes as a native <button>, which arrives with the
             // platform's own grey fill and bevelled border. The editor emits a
             // background only when one was set and a border-width only when it
@@ -372,10 +419,14 @@ export function stylesheetFor(
     );
 
     for (const element of elements) {
+        parts.push(fieldAppearanceCss(`.${classFor(element.id)}`, element.fieldAppearance, element.type === 'Select'));
         const emitted = rulesFor(element, byId, baseId, rootStyle, cascade)
             .map(([suffix, decl]) => `.${classFor(element.id)}${suffix}{${decl}}`)
             .join("");
         parts.push(emitted);
+        if (element.layoutRole === "layout" && !element.parentId) {
+            parts.push(`.${classFor(element.id)}{min-height:100svh;width:100%;flex-shrink:0}`);
+        }
     }
 
     for (const plan of mediaPlan(cascade)) {
@@ -403,13 +454,64 @@ export function stylesheetFor(
         parts.push(ENTRANCE_KEYFRAMES);
         for (const element of elements) {
             const style = resolveStyle(element, baseId, cascade);
-            if (style.entrance === "none") continue;
+            if (style.entrance === "none" || style.scrollEffect !== "none") continue;
+            const easing =
+                style.entranceCurve === "spring"
+                    ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)`
+                    : `cubic-bezier(${style.entranceBezier})`;
+            // Split runs the same animation on each piece, offset by its index,
+            // so one delay expression covers a word, a letter, or the whole
+            // element without a rule per piece.
+            const delay =
+                style.entranceSplit === "none"
+                    ? `${style.entranceDelay}ms`
+                    : `calc(${style.entranceDelay}ms + var(--i, 0) * ${style.entranceStagger}ms)`;
+            const target =
+                style.entranceSplit === "none"
+                    ? `.pg-ready .${classFor(element.id)}.pg-in`
+                    : `.pg-ready .${classFor(element.id)}.pg-in .pg-part`;
             parts.push(
-                `.pg-ready .${classFor(element.id)}.pg-in{` +
-                    `animation:pg-${style.entrance} ${style.entranceDuration}ms ` +
-                    `${style.entranceCurve === "spring" ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)` : `cubic-bezier(${style.entranceBezier})`} ${style.entranceDelay}ms both}`,
+                `${target}{animation:pg-${style.entrance} ${style.entranceDuration}ms ${easing} ${delay} both}`,
             );
         }
+    }
+
+    if (hasScrollEffects(elements, cascade)) {
+        parts.push(SCROLL_KEYFRAMES);
+        const scrollRules: string[] = [];
+        const scrollSelectors: string[] = [];
+        for (const element of elements) {
+            const style = resolveStyle(element, baseId, cascade);
+            if (style.scrollEffect === "none") continue;
+            // Distance means different things per effect: pixels for the two
+            // that move, a proportion for the two that do not.
+            const vars =
+                style.scrollEffect === "rise" || style.scrollEffect === "parallax"
+                    ? `--pg-amt:${style.scrollAmount}px;`
+                    : style.scrollEffect === "zoom"
+                      ? `--pg-scale:${(1 - Math.min(90, style.scrollAmount) / 100).toFixed(3)};`
+                      : style.scrollEffect === "blur"
+                        ? `--pg-blur:${(style.scrollAmount / 4).toFixed(2)}px;`
+                        : "";
+            // Parallax is a background motion that should read across the whole
+            // pass; the rest resolve while the element is arriving.
+            const range =
+                style.scrollEffect === "parallax"
+                    ? "cover 0% cover 100%"
+                    : "entry 0% cover 40%";
+            scrollSelectors.push(`.${classFor(element.id)}`);
+            scrollRules.push(
+                `.${classFor(element.id)}{${vars}animation:pg-s-${style.scrollEffect} linear both;animation-timeline:view();animation-range:${range}}`,
+            );
+        }
+        // Motion tied to scrolling is exactly what a reduced-motion setting is
+        // asking about, so the effect is dropped and the finished state stays.
+        const calm = scrollSelectors.join(",");
+        parts.push(
+            `@supports (animation-timeline:view()){${scrollRules.join("")}` +
+                (calm ? `@media (prefers-reduced-motion:reduce){${calm}{animation:none}}` : "") +
+                `}`,
+        );
     }
 
     for (const element of elements) {

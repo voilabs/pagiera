@@ -28,6 +28,9 @@ export const sites = pgTable(
         /** Reusable component masters shared by every page in the site. */
         components: jsonb("components").$type<CanvasElement[]>().notNull().default([]),
         publishedComponents: jsonb("published_components").$type<CanvasElement[]>().notNull().default([]),
+        /** Which shared components wrap every page: the header and the footer. */
+        layout: jsonb("layout").$type<{ headerId?: string; footerId?: string }>().notNull().default({}),
+        publishedLayout: jsonb("published_layout").$type<{ headerId?: string; footerId?: string }>().notNull().default({}),
         createdAt: timestamp("created_at", { withTimezone: true })
             .notNull()
             .defaultNow(),

@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { normalizeShader, shaderDocument, shaderSettingsFor } from "../src/internal/lib/editor/shaders";
+import { createElement } from "../src/internal/lib/editor/tree";
+import { parseElements } from "../src/internal/lib/editor/validate";
+
+const shader = normalizeShader({ preset: "aurora", colors: ["#ff0000", "#00ff00", "#0000ff"], speed: 0, scale: 2 })!;
+const element = { ...createElement("Frame", { x: 0, y: 0, z: 0 }), shader };
+const [restored] = parseElements(JSON.parse(JSON.stringify([element])));
+assert.deepEqual(restored.shader, shader);
+const html = shaderDocument(shader.preset, shader);
+assert.ok(html.includes("vec3(1.0000,0.0000,0.0000)"));
+assert.ok(html.includes("p*=2.0000"));
+assert.ok(html.includes("t/1000*0.0000"));
+assert.ok(html.includes("linear-gradient(135deg,#ff0000,#00ff00,#0000ff)"));
+const invalid = normalizeShader({ preset: "aurora", colors: ["</script>"], speed: 99, scale: -2 })!;
+assert.equal(invalid.speed, 5);
+assert.equal(invalid.scale, .2);
+assert.equal(invalid.colors[0], "#651fff");
+assert.equal(normalizeShader({ preset: "missing" }), undefined);
+assert.equal(shaderSettingsFor({ name: "Shader · Aurora", code: shaderDocument("aurora") })?.preset, "aurora");
+assert.equal(shaderSettingsFor({ name: "Shader · Aurora", code: "arbitrary code" }), undefined);
+console.log("Shader settings, round-trip, output and validation tests passed.");

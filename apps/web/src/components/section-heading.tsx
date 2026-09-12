@@ -17,7 +17,7 @@ export function SectionHeading({
       <span
         className={cn(
           "self-start text-[11px] font-bold tracking-[0.1em] uppercase",
-          inverted ? "text-white/50" : "text-[#655e6e]",
+          inverted ? "text-white/50" : "text-[#616161]",
         )}
       >
         {eyebrow}
@@ -25,7 +25,7 @@ export function SectionHeading({
       <h2
         className={cn(
           "m-0 text-[clamp(42px,5vw,70px)] leading-[0.98] font-medium tracking-[-0.065em]",
-          inverted ? "text-white" : "text-[#17131d]",
+          inverted ? "text-white" : "text-[#151515]",
         )}
       >
         {title}
@@ -34,7 +34,7 @@ export function SectionHeading({
         <div
           className={cn(
             "text-sm leading-7",
-            inverted ? "text-white/55" : "text-[#746d7c]",
+            inverted ? "text-white/55" : "text-[#707070]",
           )}
         >
           {copy}

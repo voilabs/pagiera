@@ -14,7 +14,7 @@ export const SITE_NAME = "Pagiera";
 export const SITE_LOCALE = "en_US";
 
 export const SITE_DESCRIPTION =
-  "Pagiera is the open-source visual website builder: a freeform responsive canvas with reusable components, real data and production-ready motion.";
+  "Build editable websites with Pagiera, the open-source React and Next.js builder. Reuse layouts, customize interactions and review targeted AI edits before publishing.";
 
 export const REPO_URL = "https://github.com/voilabs/pagiera";
 

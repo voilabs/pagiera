@@ -1,3 +1,9 @@
+import { normalizeShader } from "./shaders";
+import { normalizeDisclosure } from "./disclosure";
+import { normalizeFieldAppearance } from "./field-appearance";
+import { normalizeTextEffects } from "./text-effects";
+import { normalizeCarouselControl } from "./carousel-controls";
+import { normalizeInteractive, restoreInteractiveElement, upgradeCarouselElements } from "./interactive";
 import {
     BASE_STYLE,
     CUSTOM_TAGS,
@@ -26,6 +32,8 @@ import { PAGIERA_ICON_NAMES } from "../../../icon-names";
 
 export const MAX_ELEMENTS = 2000;
 const MAX_CONTENT = 10_000;
+/** Compiled TSX includes the minified React runtime in its isolated document. */
+const MAX_CODE = 500_000;
 const MAX_SHORT_STRING = 200;
 const MAX_URL = 2048;
 /** A 2 MB image becomes roughly 2.7 MB once encoded as a data URL. */
@@ -440,6 +448,14 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
             ["none", "fade", "up", "down", "left", "right", "zoom"] as const,
             base.entrance,
         ),
+        entranceSplit: oneOf(raw.entranceSplit, ["none", "words", "letters"] as const, base.entranceSplit),
+        entranceStagger: num(raw.entranceStagger, base.entranceStagger, 0, 2000),
+        scrollEffect: oneOf(
+            raw.scrollEffect,
+            ["none", "fade", "rise", "parallax", "zoom", "blur"] as const,
+            base.scrollEffect,
+        ),
+        scrollAmount: num(raw.scrollAmount, base.scrollAmount, 0, 400),
         entranceDuration: num(raw.entranceDuration, base.entranceDuration, 50, 5000),
         entranceDelay: num(raw.entranceDelay, base.entranceDelay, 0, 5000),
         entranceCurve: oneOf(raw.entranceCurve, ["ease", "spring"], base.entranceCurve),
@@ -533,6 +549,7 @@ export function parseElements(
             parentId: str(el.parentId, MAX_SHORT_STRING),
             z: num(el.z, 0, 0, MAX_ELEMENTS),
             locked: el.locked === true ? true : undefined,
+            parked: el.parked === true ? true : undefined,
             componentRole:
                 el.componentRole === "master" || el.componentRole === "instance"
                     ? el.componentRole
@@ -540,6 +557,26 @@ export function parseElements(
             componentId: str(el.componentId, MAX_SHORT_STRING),
             componentSourceId: str(el.componentSourceId, MAX_SHORT_STRING),
             variant: str(el.variant, MAX_SHORT_STRING),
+            // Comes from the site's layout, and is taken off again before the
+            // page is written. Parsed rather than dropped, because dropping it
+            // is what would let a header be saved into every page as content.
+            layoutRole:
+                el.layoutRole === "header" || el.layoutRole === "footer" || el.layoutRole === "layout" ? el.layoutRole : undefined,
+            isLayout: el.isLayout === true ? true : undefined,
+            childrenSlot: el.childrenSlot === true ? true : undefined,
+            // What this instance says instead of its master, slot by slot.
+            componentContent:
+                el.componentContent && typeof el.componentContent === "object"
+                    ? Object.fromEntries(
+                          Object.entries(el.componentContent as Record<string, unknown>)
+                              .flatMap(([slot, value]) => {
+                                  const key = str(slot, MAX_SHORT_STRING);
+                                  const text = str(value, MAX_CONTENT);
+                                  return key && text !== undefined ? [[key, text] as const] : [];
+                              })
+                              .slice(0, MAX_ELEMENTS),
+                      )
+                    : undefined,
             styleBindings:
                 el.styleBindings && typeof el.styleBindings === "object"
                     ? Object.fromEntries(
@@ -555,7 +592,15 @@ export function parseElements(
                     : undefined,
 
             content: str(el.content, MAX_CONTENT),
-            code: str(el.code, MAX_CONTENT),
+            code: str(el.code, MAX_CODE),
+            codeSource: str(el.codeSource, 100_000),
+            codeLanguage: oneOf(el.codeLanguage, ["html", "tsx"] as const, "html"),
+            shader: normalizeShader(el.shader),
+            disclosure: normalizeDisclosure(el.disclosure),
+            fieldAppearance: normalizeFieldAppearance(el.fieldAppearance),
+            textEffects: normalizeTextEffects(el.textEffects),
+            carouselControl: normalizeCarouselControl(el.carouselControl),
+            interactive: normalizeInteractive(el.interactive) ?? restoreInteractiveElement({ code: str(el.code, MAX_CODE) }).interactive,
             src: el.type === "Image" ? safeImageSource(el.src) : safeUrl(el.src),
             alt: str(el.alt, MAX_SHORT_STRING),
             objectFit: oneOf(el.objectFit, ["cover", "contain", "fill", "none"] as const, "cover"),
@@ -643,7 +688,28 @@ export function parseElements(
         });
     }
 
-    return severBrokenParents(parsed);
+    // Upgrade the old text/image-list marquee into ordinary editable children.
+    const migrated: CanvasElement[] = [];
+    for (const element of parsed) {
+        const settings = element.interactive;
+        if (settings?.kind !== "marquee" || !settings.items.length) { migrated.push(element); continue; }
+        migrated.push({ ...element, code: undefined, interactive: { ...settings, items: [] }, base: { ...element.base, bg: settings.background, color: settings.color, gap: element.base.gap || 16 } });
+        settings.items.forEach((item, index) => {
+            let id = `${element.id}-item-${index}`;
+            while (seen.has(id)) id += "-copy";
+            seen.add(id);
+            migrated.push({ id, z: index, type: "Frame", parentId: element.id, name: `Item ${index + 1}`, base: { ...BASE_STYLE, layout: "stack", direction: "column", widthMode: "fixed", w: 220, heightMode: "fill", position: "static", gap: 8, justify: "center", align: "center" } });
+            if (item.text) {
+                let textId = `${id}-text`; while (seen.has(textId)) textId += "-copy"; seen.add(textId);
+                migrated.push({ id: textId, z: 1, type: "Text", parentId: id, content: item.text, base: { ...BASE_STYLE, widthMode: "auto", heightMode: "auto", position: "static", color: settings.color, fontSize: 24 } });
+            }
+            if (item.image) {
+                let imageId = `${id}-image`; while (seen.has(imageId)) imageId += "-copy"; seen.add(imageId);
+                migrated.push({ id: imageId, z: 0, type: "Image", parentId: id, src: item.image, base: { ...BASE_STYLE, widthMode: "fill", heightMode: "fixed", h: 80, position: "static" } });
+            }
+        });
+    }
+    return severBrokenParents(upgradeCarouselElements(migrated));
 }
 
 /**
@@ -716,8 +782,26 @@ export function parseRootStyle(input: unknown): RootStyle {
                   const id = str(value.id, 60)?.replace(/[^a-zA-Z0-9_-]/g, "");
                   const name = str(value.name, 40)?.trim();
                   if (!id || !name) return [];
-                  return [{ id, name, width: num(value.width, 1280, 240, 4000) }];
+                  const width = num(value.width, 1280, 240, 4000);
+                  const canvasWidth = value.canvasWidth === undefined
+                      ? undefined
+                      : num(value.canvasWidth, width, 240, 4000);
+                  return [{ id, name, width, ...(canvasWidth === undefined ? {} : { canvasWidth }) }];
               })
+        : undefined;
+    /*
+     * The three standard artboards are always present. A document that lost
+     * one — an older build, an import, a generated page — gets it back with
+     * its default width and no overrides of its own, which renders exactly as
+     * the base does until someone edits it.
+     */
+    const withRequired = breakpoints?.length
+        ? [
+              ...breakpoints,
+              ...DEFAULT_BREAKPOINTS.filter(
+                  (fallback) => !breakpoints.some((item) => item.id === fallback.id),
+              ),
+          ].sort((a, b) => b.width - a.width)
         : undefined;
     const variables: RootStyle["variables"] = Array.isArray(raw.variables)
         ? raw.variables.slice(0, 100).reduce<NonNullable<RootStyle["variables"]>>((result, item) => {
@@ -764,10 +848,10 @@ export function parseRootStyle(input: unknown): RootStyle {
         pageTransitionDuration: num(raw.pageTransitionDuration, base.pageTransitionDuration, 120, 1200),
         // A page may define any set of artboards, so the stored list is kept as
         // it comes; only an empty one falls back to the defaults.
-        breakpoints: breakpoints?.length ? breakpoints : undefined,
+        breakpoints: withRequired?.length ? withRequired : undefined,
         // The main breakpoint is whichever one holds the shared values. It has
         // to name a breakpoint that exists, or resolution would find nothing.
-        baseBreakpointId: (breakpoints ?? DEFAULT_BREAKPOINTS).some(
+        baseBreakpointId: (withRequired ?? DEFAULT_BREAKPOINTS).some(
             (item) => item.id === raw.baseBreakpointId,
         )
             ? (raw.baseBreakpointId as string)
@@ -776,6 +860,12 @@ export function parseRootStyle(input: unknown): RootStyle {
         customFonts,
         customCss: customCss(raw.customCss),
         customJs: customJs(raw.customJs),
+        // The site's layout, and this page's right to step out of it.
+        siteHeaderId: str(raw.siteHeaderId, MAX_SHORT_STRING),
+        pageLayoutId: str(raw.pageLayoutId, MAX_SHORT_STRING),
+        siteFooterId: str(raw.siteFooterId, MAX_SHORT_STRING),
+        useSiteHeader: raw.useSiteHeader === false ? false : undefined,
+        useSiteFooter: raw.useSiteFooter === false ? false : undefined,
     };
 }
 

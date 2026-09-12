@@ -57,6 +57,10 @@ export function softwareApplicationSchema() {
       "API, route param and form data binding",
       "Server-rendered production output",
       "Motion and interaction authoring",
+      "Linked layouts with children placeholders",
+      "Custom carousel slides and nested marquee content",
+      "Shader colors and text hover effects",
+      "Targeted AI proposals with before-and-after review",
     ],
     isAccessibleForFree: true,
     license: "https://opensource.org/licenses/MIT",
@@ -113,8 +117,8 @@ export function templateCollectionSchema(
 }
 
 /**
- * Answer engines and Google's FAQ treatment both read this, and it is the one
- * block on a comparison page that maps a literal question to a literal answer.
+ * Keep these answers identical to visible page content. Markup does not
+ * guarantee rich results or inclusion in generative search answers.
  */
 export function faqSchema(
   entries: Array<{ question: string; answer: string }>,
@@ -157,6 +161,100 @@ export function comparisonPageSchema({
     inLanguage: "en",
     isPartOf: { "@id": WEBSITE_ID },
     name: title,
+    publisher: { "@id": ORGANIZATION_ID },
+    url: absoluteUrl(path),
+  };
+}
+
+/**
+ * A guide is a TechArticle rather than a BlogPosting: it documents a product
+ * procedure, and `dateModified` is what an answer engine uses to decide which
+ * of two conflicting explanations is current.
+ */
+export function techArticleSchema({
+  description,
+  headline,
+  path,
+  updated,
+}: {
+  description: string;
+  headline: string;
+  path: string;
+  updated: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    author: { "@id": ORGANIZATION_ID },
+    dateModified: updated,
+    datePublished: updated,
+    description,
+    headline,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntityOfPage: absoluteUrl(path),
+    publisher: { "@id": ORGANIZATION_ID },
+    url: absoluteUrl(path),
+  };
+}
+
+/** Only emitted for guides that genuinely read as an ordered procedure. */
+export function howToSchema({
+  description,
+  name,
+  path,
+  steps,
+}: {
+  description: string;
+  name: string;
+  path: string;
+  steps: Array<{ title: string; body: string }>;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    description,
+    name,
+    step: steps.map((step, index) => ({
+      "@type": "HowToStep",
+      name: step.title,
+      position: index + 1,
+      text: step.body,
+      url: `${absoluteUrl(path)}#step-${index + 1}`,
+    })),
+    totalTime: "PT10M",
+  };
+}
+
+/** A hub page that exists to enumerate other pages. */
+export function itemListPageSchema({
+  description,
+  items,
+  name,
+  path,
+}: {
+  description: string;
+  items: Array<{ name: string; description: string; path: string }>;
+  name: string;
+  path: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    description,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        name: item.name,
+        position: index + 1,
+        url: absoluteUrl(item.path),
+      })),
+      numberOfItems: items.length,
+    },
+    name,
     publisher: { "@id": ORGANIZATION_ID },
     url: absoluteUrl(path),
   };

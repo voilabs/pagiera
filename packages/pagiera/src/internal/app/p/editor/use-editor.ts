@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { upgradeCarouselElements } from "@/lib/editor/interactive";
 import type { CanvasElement, DataSource, RootStyle } from "@/lib/editor/types";
 
 const HISTORY_LIMIT = 100;
@@ -120,7 +121,7 @@ function reducer(state: HistoryState, action: Action): HistoryState {
 
 export function useEditorDocument({
     pageId,
-    initialDocument,
+    initialDocument: rawInitialDocument,
     initialVersion,
     saveDocument,
 }: {
@@ -129,6 +130,7 @@ export function useEditorDocument({
     initialVersion: number;
     saveDocument: EditorDocumentSaver;
 }) {
+    const initialDocument = useMemo(() => ({ ...rawInitialDocument, elements: upgradeCarouselElements(rawInitialDocument.elements) }), [rawInitialDocument]);
     const [state, dispatch] = useReducer(reducer, {
         past: [],
         present: initialDocument,

@@ -2,6 +2,8 @@ import type { Pool } from "pg";
 import type { RedisClientType } from "redis";
 
 export type PagieraServerConfig = {
+    mcpServers?: import("./mcp-server").PagieraMcpServer[];
+    authorizeMcp?: (request: Request) => boolean | Promise<boolean>;
     postgresUrl: string;
     redisUrl: string;
     openRouterApiKey: string;

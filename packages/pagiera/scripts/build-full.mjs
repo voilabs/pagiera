@@ -11,7 +11,10 @@ await build({
         sourcefile: "pagiera-full-entry.ts",
         loader: "ts",
     },
-    outfile: resolve(packageRoot, "dist/full-editor.js"),
+    outdir: resolve(packageRoot, "dist"),
+    entryNames: "full-editor",
+    chunkNames: "chunks/[name]-[hash]",
+    splitting: true,
     bundle: true,
     format: "esm",
     platform: "browser",
@@ -31,7 +34,7 @@ await build({
     target: ["node20"],
     sourcemap: true,
     alias: { "@": internalRoot },
-    external: ["pg", "redis", "drizzle-orm", "drizzle-orm/*", "ai", "@openrouter/ai-sdk-provider", "zod"],
+    external: ["pg", "redis", "drizzle-orm", "drizzle-orm/*", "ai", "@openrouter/ai-sdk-provider", "zod", "@modelcontextprotocol/sdk", "@modelcontextprotocol/sdk/*"],
     loader: { ".woff2": "dataurl" },
 });
 
@@ -43,6 +46,13 @@ await build({
         loader: "ts",
     },
     outfile: resolve(packageRoot, "dist/runtime.js"),
+    // Keep the hook-based controller behind a real Next/RSC client boundary.
+    plugins: [{
+        name: "marquee-client-boundary",
+        setup(build) {
+            build.onResolve({ filter: /^\.\/marquee-runtime$/ }, () => ({ path: "./runtime-marquee.js", external: true }));
+        },
+    }],
     bundle: true,
     format: "esm",
     platform: "browser",
@@ -50,6 +60,19 @@ await build({
     jsx: "automatic",
     sourcemap: true,
     alias: { "@": internalRoot },
+    external: ["react", "react/jsx-runtime"],
+});
+
+await build({
+    entryPoints: [resolve(internalRoot, "lib/render/marquee-runtime.tsx")],
+    outfile: resolve(packageRoot, "dist/runtime-marquee.js"),
+    bundle: true,
+    format: "esm",
+    platform: "browser",
+    target: ["es2020"],
+    jsx: "automatic",
+    sourcemap: true,
+    banner: { js: '"use client";' },
     external: ["react", "react/jsx-runtime"],
 });
 

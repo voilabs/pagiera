@@ -2,6 +2,9 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
 import { z } from "zod";
 import type { AiDesignOperation } from "@/lib/editor/ai-types";
+import { parseElements } from "@/lib/editor/validate";
+import { scopeAiPlan } from "@/lib/editor/ai-scope";
+import { ELEMENT_TYPES } from "@/lib/editor/types";
 import { composeFragment, composeSection, PAGE_MEASURE } from "@/lib/editor/ai/compose";
 import { BACKDROPS } from "@/lib/editor/ai/theme";
 import { ALIGNS, BUTTON_KINDS, JUSTIFIES, LIMITS, normalizeSection, RATIOS, type Section, SIZES, SURFACES, TEXT_ROLES, TONES, WIDTHS } from "@/lib/editor/ai/dsl";
@@ -621,6 +624,72 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     if (typeof body.prompt !== "string" || !body.prompt.trim()) {
         return Response.json({ error: "Prompt is required." }, { status: 400 });
+    }
+    if (typeof body.targetBreakpoint === "string") {
+        const document = body.document as { elements?: unknown; rootStyle?: { breakpoints?: Array<{ id: string }> } } | undefined;
+        const ids = document?.rootStyle?.breakpoints?.map(item => item.id) ?? ["desktop", "tablet", "mobile"];
+        if (!ids.includes(body.targetBreakpoint)) return Response.json({ error: "Unknown breakpoint" }, { status: 400 });
+        const elements = parseElements(document?.elements);
+        const focus = focusSchema.safeParse(body.focus);
+        const style = z.object({
+            x: z.number().min(-10000).max(10000).optional(), y: z.number().min(-10000).max(10000).optional(),
+            w: z.number().min(1).max(10000).optional(), h: z.number().min(1).max(10000).optional(),
+            fontSize: z.number().min(6).max(500).optional(), gap: z.number().min(0).max(1000).optional(),
+            padT: z.number().min(0).max(1000).optional(), padR: z.number().min(0).max(1000).optional(),
+            padB: z.number().min(0).max(1000).optional(), padL: z.number().min(0).max(1000).optional(),
+            radius: z.number().min(0).max(1000).optional(), direction: z.enum(["row", "column"]).optional(),
+            widthMode: z.enum(["fixed", "fill", "auto"]).optional(), heightMode: z.enum(["fixed", "fill", "auto"]).optional(),
+            position: z.enum(["static", "absolute"]).optional(),
+        });
+        try {
+            const provider = createOpenRouter({ apiKey });
+            const result = await generateText({
+                model: provider(process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4.5"),
+                abortSignal: request.signal, maxOutputTokens: 5000,
+                system: 'You adjust only responsive layout of existing layers. Return JSON {message:string,updates:[{id:string,style:object}]}. No additions, removals, content edits, code, or other breakpoints. Allowed style keys: x,y,w,h,fontSize,gap,padT,padR,padB,padL,radius,direction(row/column),widthMode and heightMode(fixed/fill/auto),position(static/absolute). Respect the requested element scope.',
+                prompt: JSON.stringify({ request: body.prompt, breakpoint: body.targetBreakpoint, focus: focus.success ? focus.data : undefined, elements: elements.map(({ id, name, parentId, type, base, overrides }) => ({ id, name, parentId, type, base, overrides })) }),
+            });
+            const parsed = z.object({ message: z.string().max(2000), updates: z.array(z.object({ id: z.string(), style })).max(200) }).parse(extractJson(result.text));
+            return Response.json(scopeAiPlan({ message: parsed.message, steps: ["Review breakpoint layout changes"], operations: parsed.updates.map(update => ({ kind: "update", ...update })) }, elements, focus.success ? focus.data.id : undefined, body.targetBreakpoint));
+        } catch { return Response.json({ error: "Could not generate a valid breakpoint plan. Nothing was applied." }, { status: 502 }); }
+    }
+
+    // Existing documents are edited, never implicitly sent through the page composer.
+    const existing = parseElements((body.document as { elements?: unknown } | undefined)?.elements);
+    if (existing.length > 0 || body.focus) {
+        const focus = focusSchema.safeParse(body.focus);
+        if (body.focus && (!focus.success || !existing.some(element => element.id === focus.data.id))) {
+            return Response.json({ error: "The selected target no longer exists. Select it again." }, { status: 400 });
+        }
+        const style = z.object({
+            bg: z.string().max(200).optional(), color: z.string().max(200).optional(),
+            fontSize: z.number().min(1).max(500).optional(), fontWeight: z.string().max(30).optional(),
+            fontFamily: z.string().max(300).optional(), lineHeight: z.number().min(0).max(20).optional(),
+            letterSpacing: z.number().min(-50).max(100).optional(), textAlign: z.enum(["left", "center", "right", "justify"]).optional(),
+            bgOpacity: z.number().min(0).max(100).optional(), opacity: z.number().min(0).max(100).optional(),
+            radius: z.number().min(0).max(1000).optional(), borderW: z.number().min(0).max(100).optional(), borderC: z.string().max(200).optional(),
+            w: z.number().min(1).max(10000).optional(), h: z.number().min(1).max(10000).optional(),
+            x: z.number().min(-10000).max(10000).optional(), y: z.number().min(-10000).max(10000).optional(),
+            gap: z.number().min(0).max(1000).optional(),
+            padT: z.number().min(0).max(1000).optional(), padR: z.number().min(0).max(1000).optional(), padB: z.number().min(0).max(1000).optional(), padL: z.number().min(0).max(1000).optional(),
+            direction: z.enum(["row", "column"]).optional(), position: z.enum(["static", "absolute"]).optional(),
+            widthMode: z.enum(["fixed", "fill", "auto"]).optional(), heightMode: z.enum(["fixed", "fill", "auto"]).optional(),
+        });
+        const fields = { content: z.string().max(20000).optional(), style: style.optional(), hoverStyle: style.optional() };
+        const schema = z.object({ message: z.string().max(3000), operations: z.array(z.discriminatedUnion("kind", [
+            z.object({ kind: z.literal("update"), id: z.string(), ...fields }),
+            z.object({ kind: z.literal("add"), ref: z.string(), type: z.enum(ELEMENT_TYPES), parentId: z.string().nullable().optional(), ...fields }),
+        ])).max(100) });
+        try {
+            const result = await generateText({
+                model: createOpenRouter({ apiKey })(process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4.5"),
+                abortSignal: request.signal, maxOutputTokens: 8000,
+                system: `You are a precise visual editor, not a page generator. Preserve existing IDs, content and styles unless the user asks to change them. Make the smallest necessary patch. Only touch the requested target and its descendants. With no explicit target, identify the exact named layers from the document; ask a clarification with empty operations if ambiguous. Never redesign unrelated sections. Never replace a page or subtree. For questions respond with message and empty operations. Add only explicitly requested new elements, with unique refs and a valid parent ID (or an earlier new ref). Deletion is not supported: explain this instead of hiding or blanking content. Return JSON matching this schema: ${JSON.stringify(z.toJSONSchema(schema))}`,
+                prompt: JSON.stringify({ request: body.prompt, history: body.history, focus: focus.success ? focus.data : undefined, elements: existing }),
+            });
+            const parsed = schema.parse(extractJson(result.text));
+            return Response.json(scopeAiPlan({ ...parsed, steps: ["Review targeted edits"] }, existing, focus.success ? focus.data.id : undefined));
+        } catch { return Response.json({ error: "Could not prepare targeted edits. Nothing was changed." }, { status: 502 }); }
     }
 
     const encoder = new TextEncoder();

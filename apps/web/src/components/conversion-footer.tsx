@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { ButtonLink } from "@/components/ui/button";
 import { COMPARISONS } from "@/lib/comparisons";
+import { GUIDES } from "@/lib/guides";
 
 type ConversionFooterProps = {
   eyebrow?: string;
@@ -69,7 +70,7 @@ export function ConversionFooter({
       {/* White text over the raw pixel field is unreadable. The band is sized
           in pixels rather than a percentage—the CTA block above it changes
           height—and the mask finishes fading in before the links begin. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[680px] bg-gradient-to-t from-[#0b0518]/80 [mask-image:linear-gradient(180deg,transparent,black_11%)] max-lg:h-[720px] max-sm:h-[820px]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[680px] bg-gradient-to-t from-[#080808]/80 [mask-image:linear-gradient(180deg,transparent,black_11%)] max-lg:h-[720px] max-sm:h-[820px]" />
 
       <div className="relative z-[3] mx-auto flex min-h-[510px] w-[min(920px,calc(100%_-_40px))] flex-col items-center justify-center px-0 pt-[90px] pb-16 text-center max-sm:min-h-[520px] max-sm:pt-[70px]">
         <Image
@@ -85,7 +86,7 @@ export function ConversionFooter({
         <h2 className="m-0 text-[clamp(54px,7.2vw,100px)] leading-[0.91] font-medium tracking-[-0.077em] max-sm:text-[clamp(49px,14.7vw,68px)]">
           {title[0]}
           <br />
-          <em className="font-serif font-normal text-[#a982ff]">{title[1]}</em>
+          <em className="font-serif font-normal text-[#939393]">{title[1]}</em>
         </h2>
         <p className="mt-6.5 w-[min(610px,92%)] text-xs leading-7 text-white/55 max-sm:text-[11px]">
           Install the complete visual builder, choose a starting point and shape
@@ -152,8 +153,9 @@ export function ConversionFooter({
           </button>
         </div>
 
-        {/* The comparison pages have no hub of their own: this column is how
-            readers and crawlers reach them. */}
+        {/* Guides and comparisons each have a hub page now, so this column
+            links the hubs and lets them carry their own detail pages. The
+            guide list stays here because it is the shortest crawl path in. */}
         <nav
           aria-label="Footer navigation"
           className="grid grid-cols-2 gap-x-10 gap-y-5 justify-self-end text-right max-sm:col-span-2 max-sm:mt-2 max-sm:w-full max-sm:justify-self-start max-sm:gap-x-8 max-sm:text-left"
@@ -166,6 +168,9 @@ export function ConversionFooter({
             <a className={footerLink} href="/#workflow">
               How it works
             </a>
+            <a className={footerLink} href="/#capabilities">
+              What&apos;s inside
+            </a>
             <a className={footerLink} href="/templates">
               Templates
             </a>
@@ -174,16 +179,28 @@ export function ConversionFooter({
             </a>
           </div>
           <div className="grid content-start gap-3.5">
-            <FooterHeading>Compare</FooterHeading>
-            {COMPARISONS.map((entry) => (
+            <FooterHeading>Learn</FooterHeading>
+            <a className={footerLink} href="/docs">
+              Documentation
+            </a>
+            <a className={footerLink} href="/docs/agents">
+              For coding agents
+            </a>
+            {GUIDES.map((guide) => (
               <a
                 className={footerLink}
-                href={`/compare/${entry.slug}`}
-                key={entry.slug}
+                href={`/guides/${guide.slug}`}
+                key={guide.slug}
               >
-                vs {entry.rival}
+                {guide.navLabel}
               </a>
             ))}
+            <a className={footerLink} href="/faq">
+              FAQ
+            </a>
+            <a className={footerLink} href="/compare">
+              Compare ({COMPARISONS.length})
+            </a>
           </div>
         </nav>
 

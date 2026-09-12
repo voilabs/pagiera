@@ -18,6 +18,8 @@ function body() {
     "Allow: /",
     "",
     `Sitemap: ${absoluteUrl("/sitemap.xml")}`,
+    // A curated map for models reading the site, not a crawler directive.
+    `# llms.txt: ${absoluteUrl("/llms.txt")}`,
     "",
   ].join("\n");
 }

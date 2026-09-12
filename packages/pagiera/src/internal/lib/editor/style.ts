@@ -32,6 +32,11 @@ export function resolveStyle(
         const override = element.overrides?.[step];
         if (override) style = { ...style, ...override };
     }
+    if (element.isLayout || (element.layoutRole === "layout" && !element.parentId)) {
+        style = { ...style, widthMode: "fill", heightMode: "fill", position: "static", x: 0, y: 0 };
+    }
+    if (element.childrenSlot) style = { ...style, widthMode: "fill", heightMode: "fill" };
+    if (element.interactive?.kind === "marquee") style = { ...style, layout: "stack", direction: "row", overflow: "hidden" };
     return style;
 }
 
@@ -97,8 +102,16 @@ export function applyStyle(
     };
 }
 
-/** Keeps a base-breakpoint edit local by snapshotting the affected values on
- * every other artboard before changing the shared desktop base. */
+/**
+ * Writes an edit through the breakpoint cascade.
+ *
+ * A value authored on Desktop is shared by Tablet and Mobile until one of
+ * those artboards changes it. The old implementation did the inverse: every
+ * Desktop edit snapshotted the previous value into all narrower artboards,
+ * making the MAIN breakpoint look disconnected. When a parent breakpoint is
+ * edited, stale copies of the same keys below it are removed so inheritance
+ * is visible and deterministic again.
+ */
 export function applyStyleIsolated(
     element: CanvasElement,
     breakpoint: Breakpoint,
@@ -108,20 +121,24 @@ export function applyStyleIsolated(
 ): CanvasElement {
     const keys = Object.keys(patch) as StyleKey[];
     const baseId = baseOf(cascade).id;
-    const snapshots = new Map<Breakpoint, ElementStyle>();
-    for (const target of breakpoints) {
-        if (target !== breakpoint && target !== baseId) {
-            snapshots.set(target, resolveStyle(element, target, cascade));
-        }
-    }
     const updated = applyStyle(element, breakpoint, patch, cascade);
     const overrides = { ...updated.overrides };
-    for (const [target, effective] of snapshots) {
+
+    for (const target of breakpoints) {
+        if (target === breakpoint || target === baseId) continue;
+        const inheritsFromEdited =
+            breakpoint === baseId || chainFor(cascade, target).includes(breakpoint);
+        if (!inheritsFromEdited || !overrides[target]) continue;
+
         const layer = { ...overrides[target] };
-        for (const key of keys) layer[key] = effective[key] as never;
-        overrides[target] = layer;
+        for (const key of keys) delete layer[key];
+        if (Object.keys(layer).length) overrides[target] = layer;
+        else delete overrides[target];
     }
-    return { ...updated, overrides };
+    return {
+        ...updated,
+        overrides: Object.keys(overrides).length ? overrides : undefined,
+    };
 }
 
 /** Drops overrides for `keys` at this breakpoint so they inherit again. */

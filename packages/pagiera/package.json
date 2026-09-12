@@ -1,6 +1,6 @@
 {
   "name": "pagiera",
-  "version": "0.2.0-alpha.51",
+  "version": "0.2.0-alpha.52",
   "description": "Full-stack visual website editor with PostgreSQL, Redis and OpenRouter",
   "homepage": "https://pagiera.com",
   "repository": {
@@ -26,12 +26,15 @@
   ],
   "license": "MIT",
   "type": "module",
+  "bin": { "pagiera": "./cli/main.mjs" },
   "sideEffects": [
     "./dist/styles.css",
     "./dist/full.css"
   ],
   "files": [
+    "cli",
     "dist",
+    "AGENTS.md",
     "README.md"
   ],
   "main": "./dist/index.js",
@@ -81,6 +84,12 @@
   },
   "dependencies": {
     "@fontsource-variable/figtree": "^5.3.0",
+    "@iconify-json/lucide": "^1.2.129",
+    "@iconify-json/ri": "^1.2.10",
+    "@iconify-json/tabler": "^1.2.38",
+    "@iconify/types": "^2.0.0",
+    "@iconify/utils": "^3.1.7",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "@openrouter/ai-sdk-provider": "^3.0.0",
     "@tabler/icons-react": "^3.46.0",
     "@tailwindcss/postcss": "^4.3.3",

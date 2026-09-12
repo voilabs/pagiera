@@ -70,7 +70,7 @@ export function Seo({
       {structured.map((entry, index) => (
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: serialised structured data, not user input.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(entry) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(entry).replace(/</g, "\\u003c") }}
           // biome-ignore lint/suspicious/noArrayIndexKey: the list is static per page.
           key={index}
           type="application/ld+json"

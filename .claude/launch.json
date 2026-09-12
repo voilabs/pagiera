@@ -2,16 +2,28 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "pagiera-example",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "--cwd", "apps/example", "dev", "--port", "3100"],
-      "port": 3100
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000,
+      "autoPort": true
     },
     {
-      "name": "pagiera-web",
+      "name": "web",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "--cwd", "apps/web", "dev", "--port", "3200"],
-      "port": 3200
+      "runtimeArgs": [
+        "run",
+        "--cwd",
+        "apps/web",
+        "dev",
+        "--port",
+        "3100"
+      ],
+      "port": 3100,
+      "autoPort": true
     }
   ]
 }

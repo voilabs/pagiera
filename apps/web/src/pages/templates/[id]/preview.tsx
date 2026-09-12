@@ -41,7 +41,7 @@ export default function TemplatePreview({
 }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <div
-      className={`${manrope.variable} min-h-screen bg-[#0d0c10] font-[var(--font-template)]`}
+      className={`${manrope.variable} min-h-screen bg-[#0d0d0d] font-[var(--font-template)]`}
     >
       <Head>
         <title>{name} preview — Pagiera</title>

@@ -13,6 +13,7 @@
     "packages/*"
   ],
   "scripts": {
+    "docs:check": "node scripts/check-docs.cjs",
     "dev": "bun run package:build && bun run --cwd apps/example dev",
     "build": "bun run package:build && bun run --cwd apps/example build",
     "check": "bun run package:check && bun run package:build && bun run --cwd apps/example typecheck",

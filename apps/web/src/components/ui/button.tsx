@@ -3,13 +3,13 @@ import { cn } from "@/lib/cn";
 
 const variants = {
   primary:
-    "border border-[#171020] bg-[#171020] text-white hover:border-[#6a25f0] hover:bg-[#6a25f0]",
-  secondary: "border border-black/10 bg-white/75 text-[#29232f] hover:bg-white",
-  purple: "border border-[#5402e6] bg-[#5402e6] text-white hover:bg-[#6c25ed]",
+    "border border-[#131313] bg-[#131313] text-white hover:border-[#6a25f0] hover:bg-[#6a25f0]",
+  secondary: "border border-black/10 bg-white/75 text-[#252525] hover:bg-white",
+  purple: "border border-[#5402e6] bg-[#5402e6] text-white hover:bg-[#6a25f0]",
   accent:
-    "border border-[#6a25f0] bg-[#6a25f0] text-white hover:border-[#7c3ff2] hover:bg-[#7c3ff2]",
+    "border border-[#6a25f0] bg-[#6a25f0] text-white hover:border-[#8247f3] hover:bg-[#8247f3]",
   ghost:
-    "border border-transparent bg-transparent text-[#595261] hover:bg-white",
+    "border border-transparent bg-transparent text-[#555555] hover:bg-white",
 } as const;
 
 const sizes = {

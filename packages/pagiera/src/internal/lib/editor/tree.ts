@@ -229,6 +229,16 @@ export function wrapInContainer(
     };
 }
 
+/** Every parked frame, and everything inside one. */
+export function parkedIds(elements: CanvasElement[]): Set<string> {
+    const parked = new Set<string>();
+    for (const element of elements) {
+        if (!element.parked) continue;
+        for (const id of subtreeIds(elements, element.id)) parked.add(id);
+    }
+    return parked;
+}
+
 /* -------------------------------------------------------------- reparenting */
 
 /**
@@ -264,7 +274,9 @@ export function reparent(
         : { x: 0, y: 0 };
 
     const moved = applyStyle(
-        { ...element, parentId: newParentId },
+        // Dropping a frame onto an artboard makes it part of the page, which
+        // is exactly what un-parks it.
+        { ...element, parentId: newParentId, parked: newParentId ? undefined : element.parked },
         breakpoint,
         { x: before.x - parentOrigin.x, y: before.y - parentOrigin.y },
         cascade,
@@ -346,55 +358,4 @@ function depthOf(byId: Map<string, CanvasElement>, element: CanvasElement) {
         cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
     }
     return depth;
-}
-
-/**
- * An element parked beside the canvas is treated as a note: it stays visible
- * while designing but is left out of the published page.
- *
- * Only the horizontal axis counts. The canvas has a definite width — the
- * simulated viewport — while its height grows with the content, so "below the
- * fold" is a normal place for content to be, not a margin.
- */
-export function isNote(
-    element: CanvasElement,
-    byId: Map<string, CanvasElement>,
-    breakpoint: Breakpoint,
-    frameWidth: number,
-    /** How the page root arranges its own children. */
-    rootLayout: LayoutMode = "absolute",
-    cascade: Cascade = DEFAULT_CASCADE,
-): boolean {
-    // Wherever a stack does the placing, x/y are not read at all — so a stale
-    // coordinate must never be able to drop an element from the page.
-    const parent = element.parentId ? byId.get(element.parentId) : undefined;
-    const placedBy = parent
-        ? resolveStyle(parent, breakpoint, cascade).layout
-        : rootLayout;
-    if (placedBy !== "absolute") return false;
-
-    const style = resolveStyle(element, breakpoint, cascade);
-    const { x } = absolutePosition(byId, element, breakpoint, cascade);
-    const right = x + (style.widthMode === "fixed" ? style.w : 0);
-
-    // Fully past either edge — a partial overlap is still part of the page.
-    return right <= 0 || x >= frameWidth;
-}
-
-/** Ids of every note and everything inside one. */
-export function noteIds(
-    elements: CanvasElement[],
-    byId: Map<string, CanvasElement>,
-    breakpoint: Breakpoint,
-    frameWidth: number,
-    rootLayout: LayoutMode = "absolute",
-    cascade: Cascade = DEFAULT_CASCADE,
-): Set<string> {
-    const notes = new Set<string>();
-    for (const element of elements) {
-        if (isNote(element, byId, breakpoint, frameWidth, rootLayout, cascade)) {
-            for (const id of subtreeIds(elements, element.id)) notes.add(id);
-        }
-    }
-    return notes;
 }

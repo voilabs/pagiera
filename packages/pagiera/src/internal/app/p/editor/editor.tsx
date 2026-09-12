@@ -1,23 +1,32 @@
 "use client";
+import { AiSettings } from "./ui/ai-settings";
+import { WorkspaceTabs, useWorkspaceTabs, type WorkspaceTab } from "./ui/workspace-tabs";
 
 import {
     IconArrowBackUp,
     IconArrowForwardUp,
     IconArrowsMaximize,
     IconCommand,
+    IconCode,
     IconComponents,
     IconCopy,
+    IconChevronDown,
     IconChevronLeft,
     IconChevronRight,
+    IconChevronUp,
     IconDatabase,
+    IconDeviceDesktop,
+    IconDots,
+    IconDeviceMobile,
+    IconDeviceTablet,
     IconFocusCentered,
-    IconLayoutSidebarLeftCollapse,
-    IconLayoutSidebarRightCollapse,
     IconMinus,
     IconPlayerPlay,
+    IconPointer,
     IconPlus,
     IconSearch,
     IconSettings,
+    IconSparkles,
     IconTrash,
     IconUnlink,
     IconRefresh,
@@ -25,12 +34,12 @@ import {
     IconLayersLinked,
     IconLayoutColumns,
     IconBox,
+    IconEyeOff,
     IconFile,
-    IconMoon,
+    IconFrame,
     IconPalette,
     IconPin,
     IconPinFilled,
-    IconSun,
     IconTemplate,
     IconX,
 } from "@tabler/icons-react";
@@ -52,8 +61,29 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    ChromeButton,
+    AssetsPanel,
+    SettingsNavigation,
+    SettingsWorkspace,
+    TemplatesNavigation,
+    PanelAction,
+    PanelHeader,
+    PanelSearch,
+    RailTab,
+    Readout,
+    SegmentedBar,
+    ToolButton,
+    ToolDivider,
+    ToolGroup,
+    Menu,
+    MenuItem,
+    MenuLink,
+    MenuSeparator,
+    EditorShell,
+} from "./ui";
 import { alignElements, distributeElements } from "@/lib/editor/arrange";
-import { baseOf, cascadeOf } from "@/lib/editor/cascade";
+import { baseOf, cascadeOf, duplicateThresholds, windowRangeChip, windowRangeLabel } from "@/lib/editor/cascade";
 import type { AiDesignPlan } from "@/lib/editor/ai-types";
 import { bindElement, type Row, rowsFor } from "@/lib/render/bind";
 import { resolveFont } from "@/lib/render/css";
@@ -76,11 +106,11 @@ import {
     cloneSubtree,
     createElement,
     indexById,
-    isNote,
     nextZ,
     removeSubtree,
     reorder,
     reparent,
+    parkedIds,
     subtreeIds,
     wrapInContainer,
 } from "@/lib/editor/tree";
@@ -100,8 +130,12 @@ import {
     type RootStyle,
     STYLE_KEYS,
     type StyleKey,
+    REQUIRED_BREAKPOINT_IDS,
 } from "@/lib/editor/types";
 import { Inspector, INSPECTOR_TABS, MultiSelectPanel, PageInspector } from "./inspector";
+import { PagieraMark } from "./brand";
+import { GestureLayer, type GestureLayerHandle, type Measure } from "./gesture-layer";
+
 import { DataPanel, type SourceSample } from "./data-panel";
 import type { SourcePreviewer } from "./data-modal";
 import { type LibraryPage, type LibraryPick, LibraryPanel } from "./library";
@@ -127,6 +161,17 @@ import { HistoryPanel } from "./history-panel";
 import { LumaMark } from "./brand";
 import { VariablesPanel } from "./variables-panel";
 import { TemplatesPanel } from "./templates-panel";
+import { WorkspaceMenu } from "./ui/workspace-menu";
+import { InsertMenu } from "./ui/insert-menu";
+import { SHADER_PRESETS, shaderDocument } from "@/lib/editor/shaders";
+import { normalizeInteractive, interactiveDocument, restoreInteractiveElement } from "@/lib/editor/interactive";
+import { MarqueePreview } from "./ui/marquee-preview";
+import { CarouselEditor } from "./ui/carousel-editor";
+import { carouselControlAttributes } from "@/lib/editor/carousel-controls";
+import { disclosureAttributes, disclosureChildren } from '@/lib/editor/disclosure';
+import { mountDisclosures } from '@/lib/render/disclosure';
+import { canvasTargetSelector } from "@/lib/editor/canvas-target";
+import { applyPageLayout } from "@/lib/editor/page-layout";
 
 const MIN_SIZE = 10;
 /** How close to its container's edge a drag counts as "all the way". */
@@ -170,6 +215,15 @@ type ComponentAsset = {
     variants: CanvasElement[];
 };
 
+function componentHasContent(elements: CanvasElement[], master: CanvasElement) {
+    return Boolean(
+        master.code ||
+        master.src ||
+        master.content?.trim() ||
+        elements.some((element) => element.parentId === master.id),
+    );
+}
+
 function ComponentAssetCards({
     assets,
     activeMasterId,
@@ -183,7 +237,7 @@ function ComponentAssetCards({
     return (
         <div className="space-y-3">
             {assets.map((asset) => (
-                <section key={asset.id} className="overflow-hidden rounded-2xl border border-ed-border bg-ed-subtle">
+                <section key={asset.id} className="overflow-hidden rounded-[18px] bg-ed-subtle">
                     <button type="button" onClick={() => onOpen(asset.variants[0])} className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-ed-field">
                         <span className="flex size-9 items-center justify-center rounded-xl bg-ed-field text-ed-accent"><IconComponents size={16} /></span>
                         <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-ed-text">{asset.name}</span><span className="block text-[9px] text-ed-faint">{asset.variants.length} variant{asset.variants.length === 1 ? "" : "s"} · shared across pages</span></span>
@@ -199,8 +253,8 @@ function ComponentAssetCards({
                                 onClick={() => onOpen(variant)}
                                 className={`group min-w-0 cursor-grab rounded-xl border p-1.5 text-left active:cursor-grabbing ${activeMasterId === variant.id ? "border-ed-accent bg-[var(--ed-accent-soft)]" : "border-transparent bg-ed-field hover:border-ed-border"}`}
                             >
-                                <span className="mb-1.5 flex h-12 items-center justify-center overflow-hidden rounded-lg border border-ed-border" style={{ background: variant.base.gradient || variant.base.bg || "var(--ed-surface)" }}>
-                                    <span className="rounded-full bg-black/35 px-2 py-1 font-mono text-[8px] text-white/80">{Math.round(variant.base.w)}×{Math.round(variant.base.h)}</span>
+                                <span className="mb-1.5 flex h-12 items-center justify-center overflow-hidden rounded-xl" style={{ background: variant.base.gradient || variant.base.bg || "var(--ed-surface)" }}>
+                                    <span className="rounded-md bg-black/35 px-2 py-1 font-mono text-[8px] text-white/80">{Math.round(variant.base.w)}×{Math.round(variant.base.h)}</span>
                                 </span>
                                 <span className="block truncate px-1 text-[9px] font-semibold text-ed-text">{variant.variant ?? "Default"}</span>
                             </button>
@@ -216,9 +270,18 @@ function isEditorTab<T extends string>(value: unknown, tabs: readonly T[]): valu
     return typeof value === "string" && tabs.includes(value as T);
 }
 
+/** URL segment for a panel, where it differs from the tab's own name. */
+const PANEL_SLUGS: Partial<Record<LeftEditorTab, string>> = { Insert: "elements" };
+
+function panelSlug(tab: LeftEditorTab): string {
+    return PANEL_SLUGS[tab] ?? tab.toLowerCase();
+}
+
 function leftTabFromValue(value: string | null): LeftEditorTab | undefined {
     if (!value) return undefined;
     const normalized = value.trim().toLowerCase();
+    const aliased = (Object.keys(PANEL_SLUGS) as LeftEditorTab[]).find((tab) => PANEL_SLUGS[tab] === normalized);
+    if (aliased) return aliased;
     return LEFT_EDITOR_TABS.find((tab) => tab.toLowerCase() === normalized);
 }
 
@@ -227,6 +290,7 @@ function leftTabFromPath(pathname: string): LeftEditorTab | undefined {
     return leftTabFromValue(segment ? decodeURIComponent(segment) : null);
 }
 
+/** Panels the sidebar already renders; opening them needs no second column. */
 function tabForDocumentMode(tab: LeftEditorTab, componentMode: boolean): LeftEditorTab {
     if (componentMode) {
         if (tab === "Assets") return "Components";
@@ -250,6 +314,7 @@ export type EditorPage = {
 export type EditorAdapters = {
     save?: Parameters<typeof useEditorDocument>[0]["saveDocument"];
     generate?: AiDesignGenerator;
+    mcp?: import("./ui/mcp-panel").McpAdapter;
     createPage?: (name: string, slug: string) => Promise<PageMutationResult>;
     renamePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
     duplicatePage?: (id: string, name: string, slug: string) => Promise<PageMutationResult>;
@@ -261,6 +326,8 @@ export type EditorAdapters = {
     exportTemplateUrl?: (id: string) => string;
     setSiteFont?: (fontFamily: string, customFonts?: RootStyle["customFonts"]) => Promise<unknown>;
     setSiteTransition?: (pageTransition: RootStyle["pageTransition"], pageTransitionDuration: number) => Promise<unknown>;
+    /** Names the shared components that wrap every page of the site. */
+    setSiteLayout?: (headerId?: string, footerId?: string) => Promise<unknown>;
     publishPage?: (id: string) => Promise<PageMutationResult>;
     unpublishPage?: (id: string, slug: string) => Promise<PageMutationResult>;
     navigate?: (pageId: string, options?: { replace?: boolean }) => void | Promise<void>;
@@ -275,10 +342,22 @@ export type EditorAdapters = {
     uploadImage?: (file: File) => Promise<string>;
     publishedHref?: (slug: string) => string;
     previewSource?: SourcePreviewer;
+    /** Compiles author TSX into an isolated, self-contained browser document. */
+    compileCode?: (source: string) => Promise<{ status: "ok"; html: string }>;
 };
 
 const defaultEditorHref = (pageId: string, panel?: string) => `/editor/${encodeURIComponent(pageId)}${panel ? `/${encodeURIComponent(panel)}` : ""}`;
 const defaultPublishedHref = (slug: string) => slug === "home" || slug === "" ? "/" : `/${slug.split("/").map((part) => part.startsWith(":") ? part : encodeURIComponent(part)).join("/")}`;
+const DEFAULT_TSX_COMPONENT = `export default function Card() {
+  return (
+    <article style={{ padding: 24, fontFamily: "system-ui", color: "#17141f" }}>
+      <span style={{ color: "#6a25f0", fontSize: 12, fontWeight: 700 }}>PAGIERA COMPONENT</span>
+      <h2 style={{ margin: "12px 0 8px", fontSize: 28 }}>Built with TSX.</h2>
+      <p style={{ margin: 0, color: "#6f6878" }}>Edit the source and ship it as a reusable component.</p>
+    </article>
+  );
+}`;
+const DEFAULT_HTML_COMPONENT = `<style>body{margin:0;font-family:system-ui;display:grid;place-items:center;height:100vh}button{border:0;border-radius:12px;padding:14px 22px;background:#6a25f0;color:white;font-weight:600}</style><button>Button</button>`;
 
 export type PageMutationResult =
     | { status: "ok"; pageId?: string; slug?: string }
@@ -329,6 +408,9 @@ type PaddingInfo = {
 
 type Clipboard = { elements: CanvasElement[]; rootId: string };
 
+/** Shared empty list, so a childless layer allocates nothing. */
+const EMPTY_CHILDREN: CanvasElement[] = [];
+
 export default function Editor({
     page,
     pages,
@@ -348,7 +430,7 @@ export default function Editor({
     const reduceMotion = useReducedMotion();
 
     const {
-        elements,
+        elements: documentElements,
         rootStyle,
         dataSources,
         setElements,
@@ -380,26 +462,15 @@ export default function Editor({
         ),
     });
 
-    /** Editor chrome theme; the palette itself lives in globals.css. */
-    const [chromeTheme, setChromeTheme] = useState<"light" | "dark">("dark");
-
-    useEffect(() => {
-        const stored = localStorage.getItem("pagiera:editor-theme");
-        if (stored === "dark" || stored === "light") setChromeTheme(stored);
-    }, []);
-
-    const toggleChromeTheme = useCallback(() => {
-        setChromeTheme((current) => {
-            const next = current === "dark" ? "light" : "dark";
-            try {
-                localStorage.setItem("pagiera:editor-theme", next);
-            } catch {
-                // A private-mode storage failure must not block the toggle.
-            }
-            return next;
-        });
-    }, []);
-
+    // Layout chrome is derived from the current master, never a stale saved copy.
+    // Keeping this out of state also prevents preview updates from creating undo/save loops.
+    const elements = useMemo(
+        () => {
+            const restored = documentElements.map(restoreInteractiveElement);
+            return applyPageLayout(restored, restored, rootStyle.pageLayoutId);
+        },
+        [documentElements, rootStyle.pageLayoutId],
+    );
     const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
     const [breakpointPanel, setBreakpointPanel] = useState(false);
     const componentMode = rootStyle.documentMode === "component";
@@ -415,17 +486,78 @@ export default function Editor({
         return [...grouped.values()];
     }, [elements]);
     const [activeComponentMasterId, setActiveComponentMasterId] = useState<string | null>(null);
-    const [openComponentTabIds, setOpenComponentTabIds] = useState<string[]>([]);
+    /** Measured component roots; these size the editor surface, never the instance. */
+    const [componentPreviewSizes, setComponentPreviewSizes] = useState<Record<string, { width: number; height: number }>>({});
+    const componentPreviewObservers = useRef(new Map<string, ResizeObserver>());
+    /** Legacy Hug migration runs once; later manual resizing belongs to the author. */
+    const normalizedComponentMasters = useRef(new Set<string>());
     const activeComponentMaster = componentMasters.find((element) => element.id === activeComponentMasterId) ?? componentMasters[0];
     const activeComponentVariants = activeComponentMaster
         ? componentMasters.filter((element) => element.componentId === activeComponentMaster.componentId)
         : [];
+
+    /*
+     * Older blank components were fixed, absolute artboards. Dropping one
+     * button into them therefore produced a component whose invisible wrapper
+     * stayed as large as the editing canvas. A one-child component is the
+     * common button/badge/icon case: turn that legacy wrapper into a genuine
+     * intrinsic component and put its child back into normal flow. This also
+     * makes longer instance text expand the component instead of overflowing.
+     */
     useEffect(() => {
-        if (!componentMode || !activeComponentMaster?.id) return;
-        setOpenComponentTabIds((current) => current.includes(activeComponentMaster.id)
-            ? current
-            : [...current, activeComponentMaster.id]);
-    }, [activeComponentMaster?.id, componentMode]);
+        if (!componentMode || !activeComponentMaster || activeComponentMaster.isLayout) return;
+        const directChildren = elements.filter((element) => element.parentId === activeComponentMaster.id);
+        if (directChildren.length !== 1) return;
+        const child = directChildren[0];
+        const masterNeedsHug =
+            activeComponentMaster.base.widthMode !== "auto" ||
+            activeComponentMaster.base.heightMode !== "auto" ||
+            activeComponentMaster.base.layout !== "stack";
+        const childNeedsFlow = child.base.position !== "static" || child.base.x !== 0 || child.base.y !== 0;
+        // Component variants are the responsive/state surface. Carrying page
+        // breakpoint overrides into a master creates invisible declarations
+        // that the component editor cannot select, yet the renderer applies
+        // them at tablet/mobile widths (for example 600 becoming 500).
+        const hasHiddenOverrides = Boolean(
+            Object.keys(activeComponentMaster.overrides ?? {}).length ||
+            Object.keys(child.overrides ?? {}).length,
+        );
+        const alreadyNormalized = normalizedComponentMasters.current.has(activeComponentMaster.id);
+        if (alreadyNormalized && !hasHiddenOverrides) return;
+        normalizedComponentMasters.current.add(activeComponentMaster.id);
+        if (!masterNeedsHug && !childNeedsFlow && !hasHiddenOverrides) return;
+
+        setElements((current) => current.map((element) => {
+            if (element.id === activeComponentMaster.id) {
+                return {
+                    ...element,
+                    overrides: undefined,
+                    base: {
+                        ...element.base,
+                        widthMode: "auto",
+                        heightMode: "auto",
+                        layout: "stack",
+                        direction: "row",
+                        align: "center",
+                        justify: "center",
+                        padT: 0,
+                        padR: 0,
+                        padB: 0,
+                        padL: 0,
+                        overflow: "visible",
+                    },
+                };
+            }
+            if (element.id === child.id) {
+                return {
+                    ...element,
+                    overrides: undefined,
+                    base: { ...element.base, position: "static", x: 0, y: 0 },
+                };
+            }
+            return element;
+        }));
+    }, [activeComponentMaster, componentMode, elements, setElements]);
     const breakpointDefs = rootStyle.breakpoints?.length
         ? rootStyle.breakpoints
         : DEFAULT_BREAKPOINTS;
@@ -439,9 +571,23 @@ export default function Editor({
 
     const frames = useMemo<Array<{ bp: Breakpoint; width: number; masterId?: string }>>(
         () => componentMode
-            ? activeComponentVariants.map((variant) => ({ bp: "desktop", width: Math.max(1, variant.base.w), masterId: variant.id }))
-            : breakpointDefs.map((item) => ({ bp: item.id, width: item.width })),
-        [activeComponentVariants, breakpointDefs, componentMode],
+            ? activeComponentVariants.map((variant) => {
+                  const hasContent = componentHasContent(elements, variant);
+                  return {
+                      bp: "desktop",
+                      // Empty masters do not expose their stale fixed canvas.
+                      // The ghost is the entire surface until real content is
+                      // present; afterwards this follows the rendered root.
+                      width: hasContent
+                          ? variant.base.widthMode === "fixed"
+                              ? Math.max(1, variant.base.w)
+                              : Math.max(1, componentPreviewSizes[variant.id]?.width ?? 1)
+                          : 160,
+                      masterId: variant.id,
+                  };
+              })
+            : breakpointDefs.map((item) => ({ bp: item.id, width: item.canvasWidth ?? item.width })),
+        [activeComponentVariants, breakpointDefs, componentMode, componentPreviewSizes, elements],
     );
 
     /** Widest frame on screen; the zoom fits against this. */
@@ -463,7 +609,25 @@ export default function Editor({
 
     const serverLeftTab = tabForDocumentMode(leftTabFromValue(initialPanel ?? null) ?? "Layers", componentMode);
     const [leftTab, setLeftTab] = useState<LeftEditorTab>(serverLeftTab);
+    const [settingsSection, setSettingsSection] = useState<"general" | "variables" | "transfer" | "ai">("general");
+    const [enterToSend, setEnterToSend] = useState(true);
+    useEffect(() => {
+        try { setEnterToSend(localStorage.getItem("pagiera:ai-enter-to-send") !== "false"); } catch { /* Browser preference is optional. */ }
+    }, []);
+    const updateEnterToSend = (value: boolean) => {
+        setEnterToSend(value);
+        try { localStorage.setItem("pagiera:ai-enter-to-send", String(value)); } catch { /* Keep the in-memory choice. */ }
+    };
+    useEffect(() => {
+        if (leftTab === "Variables") {
+            setSettingsSection("variables");
+            setLeftTab("Settings");
+        }
+    }, [leftTab]);
+    const [templateCategory, setTemplateCategory] = useState("All");
+    const [templateCategories, setTemplateCategories] = useState<string[]>(["All"]);
     const [rightTab, setRightTab] = useState<RightEditorTab>("Content");
+    const [rightSection, setRightSection] = useState<"Luma" | "Style">("Style");
     const [insertView, setInsertView] = useState<InsertView>("Elements");
     /** The Luma chat currently open, so the panel header can name it. */
     const [aiChatTitle, setAiChatTitle] = useState<string>();
@@ -472,9 +636,32 @@ export default function Editor({
     /** The left panel's scroll box, so switching Insert views can rewind it. */
     const leftPanelScrollRef = useRef<HTMLDivElement>(null);
     const [tabsRestored, setTabsRestored] = useState(false);
-    const [isLeftCollapsed, setIsLeftCollapsed] = useState(serverLeftTab === "Templates");
-    const [isRightCollapsed, setIsRightCollapsed] = useState(true);
+    /*
+     * Layers and Pages live in the sidebar, so a session restored onto one of
+     * them opens with no second column at all rather than with a panel that
+     * would repeat what is already on screen.
+     */
+    const [isLeftCollapsed, setIsLeftCollapsed] = useState(
+        serverLeftTab === "Templates",
+    );
     const [search, setSearch] = useState("");
+    /** The publish button's overflow: the actions you reach for far less often. */
+    const [publishMenuOpen, setPublishMenuOpen] = useState(false);
+    /** The toolbar's overflow: every panel that is not Insert. */
+    const [panelMenuOpen, setPanelMenuOpen] = useState(false);
+    /**
+     * Luma is a popup over the canvas rather than a sidebar panel: a chat is a
+     * conversation you keep an eye on while you work, and in a 280px column it
+     * was competing with the page's own lists for the same space.
+     */
+    /** The sidebar's one search box filters both lists it holds. */
+    const visiblePages = useMemo(() => {
+        const needle = search.trim().toLowerCase();
+        if (!needle) return pages;
+        return pages.filter((entry) =>
+            entry.name.toLowerCase().includes(needle) || entry.slug.toLowerCase().includes(needle),
+        );
+    }, [pages, search]);
 
     useLayoutEffect(() => {
         try {
@@ -507,7 +694,7 @@ export default function Editor({
         if (!tabsRestored) return;
         try {
             localStorage.setItem(EDITOR_TABS_STORAGE_KEY, JSON.stringify({ left: leftTab, right: rightTab }));
-            const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, leftTab.toLowerCase());
+            const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, panelSlug(leftTab));
             const url = new URL(href, window.location.href);
             const current = new URL(window.location.href);
             current.searchParams.delete("tab");
@@ -538,6 +725,11 @@ export default function Editor({
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const hasElementSelection = selectedIds.length > 0;
+    /**
+     * Style is only ever about a selection, so it stands down when there is
+     * none rather than showing an empty panel with a heading on it.
+     */
+    const activeRightSection = hasElementSelection && adapters?.generate ? rightSection : hasElementSelection ? "Style" : "Luma";
     const [editingId, setEditingId] = useState<string | null>(null);
     // Keep the complete hovered ancestry. A component root and a nested button
     // may both own hover states; a single ID made the parent snap back as soon
@@ -548,13 +740,25 @@ export default function Editor({
     const [stickyPreview, setStickyPreview] = useState(true);
     const [previewVisibility, setPreviewVisibility] = useState<Record<string, boolean>>({});
     const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
+    /**
+     * What dragging on the empty canvas does: rubber-band a selection, or draw
+     * a new frame beside the artboards.
+     */
+    const [canvasTool, setCanvasTool] = useState<"select" | "frame">("select");
+    const [frameDraw, setFrameDraw] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
     const [codeComposerOpen, setCodeComposerOpen] = useState(false);
     const [codeComponentName, setCodeComponentName] = useState("Code Component");
-    const [codeComponentSource, setCodeComponentSource] = useState('<style>body{margin:0;font-family:system-ui;display:grid;place-items:center;height:100vh}button{border:0;border-radius:12px;padding:14px 22px;background:#4f8cff;color:white;font-weight:600}</style><button>Button</button>');
+    const [codeComponentLanguage, setCodeComponentLanguage] = useState<"tsx" | "html">("tsx");
+    const [codeComponentSource, setCodeComponentSource] = useState(DEFAULT_TSX_COMPONENT);
+    const [codeComponentPreview, setCodeComponentPreview] = useState("");
+    const [codeComponentError, setCodeComponentError] = useState("");
+    const [codeComponentCompiling, setCodeComponentCompiling] = useState(false);
     const [draggedBreakpointId, setDraggedBreakpointId] = useState<string | null>(null);
     const [editingBreakpointId, setEditingBreakpointId] = useState<string | null>(null);
     const marqueePageRef = useRef<HTMLElement | null>(null);
     const marqueeBaseRef = useRef<string[]>([]);
+    /** The last selection the band produced, so identical frames do nothing. */
+    const marqueeHitsRef = useRef("");
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
@@ -562,10 +766,6 @@ export default function Editor({
         canvasX?: number;
         canvasY?: number;
     } | null>(null);
-
-    useEffect(() => {
-        setIsRightCollapsed(!hasElementSelection);
-    }, [hasElementSelection]);
 
     const updateBreakpoints = (next: BreakpointDefinition[]) =>
         setRootStyle({
@@ -624,6 +824,26 @@ export default function Editor({
         setRootStyle({ ...rootStyle, baseBreakpointId: nextCascade.baseId });
     };
 
+    /**
+     * Desktop is the main breakpoint, always: what you change on the widest
+     * artboard is what the narrower ones inherit.
+     *
+     * A document saved back when the main artboard was a choice is rebased
+     * once, on open, through the same routine the pin used to call — moving
+     * the shared values rather than silently reading the old ones against a
+     * different base.
+     */
+    const rebasedToDesktop = useRef(false);
+    useEffect(() => {
+        if (rebasedToDesktop.current || cascade.baseId === "desktop") return;
+        if (!breakpointDefs.some((item) => item.id === "desktop")) return;
+        rebasedToDesktop.current = true;
+        setBaseBreakpoint("desktop");
+        // The rebase is a one-time migration, not something to re-run whenever
+        // the callback identity changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cascade.baseId, breakpointDefs]);
+
     const addBreakpoint = () => {
         const id = `bp-${Date.now().toString(36)}`;
         const width = Math.max(240, selectedBreakpoint.width - 160);
@@ -658,7 +878,13 @@ export default function Editor({
         if (item && !item.name.trim()) renameBreakpoint(id, "Breakpoint");
     };
 
-    const resizeBreakpoint = (id: string, width: number) => {
+    /**
+     * The threshold: which visitor windows this artboard governs. Changing it
+     * changes the published page, so it lives in breakpoint settings rather
+     * than on the artboard, where it used to be one number away from a
+     * harmless resize.
+     */
+    const setBreakpointThreshold = (id: string, width: number) => {
         const clamped = Math.round(Math.max(240, Math.min(3840, width)));
         if (!Number.isFinite(clamped)) return;
         updateBreakpoints(
@@ -668,7 +894,21 @@ export default function Editor({
         );
     };
 
+    /** How wide the artboard is drawn. Visitors never see this number. */
+    const resizeBreakpoint = (id: string, width: number) => {
+        const clamped = Math.round(Math.max(240, Math.min(3840, width)));
+        if (!Number.isFinite(clamped)) return;
+        updateBreakpoints(
+            breakpointDefs.map((item) =>
+                item.id === id ? { ...item, canvasWidth: clamped } : item,
+            ),
+        );
+    };
+
     const removeBreakpoint = (id: string) => {
+        // Desktop, tablet and mobile are the set every page keeps; the delete
+        // controls are hidden for them, and this is the backstop.
+        if (REQUIRED_BREAKPOINT_IDS.includes(id as (typeof REQUIRED_BREAKPOINT_IDS)[number])) return;
         if (breakpointDefs.length < 2) return;
         const next = breakpointDefs.filter((item) => item.id !== id);
         // Drop the artboard's stored deltas too, otherwise they linger invisibly
@@ -689,19 +929,130 @@ export default function Editor({
     };
 
     /** What window widths an artboard actually governs on the published page. */
-    const breakpointRange = (id: string) => {
-        const item = breakpointDefs.find((entry) => entry.id === id);
-        if (!item) return "";
-        const ceiling = breakpointDefs
-            .filter((other) => other.width > item.width)
-            .reduce(
-                (lowest, other) => Math.min(lowest, other.width),
-                Number.POSITIVE_INFINITY,
-            );
-        return Number.isFinite(ceiling)
-            ? `${item.width} — ${ceiling - 1}`
-            : `${item.width}+`;
+    /*
+     * Parked frames.
+     *
+     * A frame beside the artboards rather than inside one: drawn, selected and
+     * styled like anything else, but not part of the page until it is dragged
+     * onto an artboard. Its x/y are canvas coordinates, because no page ever
+     * lays it out.
+     */
+    const parkedRoots = elements.filter((element) => element.parked);
+    /** A parked frame and everything inside it. */
+    const parkedSubtree = useMemo(() => parkedIds(elements), [elements]);
+    /**
+     * Which breakpoint's values an element is styled by.
+     *
+     * Almost always the one being edited — but a parked frame belongs to no
+     * artboard, so no artboard's overrides may reach it. Reading it at the
+     * active breakpoint is what made the parked frames slide around the canvas
+     * when the breakpoint changed: they still carried the overrides they were
+     * given while they lived inside one, and switching artboards swapped which
+     * x/y applied. Outside the page there is only the base.
+     */
+    const styleBreakpoint = useCallback(
+        (element: CanvasElement) => (parkedSubtree.has(element.id) ? cascade.baseId : breakpoint),
+        [breakpoint, cascade.baseId, parkedSubtree],
+    );
+    const canvasStageRef = useRef<HTMLDivElement>(null);
+    /*
+     * Where parked coordinates are measured from.
+     *
+     * They used to be measured from the canvas stage, which is the one box that
+     * cannot serve as an origin: the stage is sized by its contents and centred
+     * in the viewport, so parking something moved the very edge its position
+     * was measured against, and it landed somewhere other than where it was
+     * dropped. The main artboard does not move when something is parked beside
+     * it, so it anchors both the storing and the drawing.
+     */
+    const parkAnchorRef = useRef<HTMLDivElement>(null);
+    const [parkOrigin, setParkOrigin] = useState({ x: 0, y: 0 });
+    /** A screen point in the coordinates parked layers are stored in. */
+    const parkPoint = (clientX: number, clientY: number) => {
+        const rect = parkAnchorRef.current?.getBoundingClientRect();
+        if (!rect) return { x: 0, y: 0 };
+        return {
+            x: Math.round((clientX - rect.left) / scale),
+            y: Math.round((clientY - rect.top) / scale),
+        };
     };
+
+    /** Dragging a parked frame moves it in canvas units, not page ones. */
+    /**
+     * The artboard under a point, ignoring the thing being dragged.
+     *
+     * What you are dragging follows the pointer, so a plain hit test finds the
+     * dragged element itself and then reports whatever that element happens to
+     * sit inside — which is the artboard you are trying to leave.
+     */
+    const artboardAt = (x: number, y: number, ignoreId: string) => {
+        for (const node of document.elementsFromPoint(x, y)) {
+            if (node.closest(`[data-canvas-element="${ignoreId}"]`)) continue;
+            const artboard = node.closest<HTMLElement>("[data-artboard]");
+            if (artboard) return artboard;
+        }
+        return null;
+    };
+
+    const beginParkedDrag = (
+        // A mouse press on the frame or a pointer press on its name: both carry
+        // the coordinates the drag starts from, which is all this needs.
+        event: { clientX: number; clientY: number },
+        parked: CanvasElement,
+    ) => {
+        const style = resolveStyle(parked, cascade.baseId, cascade);
+        const startX = event.clientX;
+        const startY = event.clientY;
+        /*
+         * A press is not a drag.
+         *
+         * Without this, clicking the name of something parked over an artboard
+         * counted as dropping it there: it was pulled into the page on a plain
+         * click, and from the outside it just vanished.
+         */
+        let dragging = false;
+        const move = (moveEvent: PointerEvent) => {
+            if (!dragging) {
+                const far = Math.abs(moveEvent.clientX - startX) + Math.abs(moveEvent.clientY - startY) > 3;
+                if (!far) return;
+                dragging = true;
+            }
+            patchStyle([parked.id], {
+                x: Math.round(style.x + (moveEvent.clientX - startX) / scale),
+                y: Math.round(style.y + (moveEvent.clientY - startY) / scale),
+            });
+        };
+        const up = (upEvent: PointerEvent) => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            if (!dragging) return;
+            // Let go over an artboard and it joins the page: the same move in
+            // reverse, so the name above it goes away and it publishes again.
+            const artboard = artboardAt(upEvent.clientX, upEvent.clientY, parked.id);
+            if (!artboard) return;
+            const bp = artboard.dataset.artboard ?? breakpoint;
+            const rect = artboard.getBoundingClientRect();
+            const x = Math.round((upEvent.clientX - rect.left) / scale - style.w / 2);
+            const y = Math.round((upEvent.clientY - rect.top) / scale - 16);
+            if (bp !== breakpoint) setBreakpoint(bp);
+            setElements((els) =>
+                reparent(els, parked.id, undefined, bp, undefined, cascade).map((el) =>
+                    el.id === parked.id
+                        ? { ...el, parked: undefined, base: { ...el.base, position: "absolute", x, y } }
+                        : el,
+                ),
+            );
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+    };
+
+    const isRequiredBreakpoint = (id: string) =>
+        REQUIRED_BREAKPOINT_IDS.includes(id as (typeof REQUIRED_BREAKPOINT_IDS)[number]);
+    const rangeChip = (id: string) => windowRangeChip(cascade, id);
+    const rangeLabel = (id: string) => windowRangeLabel(cascade, id);
+    /** Thresholds claimed twice: both artboards match, and one wins silently. */
+    const clashingThresholds = duplicateThresholds(cascade);
 
     const beginCanvasResize = (event: React.MouseEvent) => {
         event.preventDefault();
@@ -844,7 +1195,9 @@ export default function Editor({
                 next = next.map((element) => {
                     if (element.id !== updateId) return element;
                     const updated = operation.style
-                        ? applyStyle(element, cascade.baseId, operation.style, cascade)
+                        ? plan.targetBreakpoint
+                            ? applyStyleIsolated(element, plan.targetBreakpoint, operation.style, breakpointDefs.map(definition => definition.id), cascade)
+                            : applyStyle(element, cascade.baseId, operation.style, cascade)
                         : element;
                     return {
                         ...updated,
@@ -939,16 +1292,120 @@ export default function Editor({
     const [dragInfo, setDragInfo] = useState<DragInfo | null>(null);
     const [resizeInfo, setResizeInfo] = useState<ResizeInfo | null>(null);
     const [paddingInfo, setPaddingInfo] = useState<PaddingInfo | null>(null);
-    const [guides, setGuides] = useState<{
+    const [guides, setGuidesState] = useState<{
         origin: { x: number; y: number };
         lines: Guide[];
     }>({ origin: { x: 0, y: 0 }, lines: [] });
-    const [ghost, setGhost] = useState<{ dx: number; dy: number } | null>(null);
+
+    /**
+     * Setting guides is editor state, and editor state re-renders every layer
+     * on every artboard. A drag that is snapping to nothing wrote a fresh
+     * empty object every frame, paying that price for no visible difference.
+     */
+    const setGuides = useCallback(
+        (next: { origin: { x: number; y: number }; lines: Guide[] }) =>
+            setGuidesState((current) =>
+                current.lines.length === 0 && next.lines.length === 0 ? current : next,
+            ),
+        [],
+    );
+    /**
+     * The dragged layer's offset, written straight to the DOM.
+     *
+     * It used to be React state, so following the pointer re-rendered every
+     * layer on every artboard sixty times a second to move one of them. The
+     * node is right there; moving it is one assignment.
+     */
+    const ghostRef = useRef<{ node: HTMLElement; dx: number; dy: number } | null>(null);
+    const setGhostOffset = useCallback((dx: number, dy: number) => {
+        const current = ghostRef.current;
+        if (!current) return;
+        current.dx = dx;
+        current.dy = dy;
+        current.node.style.transform = `translate(${dx}px, ${dy}px)`;
+        current.node.style.opacity = "0.6";
+        current.node.style.pointerEvents = "none";
+    }, []);
+    const clearGhost = useCallback(() => {
+        const current = ghostRef.current;
+        if (!current) return;
+        current.node.style.transform = "";
+        current.node.style.opacity = "";
+        current.node.style.pointerEvents = "";
+        ghostRef.current = null;
+    }, []);
+    /** Distances to the nearest neighbours, drawn while something is dragged. */
+    /**
+     * The distance readouts drawn while something is being moved.
+     *
+     * `from`/`to` run along `axis`; `cross` is where on the other axis the line
+     * is drawn. The cross position used to be missing entirely and the renderer
+     * reused `at` — an x coordinate — as the line's y, which is why the ruler
+     * appeared at positions that had nothing to do with the gap it measured.
+     */
+    /**
+     * The gesture overlays: where a drop lands, the distances, the selection's
+     * name and handles.
+     *
+     * Held by the layer that draws them rather than by the editor, so a drag
+     * repaints four small boxes instead of every layer on three artboards.
+     */
+    const gestureRef = useRef<GestureLayerHandle>(null);
+    const setSelectionBox = useCallback(
+        (next: DOMRect | null | ((current: DOMRect | null) => DOMRect | null)) => {
+            const handle = gestureRef.current;
+            if (!handle) return;
+            const value = typeof next === "function" ? next(handle.get().selectionBox) : next;
+            if (value === handle.get().selectionBox) return;
+            handle.set({ selectionBox: value });
+        },
+        [],
+    );
+    const setMeasures = useCallback(
+        (measures: Measure[]) => gestureRef.current?.set({ measures }),
+        [],
+    );
+    const setDropPlan = useCallback(
+        (dropPlan: DropPlan | null) => gestureRef.current?.set({ dropPlan }),
+        [],
+    );
+    const setRadiusPreview = useCallback(
+        (radiusPreview: number | null) => gestureRef.current?.set({ radiusPreview }),
+        [],
+    );
+    /** Sibling boxes measured once per gesture; see `measureGaps`. */
+    const neighbourCache = useRef<{
+        movingId: string;
+        parentId: string | undefined;
+        boxes: DOMRect[];
+        container: DOMRect;
+    } | null>(null);
+    /** The radius being dragged right now, so the canvas can show the number. */
+    /** A column grid over the artboard, for eyeballing rhythm. */
+    const [gridOverlay, setGridOverlay] = useState(false);
+    /** Folded layer branches. The panel reads it; its header folds them all. */
+    /**
+     * Folded branches in the layer tree, artboards included.
+     *
+     * Every artboard but the one being edited starts folded: the tree lists
+     * all of them, and three copies of the same page unfolded at once is a
+     * list nobody can read.
+     */
+    const [collapsedLayerIds, setCollapsedLayerIds] = useState<Set<string>>(
+        () => new Set(DEFAULT_BREAKPOINTS.map((item) => item.id).filter((id) => id !== "desktop")),
+    );
+    /**
+     * Which document list the sidebar shows.
+     *
+     * Pages and layers used to share the column, each capped so the other had
+     * room — which left both short on a laptop screen. One at a time gives the
+     * layer tree the height it actually needs, and switching is one click.
+     */
+    const [documentList, setDocumentList] = useState<"layers" | "pages">("layers");
     const [dropTargetId, setDropTargetId] = useState<string | null | undefined>(
         undefined,
     );
     /** Where inside the target the element lands, and the line that shows it. */
-    const [dropPlan, setDropPlan] = useState<DropPlan | null>(null);
     /** The layer Luma has been asked to work on, if any. */
     const [aiFocus, setAiFocus] = useState<AiFocus | undefined>();
     /** Dragging the strip between two stacked sections. */
@@ -975,6 +1432,50 @@ export default function Editor({
     const canvasRef = useRef<HTMLDivElement>(null);
     const [canvasHeight, setCanvasHeight] = useState(rootStyle.canvasHeight);
     const [contentHeight, setContentHeight] = useState(rootStyle.canvasHeight);
+
+    const observeComponentPreview = useCallback((
+        masterId: string,
+        surface: HTMLDivElement | null,
+        measureWidth: boolean,
+        measureHeight: boolean,
+    ) => {
+        componentPreviewObservers.current.get(masterId)?.disconnect();
+        componentPreviewObservers.current.delete(masterId);
+        if (!surface || !componentMode || (!measureWidth && !measureHeight)) return;
+
+        const root = surface.querySelector<HTMLElement>(
+            `[data-canvas-element="${CSS.escape(masterId)}"]`,
+        );
+        if (!root) return;
+
+        const measure = () => {
+            const rect = root.getBoundingClientRect();
+            const width = Math.max(1, Math.round(rect.width / scale));
+            const height = Math.max(1, Math.round(rect.height / scale));
+            setComponentPreviewSizes((current) => {
+                const previous = current[masterId];
+                const next = {
+                    width: measureWidth ? width : previous?.width ?? width,
+                    height: measureHeight ? height : previous?.height ?? height,
+                };
+                return previous?.width === next.width && previous.height === next.height
+                    ? current
+                    : { ...current, [masterId]: next };
+            });
+        };
+        const observer = new ResizeObserver(measure);
+        observer.observe(root);
+        componentPreviewObservers.current.set(masterId, observer);
+        // `ref` callbacks run during React's commit. Measuring and setting
+        // state synchronously here caused commit -> render -> ref -> setState
+        // recursion. ResizeObserver delivers the initial size after layout,
+        // which is both the accurate moment and safely outside that cycle.
+    }, [componentMode, scale]);
+
+    useEffect(() => () => {
+        for (const observer of componentPreviewObservers.current.values()) observer.disconnect();
+        componentPreviewObservers.current.clear();
+    }, []);
     const displayCanvasHeight = Math.max(canvasHeight, contentHeight);
 
     const byId = useMemo(() => indexById(elements), [elements]);
@@ -988,6 +1489,99 @@ export default function Editor({
         [activeComponentMaster, elements],
     );
     const visibleEditorElements = useMemo(() => elements.filter((element) => componentMode ? activeComponentIds.has(element.id) : !componentAssetIds.has(element.id)), [activeComponentIds, componentAssetIds, componentMode, elements]);
+    /** What the artboards draw: the page, without anything parked beside it. */
+    const pageElements = useMemo(() => {
+        if (componentMode) return visibleEditorElements;
+        const parked = parkedIds(visibleEditorElements);
+        return parked.size === 0
+            ? visibleEditorElements
+            : visibleEditorElements.filter((element) => !parked.has(element.id));
+    }, [componentMode, visibleEditorElements]);
+    /**
+     * Children by parent, built once per change instead of searched per node.
+     *
+     * `childrenOf` filters and sorts the whole document, and the canvas asked
+     * it that question once for every layer it drew — three artboards deep, on
+     * every render. On a page of a few hundred layers that is hundreds of
+     * thousands of comparisons per frame, which is where the frame rate was
+     * going.
+     */
+    const childrenByParent = useMemo(() => {
+        const index = new Map<string, CanvasElement[]>();
+        for (const element of elements) {
+            const key = element.parentId ?? "";
+            const bucket = index.get(key);
+            if (bucket) bucket.push(element);
+            else index.set(key, [element]);
+        }
+        for (const bucket of index.values()) bucket.sort((a, b) => a.z - b.z);
+        return index;
+    }, [elements]);
+    const childrenIn = useCallback(
+        (parentId?: string) => childrenByParent.get(parentId ?? "") ?? EMPTY_CHILDREN,
+        [childrenByParent],
+    );
+
+    /**
+     * Resolved styles and their CSS, remembered per layer.
+     *
+     * Every render recomputed both for every layer on all three artboards, and
+     * a single render of a few hundred layers cost about a third of a second —
+     * which is what a click, a hover or the start of a drag felt like. Neither
+     * result depends on anything but the layer, the artboard and the cascade,
+     * so the answer is kept until one of those changes.
+     */
+    const styleMemo = useMemo(
+        () => ({
+            style: new WeakMap<CanvasElement, Map<string, ElementStyle>>(),
+            css: new WeakMap<CanvasElement, Map<string, React.CSSProperties>>(),
+        }),
+        // Anything that changes what these produce clears the lot.
+        [cascade, rootStyle, elements],
+    );
+
+    const styleFor = useCallback(
+        (element: CanvasElement, bp: Breakpoint) => {
+            let byBreakpoint = styleMemo.style.get(element);
+            if (!byBreakpoint) styleMemo.style.set(element, (byBreakpoint = new Map()));
+            const hit = byBreakpoint.get(bp);
+            if (hit) return hit;
+            const resolved = resolveStyle(element, bp, cascade);
+            byBreakpoint.set(bp, resolved);
+            return resolved;
+        },
+        [cascade, styleMemo],
+    );
+
+    /*
+     * The artboards you are not working in are drawn once and kept.
+     *
+     * The page is laid out three times over, and every click, hover or drag
+     * rebuilt all three — a few hundred layers each, which is where a third of
+     * a second went. Only the artboard being edited can respond to any of that,
+     * so while a gesture is running the other two are handed back exactly as
+     * they were. They rebuild the moment the gesture ends.
+     */
+    const restingFrames = useRef(new Map<string, React.ReactNode>());
+    const frameBody = (frame: Frame, frameElements: CanvasElement[], primary: boolean) => {
+        const key = frame.masterId ?? frame.bp;
+        if (!primary && gesturing) {
+            const kept = restingFrames.current.get(key);
+            if (kept) return kept;
+        }
+        const body = childrenOf(frameElements, undefined).map((el) =>
+            renderNode(el, frame, undefined, `${frame.bp}:`),
+        );
+        if (!primary) restingFrames.current.set(key, body);
+        return body;
+    };
+
+    /** The bottom-most root, for the seam the last section does not draw. */
+    const lastRootId = useMemo(
+        () => childrenOf(visibleEditorElements, undefined).at(-1)?.id,
+        [visibleEditorElements],
+    );
+
     const componentInstanceFor = useCallback((element: CanvasElement) => {
         if (componentMode) return undefined;
         let cursor: CanvasElement | undefined = element;
@@ -1011,6 +1605,34 @@ export default function Editor({
         ? Math.min(deviceWidth, rootStyle.maxWidth)
         : deviceWidth;
 
+    /**
+     * How much empty canvas surrounds the artboards, in screen pixels.
+     *
+     * A fixed slab of room, grown to contain whatever has been parked out
+     * there. Without the growing part the canvas simply stopped: a layer
+     * dragged past the padding had nowhere to land and nothing to scroll to.
+     */
+    const canvasRoom = useMemo(() => {
+        let minX = 0;
+        let minY = 0;
+        let maxX = frameWidth;
+        let maxY = canvasHeight;
+        for (const parked of parkedRoots) {
+            const style = resolveStyle(parked, cascade.baseId, cascade);
+            minX = Math.min(minX, style.x);
+            minY = Math.min(minY, style.y);
+            maxX = Math.max(maxX, style.x + style.w);
+            maxY = Math.max(maxY, style.y + style.h);
+        }
+        const slack = 600;
+        return {
+            left: Math.max(1400, -minX * scale + slack),
+            right: Math.max(1400, (maxX - frameWidth) * scale + slack),
+            top: Math.max(800, -minY * scale + slack),
+            bottom: Math.max(800, (maxY - canvasHeight) * scale + slack),
+        };
+    }, [canvasHeight, cascade, frameWidth, parkedRoots, scale]);
+
     useEffect(() => setCanvasHeight(rootStyle.canvasHeight), [rootStyle.canvasHeight]);
     useEffect(() => {
         if (!componentMode || !activeComponentMaster) return;
@@ -1024,6 +1646,7 @@ export default function Editor({
             const height = Math.ceil(entry.contentRect.height);
             setContentHeight((current) => current === height ? current : height);
         });
+
         observer.observe(node);
         return () => observer.disconnect();
     }, [breakpoint, componentMode]);
@@ -1042,17 +1665,45 @@ export default function Editor({
         [byId, breakpoint, rootStyle.align, rootStyle.direction, rootStyle.layout],
     );
 
+    const cssFor = useCallback(
+        (
+            element: CanvasElement,
+            bp: Breakpoint,
+            style: ElementStyle,
+            /** A style the cache cannot speak for: an effect or a preview. */
+            custom: boolean,
+        ): React.CSSProperties => {
+            if (custom) return styleToCss(style, contextFor(element, bp), element);
+            let byBreakpoint = styleMemo.css.get(element);
+            if (!byBreakpoint) styleMemo.css.set(element, (byBreakpoint = new Map()));
+            const hit = byBreakpoint.get(bp);
+            // A copy every time: the caller decorates it with selection
+            // outlines and cursors, and the cached one has to stay clean.
+            if (hit) return { ...hit };
+            const computed = styleToCss(style, contextFor(element, bp), element);
+            byBreakpoint.set(bp, computed);
+            return { ...computed };
+        },
+        [contextFor, styleMemo],
+    );
+
     /* ---------------------------------------------------------------- edits */
 
     const patchStyle = useCallback(
         (ids: string[], patch: Partial<ElementStyle>) => {
             setElements((els) =>
-                els.map((el) =>
-                    ids.includes(el.id) ? applyStyleIsolated(el, breakpoint, patch, breakpointDefs.map((definition) => definition.id), cascade) : el,
-                ),
+                els.map((el) => {
+                    if (!ids.includes(el.id)) return el;
+                    // Parked layers are edited on the base and nowhere else, so
+                    // they take the plain write: isolating a change across
+                    // artboards would pin overrides onto something that has no
+                    // artboards to speak of.
+                    if (parkedSubtree.has(el.id)) return applyStyle(el, cascade.baseId, patch, cascade);
+                    return applyStyleIsolated(el, breakpoint, patch, breakpointDefs.map((definition) => definition.id), cascade);
+                }),
             );
         },
-        [breakpoint, breakpointDefs, cascade, setElements],
+        [breakpoint, breakpointDefs, cascade, parkedSubtree, setElements],
     );
 
     const patchProps = useCallback(
@@ -1068,15 +1719,55 @@ export default function Editor({
         [setElements],
     );
 
+    /**
+     * Typing into a text layer.
+     *
+     * Inside a placed component this is not an edit to that layer at all: the
+     * layer is a copy, rebuilt from the master every time the page is read, so
+     * anything written straight onto it is gone by the next load. The words go
+     * on the instance instead, filed under the master slot they replace, and
+     * the copy is updated in place so the canvas shows them immediately.
+     */
+    const editContent = useCallback(
+        (element: CanvasElement, content: string) => {
+            const instance = componentInstanceFor(element);
+            if (!instance) {
+                patchProps(element.id, { content });
+                return;
+            }
+            const slot = element.componentSourceId ?? element.id;
+            // Typing the master's own words back is not an override, it is a
+            // change of mind: the copy goes back to following the master, so
+            // editing the master later reaches it again.
+            const sameAsMaster = (byId.get(slot)?.content ?? "") === content;
+            setElements((els) =>
+                els.map((candidate) => {
+                    if (candidate.id === instance.id) {
+                        const words = { ...candidate.componentContent };
+                        if (sameAsMaster) delete words[slot];
+                        else words[slot] = content;
+                        const next = {
+                            ...candidate,
+                            componentContent: Object.keys(words).length ? words : undefined,
+                        };
+                        return next.id === element.id ? { ...next, content } : next;
+                    }
+                    return candidate.id === element.id ? { ...candidate, content } : candidate;
+                }),
+            );
+        },
+        [byId, componentInstanceFor, patchProps, setElements],
+    );
+
     const resetOverrides = useCallback(
         (ids: string[], keys: StyleKey[]) => {
             setElements((els) =>
                 els.map((el) =>
-                    ids.includes(el.id) ? clearOverrides(el, breakpoint, keys, cascade) : el,
+                    ids.includes(el.id) ? clearOverrides(el, styleBreakpoint(el), keys, cascade) : el,
                 ),
             );
         },
-        [breakpoint, cascade, setElements],
+        [cascade, setElements, styleBreakpoint],
     );
 
     const deleteElements = useCallback(
@@ -1190,16 +1881,45 @@ export default function Editor({
                 componentParent = componentParent.parentId ? byId.get(componentParent.parentId) : undefined;
             }
             if (componentParent?.componentRole === "master") element.componentSourceId = element.id;
-            setElements((current) => [...current, element]);
+            const nested = element.disclosure?.role === 'root' ? disclosureChildren(element) : [];
+            if (componentParent?.componentRole === 'master') nested.forEach(child => { child.componentSourceId = child.id; });
+            setElements((current) => [...current, element, ...nested]);
             setSelectedIds([element.id]);
         },
         [byId, elements, selectedId, setElements],
     );
 
-    const createCodeComponent = () => {
+    const compileCodeComponent = useCallback(async () => {
+        setCodeComponentError("");
+        if (codeComponentLanguage === "html") {
+            setCodeComponentPreview(codeComponentSource);
+            return codeComponentSource;
+        }
+        if (!adapters?.compileCode) {
+            setCodeComponentError("The host has not configured TSX compilation.");
+            return undefined;
+        }
+        setCodeComponentCompiling(true);
+        try {
+            const result = await adapters.compileCode(codeComponentSource);
+            setCodeComponentPreview(result.html);
+            return result.html;
+        } catch (error) {
+            setCodeComponentError(error instanceof Error ? error.message : "TSX could not be compiled.");
+            return undefined;
+        } finally {
+            setCodeComponentCompiling(false);
+        }
+    }, [adapters?.compileCode, codeComponentLanguage, codeComponentSource]);
+
+    const createCodeComponent = async () => {
+        const compiled = await compileCodeComponent();
+        if (!compiled) return;
         const master = createElement("Frame", { x: 0, y: 0, z: nextZ(elements) });
         master.name = codeComponentName.trim() || "Code Component";
-        master.code = codeComponentSource;
+        master.code = compiled;
+        master.codeSource = codeComponentSource;
+        master.codeLanguage = codeComponentLanguage;
         master.componentRole = "master";
         master.componentId = master.id;
         master.componentSourceId = master.id;
@@ -1213,14 +1933,79 @@ export default function Editor({
         setCodeComposerOpen(false);
     };
 
-    const createBlankComponent = () => {
+    const createBlankComponent = (layoutPart?: "Navbar" | "Footer" | "Layout") => {
         const master = createElement("Frame", { x: 0, y: 0, z: nextZ(elements) });
-        master.name = `Component ${componentAssets.length + 1}`;
+        master.name = layoutPart ?? `Component ${componentAssets.length + 1}`;
+        master.isLayout = layoutPart === "Layout" ? true : undefined;
         master.componentRole = "master";
         master.componentId = master.id;
         master.componentSourceId = master.id;
         master.variant = "Default";
-        master.base = { ...master.base, w: 320, h: 180, widthMode: "fixed", heightMode: "fixed", layout: "absolute", bg: "transparent", borderW: 0, radius: 0, overflow: "visible" };
+        master.base = {
+            ...master.base,
+            x: 0,
+            y: 0,
+            w: layoutPart ? 1200 : 160,
+            h: 80,
+            widthMode: layoutPart ? "fill" : "auto",
+            heightMode: "auto",
+            layout: "stack",
+            direction: "column",
+            align: "start",
+            bg: "transparent",
+            borderW: 0,
+            radius: 0,
+            overflow: "visible",
+        };
+        const children = layoutPart === "Layout" ? createElement("Frame", { x: 0, y: 0, z: 0 }) : undefined;
+        if (children) {
+            children.name = "Children";
+            children.childrenSlot = true;
+            children.parentId = master.id;
+            children.base = { ...children.base, widthMode: "fill", heightMode: "auto", layout: "stack", direction: "column", bg: "transparent", borderW: 0, radius: 0 };
+        }
+        setElements((current) => [...current, master, ...(children ? [children] : [])]);
+        setRootStyle({ ...rootStyle, documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
+        setActiveComponentMasterId(master.id);
+        setSelectedIds([master.id]);
+        setBreakpoint("desktop");
+        setLeftTab("Components");
+    };
+
+    const createButtonComponent = () => {
+        const master = createElement("Button", { x: 0, y: 0, z: nextZ(elements) });
+        master.name = "Button";
+        master.content = "Button";
+        master.componentRole = "master";
+        master.componentId = master.id;
+        master.componentSourceId = master.id;
+        master.variant = "Default";
+        master.base = {
+            ...master.base,
+            x: 0,
+            y: 0,
+            widthMode: "auto",
+            heightMode: "auto",
+            layout: "stack",
+            direction: "row",
+            justify: "center",
+            align: "center",
+            gap: 8,
+            padT: 10,
+            padR: 16,
+            padB: 10,
+            padL: 16,
+            bg: "#7c3aed",
+            color: "#ffffff",
+            radius: 8,
+            borderW: 0,
+            fontSize: 14,
+            fontWeight: "600",
+            lineHeight: 1.2,
+            overflow: "visible",
+        };
+        master.hover = { bg: "#6d28d9" };
+        master.press = { scale: 98 };
         setElements((current) => [...current, master]);
         setRootStyle({ ...rootStyle, documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
         setActiveComponentMasterId(master.id);
@@ -1376,6 +2161,10 @@ export default function Editor({
         const componentId = clone.rootId;
         const masterCopies = clone.elements.map((element) => ({
             ...element,
+            // A component has variants, not hidden page-breakpoint styles.
+            // Keeping the source element's overrides makes the published
+            // result differ from the only state visible in component mode.
+            overrides: undefined,
             name: element.id === clone.rootId
                 ? (selectedElement.name?.trim() || `${selectedElement.type} Component`)
                 : element.name,
@@ -1398,7 +2187,6 @@ export default function Editor({
             }),
             ...masterCopies,
         ]);
-        setOpenComponentTabIds((current) => current.includes(componentId) ? current : [...current, componentId]);
     }, [componentMode, elements, selectedElement, setElements]);
 
     const nudge = useCallback(
@@ -1412,15 +2200,16 @@ export default function Editor({
             setElements((els) =>
                 els.map((el) => {
                     if (!movable.includes(el.id)) return el;
-                    const style = resolveStyle(el, breakpoint, cascade);
-                    return applyStyleIsolated(el, breakpoint, {
-                        x: style.x + dx,
-                        y: style.y + dy,
-                    }, breakpointDefs.map((definition) => definition.id), cascade);
+                    const bp = styleBreakpoint(el);
+                    const style = resolveStyle(el, bp, cascade);
+                    const nudged = { x: style.x + dx, y: style.y + dy };
+                    return parkedSubtree.has(el.id)
+                        ? applyStyle(el, cascade.baseId, nudged, cascade)
+                        : applyStyleIsolated(el, bp, nudged, breakpointDefs.map((definition) => definition.id), cascade);
                 }),
             );
         },
-        [breakpoint, breakpointDefs, byId, cascade, contextFor, selectedIds, setElements],
+        [breakpointDefs, byId, cascade, contextFor, parkedSubtree, selectedIds, setElements, styleBreakpoint],
     );
 
     /** A component's insides belong to its master, so instances refuse drops. */
@@ -1494,12 +2283,222 @@ export default function Editor({
 
     /* ------------------------------------------------------ drag and resize */
 
+    /**
+     * The gap between the dragged box and its nearest neighbour on each side.
+     *
+     * Only neighbours that actually face the box count — a sibling that shares
+     * no overlap on the other axis is not the thing you are spacing against,
+     * and drawing a measurement to it is noise.
+     */
+    /**
+     * The distances from what is being dragged to what is around it.
+     *
+     * Measured from the rendered boxes rather than from the model, because
+     * that is the only way to see a layer the layout is placing: a stacked
+     * element has no x/y of its own to compute from, and while it is being
+     * dragged its ghost is where it visually is. The result is in client
+     * coordinates, and only the label is converted back to page pixels.
+     */
+    const measureGaps = useCallback(
+        (movingId: string, parentId: string | undefined) => {
+            // The artboard holding the dragged copy, so every box measured
+            // comes from the same one — the page is drawn once per breakpoint,
+            // and mixing two of them would compare a phone to a desktop.
+            const moving = document.querySelector<HTMLElement>(
+                `[data-canvas-page] [data-canvas-element="${CSS.escape(movingId)}"]`,
+            );
+            const root = moving?.closest<HTMLElement>("[data-canvas-page]");
+            if (!moving || !root) return [];
+            const rectOf = (id: string) =>
+                root
+                    .querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(id)}"]`)
+                    ?.getBoundingClientRect();
+            const self = moving.getBoundingClientRect();
+
+            /*
+             * The neighbours are measured once per gesture, not once per frame.
+             *
+             * Nothing but the dragged layer moves until the drop, so re-reading
+             * every sibling's box on every frame bought nothing and forced the
+             * browser to lay the whole canvas out again each time — which is
+             * most of what made dragging feel like half the frame rate.
+             */
+            const cached = neighbourCache.current;
+            if (!cached || cached.movingId !== movingId || cached.parentId !== parentId) {
+                const excluded = subtreeIds(elements, movingId);
+                neighbourCache.current = {
+                    movingId,
+                    parentId,
+                    boxes: childrenOf(elements, parentId)
+                        .filter((child) => !excluded.has(child.id))
+                        .flatMap((child) => {
+                            const rect = rectOf(child.id);
+                            return rect ? [rect] : [];
+                        }),
+                    container: (parentId ? rectOf(parentId) : undefined) ?? root.getBoundingClientRect(),
+                };
+            }
+            const neighbours = neighbourCache.current?.boxes ?? [];
+            const container = neighbourCache.current?.container ?? root.getBoundingClientRect();
+
+            const found: Array<{
+                axis: "x" | "y";
+                from: number;
+                to: number;
+                cross: number;
+                label: number;
+                edge: boolean;
+            }> = [];
+            for (const axis of ["x", "y"] as const) {
+                const near = axis === "x" ? "left" : "top";
+                const far = axis === "x" ? "right" : "bottom";
+                const crossNear = axis === "x" ? "top" : "left";
+                const crossFar = axis === "x" ? "bottom" : "right";
+                const start = self[near];
+                const finish = self[far];
+                const ownCentre = (self[crossNear] + self[crossFar]) / 2;
+
+                let before: { gap: number; cross: number } | null = null;
+                let after: { gap: number; cross: number } | null = null;
+                for (const other of neighbours) {
+                    const overlapFrom = Math.max(self[crossNear], other[crossNear]);
+                    const overlapTo = Math.min(self[crossFar], other[crossFar]);
+                    if (overlapTo <= overlapFrom) continue;
+                    const cross = (overlapFrom + overlapTo) / 2;
+
+                    if (other[far] <= start) {
+                        const gap = start - other[far];
+                        if (!before || gap < before.gap) before = { gap, cross };
+                    } else if (other[near] >= finish) {
+                        const gap = other[near] - finish;
+                        if (!after || gap < after.gap) after = { gap, cross };
+                    }
+                }
+
+                const label = (gap: number) => Math.round(gap / scale);
+                if (before) {
+                    found.push({ axis, from: start - before.gap, to: start, cross: before.cross, label: label(before.gap), edge: false });
+                } else if (start > container[near]) {
+                    found.push({ axis, from: container[near], to: start, cross: ownCentre, label: label(start - container[near]), edge: true });
+                }
+                if (after) {
+                    found.push({ axis, from: finish, to: finish + after.gap, cross: after.cross, label: label(after.gap), edge: false });
+                } else if (container[far] > finish) {
+                    found.push({ axis, from: finish, to: container[far], cross: ownCentre, label: label(container[far] - finish), edge: true });
+                }
+            }
+            return found;
+        },
+        [elements, scale],
+    );
+
+    /** What the rail lists, in the order the work tends to happen. */
+    const railPrimary: LeftEditorTab[] = componentMode
+        ? ["Layers", "Components", "Insert"]
+        : ["Layers", "Pages", "Insert", "Templates", "Assets"];
+    const railSecondary: LeftEditorTab[] = ["Data", "History"];
+
+    /** Branches that can fold at all — the header's control is theirs. */
+    const collapsibleLayerIds = useMemo(
+        () => elements
+            .filter((element) => elements.some((child) => child.parentId === element.id))
+            .map((element) => element.id),
+        [elements],
+    );
+    const layersAllCollapsed = collapsibleLayerIds.length > 0
+        && collapsibleLayerIds.every((id) => collapsedLayerIds.has(id));
+
     const gesturing = dragInfo !== null || resizeInfo !== null || paddingInfo !== null || seamInfo !== null;
+
+    /*
+     * Keep the selection box in step with what is on screen.
+     *
+     * Measured after every render that could move it, on canvas scroll, when
+     * the layer itself resizes, and every frame while a gesture is running —
+     * which is when it moves without any of the others firing.
+     */
+    const selectedForChrome = selectedIds.length === 1 && !componentMode ? selectedIds[0] : null;
+    useEffect(() => {
+        if (effectsPreview && viewportRef.current) return mountDisclosures(viewportRef.current);
+    }, [effectsPreview, elements]);
+    const selectionSelector = selectedForChrome
+        ? canvasTargetSelector(selectedForChrome, breakpoint, parkedSubtree.has(selectedForChrome))
+        : null;
+    const measureSelectionBox = useCallback(() => {
+        if (!selectionSelector) {
+            setSelectionBox(null);
+            return;
+        }
+        const rect = document
+            .querySelector<HTMLElement>(
+                selectionSelector,
+            )
+            ?.getBoundingClientRect() ?? null;
+        setSelectionBox((current) =>
+            current && rect
+                && current.left === rect.left && current.top === rect.top
+                && current.width === rect.width && current.height === rect.height
+                ? current
+                : rect,
+        );
+    }, [selectionSelector]);
+
+    useLayoutEffect(() => {
+        if (!selectionSelector) {
+            setSelectionBox(null);
+            return;
+        }
+        const nodeFor = () =>
+            document.querySelector<HTMLElement>(
+                selectionSelector,
+            );
+        const measure = measureSelectionBox;
+        measure();
+
+        const viewport = viewportRef.current;
+        viewport?.addEventListener("scroll", measure, { passive: true });
+        window.addEventListener("resize", measure);
+        const node = nodeFor();
+        const observer = node ? new ResizeObserver(measure) : undefined;
+        if (node && observer) observer.observe(node);
+
+        return () => {
+            observer?.disconnect();
+            viewport?.removeEventListener("scroll", measure);
+            window.removeEventListener("resize", measure);
+        };
+    }, [measureSelectionBox, selectionSelector, scale, elements, breakpoint, canvasHeight]);
 
     useEffect(() => {
         if (!gesturing) return;
 
-        const handleMouseMove = (event: MouseEvent) => {
+        /**
+         * Whether a pointer position is over the canvas at all.
+         *
+         * Everything a drag can do — reordering, reparenting, parking a layer
+         * beside the artboards — is about a place on the canvas. Over a panel
+         * or the toolbar there is no such place, so the gesture has nothing to
+         * say there and must not guess one.
+         */
+        const overCanvas = (clientX: number, clientY: number) => {
+            const rect = viewportRef.current?.getBoundingClientRect();
+            if (!rect) return false;
+            return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+        };
+
+        /*
+         * One update per painted frame.
+         *
+         * A mouse reports position far faster than the screen redraws — 120 or
+         * 240 times a second on plenty of hardware — and every report was
+         * running the whole gesture: hit tests, measurements, and the state
+         * writes that re-render the canvas. Most of that work was thrown away
+         * before anything was painted, and what reached the screen arrived at
+         * half rate because the main thread never caught up. The newest
+         * position is the only one worth acting on.
+         */
+        const applyMove = (event: MouseEvent) => {
+            measureSelectionBox();
 
             const gestureBreakpoint = dragInfo?.breakpoint ?? resizeInfo?.breakpoint ?? paddingInfo?.breakpoint ?? seamInfo?.breakpoint ?? breakpoint;
 
@@ -1509,6 +2508,15 @@ export default function Editor({
 
                 const dx = (event.clientX - dragInfo.startX) / scale;
                 const dy = (event.clientY - dragInfo.startY) / scale;
+
+                // Off the canvas there is nothing to drop onto, and showing an
+                // indicator there promises a destination that does not exist.
+                if (!overCanvas(event.clientX, event.clientY)) {
+                    setDropPlan(null);
+                    setDropTargetId(undefined);
+                    setMeasures([]);
+                    return;
+                }
 
                 // Which container would receive the element, and where in it.
                 // Measured from the rendered DOM: the model's w/h only match
@@ -1523,6 +2531,11 @@ export default function Editor({
                     cascade,
                     canvasRef.current,
                     acceptsDrop,
+                    rootStyle.layout,
+                    // Hold ⌘/Ctrl to put it where the pointer is rather than
+                    // in the order — the escape hatch a stack otherwise has no
+                    // room for.
+                    event.metaKey || event.ctrlKey,
                 );
                 setDropPlan(plan ?? null);
                 setDropTargetId(plan ? plan.parentId ?? null : undefined);
@@ -1530,7 +2543,47 @@ export default function Editor({
                 if (dragInfo.mode === "reflow") {
                     // Position is owned by the parent's layout, so only show a
                     // ghost offset while the pointer looks for a new home.
-                    setGhost({ dx, dy });
+                    setGhostOffset(dx, dy);
+                    // The distances to what surrounds it, read off the ghost.
+                    // These used to appear only when the drag was about to
+                    // place freely, which on a stacked page is almost never —
+                    // so a whole page of dragging showed no measurements at all.
+                    setMeasures(measureGaps(dragInfo.id, moving.parentId));
+                    // Dragged clear of every boundary, it is about to become a
+                    // freely placed element — so it aligns and measures like
+                    // one already, instead of the drop being a surprise.
+                    if (plan?.free) {
+                        const style = resolveStyle(moving, gestureBreakpoint, cascade);
+                        const parent = moving.parentId ? byId.get(moving.parentId) : undefined;
+                        const parentStyle = parent ? resolveStyle(parent, gestureBreakpoint, cascade) : undefined;
+                        const gestureFrameWidth = breakpointDefs.find((definition) => definition.id === gestureBreakpoint)?.width ?? frameWidth;
+                        const box = {
+                            x: plan.free.x / scale - (style.widthMode === "fixed" ? style.w / 2 : 0),
+                            y: plan.free.y / scale - (style.heightMode === "fixed" ? style.h / 2 : 0),
+                            w: style.w,
+                            h: style.h,
+                        };
+                        const snapped = event.altKey
+                            ? { ...box, guides: [] as Guide[] }
+                            : snapPosition(
+                                  elements,
+                                  dragInfo.id,
+                                  box,
+                                  parentStyle ? { w: parentStyle.w, h: parentStyle.h } : { w: gestureFrameWidth, h: canvasHeight },
+                                  gestureBreakpoint,
+                                  6 / scale,
+                              );
+                        const origin = parent
+                            ? absolutePosition(byId, parent, gestureBreakpoint, cascade)
+                            : { x: 0, y: 0 };
+                        setGuides({ origin, lines: snapped.guides });
+                        setMeasures(measureGaps(dragInfo.id, moving.parentId));
+                    } else {
+                        // No alignment guides when there is nothing to align
+                        // to — but the distances stay: they are about where the
+                        // layer is, not about what it is snapping to.
+                        setGuides({ origin: { x: 0, y: 0 }, lines: [] });
+                    }
                     return;
                 }
 
@@ -1561,6 +2614,7 @@ export default function Editor({
                           6 / scale,
                       );
 
+                setMeasures(measureGaps(dragInfo.id, moving.parentId));
                 setGuides({
                     origin: parent
                         ? absolutePosition(byId, parent, gestureBreakpoint, cascade)
@@ -1637,13 +2691,48 @@ export default function Editor({
                 y = initialY + dy;
             }
 
+            const corner = handle.length === 2;
+
+            /*
+             * A corner keeps the shape; Shift lets go of it.
+             *
+             * Dragging a corner means "make this bigger", and a box that
+             * changes proportion while you do it is a different box. The
+             * opposite corner stays put, so the anchor is the one you are not
+             * holding.
+             *
+             * Both axes are read together rather than one being picked as the
+             * leader. Choosing a leader makes the size jump the instant the
+             * lead changes hands, and on a wide, short box — a headline, say —
+             * where one pixel of height is worth twenty of width, a two-pixel
+             * wobble threw the width by a hundred and fifty. Averaging the two
+             * as proportions of the box keeps every pixel of the drag worth
+             * the same, so the size follows the hand instead of snapping.
+             */
+            if (corner && !event.shiftKey && initialW > 0 && initialH > 0) {
+                const towardsX = handle.includes("w") ? -1 : 1;
+                const towardsY = handle.includes("n") ? -1 : 1;
+                const growth = ((dx * towardsX) / initialW + (dy * towardsY) / initialH) / 2;
+                w = Math.max(minSize, Math.round(initialW * (1 + growth)));
+                h = Math.max(minSize, Math.round(initialH * (1 + growth)));
+                if (handle.includes("w")) x = initialX + (initialW - w);
+                if (handle.includes("n")) y = initialY + (initialH - h);
+            }
+
             // Dragging a corner of a text box scales the type with it: the box
             // is only ever as big as the words in it, so resizing it without
             // the font just reflows the same text into a different shape.
             // Edge handles keep the old behaviour — that is how you set a
             // measure without touching the size.
             const patch: Partial<ElementStyle> = { x, y, w, h };
-            const corner = handle.length === 2;
+            // A component master is the editing surface itself. Resizing from
+            // its west/north edge changes that surface's size, not its offset
+            // inside another canvas; allowing x/y to move here made the child
+            // visually chase the handle and shimmer between pixels.
+            if (componentMode && resizing?.componentRole === "master") {
+                patch.x = 0;
+                patch.y = 0;
+            }
             if (corner && resizeInfo.initialFontSize) {
                 const ratio = initialW > 0 && initialH > 0
                     ? Math.min(w / initialW, h / initialH)
@@ -1659,31 +2748,104 @@ export default function Editor({
             // strands at 1280 on a wider screen. Snapping to fill keeps the
             // intent, so the same design fills 1920 too.
             if (handle.includes("e") || handle.includes("w")) {
-                const node = document.querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(resizeInfo.id)}"]`);
+                const node = viewportRef.current?.querySelector<HTMLElement>(canvasTargetSelector(resizeInfo.id, gestureBreakpoint, parkedSubtree.has(resizeInfo.id)));
                 const container = node?.parentElement?.getBoundingClientRect();
                 const parentStyle = resizing?.parentId
                     ? resolveStyle(byId.get(resizing.parentId) ?? resizing, gestureBreakpoint, cascade)
                     : undefined;
                 const available = container ? container.width / scale : undefined;
-                const inFlow = !resizing?.parentId || parentStyle?.layout === "stack";
+                const inFlow = !resizing?.parked && (!resizing?.parentId || parentStyle?.layout === "stack");
                 if (inFlow && available) {
                     patch.widthMode = w >= available - SNAP_FILL ? "fill" : "fixed";
+                } else {
+                    patch.widthMode = "fixed";
                 }
             }
+
+            // Grabbing a handle is how a size stops being decided for you. An
+            // `auto` height or a `fill` width simply ignores the numbers the
+            // drag writes, so the box did not move and the handle looked
+            // broken; the axis being dragged becomes explicit.
+            if (handle.includes("n") || handle.includes("s")) patch.heightMode = "fixed";
+            if (corner) patch.widthMode = patch.widthMode ?? "fixed";
 
             setElements((els) =>
                 els.map((el) =>
                     el.id === resizeInfo.id
-                        ? applyStyleIsolated(el, gestureBreakpoint, patch, breakpointDefs.map((definition) => definition.id), cascade)
+                        ? parkedSubtree.has(el.id)
+                            ? applyStyle(el, cascade.baseId, patch, cascade)
+                            : applyStyleIsolated(el, gestureBreakpoint, patch, breakpointDefs.map((definition) => definition.id), cascade)
                         : el,
                 ),
             );
         };
 
-        const handleMouseUp = () => {
+        const handleMouseUp = (event: MouseEvent) => {
+            const dropPlan = gestureRef.current?.get().dropPlan ?? null;
+            neighbourCache.current = null;
             if (dragInfo) {
                 const moving = byId.get(dragInfo.id);
                 const currentParent = moving?.parentId;
+                /*
+                 * Let go off the canvas and nothing happens.
+                 *
+                 * The pointer strays over the layer tree or the inspector on
+                 * the way to somewhere, and releasing there used to be treated
+                 * as a drop: the layer was reparented to whatever the fallback
+                 * worked out, or — worse, once layers could be parked — thrown
+                 * out of the page entirely. Neither was ever what was meant.
+                 */
+                if (!overCanvas(event.clientX, event.clientY)) {
+                    setDragInfo(null);
+                    setPressedEffectId(null);
+                    setResizeInfo(null);
+                    setPaddingInfo(null);
+                    setSeamInfo(null);
+                    setDropPlan(null);
+                    setDropTargetId(undefined);
+                    setMeasures([]);
+                    return;
+                }
+                /*
+                 * Dragged clean out of every artboard.
+                 *
+                 * The layer stops being part of the page and becomes a thing
+                 * parked beside it: it keeps its content and its styling, it
+                 * takes a name above it the way an artboard does, and it stays
+                 * out of what gets published. Dropping it back onto an artboard
+                 * undoes all of that — see `reparent`, which clears the mark.
+                 */
+                // Same rule as the parked things: a click is not a drag, and
+                // must never move a layer out of the page.
+                const travelled =
+                    Math.abs(event.clientX - dragInfo.startX) + Math.abs(event.clientY - dragInfo.startY) > 3;
+                const overArtboard = travelled
+                    ? artboardAt(event.clientX, event.clientY, dragInfo.id)
+                    : true;
+                if (!componentMode && !overArtboard && parkAnchorRef.current && moving && !moving.parked) {
+                    const dragged = resolveStyle(moving, dragInfo.breakpoint, cascade);
+                    const point = parkPoint(event.clientX, event.clientY);
+                    const x = Math.round(point.x - dragged.w / 2);
+                    const y = Math.round(point.y - 16);
+                    setElements((els) =>
+                        reparent(els, dragInfo.id, undefined, dragInfo.breakpoint, undefined, cascade).map((el) =>
+                            el.id === dragInfo.id
+                                // Parked things are placed by the canvas layer
+                                // that draws them, from their x/y. Leaving the
+                                // layer absolutely positioned as well applied
+                                // those coordinates twice, so the frame flew
+                                // off and left its name behind.
+                                ? { ...el, parked: true, base: { ...el.base, position: "static", x, y } }
+                                : el,
+                        ),
+                    );
+                    setDragInfo(null);
+                    setPressedEffectId(null);
+                    setDropPlan(null);
+                    setMeasures([]);
+                    setGuides({ origin: { x: 0, y: 0 }, lines: [] });
+                    return;
+                }
                 // `undefined` means the page root, which is a valid destination,
                 // so only skip when nothing was hovered at all.
                 // A drop that keeps the same parent still counts: reordering
@@ -1702,12 +2864,32 @@ export default function Editor({
                     }
                     const size = byId.get(dragInfo.id);
                     const style = size ? resolveStyle(size, dragInfo.breakpoint, cascade) : undefined;
+                    // Drop point is the pointer; the element is centred on it so
+                    // it lands where the cursor is, not below-right. The guides
+                    // shown during the drag are what it snaps to, so releasing
+                    // puts it exactly where the alignment promised.
+                    const dropped = {
+                        x: dropPlan.free.x / scale - (style?.widthMode === "fixed" ? style.w / 2 : 0),
+                        y: dropPlan.free.y / scale - (style?.heightMode === "fixed" ? style.h / 2 : 0),
+                        w: style?.w ?? 0,
+                        h: style?.h ?? 0,
+                    };
+                    const parent = size?.parentId ? byId.get(size.parentId) : undefined;
+                    const parentStyle = parent ? resolveStyle(parent, dragInfo.breakpoint, cascade) : undefined;
+                    const landed = snapPosition(
+                        elements,
+                        dragInfo.id,
+                        dropped,
+                        parentStyle
+                            ? { w: parentStyle.w, h: parentStyle.h }
+                            : { w: breakpointDefs.find((definition) => definition.id === dragInfo.breakpoint)?.width ?? frameWidth, h: canvasHeight },
+                        dragInfo.breakpoint,
+                        6 / scale,
+                    );
                     patchStyle([dragInfo.id], {
                         position: "absolute",
-                        // Drop point is the pointer; the element is centred on
-                        // it so it lands where the cursor is, not below-right.
-                        x: Math.round(dropPlan.free.x / scale - (style?.widthMode === "fixed" ? style.w / 2 : 0)),
-                        y: Math.round(dropPlan.free.y / scale - (style?.heightMode === "fixed" ? style.h / 2 : 0)),
+                        x: Math.round(landed.x),
+                        y: Math.round(landed.y),
                     });
                 } else if (
                     dragInfo.mode === "reflow" &&
@@ -1716,6 +2898,57 @@ export default function Editor({
                     (dropPlan.parentId !== currentParent || dropPlan.beforeId)
                 ) {
                     doReparent(dragInfo.id, dropPlan.parentId, dropPlan.beforeId);
+                } else if (
+                    dragInfo.mode === "free" &&
+                    dragInfo.breakpoint === cascade.baseId &&
+                    dropPlan
+                ) {
+                    /*
+                     * A freely placed element dropped onto a container.
+                     *
+                     * This case had no branch at all, which is why dragging
+                     * something into a container "sometimes" did nothing: it
+                     * worked for elements in a stack and never worked for
+                     * anything already placed by hand.
+                     */
+                    const moved = byId.get(dragInfo.id);
+                    const nextParent = dropPlan.parentId ? byId.get(dropPlan.parentId) : undefined;
+                    const nextParentStyle = nextParent
+                        ? resolveStyle(nextParent, dragInfo.breakpoint, cascade)
+                        : undefined;
+                    const landsInFlow = (nextParentStyle?.layout ?? rootStyle.layout) === "stack";
+                    // Landing in a stack is always a move, even when the stack
+                    // is the one it already lives in: that is a reorder, and
+                    // refusing it is why dropping a hand-placed layer back among
+                    // its own siblings did nothing at all.
+                    if (!landsInFlow && dropPlan.parentId === currentParent) {
+                        setDragInfo(null);
+                        setPressedEffectId(null);
+                        setResizeInfo(null);
+                        setPaddingInfo(null);
+                        setSeamInfo(null);
+                        setDropPlan(null);
+                        setDropTargetId(undefined);
+                        setMeasures([]);
+                        return;
+                    }
+                    doReparent(dragInfo.id, dropPlan.parentId, dropPlan.beforeId);
+                    if (landsInFlow) {
+                        // The container arranges its children, so the element
+                        // gives up the coordinates it was carrying.
+                        patchStyle([dragInfo.id], { position: "static" });
+                    } else if (moved) {
+                        // Still freely placed, now in someone else's space: keep
+                        // it where it visually is by re-basing its coordinates.
+                        const was = absolutePosition(byId, moved, dragInfo.breakpoint, cascade);
+                        const origin = nextParent
+                            ? absolutePosition(byId, nextParent, dragInfo.breakpoint, cascade)
+                            : { x: 0, y: 0 };
+                        patchStyle([dragInfo.id], {
+                            x: Math.round(was.x - origin.x),
+                            y: Math.round(was.y - origin.y),
+                        });
+                    }
                 }
             }
             setDragInfo(null);
@@ -1723,17 +2956,32 @@ export default function Editor({
             setResizeInfo(null);
             setPaddingInfo(null);
             setSeamInfo(null);
-            setGhost(null);
+            clearGhost();
             setDropTargetId(undefined);
             setDropPlan(null);
             setGuides({ origin: { x: 0, y: 0 }, lines: [] });
+            setMeasures([]);
             // The whole gesture lands in the undo stack as a single step.
             endTransaction();
+        };
+
+        let pendingMove: MouseEvent | null = null;
+        let moveFrame = 0;
+        const handleMouseMove = (event: MouseEvent) => {
+            pendingMove = event;
+            if (moveFrame) return;
+            moveFrame = window.requestAnimationFrame(() => {
+                moveFrame = 0;
+                const latest = pendingMove;
+                pendingMove = null;
+                if (latest) applyMove(latest);
+            });
         };
 
         window.addEventListener("mousemove", handleMouseMove);
         window.addEventListener("mouseup", handleMouseUp);
         return () => {
+            if (moveFrame) window.cancelAnimationFrame(moveFrame);
             window.removeEventListener("mousemove", handleMouseMove);
             window.removeEventListener("mouseup", handleMouseUp);
         };
@@ -1746,7 +2994,6 @@ export default function Editor({
         canvasHeight,
         doReparent,
         dragInfo,
-        dropPlan,
         dropTargetId,
         elements,
         endTransaction,
@@ -1789,8 +3036,23 @@ export default function Editor({
         if (editingId !== el.id) setEditingId(null);
         if (el.locked || editingId === el.id) return;
 
+        // A parked frame is moved by the canvas, not by the page's layout: it
+        // has no siblings to reorder among and no parent to be placed in. The
+        // ordinary drag path treated it as a page layer and did nothing
+        // visible, which left its name the only place it could be grabbed.
+        if (el.parked && !el.parentId) {
+            beginParkedDrag(event, el);
+            return;
+        }
+
         const style = resolveStyle(el, bp, cascade);
         beginTransaction();
+        // The rendered copy on the artboard being edited is the one that
+        // follows the pointer.
+        const ghostNode = document.querySelector<HTMLElement>(
+            `[data-canvas-page] [data-canvas-element="${CSS.escape(el.id)}"]`,
+        );
+        ghostRef.current = ghostNode ? { node: ghostNode, dx: 0, dy: 0 } : null;
         setDragInfo({
             id: el.id,
             breakpoint: bp,
@@ -1807,6 +3069,58 @@ export default function Editor({
         });
     };
 
+    /**
+     * Round the corners by dragging.
+     *
+     * The distance travelled along the diagonal is the radius, so pulling the
+     * dot towards the middle of the box rounds it and pulling it back into the
+     * corner squares it off again. Held as one transaction: the whole drag is
+     * a single undo, not one per pixel.
+     */
+    const beginRadiusDrag = (
+        event: React.MouseEvent,
+        element: CanvasElement,
+        bp: Breakpoint = breakpoint,
+    ) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (element.locked) return;
+        if (parkedSubtree.has(element.id)) bp = cascade.baseId;
+        if (bp !== breakpoint && !parkedSubtree.has(element.id)) setBreakpoint(bp);
+        const style = resolveStyle(element, bp, cascade);
+        const rendered = viewportRef.current?.querySelector<HTMLElement>(canvasTargetSelector(element.id, bp, parkedSubtree.has(element.id)))?.getBoundingClientRect();
+        const limit = Math.max(0, Math.min(rendered ? rendered.width / scale : style.w, rendered ? rendered.height / scale : style.h) / 2);
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startRadius = style.radius;
+        beginTransaction();
+
+        let frame = 0;
+        let latest = startRadius;
+        setRadiusPreview(startRadius);
+        const move = (moveEvent: MouseEvent) => {
+            // The diagonal component of the movement, in canvas units.
+            const travelled = ((moveEvent.clientX - startX) + (moveEvent.clientY - startY)) / 2 / scale;
+            latest = Math.round(Math.max(0, Math.min(limit, startRadius + travelled)));
+            if (frame) return;
+            frame = window.requestAnimationFrame(() => {
+                frame = 0;
+                setRadiusPreview(latest);
+                patchStyle([element.id], { radius: latest });
+            });
+        };
+        const up = () => {
+            if (frame) window.cancelAnimationFrame(frame);
+            patchStyle([element.id], { radius: latest });
+            setRadiusPreview(null);
+            endTransaction();
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("mouseup", up);
+        };
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up);
+    };
+
     const handleResizeMouseDown = (
         event: React.MouseEvent,
         handle: ResizeHandle,
@@ -1814,10 +3128,15 @@ export default function Editor({
         bp: Breakpoint,
     ) => {
         event.stopPropagation();
-        if (bp !== breakpoint) setBreakpoint(bp);
+        // A parked frame is styled on the base and belongs to no artboard, so
+        // grabbing its corner must not drag the whole editor to another one.
+        event.preventDefault();
+        if (el.locked) return;
+        if (parkedSubtree.has(el.id)) bp = cascade.baseId;
+        if (bp !== breakpoint && !parkedSubtree.has(el.id)) setBreakpoint(bp);
         setSelectedIds([el.id]);
         const style = resolveStyle(el, bp, cascade);
-        const rendered = document.querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(el.id)}"]`)?.getBoundingClientRect();
+        const rendered = viewportRef.current?.querySelector<HTMLElement>(canvasTargetSelector(el.id, bp, parkedSubtree.has(el.id)))?.getBoundingClientRect();
         const startWidth = style.widthMode === "fixed" || !rendered ? style.w : Math.round(rendered.width / scale);
         const startHeight = style.heightMode === "fixed" || !rendered ? style.h : Math.round(rendered.height / scale);
         beginTransaction();
@@ -1843,7 +3162,7 @@ export default function Editor({
     ) => {
         event.preventDefault();
         event.stopPropagation();
-        if (bp !== breakpoint) setBreakpoint(bp);
+        if (bp !== breakpoint && !parkedSubtree.has(el.id)) setBreakpoint(bp);
         setSelectedIds([el.id]);
         beginTransaction();
         setPaddingInfo({
@@ -1868,21 +3187,142 @@ export default function Editor({
         setMarquee({ startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY });
     };
 
+    /*
+     * Keep the drawing origin in step with the anchor.
+     *
+     * Both the stage and the artboards move as the canvas is zoomed, scrolled
+     * or resized, so the offset between them is measured after every layout
+     * rather than assumed.
+     */
+    useLayoutEffect(() => {
+        const stage = canvasStageRef.current;
+        const anchor = parkAnchorRef.current;
+        if (!stage || !anchor) return;
+        const stageRect = stage.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+        const next = { x: anchorRect.left - stageRect.left, y: anchorRect.top - stageRect.top };
+        setParkOrigin((current) =>
+            Math.abs(current.x - next.x) < 0.5 && Math.abs(current.y - next.y) < 0.5 ? current : next,
+        );
+        // Deliberately narrow: two getBoundingClientRect calls force a layout,
+        // and running them after every render made the whole canvas pay for it.
+        // Only these change where the artboards sit inside the stage.
+    }, [scale, canvasHeight, breakpointDefs, componentMode, frames.length]);
+
+    /**
+     * Draw a frame on the empty canvas.
+     *
+     * The result is parked beside the artboards — outside the page, named above
+     * itself — which is the same state a layer dragged out of an artboard ends
+     * in. Drop it onto an artboard and it becomes part of the page.
+     */
+    const beginFrameDraw = (event: React.MouseEvent) => {
+        if (event.button !== 0 || spaceHeld || tryBeginPan(event)) return;
+        event.preventDefault();
+        setSelectedIds([]);
+        setEditingId(null);
+        setFrameDraw({ startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY });
+    };
+
+    useEffect(() => {
+        if (!frameDraw) return;
+        let frame = 0;
+        let latest = { x: frameDraw.x, y: frameDraw.y };
+        const move = (event: MouseEvent) => {
+            latest = { x: event.clientX, y: event.clientY };
+            if (frame) return;
+            frame = window.requestAnimationFrame(() => {
+                frame = 0;
+                setFrameDraw((current) => (current ? { ...current, ...latest } : null));
+            });
+        };
+        const up = (event: MouseEvent) => {
+            setFrameDraw(null);
+            setCanvasTool("select");
+            if (!parkAnchorRef.current) return;
+            const w = Math.abs(event.clientX - frameDraw.startX) / scale;
+            const h = Math.abs(event.clientY - frameDraw.startY) / scale;
+            // A click with no pull is not a frame; it is a click.
+            if (w < 8 || h < 8) return;
+            const { x, y } = parkPoint(
+                Math.min(frameDraw.startX, event.clientX),
+                Math.min(frameDraw.startY, event.clientY),
+            );
+            const frame = createElement("Frame", { x, y, z: nextZ(elements) });
+            frame.parked = true;
+            frame.name = "Frame";
+            frame.base = {
+                ...frame.base,
+                x,
+                y,
+                w: Math.round(w),
+                h: Math.round(h),
+                widthMode: "fixed",
+                heightMode: "fixed",
+                // The canvas layer places it from x/y; positioning it again
+                // from the same numbers is what separated it from its name.
+                position: "static",
+            };
+            setElements((els) => [...els, frame]);
+            setSelectedIds([frame.id]);
+        };
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up, { once: true });
+        return () => {
+            if (frame) window.cancelAnimationFrame(frame);
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("mouseup", up);
+        };
+    }, [frameDraw?.startX, frameDraw?.startY]);
+
     useEffect(() => {
         if (!marquee) return;
+        /*
+         * The candidates are measured once, when the drag starts.
+         *
+         * Measuring them on every mousemove meant a forced layout per pointer
+         * sample across every element of every artboard — several hundred
+         * boxes — which is what made rubber-banding stutter. Nothing moves
+         * while the band is being drawn, so one pass is enough, and the work
+         * per frame drops to comparing numbers.
+         */
+        const targets = Array.from(
+            marqueePageRef.current?.querySelectorAll<HTMLElement>("[data-canvas-element]") ?? [],
+        ).flatMap((node) => {
+            const id = node.dataset.canvasElement;
+            if (!id) return [];
+            const rect = node.getBoundingClientRect();
+            return [{ id, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }];
+        });
+
+        // One update per painted frame, from the latest pointer position.
+        let frame = 0;
+        let latest = { x: marquee.x, y: marquee.y };
+        const apply = () => {
+            frame = 0;
+            const left = Math.min(marquee.startX, latest.x);
+            const top = Math.min(marquee.startY, latest.y);
+            const right = Math.max(marquee.startX, latest.x);
+            const bottom = Math.max(marquee.startY, latest.y);
+            const hits = targets.flatMap((target) =>
+                target.right >= left && target.left <= right && target.bottom >= top && target.top <= bottom
+                    ? [target.id]
+                    : [],
+            );
+            // Only when it actually changed. A new array every frame re-rendered
+            // the canvas, the layer tree and the inspector for a selection that
+            // was identical — which is most frames of most drags.
+            const next = Array.from(new Set([...marqueeBaseRef.current, ...hits]));
+            const signature = next.join(",");
+            if (signature !== marqueeHitsRef.current) {
+                marqueeHitsRef.current = signature;
+                setSelectedIds(next);
+            }
+            setMarquee((current) => (current ? { ...current, x: latest.x, y: latest.y } : null));
+        };
         const move = (event: MouseEvent) => {
-            const left = Math.min(marquee.startX, event.clientX);
-            const top = Math.min(marquee.startY, event.clientY);
-            const right = Math.max(marquee.startX, event.clientX);
-            const bottom = Math.max(marquee.startY, event.clientY);
-            const hits = Array.from(marqueePageRef.current?.querySelectorAll<HTMLElement>("[data-canvas-element]") ?? []).flatMap((node) => {
-                const rect = node.getBoundingClientRect();
-                const intersects = rect.right >= left && rect.left <= right && rect.bottom >= top && rect.top <= bottom;
-                const id = node.dataset.canvasElement;
-                return intersects && id ? [id] : [];
-            });
-            setSelectedIds(Array.from(new Set([...marqueeBaseRef.current, ...hits])));
-            setMarquee((current) => current ? { ...current, x: event.clientX, y: event.clientY } : null);
+            latest = { x: event.clientX, y: event.clientY };
+            if (!frame) frame = window.requestAnimationFrame(apply);
         };
         const up = () => {
             setMarquee(null);
@@ -1891,6 +3331,7 @@ export default function Editor({
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up, { once: true });
         return () => {
+            if (frame) window.cancelAnimationFrame(frame);
             window.removeEventListener("mousemove", move);
             window.removeEventListener("mouseup", up);
         };
@@ -1916,10 +3357,31 @@ export default function Editor({
         if (componentId) {
             const master = elements.find((element) => element.id === componentId && element.componentRole === "master");
             if (!master) return;
+            if (master.isLayout) {
+                if (componentMode) { setPageError("Open a page before applying a layout."); return; }
+                const ids = subtreeIds(elements, master.id);
+                if (elements.filter(el => ids.has(el.id) && el.childrenSlot).length !== 1) {
+                    setPageError("A layout needs exactly one Children placeholder."); return;
+                }
+                beginTransaction();
+                setElements(current => applyPageLayout(current.filter(el => !el.layoutRole || el.layoutRole === "layout"), current, master.componentId ?? master.id));
+                setRootStyle({ pageLayoutId: master.componentId ?? master.id, layout: "stack" });
+                setSelectedIds([]);
+                endTransaction();
+                return;
+            }
             const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
             const style = resolveStyle(master, cascade.baseId, cascade);
-            const x = Math.max(0, (event.clientX - rect.left) / scale - style.w / 2);
-            const y = Math.max(0, (event.clientY - rect.top) / scale - style.h / 2);
+            // `w` and `h` remain as editing-canvas fallbacks even when an
+            // asset hugs its contents. Using those stale values here made a
+            // hug-sized button land as though it were still as large as its
+            // component artboard. Only fixed axes have a trustworthy stored
+            // size; hug/fill axes anchor at the pointer and let layout measure
+            // the instance from its real contents.
+            const grabWidth = style.widthMode === "fixed" ? style.w : 0;
+            const grabHeight = style.heightMode === "fixed" ? style.h : 0;
+            const x = Math.max(0, (event.clientX - rect.left) / scale - grabWidth / 2);
+            const y = Math.max(0, (event.clientY - rect.top) / scale - grabHeight / 2);
             const clone = cloneSubtree(elements, master.id, { x: x - style.x, y: y - style.y });
             if (!clone) return;
             const copies = clone.elements.map((element) => element.id === clone.rootId ? { ...element, parentId: parentId ?? undefined, componentRole: "instance" as const, componentId: master.componentId, variant: master.variant, z: nextZ(elements, parentId ?? undefined) } : { ...element, componentRole: undefined });
@@ -1968,11 +3430,18 @@ export default function Editor({
             if (event.key === "Escape") {
                 if (editingId) setEditingId(null);
                 else setSelectedIds([]);
+                setCanvasTool("select");
                 setContextMenu(null);
                 return;
             }
 
             const mod = event.metaKey || event.ctrlKey;
+
+            // The canvas tools, where every other editor puts them.
+            if (!typing && !mod && !event.altKey && !event.shiftKey) {
+                if (event.key.toLowerCase() === "v") { setCanvasTool("select"); return; }
+                if (event.key.toLowerCase() === "f" && !componentMode) { setCanvasTool("frame"); return; }
+            }
             const key = event.key.toLowerCase();
 
 
@@ -2006,6 +3475,19 @@ export default function Editor({
             if (mod && event.key === "0") {
                 event.preventDefault();
                 zoomTo(100);
+                return;
+            }
+            // Shift+1 fits the artboards, Shift+2 recentres them: the canvas
+            // cluster that used to carry these is gone, and both are still
+            // things you ask for by hand after panning around.
+            if (event.shiftKey && !mod && event.key === "!") {
+                event.preventDefault();
+                zoomToFit();
+                return;
+            }
+            if (event.shiftKey && !mod && event.key === "@") {
+                event.preventDefault();
+                recenter();
                 return;
             }
 
@@ -2203,29 +3685,48 @@ export default function Editor({
     ): React.ReactNode => {
         const directRow = row ?? (raw.sourceId ? canvasData[raw.sourceId]?.[0] : undefined);
         const el = bindElement(raw, directRow);
-        const resolvedStyle = resolveStyle(el, frame.bp, cascade);
+        const resolvedStyle = styleFor(el, frame.bp);
         const isActiveFrame = frame.bp === breakpoint;
         const previewVisible = previewVisibility[el.id];
-        if (previewVisible !== undefined) resolvedStyle.hidden = !previewVisible;
-        const style = {
-            ...resolvedStyle,
-            ...(isActiveFrame && hoveredEffectIds.has(el.id) ? el.hover : undefined),
-            ...(isActiveFrame && pressedEffectId === el.id ? el.press : undefined),
-        };
+        const hovering = isActiveFrame && hoveredEffectIds.has(el.id) ? el.hover : undefined;
+        const pressing = isActiveFrame && pressedEffectId === el.id ? el.press : undefined;
+        // The cached style is shared, so a preview or an effect copies before
+        // it changes anything.
+        const style = previewVisible !== undefined || hovering || pressing
+            ? { ...resolvedStyle, ...(previewVisible !== undefined ? { hidden: !previewVisible } : undefined), ...hovering, ...pressing }
+            : resolvedStyle;
         if (style.hidden) return null;
 
-        const children = childrenOf(elements, el.id);
+        const children = childrenIn(el.id);
         const componentInstance = componentInstanceFor(raw);
         const interactionElement = componentInstance ?? el;
         const container = !componentInstance && isContainer(el.type);
         const isSelected = isActiveFrame && selectedIds.includes(interactionElement.id) && interactionElement.id === el.id;
         const isEditing = isActiveFrame && editingId === el.id;
         const isDropTarget = isActiveFrame && dropTargetId === el.id;
-        const isGhosting = ghost !== null && dragInfo?.id === el.id && dragInfo.breakpoint === frame.bp;
+        /*
+         * An empty container collapses to a few pixels, which is why dropping
+         * into one so often missed: there was nothing under the pointer to
+         * hit. While a drag is in flight it holds open a slot instead.
+         */
+        const emptyDropZone = container
+            && children.length === 0
+            && dragInfo !== null
+            && dragInfo?.id !== el.id;
 
-        const note = isNote(el, byId, frame.bp, frame.width, rootStyle.layout, cascade);
         const band = isBand(el.type, style, rootStyle);
-        const css = styleToCss(style, contextFor(el, frame.bp), el);
+        const css = cssFor(el, frame.bp, style, style !== resolvedStyle);
+        // A parked root is placed by the canvas layer that draws it. Its own
+        // coordinates would place it a second time, from the same numbers, and
+        // the layer would end up somewhere its name is not — so they are the
+        // one thing the parked copy does not get to apply.
+        if (el.parked && !el.parentId) {
+            css.position = "relative";
+            css.left = undefined;
+            css.top = undefined;
+            css.right = undefined;
+            css.bottom = undefined;
+        }
         // The author's own declarations win over the inspector's, exactly as
         // they do on the published page. They are merged before the editor's
         // affordances below, so a custom `cursor` cannot hide the move handle.
@@ -2245,6 +3746,16 @@ export default function Editor({
         // what the author is actually looking at; the published page still
         // gets the genuine `position: fixed`.
         if (css.position === "fixed") css.position = "absolute";
+        if (el.isLayout || (el.layoutRole === "layout" && !el.parentId)) {
+            css.width = "100%";
+            css.minHeight = "100%";
+            css.flexShrink = 0;
+        }
+        if (el.childrenSlot && componentMode) {
+            css.minHeight = 180;
+            css.background = "rgba(84,2,230,0.06)";
+            css.border = "1px dashed #a17aff";
+        }
         if (!stickyPreview && style.position === "sticky") {
             css.position = "relative";
             css.top = undefined;
@@ -2255,28 +3766,35 @@ export default function Editor({
         if (el.hover || el.press) css.transition = "transform .42s cubic-bezier(.16,1,.3,1), scale .42s cubic-bezier(.16,1,.3,1), rotate .42s cubic-bezier(.16,1,.3,1), background-color .32s ease, color .32s ease, border-color .32s ease, box-shadow .42s cubic-bezier(.16,1,.3,1), opacity .32s ease, filter .42s ease";
         if (el.loop) css.animation = `pg-loop-${el.loop.type} ${el.loop.duration}ms ease-in-out infinite`;
         css.cursor = el.locked ? "default" : isEditing ? "text" : "move";
+        // The handles sit outside the box, where the next section's background
+        // would paint straight over them. While something is selected it comes
+        // forward, so its own controls stay on top of its neighbours.
+        if (isSelected && css.zIndex === undefined) css.zIndex = 40;
         css.outline = isSelected
             ? "1.5px solid var(--ed-accent)"
             : isDropTarget
               ? "1.5px solid #22c55e"
-              : note
-                ? "1.5px dashed var(--ed-accent)"
-                : undefined;
-        if (note) css.opacity = 0.55;
+              : undefined;
         css.outlineOffset = isSelected || isDropTarget ? "-1px" : undefined;
         // A band paints edge to edge while its content sits in a centred inner
         // box — the same split the published stylesheet emits.
         const split = band ? splitBand(css, rootStyle.maxWidth) : null;
-        if (isGhosting) {
-            css.transform = `${css.transform ?? ""} translate(${ghost.dx}px, ${ghost.dy}px)`;
-            css.opacity = 0.6;
-            css.pointerEvents = "none";
-        }
 
         // Repeat iterates sampled rows. Request renders once and passes the
         // sampled object to every descendant as its binding context.
         const renderChildren = () =>
-            el.type === "Repeat"
+            emptyDropZone
+                ? [
+                      // Holds the container open so the pointer has something to
+                      // hit, and shows where the element would land.
+                      <span
+                          key="pg-drop-zone"
+                          className="pointer-events-none flex min-h-[56px] w-full items-center justify-center rounded-md border border-dashed border-ed-accent/70 text-[11px] text-ed-accent"
+                      >
+                          Drop here
+                      </span>,
+                  ]
+                : el.type === "Repeat"
                 ? rowsFor(el, canvasData, true).flatMap((dataRow, index) =>
                       children.map((child) =>
                           renderNode(child, frame, dataRow, `${keyPrefix}${index}:`),
@@ -2301,6 +3819,8 @@ export default function Editor({
             <div
                 key={`${keyPrefix}${el.id}`}
                 data-canvas-element={el.id}
+                {...carouselControlAttributes(el.carouselControl)}
+                {...disclosureAttributes(el.disclosure)}
                 style={split ? split.shell : css}
                 onMouseDown={(event) => handleElementMouseDown(event, interactionElement, frame.bp)}
                 onMouseEnter={() => effectsPreview && hoverEffectIds.length > 0 && setHoveredEffectIds((current) => {
@@ -2313,8 +3833,18 @@ export default function Editor({
                 onMouseLeave={() => { setHoveredEffectIds((current) => { if (!hoverEffectIds.some((id) => current.has(id))) return current; const next = new Set(current); for (const id of hoverEffectIds) next.delete(id); return next; }); setPressedEffectId((id) => id === el.id ? null : id); }}
                 onDoubleClick={(event) => {
                     event.stopPropagation();
-                    if (componentInstance) openComponentEditor(componentInstance);
-                    else if (isTextual(el.type) && !el.locked) setEditingId(el.id);
+                    if (el.layoutRole === "layout") {
+                        const master = componentMasters.find(candidate => candidate.isLayout && (candidate.componentId ?? candidate.id) === rootStyle.pageLayoutId);
+                        if (master) openComponentEditor(master);
+                        return;
+                    }
+                    // Words inside a placed component belong to that copy, so
+                    // they are edited here rather than in the master: reaching
+                    // for the master to change one button label is what made
+                    // text inside a component feel uneditable. Everything else
+                    // in it still opens the master, which is where shape lives.
+                    if (isTextual(el.type) && !el.locked) setEditingId(el.id);
+                    else if (componentInstance) openComponentEditor(componentInstance);
                 }}
                 onContextMenu={(event) => {
                     event.preventDefault();
@@ -2348,7 +3878,7 @@ export default function Editor({
                         // Focus follows the double-click that opened the editor.
                         ref={(node) => node?.focus()}
                         value={el.content ?? ""}
-                        onChange={(event) => patchProps(el.id, { content: event.target.value })}
+                        onChange={(event) => editContent(el, event.target.value)}
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={(event) => event.stopPropagation()}
                         onDoubleClick={(event) => event.stopPropagation()}
@@ -2363,16 +3893,64 @@ export default function Editor({
                         }}
                     />
                 ) : (
-                    <ElementBody element={el} />
+                    el.childrenSlot && componentMode ? <span className="pointer-events-none p-5 text-[12px] text-[#a17aff]">Children · Page content appears here</span> : <ElementBody element={el} entranceSplit={style.entranceSplit} effectsPreview={effectsPreview} />
                 )}
 
-                {split ? (
+                {el.interactive?.kind === "marquee" ? (
+                    <MarqueePreview settings={el.interactive} preview={effectsPreview || (!dragInfo && !selectedIds.some(id => {
+                        let current = byId.get(id);
+                        const visited = new Set<string>();
+                        while (current && !visited.has(current.id)) {
+                            if (current.id === el.id) return true;
+                            visited.add(current.id);
+                            current = current.parentId ? byId.get(current.parentId) : undefined;
+                        }
+                        return false;
+                    }))}>{children.length ? renderChildren() : el.interactive.items.length ? null : <span className="pointer-events-none p-5 text-[12px] text-ed-muted">Drop elements into Marquee</span>}</MarqueePreview>
+                ) : el.interactive?.kind === "carousel" ? (
+                    <CarouselEditor settings={el.interactive} preview={effectsPreview}
+                        editing={isActiveFrame && selectedIds.some(id => subtreeIds(elements, el.id).has(id))}
+                        controls={children.filter(child => child.carouselControl).map(child => renderNode(child, frame, row, keyPrefix))}
+                        selectedSlide={children.filter(child => !child.carouselControl).findIndex(child => selectedIds.some(id => subtreeIds(elements, child.id).has(id)))}
+                        onSelect={index => setSelectedIds([children.filter(child => !child.carouselControl)[index].id])}
+                        onAddControl={kind => {
+                            const existing = children.find(child => child.carouselControl?.action === (kind === "pagination" ? "group" : kind));
+                            if (existing) { setSelectedIds([existing.id]); return; }
+                            const bounds = document.querySelector<HTMLElement>(`[data-artboard="${CSS.escape(frame.bp)}"] [data-canvas-element="${CSS.escape(el.id)}"]`)?.getBoundingClientRect();
+                            const width = bounds ? bounds.width / scale : style.w;
+                            const height = bounds ? bounds.height / scale : style.h;
+                            const control = createElement(kind === "pagination" ? "Frame" : "Button", { x: kind === "next" ? Math.max(16, width - 60) : 16, y: kind === "pagination" ? Math.max(16, height - 56) : Math.max(16, height / 2 - 20), z: nextZ(elements) });
+                            control.parentId = el.id;
+                            control.name = kind === "pagination" ? "Pagination" : kind === "previous" ? "Previous arrow" : "Next arrow";
+                            control.content = kind === "previous" ? "←" : kind === "next" ? "→" : "";
+                            control.carouselControl = { action: kind === "pagination" ? "group" : kind, slide: 1 };
+                            control.base = { ...control.base, position: "absolute", widthMode: "auto", heightMode: "auto", layout: "stack", direction: "row", gap: 8, padT: 8, padR: 12, padB: 8, padL: 12 };
+                            const added = [control];
+                            if (kind === "pagination") children.filter(child => !child.carouselControl).forEach((_, index) => {
+                                const dot = createElement("Button", { x: 0, y: 0, z: nextZ(elements) + index + 1 });
+                                dot.parentId = control.id; dot.name = `Slide ${index + 1} control`; dot.content = String(index + 1);
+                                dot.carouselControl = { action: "go-to", slide: index + 1, activeColor: "#5402e6", inactiveOpacity: 45 };
+                                dot.base = { ...dot.base, position: "static", widthMode: "auto", heightMode: "auto", padT: 8, padR: 12, padB: 8, padL: 12 };
+                                added.push(dot);
+                            });
+                            setElements(current => [...current, ...added]); setSelectedIds([control.id]);
+                        }}
+                        onAdd={() => {
+                            const slide = createElement("Frame", { x: 0, y: 0, z: nextZ(elements) });
+                            slide.parentId = el.id; slide.name = `Slide ${children.filter(child => !child.carouselControl).length + 1}`;
+                            slide.base = { ...slide.base, position: "static", widthMode: "fill", heightMode: "fill", layout: "stack", direction: "column", padT: 24, padR: 24, padB: 24, padL: 24 };
+                            setElements(current => [...current, slide]); setSelectedIds([slide.id]);
+                        }}>{children.filter(child => !child.carouselControl).map(child => renderNode(child, frame, row, keyPrefix))}</CarouselEditor>
+                ) : split ? (
                     <div style={split.inner}>{renderChildren()}</div>
                 ) : (
                     renderChildren()
                 )}
 
-                {isSelected && !note && (
+                {/* The measurement only while it is being changed: a size that
+                    is always on screen is a number nobody asked for, and most
+                    of the time it reads "auto × auto". */}
+                {isSelected && resizeInfo?.id === el.id && (
                     <span
                         className="pointer-events-none absolute -bottom-1 left-1/2 z-[70] translate-y-full whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-medium text-white shadow-sm"
                         style={{
@@ -2387,26 +3965,14 @@ export default function Editor({
                     </span>
                 )}
 
-                {note && (
-                    <span
-                        className="pointer-events-none absolute -top-5 left-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium"
-                        style={{
-                            background: "var(--ed-accent-soft)",
-                            color: "var(--ed-accent)",
-                        }}
-                    >
-                        Note · not published
-                    </span>
-                )}
-
                 {/* The seam belongs to the boundary below a root-level section,
                     so it is drawn by the section above it and only where one
                     section actually follows another. */}
                 {!componentMode
                     && rootStyle.layout === "stack"
                     && !el.parentId
-                    && !note
-                    && childrenOf(visibleEditorElements, undefined).at(-1)?.id !== el.id && (
+
+                    && lastRootId !== el.id && (
                     <SectionSeam
                         space={style.marginB}
                         scale={scale}
@@ -2430,11 +3996,6 @@ export default function Editor({
                             scale={scale}
                             active={paddingInfo?.id === el.id ? paddingInfo.side : undefined}
                             onMouseDown={(event, side, element) => handlePaddingMouseDown(event, side, element, frame.bp)}
-                        />
-                        <ResizeHandles
-                            element={el}
-                            style={style}
-                            onMouseDown={(event, handle, element) => handleResizeMouseDown(event, handle, element, frame.bp)}
                         />
                     </>
                 )}
@@ -2463,6 +4024,31 @@ export default function Editor({
                 setPageError(error instanceof Error ? error.message : "Could not update the site font.");
             });
         }
+        // Stepping this page out of the site's chrome, or back into it: the
+        // bands are added as the page is read, so the page has to be read
+        // again for the change to show.
+        if ("useSiteHeader" in patch || "useSiteFooter" in patch) {
+            saveNow();
+            window.setTimeout(() => window.location.reload(), 400);
+        }
+        // The header and the footer belong to the site, so naming one is a
+        // site-wide write rather than a page edit; every other page picks it
+        // up the next time it is read.
+        if ((patch.siteHeaderId !== undefined || patch.siteFooterId !== undefined) && adapters?.setSiteLayout) {
+            const headerId = patch.siteHeaderId !== undefined ? patch.siteHeaderId : rootStyle.siteHeaderId;
+            const footerId = patch.siteFooterId !== undefined ? patch.siteFooterId : rootStyle.siteFooterId;
+            void adapters.setSiteLayout(headerId || undefined, footerId || undefined)
+                .then(() => {
+                    // The bands are built as the page is read, so the document
+                    // in hand does not have them yet. Save what is open, then
+                    // read the page again with its new chrome around it.
+                    saveNow();
+                    window.setTimeout(() => window.location.reload(), 400);
+                })
+                .catch((error) => {
+                    setPageError(error instanceof Error ? error.message : "Could not update the site layout.");
+                });
+        }
         if ((patch.pageTransition || patch.pageTransitionDuration !== undefined) && adapters?.setSiteTransition) {
             void adapters.setSiteTransition(
                 patch.pageTransition ?? rootStyle.pageTransition,
@@ -2472,15 +4058,21 @@ export default function Editor({
             });
         }
     };
-    // Grouped by what the author is doing: shaping this page, then reaching
-    // for the things the whole site shares, then the tools that act on it.
-    const projectRailTabs: LeftEditorTab[] = [
-        "Layers",
-        ...(componentMode ? [] : ["Pages" as const]),
-        componentMode ? "Components" : "Assets",
+    /*
+     * The sidebar shows the document itself — its pages and its layers — so
+     * those are not tabs any more. What is left is the set of panels that open
+     * beside it: the named rows, and the quieter icons along the bottom.
+     */
+    const buildToolTabs: LeftEditorTab[] = [
+        "Insert",
         ...(componentMode ? [] : ["Templates" as const]),
+        componentMode ? "Components" : "Assets",
     ];
-    const utilityRailTabs: LeftEditorTab[] = ["Variables", "Data", "History", "AI"];
+    const documentToolTabs: LeftEditorTab[] = [
+        "Data",
+        "History",
+        ...(componentMode ? [] : ["Settings" as const]),
+    ];
     // Luma is the product's own face rather than a glyph from the icon set,
     // so it is wrapped to the shape the rail expects and used like any other.
     const iconForRailTab = (tab: LeftEditorTab) => tab === "Layers"
@@ -2500,8 +4092,31 @@ export default function Editor({
                                         : tab === "Settings"
                                             ? IconSettings
                                             : IconFile;
+    /** Puts the sidebar back on the document lists, address bar included. */
+    /*
+     * "AI" survives as a route so an /ai link still lands on Luma, but there is
+     * no column for it any more: it opens the popup and hands the sidebar back
+     * to the layers.
+     */
+    useEffect(() => {
+        if (leftTab !== "AI") return;
+        setRightSection("Luma");
+        setLeftTab("Layers");
+    }, [leftTab]);
+
+    const closeLeftPanel = () => {
+        const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, "layers");
+        const url = new URL(href, window.location.href);
+        const current = new URL(window.location.href);
+        current.searchParams.delete("tab");
+        url.search = current.search;
+        url.hash = current.hash;
+        window.history.pushState(window.history.state, "", url);
+        setLeftTab("Layers");
+        setIsLeftCollapsed(true);
+    };
     const openLeftPanel = (tab: LeftEditorTab) => {
-        const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, tab.toLowerCase());
+        const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, panelSlug(tab));
         const url = new URL(href, window.location.href);
         const current = new URL(window.location.href);
         current.searchParams.delete("tab");
@@ -2511,7 +4126,25 @@ export default function Editor({
         setLeftTab(tab);
         setIsLeftCollapsed(tab === "Templates");
     };
-    const renderRailTab = (tab: LeftEditorTab) => {
+    const renderRailTab = (tab: LeftEditorTab, horizontal = false) => {
+        const Icon = iconForRailTab(tab);
+        return (
+            <RailTab
+                key={tab}
+                label={tab === "AI" ? "Luma" : tab}
+                icon={<Icon size={15} stroke={1.65} />}
+                active={leftTab === tab && (tab === "Templates" || !isLeftCollapsed)}
+                horizontal={horizontal}
+                onClick={() => openLeftPanel(tab)}
+            />
+        );
+    };
+    /**
+     * A navigation row in the sidebar. Unlike the icon rail it replaces, the
+     * label is always visible: the column is wide enough for it, and a named
+     * destination does not have to be learned from a tooltip.
+     */
+    const renderNavItem = (tab: LeftEditorTab) => {
         const Icon = iconForRailTab(tab);
         const active = leftTab === tab && (tab === "Templates" || !isLeftCollapsed);
         return (
@@ -2519,286 +4152,402 @@ export default function Editor({
                 type="button"
                 key={tab}
                 onClick={() => openLeftPanel(tab)}
-                className={`group relative flex size-8 items-center justify-center rounded-full transition-colors ${active
-                    ? "bg-ed-accent text-white"
-                    : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"
-                }`}
-                title={tab === "AI" ? "Luma" : tab}
-                aria-label={tab === "AI" ? "Luma" : tab}
                 aria-pressed={active}
+                className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-left text-[12.5px] transition-colors ${active
+                    ? "bg-[var(--ed-nav-active)] font-medium text-[var(--ed-nav-text)]"
+                    : "font-normal text-[var(--ed-nav-muted)] hover:bg-[var(--ed-nav-hover)] hover:text-[var(--ed-nav-text)]"
+                }`}
             >
-                <Icon size={15} stroke={1.65} />
-                <span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{tab === "AI" ? "Luma" : tab}</span>
+                <Icon size={16} stroke={1.7} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{tab === "AI" ? "Luma" : tab}</span>
             </button>
         );
     };
     const ActiveLeftIcon = iconForRailTab(leftTab);
+    /** Whether a panel has taken the sidebar over from the document lists. */
+    const panelOpen = leftTab === "Settings" || leftTab === "Templates" || !isLeftCollapsed;
 
-    return (
-        <div
-            className="pg-editor flex h-screen w-full flex-col overflow-hidden bg-ed-surface font-sans text-xs text-ed-text selection:bg-blue-500/30"
-            data-ed-theme={chromeTheme === "light" ? "light" : undefined}
-        >
-            <header className="relative z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-ed-border bg-ed-surface/95 px-2.5 backdrop-blur-xl">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    <button type="button" onClick={() => setIsLeftCollapsed((current) => !current)} title="Toggle sidebar" className="w-fit select-none rounded-full px-2 py-1 text-[12px] font-semibold tracking-[-.02em] text-ed-text transition-colors hover:bg-ed-field">Pagiera</button>
-                    <div className="h-5 w-px bg-ed-border" />
-                    <div className="flex items-center gap-0.5 rounded-full bg-ed-subtle p-0.5">
-                        <button
-                            type="button"
-                            aria-label={effectsPreview ? "Stop interaction preview" : "Preview interactions"}
-                            aria-pressed={effectsPreview}
-                            onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }}
-                            className={`group/preview relative flex size-7 items-center justify-center rounded-full transition-colors ${effectsPreview ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
-                        >
-                            <IconPlayerPlay size={13} stroke={1.7} />
-                            <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[100] w-max translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/preview:translate-y-0 group-hover/preview:opacity-100 group-focus-visible/preview:translate-y-0 group-focus-visible/preview:opacity-100">{effectsPreview ? "Stop interaction preview" : "Preview hover, press and actions"}</span>
-                        </button>
-                        <button
-                            type="button"
-                            aria-label={stickyPreview ? "Disable sticky preview" : "Preview sticky positioning"}
-                            aria-pressed={stickyPreview}
-                            onClick={() => setStickyPreview((value) => !value)}
-                            className={`group/sticky relative flex size-7 items-center justify-center rounded-full transition-colors ${stickyPreview ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
-                        >
-                            {stickyPreview ? <IconPinFilled size={13} stroke={1.7} /> : <IconPin size={13} stroke={1.7} />}
-                            <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[100] w-max translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/sticky:translate-y-0 group-hover/sticky:opacity-100 group-focus-visible/sticky:translate-y-0 group-focus-visible/sticky:opacity-100">{stickyPreview ? "Disable sticky preview" : "Preview sticky positioning"}</span>
-                        </button>
-                    </div>
-                </div>
 
-                <div className="flex h-8 items-center gap-1 rounded-full bg-ed-subtle p-0.5">
-                    {leftTab === "Templates" ? (
-                        <div className="flex items-center gap-2 px-3 text-[10px] font-semibold text-ed-text"><IconTemplate size={13} className="text-ed-accent" /><span>Template marketplace</span><span className="rounded-full bg-ed-field px-2 py-0.5 text-[8px] font-medium text-ed-faint">Discover</span></div>
-                    ) : <>
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-ed-muted">
-                        {componentMode && <><Select value={activeComponentMaster?.id} onValueChange={(id) => { setActiveComponentMasterId(id); setSelectedIds([id]); }}><SelectTrigger aria-label="Variant"><SelectValue placeholder="Select variant" /></SelectTrigger><SelectContent>{activeComponentVariants.map((master) => <SelectItem key={master.id} value={master.id}>{master.variant ?? "Default"}</SelectItem>)}</SelectContent></Select><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} title="Add variant" className="flex size-6 items-center justify-center rounded-full text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30"><IconPlus size={12} /></button></>}
-                        <div className="flex items-center gap-0.5">
-                            <button
-                                type="button"
-                                title="Zoom out (Ctrl -)"
-                                onClick={() => stepZoom(-1)}
-                                className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text"
-                            >
-                                <IconMinus size={12} />
-                            </button>
-                            <button
-                                type="button"
-                                title="Reset zoom (Ctrl 0)"
-                                onClick={() => zoomTo(100)}
-                                className="w-9 select-none rounded-full text-center text-[10px] tabular-nums transition-colors hover:bg-ed-field-hover hover:text-ed-text"
-                            >
-                                {zoom}%
-                            </button>
-                            <button
-                                type="button"
-                                title="Zoom in (Ctrl +)"
-                                onClick={() => stepZoom(1)}
-                                className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text"
-                            >
-                                <IconPlus size={12} />
-                            </button>
-                        </div>
-                    </div>
+    const toolbarLeft = (
+        <>
+        <WorkspaceMenu
+            label={leftTab === "Settings" ? "Settings" : leftTab === "Templates" ? "Templates" : componentMode ? "Components" : "Canvas"}
+            mark={<PagieraMark size={17} className="shrink-0 rounded-[4px]" />}
+            items={([...railPrimary, ...railSecondary, ...(!componentMode ? ["Settings" as LeftEditorTab] : [])])
+                .filter((tab, index, all) => tab !== "Insert" && all.indexOf(tab) === index)
+                .map(tab => {
+                    const Icon = iconForRailTab(tab);
+                    return {
+                        id: tab, label: tab === "AI" ? "Luma" : tab,
+                        icon: <Icon size={14} stroke={1.7} />,
+                        group: ["Layers", "Pages", "Insert", "Assets", "Components"].includes(tab) ? "Design" : "Workspace",
+                        active: tab === leftTab,
+                    };
+                })}
+            onSelect={id => openLeftPanel(id as LeftEditorTab)}
+        />
+        <InsertMenu onInsert={insertElement} onInteractive={kind => {
+            const interactive = normalizeInteractive({ kind })!;
+            interactive.items = [];
+            const base = createElement("Frame", { x: 32, y: 32, z: 0 }).base;
+            insertElement("Frame", {
+                name: kind === "carousel" ? "Carousel" : "Marquee",
+                interactive, code: interactiveDocument(interactive), codeLanguage: "tsx",
+                base: { ...base, widthMode: "fill", heightMode: "fixed", w: 480, h: kind === "carousel" ? 320 : 140, padT: 0, padR: 0, padB: 0, padL: 0, borderW: 0, radius: 12, overflow: "hidden" },
+            });
+        }} onShader={id => {
+            const preset = SHADER_PRESETS.find(item => item.id === id);
+            const base = createElement("Frame", { x: 32, y: 32, z: 0 }).base;
+            insertElement("Frame", {
+                name: `Shader · ${preset?.name ?? id}`,
+                code: shaderDocument(id), codeLanguage: "tsx",
+                shader: { preset: id, colors: [...(preset ?? SHADER_PRESETS[0]).colors], speed: 1, scale: 1 },
+                base: { ...base, widthMode: "fill", heightMode: "fixed", w: 480, h: 320, padT: 0, padR: 0, padB: 0, padL: 0, borderW: 0, radius: 0, overflow: "hidden" },
+            });
+        }} />
+        </>
+    );
 
-                    <div className="flex items-center gap-0.5 border-l border-ed-border pl-1 text-ed-muted">
-                        <button
-                            type="button"
-                            title="Undo (Ctrl Z)"
-                            onClick={undo}
-                            disabled={!canUndo}
-                            className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-ed-muted"
-                        >
-                            <IconArrowBackUp size={14} />
-                        </button>
-                        <button
-                            type="button"
-                            title="Redo (Ctrl Shift Z)"
-                            onClick={redo}
-                            disabled={!canRedo}
-                            className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-ed-muted"
-                        >
-                            <IconArrowForwardUp size={14} />
-                        </button>
-                    </div>
-                    </>}
-                </div>
+    const workspaceStorageKey = "pagiera:workspace-tabs:" + (adapters?.editorHref ?? defaultEditorHref)(page.id, "layers").replace(page.id, ":page");
+    const workspaceComponent = leftTab === "Components" && componentMode ? activeComponentMaster : undefined;
+    const workspaceKey = [page.id, leftTab, leftTab === "Settings" ? settingsSection : "", workspaceComponent?.id ?? ""].join(":");
+    const workspace = useWorkspaceTabs(workspaceStorageKey, {
+        key: workspaceKey, pageId: page.id, panel: leftTab,
+        section: leftTab === "Settings" ? settingsSection : undefined,
+        componentId: workspaceComponent?.id,
+        label: workspaceComponent ? workspaceComponent.name || "Component" : leftTab === "Layers" ? page.name : leftTab === "Settings" ? (settingsSection === "ai" ? "AI settings" : settingsSection === "general" ? "Settings" : settingsSection === "variables" ? "Variables" : "Import & export") : leftTab,
+    }, tabsRestored && leftTab !== "Variables" && leftTab !== "AI");
 
-                <div className="flex min-w-0 items-center justify-end gap-1">
-                    {leftTab === "Templates" ? <>
-                        <span className="hidden text-[9px] text-ed-faint lg:block">Curated responsive starting points</span>
-                        <button type="button" onClick={() => openLeftPanel("Layers")} className="h-7 select-none rounded-full bg-ed-field px-3 text-[9px] font-semibold text-ed-text transition-colors hover:bg-ed-field-hover">Back to canvas</button>
-                        <button type="button" title={chromeTheme === "dark" ? "Switch to light editor" : "Switch to dark editor"} aria-label="Toggle editor theme" onClick={toggleChromeTheme} className="flex size-7 items-center justify-center rounded-full text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text">{chromeTheme === "dark" ? <IconSun size={14} /> : <IconMoon size={14} />}</button>
-                    </> : <>
-                    <span className="mr-1 hidden lg:block"><SaveIndicator status={saveStatus} error={saveError} /></span>
-                    {componentMode ? (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setRootStyle({ documentMode: "page" });
-                                setSelectedIds([]);
-                                setEditingId(null);
-                                openLeftPanel("Pages");
-                            }}
-                            className="h-7 select-none rounded-full bg-ed-field px-3 text-[10px] font-semibold text-ed-text transition-colors hover:bg-ed-field-hover"
-                        >
-                            Back to pages
-                        </button>
-                    ) : <>
-                    {page.publishedAt && (
-                        <a
-                            href={(adapters?.publishedHref ?? defaultPublishedHref)(page.slug)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hidden size-7 items-center justify-center rounded-full text-emerald-500 transition-colors hover:bg-emerald-500/10 hover:text-emerald-400 xl:flex"
-                            title={(adapters?.publishedHref ?? defaultPublishedHref)(page.slug)}
-                        >
-                            <IconWorld size={14} />
-                        </a>
-                    )}
-                    <button
-                        type="button"
-                        onClick={publish}
-                        disabled={isPending || isDirty}
-                        title={isDirty ? "Waiting for the draft to save…" : undefined}
-                        className="h-7 select-none rounded-full bg-ed-accent px-3 text-[10px] font-semibold text-white transition-colors hover:bg-ed-accent/90 disabled:opacity-50"
-                    >
-                        {isPending ? "Working…" : page.publishedAt ? "Republish" : "Publish"}
-                    </button>
-                    {page.publishedAt && (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                runPageAction(() => (adapters?.unpublishPage ?? unavailable)(page.id, page.slug))
-                            }
-                            className="hidden h-7 select-none rounded-full px-2.5 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text xl:block"
-                        >
-                            Unpublish
-                        </button>
-                    )}
-                    </>}
-                    <button
-                        type="button"
-                        title={chromeTheme === "dark" ? "Switch to light editor" : "Switch to dark editor"}
-                        aria-label="Toggle editor theme"
-                        onClick={toggleChromeTheme}
-                        className="flex size-7 items-center justify-center rounded-full text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
-                    >
-                        {chromeTheme === "dark" ? <IconSun size={14} /> : <IconMoon size={14} />}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setIsRightCollapsed((c) => !c)}
-                        disabled={!hasElementSelection}
-                        title={hasElementSelection ? "Toggle properties panel" : "Select an element to open properties"}
-                        aria-label="Toggle properties panel"
-                        className="flex size-7 items-center justify-center rounded-full text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent"
-                    >
-                        {isRightCollapsed ? (
-                            <IconLayoutSidebarLeftCollapse size={15} />
-                        ) : (
-                            <IconLayoutSidebarRightCollapse size={15} />
-                        )}
-                    </button>
-                    </>}
-                </div>
-            </header>
+    // A page navigation can remount the editor. Restore its exact destination
+    // after the adapter has loaded the document, not before it finishes.
+    useEffect(() => {
+        if (!tabsRestored) return;
+        try {
+            const pending = JSON.parse(sessionStorage.getItem(workspaceStorageKey + ":pending") ?? "null") as WorkspaceTab | null;
+            if (!pending || pending.pageId !== page.id) return;
+            sessionStorage.removeItem(workspaceStorageKey + ":pending");
+            if (!isEditorTab(pending.panel, LEFT_EDITOR_TABS)) return;
+            setLeftTab(pending.panel);
+            setIsLeftCollapsed(false);
+            if (pending.section && ["general", "variables", "transfer", "ai"].includes(pending.section)) setSettingsSection(pending.section);
+            if (pending.componentId && componentMasters.some(master => master.id === pending.componentId)) {
+                setRootStyle({ documentMode: "component" });
+                setActiveComponentMasterId(pending.componentId);
+                setSelectedIds([pending.componentId]);
+            } else if (pending.panel !== "Components" && componentMode) {
+                setRootStyle({ documentMode: "page" });
+            }
+        } catch { /* Invalid or unavailable session storage cannot block navigation. */ }
+    }, [page.id, tabsRestored, workspaceStorageKey]);
 
-            {leftTab !== "Templates" && (
-                <nav aria-label="Open documents" className="z-20 flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-ed-border bg-ed-surface scrollbar-none">
-                    <button
-                        type="button"
-                        aria-current={!componentMode ? "page" : undefined}
-                        onClick={() => {
-                            setRootStyle({ documentMode: "page" });
-                            setSelectedIds([]);
-                            setEditingId(null);
-                            setLeftTab("Layers");
-                        }}
-                        className={`relative flex h-9 min-w-[144px] max-w-[220px] items-center gap-2 border-r border-ed-border px-3 text-left text-[11px] transition-colors ${!componentMode ? "bg-ed-canvas font-medium text-ed-text" : "text-ed-muted hover:bg-ed-subtle hover:text-ed-text"}`}
-                    >
-                        <IconFile size={12} className="shrink-0" />
-                        <span className="min-w-0 flex-1 truncate">{page.name}</span>
-                        {!componentMode && <span className="absolute inset-x-0 top-0 h-0.5 bg-ed-accent" />}
-                    </button>
-                    {openComponentTabIds.map((id) => {
-                        const master = componentMasters.find((candidate) => candidate.id === id);
-                        if (!master) return null;
-                        const active = componentMode && activeComponentMaster?.id === id;
-                        return (
-                            <div key={id} className={`group/document-tab relative flex h-9 min-w-[144px] max-w-[220px] items-stretch border-r border-ed-border transition-colors ${active ? "bg-ed-canvas text-ed-text" : "text-ed-muted hover:bg-ed-subtle hover:text-ed-text"}`}>
-                                <button
-                                    type="button"
-                                    aria-current={active ? "page" : undefined}
-                                    onClick={() => {
-                                        setRootStyle({ documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
-                                        setActiveComponentMasterId(id);
-                                        setSelectedIds([id]);
-                                        setBreakpoint("desktop");
-                                        setLeftTab("Components");
-                                    }}
-                                    className="flex min-w-0 flex-1 items-center gap-2 px-3 text-left text-[11px]"
-                                >
-                                    <IconComponents size={12} className="shrink-0" />
-                                    <span className="min-w-0 flex-1 truncate">{master.name?.trim() || "Untitled component"}</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    aria-label={`Close ${master.name?.trim() || "component"}`}
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        setOpenComponentTabIds((current) => current.filter((tabId) => tabId !== id));
-                                        if (active) {
-                                            setRootStyle({ documentMode: "page" });
-                                            setSelectedIds([]);
-                                            setLeftTab("Layers");
-                                        }
-                                    }}
-                                    className="mr-1 flex w-7 shrink-0 items-center justify-center text-ed-faint opacity-0 transition-colors hover:bg-ed-field-hover hover:text-ed-text focus:opacity-100 group-hover/document-tab:opacity-100"
-                                >
-                                    <IconX size={11} />
-                                </button>
-                                {active && <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-ed-accent" />}
-                            </div>
-                        );
-                    })}
-                    <button type="button" aria-label="Open components" onClick={() => openLeftPanel(componentMode ? "Components" : "Assets")} className="flex w-9 shrink-0 items-center justify-center border-r border-ed-border text-ed-faint transition-colors hover:bg-ed-field-hover hover:text-ed-text"><IconPlus size={13} /></button>
-                </nav>
+    const openWorkspaceTab = (tab: WorkspaceTab) => {
+        if (!isEditorTab(tab.panel, LEFT_EDITOR_TABS)) return;
+        if (tab.pageId !== page.id) {
+            if (!pages.some(entry => entry.id === tab.pageId)) { workspace.close(tab.key); return; }
+            try { sessionStorage.setItem(workspaceStorageKey + ":pending", JSON.stringify(tab)); } catch { /* Fall back to the page's default panel. */ }
+            void navigateEditorPage(tab.pageId);
+            return;
+        }
+        if (tab.componentId) {
+            if (!componentMasters.some(master => master.id === tab.componentId)) { workspace.close(tab.key); return; }
+            setRootStyle({ documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
+            setActiveComponentMasterId(tab.componentId);
+            setSelectedIds([tab.componentId]);
+            setBreakpoint("desktop");
+        } else if (componentMode) {
+            setRootStyle({ documentMode: "page" });
+            setSelectedIds([]);
+            setEditingId(null);
+        }
+        if (tab.section) setSettingsSection(tab.section);
+        openLeftPanel(tab.panel);
+    };
+    const documentTabs = <WorkspaceTabs tabs={workspace.tabs} activeKey={workspaceKey} onOpen={openWorkspaceTab} onClose={tab => {
+        if (tab.key === workspaceKey) {
+            const index = workspace.tabs.findIndex(item => item.key === tab.key);
+            const next = workspace.tabs[index - 1] ?? workspace.tabs[index + 1];
+            if (!next) return;
+            openWorkspaceTab(next);
+        }
+        workspace.close(tab.key);
+    }} />;
+
+    const toolbarCenter = (
+        <>
+            {documentTabs}
+            <span className="mx-1 h-4 w-px shrink-0 bg-white/10" />
+            {leftTab !== "Templates" && !componentMode && (
+                // What a drag on the empty canvas does. Selecting and
+                // drawing both start the same way — press and pull — so
+                // which one you get has to be a visible, held state
+                // rather than a modifier you have to remember.
+                <SegmentedBar className="mr-1">
+                    {([
+                        { tool: "select" as const, icon: IconPointer, label: "Select  ·  V" },
+                        { tool: "frame" as const, icon: IconFrame, label: "Draw a frame  ·  F" },
+                    ]).map(({ tool, icon: Icon, label }) => (
+                        <ToolButton
+                            key={tool}
+                            tone="segment"
+                            label={label}
+                            active={canvasTool === tool}
+                            onClick={() => setCanvasTool(tool)}
+                        >
+                            <Icon size={14} stroke={1.7} />
+                        </ToolButton>
+                    ))}
+                </SegmentedBar>
             )}
+            {leftTab === "Templates" ? (
+                <div className="flex items-center gap-2 px-3 text-[10px] font-semibold text-ed-text"><IconTemplate size={13} className="text-ed-accent" /><span>Template marketplace</span><span className="rounded-md bg-ed-field px-2 py-0.5 text-[8px] font-medium text-ed-faint">Discover</span></div>
+            ) : <>
+                {/* Which artboard the edits land on. Every breakpoint is
+                    on the canvas at once, so this selects rather than
+                    resizes: it is the width you are working at. */}
+                {!componentMode && (
+                    <>
+                        <ToolGroup>
+                            {breakpointDefs.map((definition) => {
+                                const DeviceIcon = definition.width >= 1024
+                                    ? IconDeviceDesktop
+                                    : definition.width >= 600
+                                        ? IconDeviceTablet
+                                        : IconDeviceMobile;
+                                const active = definition.id === breakpoint;
+                                return (
+                                    <ToolButton
+                                        key={definition.id}
+                                        label={`${definition.name} · ${definition.width}px`}
+                                        active={active}
+                                        onClick={() => setBreakpoint(definition.id)}
+                                        className={`h-8 w-9 ${active ? "bg-transparent text-ed-accent" : ""}`}
+                                    >
+                                        <DeviceIcon size={15} stroke={1.7} />
+                                        {/* The artboard you are editing, underlined the
+                                            way a chosen tab is. */}
+                                        {active && <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-ed-accent" />}
+                                    </ToolButton>
+                                );
+                            })}
+                        </ToolGroup>
+                        <Readout>{selectedBreakpoint.width} PX</Readout>
+                        <ToolDivider />
+                    </>
+                )}
+                {!componentMode && (
+                    <ToolButton
+                        label={gridOverlay ? "Hide the column grid" : "Show a column grid"}
+                        active={gridOverlay}
+                        onClick={() => setGridOverlay((current) => !current)}
+                    >
+                        <IconLayoutColumns size={15} stroke={1.7} />
+                    </ToolButton>
+                )}
+                <button
+                    type="button"
+                    aria-label={effectsPreview ? "Stop interaction preview" : "Preview interactions"}
+                    aria-pressed={effectsPreview}
+                    onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }}
+                    className={`group/preview relative flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium transition-colors ${effectsPreview ? "border-ed-accent bg-[var(--ed-accent-soft)] text-ed-accent" : "border-ed-border text-ed-muted hover:bg-ed-field hover:text-ed-text"}`}
+                >
+                    <IconPlayerPlay size={13} stroke={1.7} />
+                    <span>Preview</span>
+                    <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[100] w-max translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/preview:translate-y-0 group-hover/preview:opacity-100 group-focus-visible/preview:translate-y-0 group-focus-visible/preview:opacity-100">{effectsPreview ? "Stop interaction preview" : "Preview hover, press and actions"}</span>
+                </button>
+                <ToolButton
+                    tone="solid"
+                    tooltip="below"
+                    label={stickyPreview ? "Disable sticky preview" : "Preview sticky positioning"}
+                    active={stickyPreview}
+                    onClick={() => setStickyPreview((value) => !value)}
+                >
+                    {stickyPreview ? <IconPinFilled size={13} stroke={1.7} /> : <IconPin size={13} stroke={1.7} />}
+                </ToolButton>
+            <div className="mx-0.5 h-4 w-px bg-ed-border" />
+            <div className="flex items-center gap-1 text-[10px] font-medium text-ed-muted">
+                {componentMode && <><Select value={activeComponentMaster?.id} onValueChange={(id) => { setActiveComponentMasterId(id); setSelectedIds([id]); }}><SelectTrigger aria-label="Variant"><SelectValue placeholder="Select variant" /></SelectTrigger><SelectContent>{activeComponentVariants.map((master) => <SelectItem key={master.id} value={master.id}>{master.variant ?? "Default"}</SelectItem>)}</SelectContent></Select><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} title="Add variant" className="flex size-6 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30"><IconPlus size={12} /></button></>}
+                <ToolGroup>
+                    <ToolButton size="sm" label="Zoom out (Ctrl -)" onClick={() => stepZoom(-1)}>
+                        <IconMinus size={12} />
+                    </ToolButton>
+                    <ToolButton
+                        size="sm"
+                        label="Reset zoom (Ctrl 0)"
+                        onClick={() => zoomTo(100)}
+                        className="w-9 select-none text-[10px] tabular-nums"
+                    >
+                        {zoom}%
+                    </ToolButton>
+                    <ToolButton size="sm" label="Zoom in (Ctrl +)" onClick={() => stepZoom(1)}>
+                        <IconPlus size={12} />
+                    </ToolButton>
+                </ToolGroup>
+            </div>
 
-            <div className="flex flex-1 overflow-hidden bg-ed-canvas">
-                {/* Thin Toolbar */}
-                <aside className="z-20 flex w-12 shrink-0 flex-col items-center border-r border-ed-border bg-ed-surface p-1.5">
-                    <div className="flex w-full items-center justify-center">
-                        <button type="button" title="Insert elements (A)" aria-label="Insert elements" aria-pressed={leftTab === "Insert" && !isLeftCollapsed} className={`group relative flex size-8 items-center justify-center rounded-full transition-colors ${leftTab === "Insert" && !isLeftCollapsed ? "bg-ed-accent text-white" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`} onClick={() => { setLeftTab("Insert"); setIsLeftCollapsed(false); }}><IconPlus size={14} stroke={1.8} /><span className="pointer-events-none absolute left-[calc(100%+10px)] z-[100] whitespace-nowrap rounded-full bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">Insert · A</span></button>
-                    </div>
+            <ToolGroup className="border-l border-ed-border pl-1">
+                <ToolButton size="sm" label="Undo (Ctrl Z)" onClick={undo} disabled={!canUndo}>
+                    <IconArrowBackUp size={14} />
+                </ToolButton>
+                <ToolButton size="sm" label="Redo (Ctrl Shift Z)" onClick={redo} disabled={!canRedo}>
+                    <IconArrowForwardUp size={14} />
+                </ToolButton>
+            </ToolGroup>
+            </>}
+        </>
+    );
 
-                    <div className="my-1.5 h-px w-5 bg-ed-border" />
-                    <nav aria-label="Project panels" className="flex w-full flex-col items-center gap-1 rounded-full bg-ed-subtle p-0.5">{projectRailTabs.map(renderRailTab)}</nav>
-                    <div className="my-1.5 h-px w-5 bg-ed-border" />
-                    <nav aria-label="Editor tools" className="flex w-full flex-col items-center gap-1 rounded-full bg-ed-subtle p-0.5">{utilityRailTabs.map(renderRailTab)}</nav>
+    const toolbarRight = (
+        <>
+            {leftTab === "Templates" ? <>
+                <span className="hidden text-[9px] text-ed-faint lg:block">Curated responsive starting points</span>
+                <ChromeButton onClick={() => openLeftPanel("Layers")}>Back to canvas</ChromeButton>
+            </> : <>
+            <span className="hidden lg:block"><SaveIndicator status={saveStatus} error={saveError} /></span>
+            <div className="mx-0.5 hidden h-4 w-px bg-ed-border lg:block" />
+            {componentMode ? (
+                <ChromeButton
+                    onClick={() => {
+                        setRootStyle({ documentMode: "page" });
+                        setSelectedIds([]);
+                        setEditingId(null);
+                        openLeftPanel("Layers");
+                    }}
+                >
+                    Back to pages
+                </ChromeButton>
+            ) : <>
+            <div className="relative flex items-stretch">
+                <button
+                    type="button"
+                    onClick={publish}
+                    disabled={isPending || isDirty}
+                    title={isDirty ? "Waiting for the draft to save…" : undefined}
+                    className={`h-8 select-none bg-ed-accent px-4 text-[11px] font-semibold text-white transition-colors hover:bg-[var(--ed-accent-hover)] disabled:opacity-50 ${page.publishedAt ? "rounded-l-lg" : "rounded-lg"}`}
+                >
+                    {isPending ? "Working…" : page.publishedAt ? "Republish" : "Publish"}
+                </button>
+                {page.publishedAt && (
+                    <>
+                        <span className="w-px bg-white/20" />
+                        <button
+                            type="button"
+                            aria-label="More publish actions"
+                            aria-haspopup="menu"
+                            aria-expanded={publishMenuOpen}
+                            onClick={() => setPublishMenuOpen((current) => !current)}
+                            className="flex h-8 items-center rounded-r-lg bg-ed-accent px-1.5 text-white transition-colors hover:bg-[var(--ed-accent-hover)]"
+                        >
+                            <IconChevronDown size={14} />
+                        </button>
+                    </>
+                )}
+                <AnimatePresence>{publishMenuOpen && (
+                    <>
+                        {/* biome-ignore lint/a11y/noStaticElementInteractions: dismiss surface for a menu */}
+                        <div className="fixed inset-0 z-[95]" onMouseDown={() => setPublishMenuOpen(false)} />
+                        <Menu className="absolute right-0 top-[calc(100%+6px)] z-[96] w-[196px]">
+                            <MenuLink
+                                href={(adapters?.publishedHref ?? defaultPublishedHref)(page.slug)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                icon={<IconWorld size={14} />}
+                                label="View live site"
+                                onClick={() => setPublishMenuOpen(false)}
+                            />
+                            <MenuItem
+                                icon={<IconEyeOff size={14} />}
+                                label="Unpublish"
+                                onClick={() => {
+                                    setPublishMenuOpen(false);
+                                    runPageAction(() => (adapters?.unpublishPage ?? unavailable)(page.id, page.slug));
+                                }}
+                            />
+                        </Menu>
+                    </>
+                )}</AnimatePresence>
+            </div>
+            </>}
+            </>}
+        </>
+    );
 
-                    {!componentMode && <nav aria-label="Site settings" className="mt-auto flex w-full justify-center rounded-full bg-ed-subtle p-0.5">{renderRailTab("Settings")}</nav>}
+    const rail = (
+        <>
+                {railPrimary.map((tab) => renderRailTab(tab))}
+                <span className="my-1 h-px w-5 bg-[var(--ed-nav-border)]" />
+                {railSecondary.map((tab) => renderRailTab(tab))}
+                {!componentMode && (
+                    <>
+                        <span className="mt-auto h-px w-5 bg-[var(--ed-nav-border)]" />
+                        {renderRailTab("Settings")}
+                    </>
+                )}
+        </>
+    );
 
-                </aside>
-
-                {/* Left Panel */}
-                <AnimatePresence initial={false}>
-                {!isLeftCollapsed && leftTab !== "Templates" && (
-                    <motion.aside initial={{ width: 0, opacity: 0, x: -12 }} animate={{ width: leftTab === "AI" ? 380 : 292, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: -12 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="relative z-10 flex shrink-0 flex-col overflow-hidden border-r border-ed-border bg-ed-surface/95 backdrop-blur-xl">
-                        <div className="flex h-12 shrink-0 items-center justify-between border-b border-ed-border px-3.5">
-                            <span className="flex min-w-0 items-center gap-2.5"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ed-accent-soft text-ed-accent"><ActiveLeftIcon size={13} stroke={1.7} /></span><span className="truncate text-[11px] font-semibold text-ed-text">{leftTab === "AI" ? (aiChatTitle ?? "Luma") : leftTab}</span></span>
-                            <button type="button" onClick={() => setIsLeftCollapsed(true)} className="rounded-full p-1 text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-muted">
-                                <IconX size={16} />
-                            </button>
+    const panel = (
+        <>
+                {leftTab !== "Settings" && leftTab !== "Templates" && <div className="flex h-11 shrink-0 items-stretch gap-5 border-b border-white/[0.06] px-3">
+                    {(componentMode
+                        ? (["Layers", "Components", "Insert"] as LeftEditorTab[])
+                        : (["Pages", "Layers", "Assets"] as LeftEditorTab[])
+                    ).map((tab) => (
+                        <button
+                            key={tab}
+                            type="button"
+                            onClick={() => openLeftPanel(tab)}
+                            aria-pressed={leftTab === tab}
+                            className={`relative flex items-center justify-center text-[12px] font-medium transition-colors ${leftTab === tab
+                                ? "text-[var(--ed-nav-text)]"
+                                : "text-[var(--ed-nav-muted)] hover:text-[var(--ed-nav-text)]"
+                            }`}
+                        >
+                            {tab}
+                            {leftTab === tab && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#a17aff]" />}
+                        </button>
+                    ))}
+                </div>}
+                {(leftTab === "Settings" || leftTab === "Templates") && <PanelHeader title={leftTab} />}
+                {leftTab === "Layers" && (
+                    <div className="flex h-9 shrink-0 items-center justify-between px-3">
+                        <span className="text-[11px] font-medium text-ed-muted">Document</span>
+                        <div className="flex items-center gap-0.5">
+                            <PanelAction
+                                label={layersAllCollapsed ? "Expand every layer" : "Collapse every layer"}
+                                disabled={collapsibleLayerIds.length === 0}
+                                onClick={() => setCollapsedLayerIds(
+                                    layersAllCollapsed ? new Set() : new Set(collapsibleLayerIds),
+                                )}
+                            >
+                                {layersAllCollapsed ? <IconChevronDown size={13} /> : <IconChevronUp size={13} />}
+                            </PanelAction>
+                            <PanelAction label="Insert a layer" onClick={() => openLeftPanel("Insert")}>
+                                <IconPlus size={14} />
+                            </PanelAction>
                         </div>
+                    </div>
+                )}
 
+                {/* One search over the two lists the sidebar holds. It goes away
+                    with them: a search box above a panel it cannot filter is a
+                    box that looks broken. */}
+                {(leftTab === "Layers" || leftTab === "Pages" || leftTab === "Components") && (
+                <PanelSearch
+                    icon={<IconSearch size={13} />}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={leftTab === "Pages" ? "Search pages…" : "Search layers…"}
+                />
+                )}
+
+                {/* Whatever the rail points at. */}
+                    <div className="flex min-h-0 flex-1 flex-col">
                         {/* The Insert views are chosen from the panel shell, not
                             from inside the scrolling list: a scroll container
                             reserves room for its scrollbar, which left the strip
                             ten pixels narrower than the rows above it. */}
                         {leftTab === "Insert" && (
-                            <div className="grid shrink-0 grid-cols-3 gap-0.5 border-b border-ed-border bg-ed-surface p-1.5">
+                            <div className="mx-2 mt-2 grid shrink-0 grid-cols-3 gap-0.5 rounded-lg bg-ed-subtle p-0.5">
                                 {INSERT_VIEWS.map((view) => (
                                     <button
                                         type="button"
@@ -2812,7 +4561,7 @@ export default function Editor({
                                             leftPanelScrollRef.current?.scrollTo({ top: 0 });
                                         }}
                                         aria-pressed={insertView === view}
-                                        className={`rounded-lg py-1.5 text-[10px] font-medium transition-colors ${insertView === view ? "bg-ed-field text-ed-text" : "text-ed-muted hover:bg-ed-field/60 hover:text-ed-text"}`}
+                                        className={`rounded-[5px] py-1.5 text-[10px] font-medium transition-colors ${insertView === view ? "bg-ed-field-hover text-ed-text shadow-[0_1px_2px_rgb(0_0_0/0.35)]" : "text-ed-muted hover:bg-ed-field/60 hover:text-ed-text"}`}
                                     >
                                         {view}
                                     </button>
@@ -2822,9 +4571,9 @@ export default function Editor({
 
                         {/* Only the lists that filter by name get a search box;
                             the Components view carries its own. */}
-                        {((leftTab === "Insert" && insertView !== "Components") || leftTab === "Layers") && (
-                            <div className="border-b border-ed-border p-2.5">
-                                <div className="flex items-center gap-2 rounded-lg bg-ed-field px-2.5 py-1.5 transition-colors focus-within:bg-ed-field-hover">
+                        {leftTab === "Insert" && insertView !== "Components" && (
+                            <div className="border-b border-ed-border px-2 py-1.5">
+                                <div className="flex h-8 items-center gap-2 rounded-lg bg-ed-field px-2.5 transition-colors hover:border-[var(--ed-border-strong)] focus-within:border-ed-accent focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--ed-accent)]/35">
                                     <IconSearch size={14} className="text-ed-faint" />
                                     <input
                                         type="text"
@@ -2845,32 +4594,68 @@ export default function Editor({
                                 : "custom-scrollbar flex-1 overflow-y-auto"}
                         >
                             {leftTab === "Layers" ? (
-                                <LayersPanel
-                                    elements={visibleEditorElements}
-                                    breakpoint={breakpoint}
-                                    componentMode={componentMode}
-                                    search={search}
-                                    selectedIds={selectedIds}
-                                    onSelect={select}
-                                    onToggleHidden={(id) => {
-                                        const el = byId.get(id);
-                                        if (el) {
-                                            patchStyle([id], {
-                                                hidden: !resolveStyle(el, breakpoint, cascade).hidden,
-                                            });
-                                        }
-                                    }}
-                                    onToggleLocked={(id) => {
-                                        const el = byId.get(id);
-                                        if (el) patchProps(id, { locked: !el.locked });
-                                    }}
-                                    onReorder={(id, direction) =>
-                                        setElements((els) => reorder(els, id, direction))
-                                    }
-                                    onDelete={(id) => deleteElements([id])}
-                                    onReparent={doReparent}
-                                    onOpenComponent={openComponentEditor}
-                                />
+                        <LayersPanel
+                            elements={visibleEditorElements}
+                            breakpoint={breakpoint}
+                            componentMode={componentMode}
+                            // The component canvas has masters instead of
+                            // artboards, so the widths are a page-only grouping.
+                            breakpointGroups={componentMode ? [] : breakpointDefs.map((item) => ({
+                                id: item.id,
+                                name: item.name,
+                                hint: rangeChip(item.id),
+                                isBase: item.id === cascade.baseId,
+                            }))}
+                            onBreakpointChange={setBreakpoint}
+                            search={search}
+                            selectedIds={selectedIds}
+                            onSelect={select}
+                            onToggleHidden={(id) => {
+                                const el = byId.get(id);
+                                if (el) {
+                                    patchStyle([id], {
+                                        hidden: !resolveStyle(el, styleBreakpoint(el), cascade).hidden,
+                                    });
+                                }
+                            }}
+                            onToggleLocked={(id) => {
+                                const el = byId.get(id);
+                                if (el) patchProps(id, { locked: !el.locked });
+                            }}
+                            onReorder={(id, direction) =>
+                                setElements((els) => reorder(els, id, direction))
+                            }
+                            onDelete={(id) => deleteElements([id])}
+                            onReparent={doReparent}
+                            onOpenComponent={openComponentEditor}
+                            collapsedIds={collapsedLayerIds}
+                            onCollapsedChange={setCollapsedLayerIds}
+                        />
+                            ) : leftTab === "Pages" ? (
+                        <PagesPanel
+                            pages={visiblePages}
+                            currentId={page.id}
+                            busy={isPending || Boolean(pageSwitchTarget)}
+                            navigatingId={pageSwitchTarget}
+                            error={pageError}
+                            onCreate={(name, slug) =>
+                                runPageAction(() => (adapters?.createPage ?? unavailable)(name, slug), "push")
+                            }
+                            onRename={(id, name, slug) =>
+                                runPageAction(() => (adapters?.renamePage ?? unavailable)(id, name, slug))
+                            }
+                            onDuplicate={(id, name) =>
+                                runPageAction(
+                                    () => (adapters?.duplicatePage ?? unavailable)(id, name, name),
+                                    "push",
+                                )
+                            }
+                            onDelete={(id) =>
+                                runPageAction(() => (adapters?.deletePage ?? unavailable)(id), id === page.id ? "replace" : false)
+                            }
+                            onNavigate={(id) => void navigateEditorPage(id)}
+                            publishedHref={adapters?.publishedHref ?? defaultPublishedHref}
+                        />
                             ) : leftTab === "Insert" ? (
                                 <div className={`flex flex-col ${libraryFillsPanel ? "min-h-0 flex-1" : ""}`}>
                                     {/* Keyed on the view so each list animates in
@@ -2887,7 +4672,7 @@ export default function Editor({
                                         {insertView === "Elements" ? (
                                             <ElementsPanel search={search} onInsert={insertElement} />
                                         ) : insertView === "Icons" ? (
-                                            <IconsPanel search={search} onInsert={(iconName) => insertElement("Icon", { iconName })} />
+                                            <IconsPanel search={search} onInsert={(props) => insertElement("Icon", props)} />
                                         ) : (
                                             <LibraryPanel
                                                 pages={library}
@@ -2908,7 +4693,16 @@ export default function Editor({
                                     preview={adapters?.previewSource ?? (async () => ({ status: "error", message: "No data preview adapter configured." }))}
                                 />
                             ) : leftTab === "Assets" ? (
-                                <div className="p-3"><div className="mb-3 rounded-2xl border border-ed-border bg-ed-subtle p-3"><p className="text-[11px] font-semibold text-ed-text">Assets</p><p className="mt-1 text-[9px] leading-relaxed text-ed-faint">Navbar, sidebar, footer and reusable components live here once. Drag the exact variant you need onto any page.</p></div><div className="mb-2.5 flex items-center justify-between"><span className="text-[10px] font-semibold text-ed-muted">{componentAssets.length} shared asset{componentAssets.length === 1 ? "" : "s"}</span><span className="flex gap-1"><button type="button" onClick={createBlankComponent} className="flex items-center gap-1 rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text"><IconPlus size={10} /> New</button><button type="button" onClick={() => setCodeComposerOpen(true)} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Code</button></span></div><ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }} /></div>
+                                <AssetsPanel
+                                    assets={componentAssets}
+                                    activeMasterId={activeComponentMaster?.id}
+                                    onOpen={(master) => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }}
+                                    onCreate={() => createBlankComponent()}
+                                    onCreateLayout={() => createBlankComponent("Layout")}
+                                    pageLayoutId={rootStyle.pageLayoutId}
+                                    onRemoveLayout={() => { beginTransaction(); setElements(current => applyPageLayout(current, current)); setRootStyle({ pageLayoutId: "" }); endTransaction(); }}
+                                    onCode={() => setCodeComposerOpen(true)}
+                                />
                             ) : leftTab === "History" ? (
                                 <HistoryPanel
                                     pageId={page.id}
@@ -2924,31 +4718,12 @@ export default function Editor({
                                     setRootStyle={setRootStyle}
                                     setElements={setElements}
                                 />
-                            ) : leftTab === "AI" ? (
-                                <AiPanel
-                                    onActiveChatChange={setAiChatTitle}
-                                    pageId={page.id}
-                                    elements={elements}
-                                    rootStyle={rootStyle}
-                                    breakpoint={breakpoint}
-                                    focus={aiFocus}
-                                    onClearFocus={() => setAiFocus(undefined)}
-                                    onApply={applyAiPlan}
-                                    generate={adapters?.generate}
-                                />
                             ) : leftTab === "Components" ? (
-                                <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Asset canvas</p><p className="mt-1 text-[9px] text-ed-faint">One asset, multiple variants—similar to its own breakpoint set.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Assets"); }} className="rounded-full bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Back to page</button></div>{activeComponentMaster && <div className="mb-3 space-y-2 rounded-2xl border border-ed-border bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Asset</span><input value={activeComponentMaster.name ?? ""} placeholder="Asset name" onChange={(event) => patchProps(activeComponentMaster.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Variant</span><input value={activeComponentMaster.variant ?? "Default"} onChange={(event) => patchProps(activeComponentMaster.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} /><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant to {activeComponentMaster?.name ?? "asset"}</button></div>
+                                <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Asset canvas</p><p className="mt-1 text-[9px] text-ed-faint">One asset, multiple variants—similar to its own breakpoint set.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Assets"); }} className="rounded-md bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Back to page</button></div>{activeComponentMaster && <div className="mb-3 space-y-2 rounded-[18px] bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Asset</span><input value={activeComponentMaster.name ?? ""} placeholder="Asset name" onChange={(event) => patchProps(activeComponentMaster.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Variant</span><input value={activeComponentMaster.variant ?? "Default"} onChange={(event) => patchProps(activeComponentMaster.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} /><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant to {activeComponentMaster?.name ?? "asset"}</button></div>
                             ) : leftTab === "Settings" ? (
-                                <div className="flex flex-col">
-                                    <div className="px-4 py-3">
-                                        <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} />
-                                    </div>
-                                    <SiteTransfer
-                                        exportUrl={adapters?.exportTemplateUrl}
-                                        onImport={adapters?.importTemplate ? importSiteBundle : undefined}
-                                        busy={isPending || Boolean(pageSwitchTarget)}
-                                    />
-                                </div>
+                                <SettingsNavigation active={settingsSection} onChange={setSettingsSection} />
+                            ) : leftTab === "Templates" ? (
+                                <TemplatesNavigation categories={templateCategories} active={templateCategory} onChange={setTemplateCategory} />
                             ) : (
                                 <PagesPanel
                                     pages={pages}
@@ -2977,52 +4752,20 @@ export default function Editor({
                             )}
                         </div>
 
-                        {leftTab === "Layers" && <div className="flex items-center justify-between border-t border-ed-border p-2 px-3 text-ed-muted">
-                            <span className="text-[10px] tabular-nums">
-                                {elements.length} element{elements.length === 1 ? "" : "s"}
-                            </span>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    type="button"
-                                    title="Duplicate (Ctrl D)"
-                                    disabled={selectedIds.length === 0}
-                                    onClick={() => duplicateElements(selectedIds)}
-                                    className="rounded-full p-1.5 transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
-                                >
-                                    <IconCopy size={16} />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Delete (Del)"
-                                    disabled={selectedIds.length === 0}
-                                    onClick={() => deleteElements(selectedIds)}
-                                    className="rounded-full p-1.5 transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
-                                >
-                                    <IconTrash size={16} />
-                                </button>
-                            </div>
-                        </div>}
-                    </motion.aside>
-                )}
-                </AnimatePresence>
+                    </div>
 
-                <main
-                    className="relative flex flex-1 flex-col overflow-hidden bg-ed-canvas"
-                    style={{
-                        // The grid is drawn from the border colour, so it reads
-                        // on the dark well and the light one alike.
-                        backgroundImage:
-                            "linear-gradient(to right, var(--ed-grid) 1px, transparent 1px), linear-gradient(to bottom, var(--ed-grid) 1px, transparent 1px)",
-                        backgroundSize: "28px 28px",
-                        backgroundPosition: "-1px -1px",
-                    }}
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) setSelectedIds([]);
-                    }}
-                >
+
+        </>
+    );
+
+    const canvas = (
+        <>
                     {leftTab === "Templates" && (
                         <div className="custom-scrollbar absolute inset-0 z-50 overflow-y-auto bg-ed-surface">
                             <TemplatesPanel
+                                category={templateCategory}
+                                onCategoryChange={setTemplateCategory}
+                                onCategoriesChange={setTemplateCategories}
                                 busy={isPending}
                                 registryUrl={templateRegistryUrl}
                                 onInstall={installSiteTemplate}
@@ -3047,15 +4790,38 @@ export default function Editor({
                             />
                         </div>
                     )}
+                    {leftTab === "Settings" && (
+                        <SettingsWorkspace section={settingsSection}>
+                            {settingsSection === "ai" && <AiSettings mcp={adapters?.mcp} available={Boolean(adapters?.generate)} enterToSend={enterToSend} onEnterToSend={updateEnterToSend} />}
+                            {settingsSection === "general" && <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} layoutOptions={componentAssets.map((asset) => ({ label: asset.name, value: asset.id }))} />}
+                            {settingsSection === "variables" && <VariablesPanel rootStyle={rootStyle} selectedElement={selectedElement} setRootStyle={setRootStyle} setElements={setElements} />}
+                            {settingsSection === "transfer" && <SiteTransfer
+                                exportUrl={adapters?.exportTemplateUrl}
+                                onImport={adapters?.importTemplate ? importSiteBundle : undefined}
+                                busy={isPending || Boolean(pageSwitchTarget)}
+                            />}
+                        </SettingsWorkspace>
+                    )}
                     {/* biome-ignore lint/a11y/noStaticElementInteractions: pan surface; Ctrl +/-/0 cover the same ground from the keyboard */}
                     <div
                         ref={viewportRef}
+                        inert={leftTab === "Settings" || leftTab === "Templates"}
+                        aria-hidden={leftTab === "Settings" || leftTab === "Templates" ? true : undefined}
                         className="canvas-scrollbar absolute inset-0 overflow-auto overscroll-none"
-                        style={{ cursor: isPanning ? "grabbing" : spaceHeld ? "grab" : undefined }}
+                        style={{ cursor: isPanning ? "grabbing" : spaceHeld ? "grab" : canvasTool === "frame" ? "crosshair" : undefined }}
                         onMouseDown={(event) => {
                             if (tryBeginPan(event)) return;
                             setContextMenu(null);
-                            if (event.target === event.currentTarget) beginMarquee(event, breakpoint);
+                            // Anything that is not an artboard or a parked
+                            // layer is canvas. The old check compared against
+                            // the viewport itself, which the scrolling
+                            // container covers, so a drag out here almost never
+                            // counted as a canvas drag — no rubber band, and
+                            // nothing to draw a frame on.
+                            const target = event.target as HTMLElement;
+                            if (target.closest("[data-canvas-page]") || target.closest("[data-parked]")) return;
+                            if (canvasTool === "frame") beginFrameDraw(event);
+                            else beginMarquee(event, breakpoint);
                         }}
                         onContextMenu={(event) => {
                             if ((event.target as HTMLElement).closest("[data-canvas-page]")) return;
@@ -3086,17 +4852,105 @@ export default function Editor({
                                 : { opacity: 1, y: 0, filter: "blur(0px)" }}
                             exit={reduceMotion ? undefined : { opacity: 0, y: -8, filter: "blur(4px)" }}
                             transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
-                            className="flex min-w-max items-start justify-center gap-10 px-[900px] py-[560px]"
+                            ref={canvasStageRef}
+                            className="relative flex min-w-max items-start justify-center gap-10"
+                            // The canvas reaches past the artboards, and keeps
+                            // reaching: the room around them is a fixed slab of
+                            // space plus whatever the parked layers need, so
+                            // dragging something out to the left or drawing a
+                            // frame below always has somewhere to go.
+                            style={{
+                                paddingLeft: canvasRoom.left,
+                                paddingRight: canvasRoom.right,
+                                paddingTop: canvasRoom.top,
+                                paddingBottom: canvasRoom.bottom,
+                            }}
                         >
+                            {!componentMode && parkedRoots.map((parked) => {
+                                // Drawn from the base alone: a frame beside
+                                // the artboards is governed by none of them.
+                                const parkedStyle = resolveStyle(parked, cascade.baseId, cascade);
+                                const parkedFrame = { bp: cascade.baseId, width: parkedStyle.w };
+                                return (
+                                    <div
+                                        key={parked.id}
+                                        data-parked={parked.id}
+                                        className="absolute z-[15]"
+                                        style={{
+                                            left: parkOrigin.x + parkedStyle.x * scale,
+                                            top: parkOrigin.y + parkedStyle.y * scale,
+                                            width: parkedStyle.w * scale,
+                                        }}
+                                    >
+                                        {/* Parked beside the artboards, this is
+                                            a frame in its own right rather than
+                                            part of the page, so it is named the
+                                            way an artboard is. Drop it onto an
+                                            artboard and the name goes with the
+                                            parking. */}
+                                        <button
+                                            type="button"
+                                            onClick={(event) => { event.stopPropagation(); select(parked.id, event.shiftKey || event.metaKey); }}
+                                            // The name is also the handle. What
+                                            // is parked here can be anything —
+                                            // a section, an image — and its own
+                                            // surface belongs to its content,
+                                            // so there would otherwise be
+                                            // nothing to grab it by.
+                                            onPointerDown={(event) => {
+                                                event.stopPropagation();
+                                                select(parked.id, false);
+                                                beginParkedDrag(event, parked);
+                                            }}
+                                            className={`absolute -top-5 left-0 max-w-full cursor-grab truncate text-left text-[11px] transition-colors active:cursor-grabbing ${
+                                                selectedIds.includes(parked.id) ? "text-ed-accent" : "text-ed-muted hover:text-ed-text"
+                                            }`}
+                                        >
+                                            {displayName(parked)}
+                                        </button>
+                                        {/* The frame's own surface drags it
+                                            too, so long as the press lands on
+                                            the frame rather than on something
+                                            inside it. */}
+                                        {/* biome-ignore lint/a11y/noStaticElementInteractions: canvas surface, like the artboards themselves */}
+                                        <div
+                                            style={{ width: parkedStyle.w, transform: `scale(${scale})`, transformOrigin: "top left" }}
+                                            className="cursor-grab active:cursor-grabbing"
+                                            onPointerDown={(event) => {
+                                                if (event.target !== event.currentTarget) return;
+                                                event.preventDefault();
+                                                beginParkedDrag(event, parked);
+                                            }}
+                                        >
+                                            {renderNode(parked, parkedFrame)}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                             {frames.map((frame) => {
                                 const frameMaster = frame.masterId ? componentMasters.find((master) => master.id === frame.masterId) : undefined;
                                 const primary = componentMode ? frame.masterId === activeComponentMaster?.id : frame.bp === breakpoint;
                                 const frameElementIds = componentMode && frame.masterId ? subtreeIds(elements, frame.masterId) : undefined;
+                                // A parked layer is drawn once, on the canvas
+                                // beside the artboards. It used to be drawn
+                                // inside every artboard as well, so one frame
+                                // parked next to three widths appeared four
+                                // times.
                                 const frameElements = frameElementIds
                                     ? elements.filter((element) => frameElementIds.has(element.id))
-                                    : visibleEditorElements;
+                                    : pageElements;
+                                const hasComponentContent = Boolean(
+                                    frameMaster && componentHasContent(elements, frameMaster),
+                                );
+                                const measuredComponentHeight = frameMaster
+                                    ? componentPreviewSizes[frameMaster.id]?.height
+                                    : undefined;
                                 const frameCanvasHeight = componentMode
-                                    ? Math.max(1, primary ? canvasHeight : frameMaster?.base.h ?? canvasHeight)
+                                    ? !hasComponentContent
+                                        ? 96
+                                        : frameMaster?.base.heightMode === "fixed"
+                                            ? Math.max(1, frameMaster.base.h)
+                                            : Math.max(1, measuredComponentHeight ?? 1)
                                     : canvasHeight;
                                 const frameDisplayHeight = componentMode ? frameCanvasHeight : displayCanvasHeight;
                                 const definition = breakpointDefs.find(
@@ -3115,7 +4969,7 @@ export default function Editor({
                                             onDragEnd={() => setDraggedBreakpointId(null)}
                                             onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
                                             onDrop={(event) => { event.preventDefault(); if (draggedBreakpointId) moveBreakpoint(draggedBreakpointId, frame.bp); setDraggedBreakpointId(null); }}
-                                            title={!componentMode ? `${definition?.name ?? frame.bp} · ${frame.width}px · governs ${breakpointRange(frame.bp)}px` : undefined}
+                                            title={!componentMode ? `${definition?.name ?? frame.bp} · drawn at ${frame.width}px · ${rangeLabel(frame.bp)}` : undefined}
                                             className={`flex h-8 min-w-0 cursor-grab items-center gap-2 overflow-hidden rounded-lg border px-2 active:cursor-grabbing ${draggedBreakpointId === frame.bp ? "border-ed-accent bg-ed-accent/10 opacity-60" : "border-ed-border bg-ed-subtle"}`}
                                             style={{ width: frameHeaderWidth }}
                                         >
@@ -3155,27 +5009,31 @@ export default function Editor({
                                                     value={frame.width}
                                                     onChange={(event) => resizeBreakpoint(frame.bp, Number(event.target.value))}
                                                     onFocus={(event) => event.target.select()}
-                                                    title={`Governs ${breakpointRange(frame.bp)}px`}
+                                                    title="How wide this artboard is drawn. It does not change what visitors see."
                                                     className="w-12 bg-transparent font-mono text-[10px] text-ed-faint outline-none hover:text-ed-muted focus:text-ed-text [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                             ) : null}
                                             {!componentMode && showFrameRange && (
-                                                <span className="shrink-0 font-mono text-[10px] text-ed-faint/60">{breakpointRange(frame.bp)}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBreakpointPanel(true)}
+                                                    title={`${rangeLabel(frame.bp)} — click to edit breakpoints`}
+                                                    className="shrink-0 rounded-md bg-ed-field px-1.5 py-0.5 font-mono text-[10px] text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text"
+                                                >
+                                                    {rangeChip(frame.bp)}
+                                                </button>
                                             )}
 
                                             {showFrameActions && <div className="ml-auto flex shrink-0 items-center gap-1">
-                                                {!componentMode && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => { event.stopPropagation(); setBaseBreakpoint(frame.bp); }}
-                                                        disabled={isBaseFrame}
-                                                        title={isBaseFrame ? "Main breakpoint — its edits are shared" : "Make main breakpoint"}
-                                                        className={`flex size-5 items-center justify-center rounded-md ${isBaseFrame ? "bg-ed-accent/15 text-ed-accent" : "bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
+                                                {isBaseFrame && (
+                                                    <span
+                                                        title="Desktop is the main artboard: what you change here is what the narrower ones inherit."
+                                                        className="rounded-md bg-ed-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[.06em] text-ed-accent"
                                                     >
-                                                        {isBaseFrame ? <IconPinFilled size={11} /> : <IconPin size={11} />}
-                                                    </button>
+                                                        Main
+                                                    </span>
                                                 )}
-                                                {!componentMode && breakpointDefs.length > 1 && (
+                                                {!componentMode && breakpointDefs.length > 1 && !isRequiredBreakpoint(frame.bp) && (
                                                     <button
                                                         type="button"
                                                         onClick={(event) => { event.stopPropagation(); removeBreakpoint(frame.bp); }}
@@ -3201,15 +5059,31 @@ export default function Editor({
                                         >
                                             {/* biome-ignore lint/a11y/noStaticElementInteractions: simulated viewport; a bare click clears the selection, as Escape does */}
                                             <div
-                                                ref={primary ? frameRef : undefined}
+                                                ref={(node) => {
+                                                    if (primary) frameRef.current = node;
+                                                    if (componentMode && frame.masterId) {
+                                                        observeComponentPreview(
+                                                            frame.masterId,
+                                                            node,
+                                                            frameMaster?.base.widthMode === "auto",
+                                                            frameMaster?.base.heightMode === "auto",
+                                                        );
+                                                    }
+                                                    // The main artboard is the
+                                                    // fixed point parked layers
+                                                    // are measured against.
+                                                    if (!componentMode && frame.bp === cascade.baseId) parkAnchorRef.current = node;
+                                                }}
                                                 data-canvas-page
-                                                className={componentMode ? "shadow-[0_0_0_1px_var(--ed-border)]" : "shadow-2xl"}
+                                                // Marks the artboard's own area,
+                                                // so a drag that ends outside
+                                                // every one of them can tell.
+                                                data-artboard={frame.bp}
+                                                className={undefined}
                                                 style={{
                                                     width: frame.width,
                                                     minHeight: frameCanvasHeight,
-                                                    background: componentMode
-                                                        ? "repeating-conic-gradient(var(--ed-field) 0 25%, var(--ed-surface) 0 50%) 0 / 16px 16px"
-                                                        : rootStyle.bg,
+                                                    background: componentMode ? "transparent" : rootStyle.bg,
                                                     transform: `scale(${scale})`,
                                                     transformOrigin: "top left",
                                                     outline:
@@ -3251,20 +5125,27 @@ export default function Editor({
                                                             beginMarquee(event, frame.bp);
                                                     }}
                                                 >
-                                                    {frameElements.length === 0 && (
-                                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium text-ed-muted">
-                                                            Drag an element here to start
+                                                    {componentMode && !hasComponentContent && (
+                                                        <div className="pointer-events-none absolute inset-0 z-10 flex min-h-24 min-w-40 items-center justify-center rounded-lg border border-dashed border-ed-border bg-ed-field/35 px-5 text-center text-[11px] font-medium leading-relaxed text-ed-faint">
+                                                            Drop content here
                                                         </div>
                                                     )}
-
-                                                    {childrenOf(frameElements, undefined).map((el) =>
-                                                        renderNode(
-                                                            el,
-                                                            frame,
-                                                            undefined,
-                                                            `${frame.bp}:`,
-                                                        ),
+                                                    {!componentMode && frameElements.length === 0 && (
+                                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium text-ed-muted">Drag an element here to start</div>
                                                     )}
+
+                                                    {(!componentMode || hasComponentContent) && frameBody(frame, frameElements, primary)}
+
+                                                    {primary && gridOverlay && (
+                                                        <div
+                                                            className="pointer-events-none absolute inset-0 z-[9998]"
+                                                            style={{
+                                                                backgroundImage: `repeating-linear-gradient(to right, color-mix(in oklab, var(--ed-accent) 22%, transparent) 0 1px, transparent 1px calc(100% / 12))`,
+                                                                backgroundSize: "100% 100%",
+                                                            }}
+                                                        />
+                                                    )}
+
 
                                                     {primary &&
                                                         guides.lines.map((guide) => (
@@ -3312,87 +5193,98 @@ export default function Editor({
                         </AnimatePresence>
                     </div>
 
-                    <div className="absolute bottom-6 right-6 z-20 flex items-center gap-0.5 rounded-lg border border-ed-border bg-ed-surface/90 p-1 backdrop-blur">
-                        <button
-                            type="button"
-                            title="Recentre the canvas"
-                            onClick={recenter}
-                            className="rounded-md p-1.5 text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text"
-                        >
-                            <IconFocusCentered size={16} stroke={1.5} />
-                        </button>
-                        <button
-                            type="button"
-                            title="Zoom to 100% (Ctrl 0)"
-                            onClick={() => zoomTo(100)}
-                            className="rounded-md px-1.5 py-1.5 font-mono text-[11px] text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text"
-                        >
-                            1:1
-                        </button>
-                        <button
-                            type="button"
-                            title="Fit to width"
-                            onClick={() => zoomToFit()}
-                            className="rounded-md p-1.5 text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text"
-                        >
-                            <IconArrowsMaximize size={16} stroke={1.5} />
-                        </button>
-                    </div>
-                </main>
+                    {adapters?.generate && (
+                        <>
+                            <button
+                                type="button"
+                                aria-label="Ask Luma"
+                                title="Ask Luma"
+                                onClick={() => {
+                                    setRightSection("Luma");
+                                }}
+                                className="absolute bottom-6 right-6 z-30 flex size-11 items-center justify-center rounded-full bg-ed-accent text-white shadow-[0_8px_24px_rgb(0_0_0/0.45)] transition-colors hover:bg-[var(--ed-accent-hover)]"
+                            >
+                                <IconSparkles size={19} stroke={1.7} />
+                            </button>
 
-                <AnimatePresence initial={false}>
-                {leftTab !== "Templates" && !isRightCollapsed && hasElementSelection && (
-                    <motion.aside initial={{ width: 0, opacity: 0, x: 14 }} animate={{ width: 320, opacity: 1, x: 0 }} exit={{ width: 0, opacity: 0, x: 14 }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="z-10 flex w-[320px] shrink-0 flex-col overflow-hidden border-l border-ed-border bg-ed-surface/95 shadow-[-8px_0_24px_rgba(0,0,0,0.06)] backdrop-blur-xl">
-                        <div className="flex h-10 shrink-0 items-stretch border-b border-ed-border px-2">
+                        </>
+                    )}
+        </>
+    );
+
+    const inspector = (
+        <>
+                        {/* Two halves of one column. Luma is always reachable —
+                            it is where you go when you do not yet know what to
+                            select — and Style appears once there is something
+                            for it to be about. */}
+                        <div className="mx-4 flex h-12 shrink-0 items-stretch gap-6 border-b border-white/[0.06]">
+                            {(["Luma", "Style"] as const)
+                                .filter((section) => section === "Luma" ? Boolean(adapters?.generate) : hasElementSelection)
+                                .map((section) => (
+                                    <button
+                                        type="button"
+                                        key={section}
+                                        aria-pressed={activeRightSection === section}
+                                        onClick={() => setRightSection(section)}
+                                        className={`relative flex items-center justify-center gap-2 px-1 text-xs font-medium transition-colors ${
+                                            activeRightSection === section ? "text-ed-text" : "text-ed-muted hover:text-ed-text"
+                                        }`}
+                                    >
+                                        {section === "Luma" && <LumaMark size={13} className="rounded-[4px]" />}
+                                        {section}
+                                        {activeRightSection === section && <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-ed-accent" />}
+                                    </button>
+                                ))}
+                        </div>
+
+                        {activeRightSection === "Luma" ? (
+                            <div className="flex min-h-0 flex-1 flex-col">
+                                <AiPanel
+                                    onActiveChatChange={setAiChatTitle}
+                                    pageId={page.id}
+                                    elements={elements}
+                                    rootStyle={rootStyle}
+                                    breakpoint={breakpoint}
+                                    focus={selectedElement ? { id: selectedElement.id, name: displayName(selectedElement), type: selectedElement.type } : aiFocus}
+                                    onClearFocus={() => { setAiFocus(undefined); setSelectedIds([]); }}
+                                    onApply={applyAiPlan}
+                                    generate={adapters?.generate}
+                                    mcp={adapters?.mcp}
+                                    enterToSend={enterToSend}
+                                    onOpenAiSettings={() => { setSettingsSection("ai"); openLeftPanel("Settings"); }}
+                                />
+                            </div>
+                        ) : (
+                        <>
+                        <div className="mx-4 my-3 flex h-8 shrink-0 items-stretch gap-1 rounded-lg bg-ed-field/50 p-0.5">
                             {RIGHT_EDITOR_TABS.map((tab) => (
                                 <button
                                     type="button"
                                     key={tab}
+                                    aria-pressed={rightTab === tab}
                                     onClick={() => setRightTab(tab)}
                                     disabled={!selectedElement}
-                                    className={`relative flex flex-1 items-center justify-center px-2 text-[10px] font-medium transition-colors disabled:opacity-30 ${
-                                        rightTab === tab
-                                            ? "text-ed-text"
-                                            : "text-ed-muted hover:text-ed-text"
+                                    className={`relative flex flex-1 items-center justify-center rounded-md px-1 text-[10px] font-medium transition-colors disabled:opacity-30 ${
+                                        rightTab === tab ? "bg-ed-field text-ed-text" : "text-ed-muted hover:text-ed-text"
                                     }`}
                                 >
                                     {tab}
-                                    {rightTab === tab && selectedElement && (
-                                        <motion.span
-                                            layoutId="inspector-tab"
-                                            className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-ed-accent"
-                                            transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                                        />
-                                    )}
                                 </button>
                             ))}
                         </div>
 
                         {selectedElement && breakpoint !== "desktop" && (
-                            <p className="border-b border-ed-border bg-amber-500/10 px-5 py-2.5 text-[11px] leading-relaxed text-amber-500">
-                                Editing the <b>{breakpoint}</b> breakpoint. Changes here
-                                override desktop and only apply at this size.
+                            <p className="mx-4 mb-2 rounded-lg bg-ed-field/50 px-3 py-2 text-[11px] leading-relaxed text-ed-muted">
+                                <b className="font-medium text-ed-text">{breakpoint}</b> overrides · inherits desktop
                             </p>
                         )}
 
-                        <div className="custom-scrollbar flex flex-1 flex-col overflow-y-auto px-3 py-2">
+                        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-5">
                             {selectedElement ? (
                                 <>
-                                    <div className="mb-1 flex items-center justify-between rounded-lg border border-ed-border/70 bg-ed-subtle/60 px-3 py-2.5">
-                                        <span className="text-[15px] font-semibold tracking-tight text-ed-text">
-                                            {selectedElement.type}
-                                        </span>
-                                        <span className="font-mono text-[10px] text-ed-faint">
-                                            {selectedElement.id.slice(0, 6)}
-                                        </span>
-                                    </div>
-                                    <div className="mb-3 flex items-center gap-1.5">
-                                        {!componentMode && rootStyle.layout === "absolute" && selectedElement.parentId && <button type="button" onClick={() => doReparent(selectedElement.id, undefined)} className="flex-1 rounded-lg border border-ed-border bg-ed-subtle px-2.5 py-2 text-[10px] font-medium text-ed-muted hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-text">Detach to canvas</button>}
-                                        {!componentMode && !selectedElement.componentRole && (
-                                            <button type="button" onClick={createComponentFromSelection} className="flex-1 rounded-lg border border-ed-border bg-ed-subtle px-2.5 py-2 text-[10px] font-medium text-ed-muted hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-text">
-                                                Create component
-                                            </button>
-                                        )}
+                                    <div className="flex items-center gap-1.5 empty:hidden [&:not(:empty)]:mt-2 [&:not(:empty)]:mb-1">
+                                        {!componentMode && rootStyle.layout === "absolute" && selectedElement.parentId && <button type="button" onClick={() => doReparent(selectedElement.id, undefined)} className="h-8 flex-1 rounded-lg bg-ed-field px-2.5 text-[10px] font-medium text-ed-muted hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-text">Detach to canvas</button>}
                                         {selectedElement.componentRole === "master" && (
                                             <>
                                                 <span className="rounded-md bg-ed-accent/15 px-2 py-1 text-[9px] font-semibold uppercase text-ed-accent">
@@ -3427,8 +5319,8 @@ export default function Editor({
                                         tab={rightTab}
                                         element={selectedElement}
                                         elements={visibleEditorElements}
-                                        style={resolveStyle(selectedElement, breakpoint, cascade)}
-                                        breakpoint={breakpoint}
+                                        style={resolveStyle(selectedElement, styleBreakpoint(selectedElement), cascade)}
+                                        breakpoint={styleBreakpoint(selectedElement)}
                                         parentLayout={contextFor(selectedElement).parentLayout}
                                         onStyle={(patch) => patchStyle([selectedElement.id], patch)}
                                         onReset={(keys) => resetOverrides([selectedElement.id], keys)}
@@ -3439,6 +5331,7 @@ export default function Editor({
                                         bindingKeys={bindingKeys}
                                         insideRepeat={enclosingDataBlock !== undefined}
                                         uploadImage={adapters?.uploadImage}
+                                        rootStyle={rootStyle}
                                     /></motion.div>
                                 </>
                             ) : selectedIds.length > 1 ? (
@@ -3458,62 +5351,174 @@ export default function Editor({
                                 />
                             ) : null}
                         </div>
-                    </motion.aside>
-                )}
-                </AnimatePresence>
-            </div>
+                        </>
+                        )}
+        </>
+    );
 
-            {codeComposerOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-6 backdrop-blur-sm" onMouseDown={() => setCodeComposerOpen(false)}><div className="flex h-[min(720px,85vh)] w-[min(820px,92vw)] flex-col overflow-hidden rounded-2xl border border-ed-border bg-ed-surface shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex h-12 items-center justify-between border-b border-ed-border px-4"><div><p className="text-xs font-semibold text-ed-text">New code component</p><p className="text-[9px] text-ed-faint">Sandboxed HTML and CSS — scripts stay disabled.</p></div><button type="button" onClick={() => setCodeComposerOpen(false)} className="rounded-md p-1.5 text-ed-muted hover:bg-ed-field hover:text-ed-text"><IconX size={15} /></button></div><div className="grid min-h-0 flex-1 grid-cols-2"><div className="flex min-h-0 flex-col gap-3 border-r border-ed-border p-4"><label className="text-[10px] font-medium text-ed-muted">Name<input value={codeComponentName} onChange={(event) => setCodeComponentName(event.target.value)} className="mt-1.5 h-9 w-full rounded-lg border border-ed-border bg-ed-field px-3 text-[11px] text-ed-text outline-none focus:border-ed-accent" /></label><label className="flex min-h-0 flex-1 flex-col text-[10px] font-medium text-ed-muted">HTML / CSS<textarea value={codeComponentSource} onChange={(event) => setCodeComponentSource(event.target.value)} spellCheck={false} className="mt-1.5 min-h-0 flex-1 resize-none rounded-xl border border-ed-border bg-[#101114] p-3 font-mono text-[11px] leading-relaxed text-zinc-300 outline-none focus:border-ed-accent" /></label></div><div className="flex min-h-0 flex-col bg-ed-canvas p-4"><span className="mb-2 text-[10px] font-medium text-ed-muted">Preview</span><iframe title="Code component preview" srcDoc={codeComponentSource} sandbox="" className="min-h-0 flex-1 rounded-xl border border-ed-border bg-white" /></div></div><div className="flex h-14 items-center justify-end gap-2 border-t border-ed-border px-4"><button type="button" onClick={() => setCodeComposerOpen(false)} className="rounded-lg px-3 py-2 text-[10px] text-ed-muted hover:bg-ed-field">Cancel</button><button type="button" onClick={createCodeComponent} disabled={!codeComponentSource.trim()} className="rounded-lg bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30">Create component</button></div></div></div>}
+    const overlays = (
+        <>
+            {codeComposerOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md" onMouseDown={() => setCodeComposerOpen(false)}>
+                    <div className="flex h-[min(760px,88vh)] w-[min(1040px,94vw)] flex-col overflow-hidden rounded-2xl bg-ed-surface shadow-[0_24px_64px_rgb(0_0_0/0.55)]" onMouseDown={(event) => event.stopPropagation()}>
+                        <div className="flex h-14 shrink-0 items-center justify-between border-b border-ed-border px-4">
+                            <div>
+                                <p className="text-xs font-semibold text-ed-text">New code component</p>
+                                <p className="mt-0.5 text-[9px] text-ed-faint">React components compile on the server and run in an isolated sandbox.</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex rounded-lg bg-ed-subtle p-0.5">
+                                    {(["tsx", "html"] as const).map((language) => (
+                                        <button key={language} type="button" onClick={() => { setCodeComponentLanguage(language); setCodeComponentSource(language === "tsx" ? DEFAULT_TSX_COMPONENT : DEFAULT_HTML_COMPONENT); setCodeComponentPreview(""); setCodeComponentError(""); }} className={`h-7 rounded-md px-3 text-[9px] font-semibold uppercase transition-colors ${codeComponentLanguage === language ? "bg-ed-field text-ed-text shadow-sm" : "text-ed-faint hover:text-ed-muted"}`}>{language}</button>
+                                    ))}
+                                </div>
+                                <button type="button" aria-label="Close code composer" onClick={() => setCodeComposerOpen(false)} className="flex size-8 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field hover:text-ed-text"><IconX size={15} /></button>
+                            </div>
+                        </div>
+                        <div className="grid min-h-0 flex-1 grid-cols-[1.1fr_.9fr]">
+                            <div className="flex min-h-0 flex-col gap-3 border-r border-ed-border p-4">
+                                <label className="text-[9px] font-semibold tracking-wide text-ed-faint uppercase">Component name<input value={codeComponentName} onChange={(event) => setCodeComponentName(event.target.value)} className="mt-1.5 h-9 w-full rounded-[14px] bg-ed-subtle px-3 text-[11px] text-ed-text outline-none focus:border-ed-accent" /></label>
+                                <label className="flex min-h-0 flex-1 flex-col text-[9px] font-semibold tracking-wide text-ed-faint uppercase">
+                                    {codeComponentLanguage === "tsx" ? "Component.tsx" : "Document.html"}
+                                    <textarea value={codeComponentSource} onChange={(event) => { setCodeComponentSource(event.target.value); setCodeComponentPreview(""); }} spellCheck={false} className="mt-1.5 min-h-0 flex-1 resize-none rounded-2xl bg-[#0d0e12] p-4 font-mono text-[11px] leading-[1.7] text-zinc-300 outline-none focus:border-ed-accent" />
+                                </label>
+                                {codeComponentError && <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 font-mono text-[9px] leading-relaxed text-red-300">{codeComponentError}</p>}
+                            </div>
+                            <div className="flex min-h-0 flex-col bg-ed-canvas p-4">
+                                <div className="mb-2 flex items-center justify-between">
+                                    <span className="text-[9px] font-semibold tracking-wide text-ed-faint uppercase">Preview</span>
+                                    <button type="button" onClick={() => void compileCodeComponent()} disabled={!codeComponentSource.trim() || codeComponentCompiling} className="h-7 rounded-xl bg-ed-surface px-3 text-[9px] font-semibold text-ed-muted transition-colors hover:border-ed-accent/40 hover:text-ed-text disabled:opacity-40">{codeComponentCompiling ? "Compiling…" : "Run preview"}</button>
+                                </div>
+                                {codeComponentPreview ? (
+                                    <iframe title="Code component preview" srcDoc={codeComponentPreview} sandbox={codeComponentLanguage === "tsx" ? "allow-scripts" : ""} className="min-h-0 flex-1 rounded-2xl bg-white" />
+                                ) : (
+                                    <div className="grid min-h-0 flex-1 place-items-center rounded-xl border border-dashed border-ed-border bg-ed-surface/50 text-center">
+                                        <div><IconCode size={20} className="mx-auto mb-2 text-ed-faint" /><p className="text-[10px] font-medium text-ed-muted">Run the component to preview it</p><p className="mt-1 text-[9px] text-ed-faint">TSX executes without same-origin access.</p></div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex h-14 shrink-0 items-center justify-between border-t border-ed-border px-4">
+                            <span className="text-[9px] text-ed-faint">React · TypeScript · isolated iframe</span>
+                            <div className="flex gap-2"><button type="button" onClick={() => setCodeComposerOpen(false)} className="rounded-lg px-3 py-2 text-[10px] text-ed-muted hover:bg-ed-field">Cancel</button><button type="button" onClick={() => void createCodeComponent()} disabled={!codeComponentSource.trim() || codeComponentCompiling} className="rounded-lg bg-ed-accent px-4 py-2 text-[10px] font-semibold text-white disabled:opacity-30">{codeComponentCompiling ? "Compiling…" : "Create component"}</button></div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            {breakpointPanel && !componentMode && (
-                <div className="fixed left-1/2 top-16 z-[80] w-[420px] -translate-x-1/2 rounded-2xl border border-ed-border bg-ed-surface p-4 shadow-2xl">
+            {!componentMode && (
+                <div
+                    aria-hidden={!breakpointPanel}
+                    className={`fixed left-1/2 top-16 z-[80] w-[420px] origin-top rounded-[18px] bg-ed-surface p-4 shadow-[0_24px_64px_rgb(0_0_0/0.55)] transition-[opacity,transform] duration-200 ease-[cubic-bezier(.22,1,.36,1)] ${breakpointPanel ? "-translate-x-1/2 translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-x-1/2 -translate-y-2 scale-95 opacity-0"}`}
+                >
                     <div className="mb-4 flex items-start justify-between">
                         <div>
                             <h3 className="text-sm font-semibold text-ed-text">Breakpoints</h3>
-                            <p className="mt-1 text-[11px] text-ed-muted">Rename, resize and reorder the viewports. Main values are shared by every other size.</p>
+                            <p className="mt-1 text-[11px] leading-relaxed text-ed-muted">Each artboard governs a range of visitor window widths. <b className="font-semibold text-ed-text">Governs from</b> is what publishes; <b className="font-semibold text-ed-text">canvas</b> only changes how wide it is drawn here.</p>
                         </div>
                         <button type="button" onClick={() => setBreakpointPanel(false)} className="rounded p-1 text-ed-muted hover:bg-ed-field"><IconX size={15} /></button>
                     </div>
                     <div className="flex max-h-[360px] flex-col gap-2 overflow-y-auto scrollbar-none">
                         {breakpointDefs.map((item, index) => (
-                            <div key={item.id} className="grid grid-cols-[1fr_86px_auto] items-center gap-2 rounded-xl border border-ed-border bg-ed-subtle p-2">
+                            <div key={item.id} className="flex flex-col gap-2 rounded-2xl bg-ed-subtle p-2">
+                              <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                                 <input
                                     aria-label="Breakpoint name"
                                     value={item.name}
                                     onChange={(event) => renameBreakpoint(item.id, event.target.value)}
                                     onBlur={() => commitBreakpointName(item.id)}
-                                    className="min-w-0 rounded-lg border border-ed-border bg-ed-field px-2.5 py-2 text-xs text-ed-text outline-none focus:border-ed-accent"
+                                    className="min-w-0 rounded-xl bg-ed-field px-2.5 py-2 text-xs text-ed-text outline-none focus:border-ed-accent"
                                 />
-                                <label className="flex items-center rounded-lg border border-ed-border bg-ed-field px-2 py-2 text-xs text-ed-muted">
-                                    <input
-                                        aria-label="Breakpoint width"
-                                        type="number"
-                                        min={240}
-                                        max={4000}
-                                        value={item.width}
-                                        onChange={(event) => resizeBreakpoint(item.id, Number(event.target.value) || 240)}
-                                        className="w-full bg-transparent text-right tabular-nums text-ed-text outline-none"
-                                    />px
-                                </label>
                                 <div className="flex items-center gap-0.5">
-                                    {item.id === cascade.baseId ? (
-                                        <span className="rounded-md bg-ed-accent/15 px-2 py-1.5 text-[10px] font-semibold text-ed-accent">MAIN</span>
-                                    ) : (
-                                        <button type="button" title="Make main" onClick={() => setBaseBreakpoint(item.id)} className="rounded-md px-2 py-1.5 text-[10px] font-semibold text-ed-muted hover:bg-ed-field hover:text-ed-text">MAIN</button>
+                                    {item.id === cascade.baseId && (
+                                        <span title="Desktop is always the main breakpoint: its edits cascade to the others." className="rounded-md bg-ed-accent/15 px-2 py-1.5 text-[10px] font-semibold text-ed-accent">MAIN</span>
                                     )}
                                     <button type="button" disabled={index === 0} title="Move left" onClick={() => { const next = [...breakpointDefs]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; updateBreakpoints(next); }} className="rounded p-1 text-ed-faint hover:bg-ed-field disabled:opacity-20"><IconChevronLeft size={13} /></button>
                                     <button type="button" disabled={index === breakpointDefs.length - 1} title="Move right" onClick={() => { const next = [...breakpointDefs]; [next[index], next[index + 1]] = [next[index + 1], next[index]]; updateBreakpoints(next); }} className="rounded p-1 text-ed-faint hover:bg-ed-field disabled:opacity-20"><IconChevronRight size={13} /></button>
-                                    {item.id !== cascade.baseId && breakpointDefs.length > 1 && (
+                                    {isRequiredBreakpoint(item.id) ? (
+                                        <span title="Desktop, tablet and mobile are always kept" className="px-1 text-[9px] font-medium uppercase tracking-[.08em] text-ed-faint">Fixed</span>
+                                    ) : item.id !== cascade.baseId && breakpointDefs.length > 1 && (
                                         <button type="button" title="Delete" onClick={() => removeBreakpoint(item.id)} className="rounded p-1 text-ed-faint hover:bg-red-500/10 hover:text-red-400"><IconTrash size={13} /></button>
                                     )}
                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-semibold uppercase tracking-[.1em] text-ed-faint">Governs from</span>
+                                    <span className="flex items-center rounded-xl bg-ed-field px-2 py-1.5 text-xs text-ed-muted">
+                                        <input
+                                            aria-label={`${item.name} governs from`}
+                                            type="number"
+                                            min={240}
+                                            max={4000}
+                                            value={item.width}
+                                            onChange={(event) => setBreakpointThreshold(item.id, Number(event.target.value) || 240)}
+                                            className="w-full bg-transparent text-right tabular-nums text-ed-text outline-none"
+                                        />px
+                                    </span>
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-semibold uppercase tracking-[.1em] text-ed-faint">Canvas</span>
+                                    <span className="flex items-center rounded-xl bg-ed-field px-2 py-1.5 text-xs text-ed-muted">
+                                        <input
+                                            aria-label={`${item.name} canvas width`}
+                                            type="number"
+                                            min={240}
+                                            max={4000}
+                                            value={item.canvasWidth ?? item.width}
+                                            onChange={(event) => resizeBreakpoint(item.id, Number(event.target.value) || 240)}
+                                            className="w-full bg-transparent text-right tabular-nums text-ed-text outline-none"
+                                        />px
+                                    </span>
+                                </label>
+                              </div>
+                              <p className="text-[10px] text-ed-muted">{rangeLabel(item.id)}</p>
                             </div>
                         ))}
                     </div>
+
+                    {/* One axis with every range on it: the question authors
+                        actually ask is "which window gets which artboard", and
+                        a column of numbers never answers it at a glance. */}
+                    <div className="mt-4">
+                        <div className="mb-1.5 flex items-center justify-between text-[9px] font-semibold uppercase tracking-[.1em] text-ed-faint">
+                            <span>Window width</span>
+                            <span className="font-mono tracking-normal">0 – {Math.max(...breakpointDefs.map((item) => item.width)) + 400}px</span>
+                        </div>
+                        <div className="flex h-7 overflow-hidden rounded-xl bg-ed-field">
+                            {[...breakpointDefs]
+                                .sort((a, b) => a.width - b.width)
+                                .map((item, index, sorted) => {
+                                    const scaleMax = Math.max(...breakpointDefs.map((entry) => entry.width)) + 400;
+                                    const from = index === 0 ? 0 : item.width;
+                                    const to = sorted[index + 1] ? sorted[index + 1].width : scaleMax;
+                                    const share = Math.max(0.06, (to - from) / scaleMax);
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => setBreakpoint(item.id)}
+                                            title={`${item.name} · ${rangeLabel(item.id)}`}
+                                            style={{ flexGrow: share, flexBasis: 0 }}
+                                            className={`flex min-w-0 items-center justify-center gap-1 border-r border-ed-border/70 px-1 text-[9px] transition-colors last:border-r-0 ${item.id === breakpoint ? "bg-[var(--ed-accent-soft)] text-ed-accent" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
+                                        >
+                                            <span className="truncate">{item.name}</span>
+                                            {item.id === cascade.baseId && <span className="shrink-0 font-semibold">·</span>}
+                                        </button>
+                                    );
+                                })}
+                        </div>
+                    </div>
+
+                    {clashingThresholds.length > 0 && (
+                        <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-[10px] leading-relaxed text-amber-500">
+                            Two artboards start at {clashingThresholds.join("px, ")}px. They match the same windows, so only the later one is used — give one of them a different <b>Governs from</b>.
+                        </p>
+                    )}
                 </div>
             )}
 
-            {contextMenu && menuElementId && (
+            <AnimatePresence>{contextMenu && menuElementId && (
                 <ContextMenu
                     x={contextMenu.x}
                     y={contextMenu.y}
@@ -3537,11 +5542,17 @@ export default function Editor({
                         }
                         setContextMenu(null);
                     }}
-                    isFree={resolveStyle(byId.get(menuElementId) ?? elements[0], breakpoint, cascade).position === "absolute"}
+                    isFree={(() => { const el = byId.get(menuElementId) ?? elements[0]; return resolveStyle(el, styleBreakpoint(el), cascade).position === "absolute"; })()}
+                    onCreateComponent={!componentMode && selectedElement?.id === menuElementId && !selectedElement.componentRole
+                        ? () => {
+                            createComponentFromSelection();
+                            setContextMenu(null);
+                        }
+                        : undefined}
                     onToggleFree={() => {
                         const el = byId.get(menuElementId);
                         if (el) {
-                            const style = resolveStyle(el, breakpoint, cascade);
+                            const style = resolveStyle(el, styleBreakpoint(el), cascade);
                             const free = style.position === "absolute";
                             // Lifting an element out of the flow keeps it where
                             // it already looks: the coordinates it had while
@@ -3562,7 +5573,7 @@ export default function Editor({
                         if (el) {
                             setAiFocus({ id: el.id, name: displayName(el), type: el.type });
                             setSelectedIds([el.id]);
-                            setLeftTab("AI");
+                            setRightSection("Luma");
                         }
                         setContextMenu(null);
                     }}
@@ -3581,52 +5592,89 @@ export default function Editor({
                     }}
                     onDelete={() => deleteElements([menuElementId])}
                 />
-            )}
+            )}</AnimatePresence>
 
-            {/* Insertion line. Fixed positioning because the plan is measured
-                in screen coordinates, which already account for canvas zoom. */}
-            {dropPlan?.indicator && (
-                <div
-                    className="pointer-events-none fixed z-[95] rounded-full bg-ed-accent"
-                    style={
-                        dropPlan.indicator.vertical
-                            ? { left: dropPlan.indicator.x - 1, top: dropPlan.indicator.y, width: 2, height: dropPlan.indicator.length }
-                            : { left: dropPlan.indicator.x, top: dropPlan.indicator.y - 1, width: dropPlan.indicator.length, height: 2 }
-                    }
-                />
-            )}
 
-            {contextMenu && !contextMenu.elementId && (
-                <div className="fixed z-[90] w-48 overflow-hidden rounded-xl border border-ed-border bg-ed-surface p-1.5 shadow-2xl" style={{ left: contextMenu.x, top: contextMenu.y }}>
+            <AnimatePresence>{contextMenu && !contextMenu.elementId && (
+                <Menu className="fixed z-[90] w-[204px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
                     {(["Text", "Heading", "Button", "Container"] as ElementType[]).map((type) => (
-                        <button key={type} type="button" onClick={() => {
-                            const created = createElement(type, { x: contextMenu.canvasX ?? 0, y: contextMenu.canvasY ?? 0, z: nextZ(elements) });
-                            if (type === "Text") created.content = "Canvas note";
-                            setElements((current) => [...current, created]);
-                            setSelectedIds([created.id]);
-                            setContextMenu(null);
-                        }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-ed-muted hover:bg-ed-field hover:text-ed-text">
-                            <IconPlus size={13} /> Add {type}
-                        </button>
+                        <MenuItem
+                            key={type}
+                            icon={<IconPlus size={13} />}
+                            label={`Add ${type}`}
+                            onClick={() => {
+                                const created = createElement(type, { x: contextMenu.canvasX ?? 0, y: contextMenu.canvasY ?? 0, z: nextZ(elements) });
+                                if (type === "Text") created.content = "Text";
+                                setElements((current) => [...current, created]);
+                                setSelectedIds([created.id]);
+                                setContextMenu(null);
+                            }}
+                        />
                     ))}
-                    <div className="my-1 h-px bg-ed-border" />
-                    {componentMode ? <button type="button" onClick={() => { createComponentVariant(); setContextMenu(null); }} disabled={!activeComponentMaster} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-ed-muted hover:bg-ed-field hover:text-ed-text disabled:opacity-30"><IconComponents size={13} /> Add variant</button> : <><button type="button" onClick={() => {
-                        addBreakpoint();
-                        setBreakpointPanel(true);
-                        setContextMenu(null);
-                    }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-ed-muted hover:bg-ed-field hover:text-ed-text">
-                        <IconLayoutColumns size={13} /> Add breakpoint
-                    </button>
-                    <button type="button" onClick={() => {
-                        setBreakpointPanel(true);
-                        setContextMenu(null);
-                    }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-ed-muted hover:bg-ed-field hover:text-ed-text">
-                        <IconBox size={13} /> Breakpoint settings
-                    </button></>}
+                    <MenuSeparator />
+                    {componentMode ? (
+                        <MenuItem
+                            icon={<IconComponents size={13} />}
+                            label="Add variant"
+                            disabled={!activeComponentMaster}
+                            onClick={() => { createComponentVariant(); setContextMenu(null); }}
+                        />
+                    ) : (
+                        <>
+                            <MenuItem
+                                icon={<IconLayoutColumns size={13} />}
+                                label="Add breakpoint"
+                                onClick={() => {
+                                    addBreakpoint();
+                                    setBreakpointPanel(true);
+                                    setContextMenu(null);
+                                }}
+                            />
+                            <MenuItem
+                                icon={<IconBox size={13} />}
+                                label="Breakpoint settings"
+                                onClick={() => {
+                                    setBreakpointPanel(true);
+                                    setContextMenu(null);
+                                }}
+                            />
+                        </>
+                    )}
+                </Menu>
+            )}</AnimatePresence>
+
+
+
+            <GestureLayer
+                ref={gestureRef}
+                selectedElement={selectedElement ?? null}
+                breakpoint={selectedElement ? styleBreakpoint(selectedElement) : breakpoint}
+                cascade={cascade}
+                scale={scale}
+                effectsPreview={effectsPreview}
+                handleResizeMouseDown={handleResizeMouseDown}
+                beginRadiusDrag={beginRadiusDrag}
+            />
+
+            {/* The rubber band, and the frame being drawn: the same rectangle,
+                told apart by what it is made of — a wash you are selecting
+                through, or an outline of the thing about to exist. */}
+            {marquee && <div className="pointer-events-none fixed z-[110] rounded-[2px] border border-ed-accent bg-[var(--ed-accent-soft)]" style={{ left: Math.min(marquee.startX, marquee.x), top: Math.min(marquee.startY, marquee.y), width: Math.abs(marquee.x - marquee.startX), height: Math.abs(marquee.y - marquee.startY) }} />}
+            {frameDraw && (
+                <div
+                    className="pointer-events-none fixed z-[110] rounded-[2px] border-2 border-dashed border-ed-accent bg-[var(--ed-accent-soft)]"
+                    style={{
+                        left: Math.min(frameDraw.startX, frameDraw.x),
+                        top: Math.min(frameDraw.startY, frameDraw.y),
+                        width: Math.abs(frameDraw.x - frameDraw.startX),
+                        height: Math.abs(frameDraw.y - frameDraw.startY),
+                    }}
+                >
+                    <span className="absolute -top-5 left-0 whitespace-nowrap text-[11px] font-medium text-ed-accent">
+                        {Math.round(Math.abs(frameDraw.x - frameDraw.startX) / scale)} × {Math.round(Math.abs(frameDraw.y - frameDraw.startY) / scale)}
+                    </span>
                 </div>
             )}
-
-            {marquee && <div className="pointer-events-none fixed z-[110] border border-blue-400 bg-blue-500/20 shadow-[0_0_0_1px_rgba(59,130,246,.15)]" style={{ left: Math.min(marquee.startX, marquee.x), top: Math.min(marquee.startY, marquee.y), width: Math.abs(marquee.x - marquee.startX), height: Math.abs(marquee.y - marquee.startY) }} />}
 
             <style
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: webkit scrollbar pseudo-elements have no Tailwind utility
@@ -3637,6 +5685,24 @@ export default function Editor({
                     `,
                 }}
             />
-        </div>
+        </>
+    );
+
+    return (
+        <EditorShell
+            toolbarLeft={toolbarLeft}
+            toolbarCenter={toolbarCenter}
+            toolbarRight={toolbarRight}
+            rail={rail}
+            panel={panel}
+            panelOpen={panelOpen}
+            canvas={canvas}
+            onCanvasBackgroundMouseDown={(event) => {
+                if (event.target === event.currentTarget) setSelectedIds([]);
+            }}
+            inspector={inspector}
+            inspectorVisible={leftTab !== "Settings" && leftTab !== "Templates"}
+            overlays={overlays}
+        />
     );
 }

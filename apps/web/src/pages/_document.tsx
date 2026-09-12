@@ -12,7 +12,7 @@ export default function Document() {
         <link href="/logo.png" rel="icon" sizes="512x512" type="image/png" />
         <link href="/logo.png" rel="apple-touch-icon" />
         <link href="/site.webmanifest" rel="manifest" />
-        <meta content="#f5f3ff" name="theme-color" />
+        <meta content="#f4f4f4" name="theme-color" />
         {GOOGLE_VERIFICATION && (
           <meta content={GOOGLE_VERIFICATION} name="google-site-verification" />
         )}

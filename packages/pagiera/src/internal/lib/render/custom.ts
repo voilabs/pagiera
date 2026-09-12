@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import { disclosureAttributes, type Disclosure } from '../editor/disclosure';
+import { carouselControlAttributes, type CarouselControl } from "../editor/carousel-controls";
 import { CUSTOM_TAGS, RESERVED_ATTRIBUTES } from "@/lib/editor/types";
 
 /**
@@ -9,6 +11,8 @@ import { CUSTOM_TAGS, RESERVED_ATTRIBUTES } from "@/lib/editor/types";
  * share one implementation instead of two that can drift apart.
  */
 export type CustomMarkup = {
+    disclosure?: Disclosure;
+    carouselControl?: CarouselControl;
     tag?: string;
     customClass?: string;
     customStyle?: string;
@@ -88,6 +92,8 @@ export function withCustom(
     return {
         ...props,
         ...custom,
+        ...carouselControlAttributes(element.carouselControl),
+        ...disclosureAttributes(element.disclosure),
         className: element.customClass ? `${props.className} ${element.customClass}` : props.className,
         style: inline
             ? { ...(props.style as CSSProperties | undefined), ...inline }

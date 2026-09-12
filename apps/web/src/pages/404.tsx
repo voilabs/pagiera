@@ -2,7 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Manrope } from "next/font/google";
 import { Icon } from "@/components/icons";
 import { Seo } from "@/components/seo";
-import { SiteHeader } from "@/components/site-header";
+import { SiteBar } from "@/components/site-bar";
 import { ButtonLink } from "@/components/ui/button";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-pagiera" });
@@ -25,7 +25,7 @@ export default function NotFound() {
 
   return (
     <div
-      className={`${manrope.variable} min-w-80 overflow-clip bg-[#f8f7fb] font-sans text-[#121018]`}
+      className={`${manrope.variable} min-w-80 overflow-clip bg-[#f8f8f8] font-sans text-[#111111]`}
     >
       <Seo
         description="The page you were looking for is not on this canvas. Head back to the Pagiera home page or browse the template library."
@@ -33,13 +33,13 @@ export default function NotFound() {
         path="/404"
         title="404 — this page isn't on the canvas | Pagiera"
       />
-      <SiteHeader />
+      <SiteBar />
 
-      <main className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-[#f5f3ff] px-6 pt-[150px] pb-14 max-md:px-4 max-md:pt-32">
+      <main className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-[#f4f4f4] px-6 pt-20 pb-14 max-md:px-4 max-md:pt-14">
         <Ambience />
 
         <div className="relative z-[2] mx-auto w-full max-w-[900px] text-center">
-          <span className="inline-flex items-center gap-2.5 rounded-full border border-[#5402e6]/10 bg-white/60 px-3 py-2 text-[11px] font-bold tracking-[0.09em] text-[#554c66] uppercase backdrop-blur-xl">
+          <span className="inline-flex items-center gap-2.5 rounded-full border border-[#5402e6]/10 bg-white/60 px-3 py-2 text-[11px] font-bold tracking-[0.09em] text-[#505050] uppercase backdrop-blur-xl">
             <span className="size-2 rounded-full bg-[#5402e6] ring-[5px] ring-[#5402e6]/10" />
             Error 404
           </span>
@@ -51,7 +51,7 @@ export default function NotFound() {
           <h1 className="text-[clamp(38px,5.4vw,68px)] leading-[.94] font-medium tracking-[-.07em]">
             This page isn’t on the canvas.
           </h1>
-          <p className="mx-auto mt-5 max-w-[520px] text-[clamp(14px,1.3vw,17px)] leading-8 tracking-[-.02em] text-[#665f70]">
+          <p className="mx-auto mt-5 max-w-[520px] text-[clamp(14px,1.3vw,17px)] leading-8 tracking-[-.02em] text-[#626262]">
             The layer you were looking for was moved, renamed, or never
             published. Everything else is still where you left it.
           </p>
@@ -71,7 +71,7 @@ export default function NotFound() {
           >
             {QUICK_LINKS.map(([label, href]) => (
               <a
-                className="rounded-full border border-black/[.07] bg-white/60 px-4 py-2.5 text-[13px] font-medium text-[#544d61] backdrop-blur-xl transition-colors hover:border-[#5402e6]/25 hover:bg-white hover:text-[#5402e6]"
+                className="rounded-full border border-black/[.07] bg-white/60 px-4 py-2.5 text-[13px] font-medium text-[#505050] backdrop-blur-xl transition-colors hover:border-[#5402e6]/25 hover:bg-white hover:text-[#5402e6]"
                 href={href}
                 key={label}
               >
@@ -82,11 +82,11 @@ export default function NotFound() {
         </div>
 
         {/* The editor's status bar, as a closing wink. */}
-        <div className="relative z-[2] mx-auto mt-16 flex w-full max-w-[900px] items-center gap-1 border-t border-black/[.07] pt-4 text-[11px] text-[#6d6678] max-md:mt-12">
-          <span className="text-[#8d8ba3]">Page</span>
-          <Icon className="text-[#8d8ba3]" name="chevron" size={11} />
+        <div className="relative z-[2] mx-auto mt-16 flex w-full max-w-[900px] items-center gap-1 border-t border-black/[.07] pt-4 text-[11px] text-[#696969] max-md:mt-12">
+          <span className="text-[#8d8d8d]">Page</span>
+          <Icon className="text-[#8d8d8d]" name="chevron" size={11} />
           <span>404</span>
-          <span className="ml-auto font-mono text-[10px] text-[#8d8ba3]">
+          <span className="ml-auto font-mono text-[10px] text-[#8d8d8d]">
             Not found
           </span>
         </div>
@@ -113,7 +113,7 @@ function SelectedNumerals({ reduced }: { reduced: boolean }) {
       initial={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
     >
-      <span className="block text-[clamp(120px,20vw,260px)] font-medium tracking-[-.085em] text-[#141117]">
+      <span className="block text-[clamp(120px,20vw,260px)] font-medium tracking-[-.085em] text-[#121212]">
         4<span className="text-[#5402e6]">0</span>4
       </span>
 

@@ -31,7 +31,7 @@ const steps = [
 export function WorkflowSection() {
   return (
     <section
-      className="bg-[#0d0915] px-[max(24px,calc((100vw-1240px)/2))] py-36 text-white max-md:py-24"
+      className="bg-[#0b0b0b] px-[max(24px,calc((100vw-1240px)/2))] py-36 text-white max-md:py-24"
       id="workflow"
     >
       <div className="grid grid-cols-[.8fr_1.4fr] gap-20 max-lg:grid-cols-1 max-lg:gap-8">
@@ -51,7 +51,7 @@ export function WorkflowSection() {
         </div>
       </div>
 
-      <div className="mt-20 grid grid-cols-4 overflow-hidden rounded-[34px] border border-white/10 bg-[#171020] max-lg:grid-cols-2 max-md:grid-cols-1 max-md:rounded-[26px]">
+      <div className="mt-20 grid grid-cols-4 overflow-hidden rounded-[34px] border border-white/10 bg-[#131313] max-lg:grid-cols-2 max-md:grid-cols-1 max-md:rounded-[26px]">
         {steps.map((step, index) => (
           <motion.article
             className="group relative min-h-[420px] border-white/10 p-7 not-first:border-l max-lg:nth-[3]:border-l-0 max-md:min-h-[330px] max-md:border-t max-md:border-l-0 max-md:first:border-t-0"
@@ -65,7 +65,7 @@ export function WorkflowSection() {
               <span className="font-mono text-[10px] text-[#6a25f0]">
                 {step.number}
               </span>
-              <span className="grid size-10 place-items-center rounded-full border border-white/10 text-[#a982ff] transition group-hover:bg-[#6a25f0] group-hover:text-white">
+              <span className="grid size-10 place-items-center rounded-full border border-white/10 text-[#939393] transition group-hover:bg-[#6a25f0] group-hover:text-white">
                 <Icon name="arrow" size={15} />
               </span>
             </div>
@@ -84,9 +84,9 @@ export function WorkflowSection() {
         ))}
       </div>
 
-      <div className="mt-8 flex items-center justify-between rounded-full bg-[#171020] px-7 py-5 text-sm text-white max-md:items-start max-md:gap-4 max-md:rounded-[24px]">
+      <div className="mt-8 flex items-center justify-between rounded-full bg-[#131313] px-7 py-5 text-sm text-white max-md:items-start max-md:gap-4 max-md:rounded-[24px]">
         <span className="flex items-center gap-3">
-          <i className="size-2 rounded-full bg-[#8f5cff]" /> Every stage remains
+          <i className="size-2 rounded-full bg-[#737373]" /> Every stage remains
           editable.
         </span>
         <span className="text-white/45 max-sm:hidden">

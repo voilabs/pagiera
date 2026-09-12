@@ -2,19 +2,19 @@ import { motion } from "framer-motion";
 import { Icon } from "@/components/icons";
 
 const actions = [
-  "Set an editorial type scale",
-  "Create responsive project cards",
-  "Bind the featured-project query",
+  "Target: Hero heading · desktop",
+  "Font size: 64 → 56",
+  "Review changes before applying",
 ];
 
 export function AiSection() {
   return (
-    <section className="bg-[#0d0915] px-3 pb-3">
-      <div className="relative overflow-hidden rounded-[48px] border border-white/[.08] bg-[#171020] px-[max(24px,calc((100vw-1240px)/2))] py-32 text-white max-md:rounded-[30px] max-md:py-24">
-        <div className="pointer-events-none absolute top-[-30%] right-[-12%] size-[720px] rounded-full bg-[#6a25f0]/28 blur-[140px]" />
+    <section className="bg-[#0b0b0b] px-3 pb-3">
+      <div className="relative overflow-hidden rounded-[48px] border border-white/[.08] bg-[#131313] px-[max(24px,calc((100vw-1240px)/2))] py-32 text-white max-md:rounded-[30px] max-md:py-24">
+        <div className="pointer-events-none absolute top-[-30%] right-[-12%] size-[720px] rounded-full bg-[#424242]/28 blur-[140px]" />
         <div className="relative grid grid-cols-[.88fr_1.12fr] items-center gap-24 max-lg:grid-cols-1 max-lg:gap-14">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.05] px-3 py-2 text-[10px] font-bold tracking-[.1em] text-[#a982ff] uppercase backdrop-blur">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.05] px-3 py-2 text-[10px] font-bold tracking-[.1em] text-[#939393] uppercase backdrop-blur">
               <Icon name="sparkles" size={14} /> Pagiera AI
             </span>
             <h2 className="mt-7 text-[clamp(50px,6.5vw,92px)] leading-[.9] font-medium tracking-[-.075em]">
@@ -23,12 +23,12 @@ export function AiSection() {
               Keep the decisions.
             </h2>
             <p className="mt-7 max-w-[560px] text-base leading-8 text-white/52">
-              AI works inside the same component, data and responsive system you
-              edit by hand. Every result remains visible, inspectable and yours
-              to change.
+              Select a layer or mention a target with @. Luma proposes focused
+              text, style and element changes so you can inspect old and new
+              values before applying them. Your existing page stays in place.
             </p>
             <div className="mt-9 flex flex-wrap gap-2">
-              {["Visible steps", "Real components", "Editable output"].map(
+              {["Targeted edits", "Before & after", "Your approval"].map(
                 (item) => (
                   <span
                     className="rounded-full border border-white/10 bg-white/[.04] px-3.5 py-2 text-[10px] font-semibold text-white/62"
@@ -48,7 +48,7 @@ export function AiSection() {
             viewport={{ amount: 0.2, once: true }}
             whileInView={{ opacity: 1, y: 0 }}
           >
-            <div className="rounded-[25px] bg-[#151020] p-5 text-white max-md:p-4">
+            <div className="rounded-[25px] bg-[#121212] p-5 text-white max-md:p-4">
               <div className="flex items-center border-b border-white/10 pb-4">
                 <span className="grid size-9 place-items-center rounded-xl bg-[#6a25f0]">
                   <Icon name="sparkles" size={15} />
@@ -63,9 +63,8 @@ export function AiSection() {
               </div>
 
               <div className="py-7">
-                <div className="ml-auto max-w-[78%] rounded-2xl rounded-br-sm bg-white px-4 py-3 text-[11px] leading-5 text-[#20162d]">
-                  Build a restrained portfolio system for an architecture
-                  studio.
+                <div className="ml-auto max-w-[78%] rounded-2xl rounded-br-sm bg-white px-4 py-3 text-[11px] leading-5 text-[#1a1a1a]">
+                  @Hero heading Reduce the font size to 56. Keep the rest of the page unchanged.
                 </div>
                 <div className="mt-7 grid grid-cols-[32px_1fr] gap-3">
                   <span className="grid size-8 place-items-center rounded-xl bg-[#6a25f0]">
@@ -73,7 +72,7 @@ export function AiSection() {
                   </span>
                   <div>
                     <p className="text-[11px] leading-5 text-white/65">
-                      I’ll create the system in three visible steps.
+                      Example proposal — nothing changes until you approve.
                     </p>
                     <div className="mt-4 space-y-2">
                       {actions.map((action, index) => (
@@ -85,7 +84,7 @@ export function AiSection() {
                           viewport={{ once: true }}
                           whileInView={{ opacity: 1 }}
                         >
-                          <span className="grid size-5 place-items-center rounded-full bg-[#6a25f0]/20 text-[#b99dff]">
+                          <span className="grid size-5 place-items-center rounded-full bg-[#6a25f0]/20 text-[#aaaaaa]">
                             <Icon name="check" size={11} />
                           </span>
                           <span className="text-[10px] text-white/55">

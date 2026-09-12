@@ -96,6 +96,14 @@
   --color-ed-muted: var(--ed-text-muted);
   --color-ed-faint: var(--ed-text-faint);
   --color-ed-accent: var(--ed-accent);
+  --color-ed-menu: var(--ed-menu);
+  --color-ed-menu-hover: var(--ed-menu-hover);
+  --color-ed-nav: var(--ed-nav);
+  --color-ed-nav-raised: var(--ed-nav-raised);
+  --color-ed-nav-border: var(--ed-nav-border);
+  --color-ed-nav-text: var(--ed-nav-text);
+  --color-ed-nav-muted: var(--ed-nav-muted);
+  --color-ed-nav-faint: var(--ed-nav-faint);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -122,17 +130,21 @@
  * Editor chrome palette.
  *
  * The editor UI is themed from here alone — every panel, field and menu reads
- * these variables rather than a hard-coded grey, so changing the look is one
- * edit instead of a hunt through four component files. Flip the whole editor
- * dark by putting `data-ed-theme="dark"` on the `.pg-editor` root.
+ * these variables rather than a hard-coded grey, so changing the look stays
+ * centralized. The chrome uses one light theme with a dark navigation column.
  */
 /*
- * Dark is the default: the canvas holds the user's own colours, and a dark
- * chrome keeps the page being designed as the brightest thing on screen.
+ * Dark chrome, one shade darker at the navigation.
  *
- * The greys carry a slight blue-violet cast (hue ~265) rather than being
- * neutral, so the panels read as a deliberate surface instead of default grey,
- * and the accent sits on the same hue family.
+ * The artboard carries the author's own colours and is nearly always light, so
+ * dark chrome keeps the page the brightest thing on screen and stops the
+ * editor's own surfaces from competing with it. The greys sit close to black
+ * and carry only a trace of blue, which keeps the purple accent reading as the
+ * one saturated thing in the window.
+ *
+ * The navigation is the darkest surface, the panels sit a step above it, and
+ * the canvas well sits between the two: that ordering is what makes the
+ * window read as a frame holding a document.
  */
 .pg-editor {
   font-family: var(--pagiera-font);
@@ -143,26 +155,96 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  /* Three clear planes: the canvas well sits furthest back, panels float above
-     it, and fields are inset into the panels. Earlier the three were within a
-     few points of each other, so nothing read as layered. */
-  --ed-canvas: #090a0d;
-  --ed-surface: #13151a;
-  --ed-subtle: #191c22;
-  --ed-field: #20242c;
-  --ed-field-hover: #292e38;
-  --ed-border: #2a2f39;
-  --ed-text: #f4f4f5;
-  --ed-text-muted: #a5a8b0;
-  --ed-text-faint: #6e737d;
-  --ed-accent: #7c3aed;
-  --ed-accent-soft: rgb(124 58 237 / 0.22);
+  /* Each step between surface, field and hover is a visible shade apart: at
+     13px the chrome only reads as layered when the levels separate, and a
+     panel barely lighter than its own buttons reads as flat. */
+  --ed-canvas: #181818;
+  --ed-surface: #121212;
+  --ed-subtle: #1b1b1b;
+  --ed-field: #242424;
+  --ed-field-hover: #303030;
+  --ed-border: #2c2c2c;
+  /* For the few edges that must survive against the canvas well: the panel
+     rails, the header seam, the active document tab. */
+  --ed-border-strong: #3b3b3b;
+  --ed-text: #f2f2f2;
+  --ed-text-muted: #a0a0a0;
+  --ed-text-faint: #686868;
+  /* The accent lightens on hover: against a near-black panel a darker purple
+     reads as disabled, which is the opposite of what a hover should say. */
+  --ed-accent: #6c28ed;
+  --ed-accent-hover: #7d42f4;
+  --ed-accent-soft: rgb(108 40 237 / 0.2);
+  /*
+   * The navigation column shares the panels' surface: the toolbar and the
+   * sidebar are one piece of chrome around the document, and two different
+   * darks drew a seam between things doing the same job. The canvas well
+   * stays darker, which is the separation that actually matters.
+   */
+  --ed-nav: #121212;
+  --ed-nav-raised: #242424;
+  --ed-nav-border: #2c2c2c;
+  --ed-nav-text: #f2f2f2;
+  --ed-nav-muted: #a0a0a0;
+  --ed-nav-faint: #686868;
+  /* The washes the rail and the panel header paint with. Named rather than
+     spelled out at each button, because a light chrome tints with black and a
+     dark one with white, and every one of them had to change at once. */
+  --ed-nav-hover: #2b2b2b;
+  --ed-nav-active: #2d2d2d;
+  --ed-nav-field: #222222;
+  /*
+   * Menus.
+   *
+   * A popover has to read as something laid over the panel rather than a hole
+   * cut into it, so it sits darker than every surface it can open on, and its
+   * hover is a light wash rather than another grey from the same scale — the
+   * old hover used the panel's own field colour, which is what the menu was
+   * already painted with, so hovering a row changed nothing.
+   */
+  /* A popover reads as something laid over the panel rather than a hole cut
+     into it: darker than every surface it can open on, lifted by a shadow,
+     and hovered with a light wash rather than another grey from the same
+     scale — a hover painted in the menu's own colour changes nothing. */
+  --ed-menu: #232323;
+  --ed-menu-hover: #333333;
+  --ed-menu-shadow: 0 16px 40px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.09);
+  /* Inverted against the chrome, so it stays legible over every surface. */
   --ed-tooltip: #ffffff;
-  --ed-tooltip-text: #171717;
+  --ed-tooltip-text: #131313;
   --ed-scroll-thumb: rgb(255 255 255 / 0.16);
   --ed-scroll-thumb-hover: rgb(255 255 255 / 0.3);
-  /* A hint of structure, not a lattice. */
-  --ed-grid: rgb(255 255 255 / 0.022);
+  /* A hint of structure, not a lattice: a dot per 24px, nothing more. */
+  --ed-grid: rgb(255 255 255 / 0.055);
+  /*
+   * Chrome radii.
+   *
+   * The shared --radius is 14px, which suits page content but turns every
+   * 24px icon button in the chrome into a lozenge. The radius utilities are
+   * declared with @theme inline, so they resolve var(--radius) where they are
+   * used and this single override retunes the whole editor scale: sm 5px,
+   * md 6px, lg 8px, xl 11px, 2xl 14px — tool-panel proportions rather than
+   * marketing-page ones.
+   */
+  --radius: 0.75rem;
+}
+
+/*
+ * Anything rendered inside the navigation column re-points the chrome
+ * variables at the column's own set. Every panel, row and field already reads
+ * these, so one list of rows renders correctly in the rail and in the canvas
+ * panels without a second set of classes.
+ */
+.pg-editor .pg-on-nav {
+  --ed-surface: var(--ed-nav);
+  --ed-subtle: #1d1d1d;
+  --ed-field: var(--ed-nav-field);
+  --ed-field-hover: var(--ed-nav-hover);
+  --ed-border: var(--ed-nav-border);
+  --ed-border-strong: rgb(255 255 255 / 0.14);
+  --ed-text: var(--ed-nav-text);
+  --ed-text-muted: var(--ed-nav-muted);
+  --ed-text-faint: var(--ed-nav-faint);
 }
 
 .pg-editor button,
@@ -256,25 +338,143 @@
 .pg-editor .scrollbar-none::-webkit-scrollbar { width: 0; height: 0; }
 
 
-.pg-editor[data-ed-theme="light"] {
-  --ed-canvas: #e8e9ec;
-  --ed-surface: #ffffff;
-  --ed-subtle: #f6f6fa;
-  --ed-field: #eeeef4;
-  --ed-field-hover: #e2e2ea;
-  --ed-border: #e0e0e9;
-  --ed-text: #15141d;
-  --ed-text-muted: #5d5b73;
-  --ed-text-faint: #8d8ba3;
-  --ed-accent: #5402e6;
-  --ed-accent-soft: rgb(84 2 230 / 0.12);
-  --ed-tooltip: #171717;
-  --ed-tooltip-text: #ffffff;
-  --ed-scroll-thumb: rgb(0 0 0 / 0.18);
-  --ed-scroll-thumb-hover: rgb(0 0 0 / 0.32);
-  --ed-grid: rgb(0 0 0 / 0.045);
-}
-
 @keyframes pg-loop-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.06; } }
 @keyframes pg-loop-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -12px; } }
 @keyframes pg-loop-spin { to { rotate: 360deg; } }
+
+@layer components {
+  /*
+   * Menus and dropdowns.
+   *
+   * One surface, used by every popover in the editor: the toolbar dropdowns, the
+   * canvas and layer context menus, and the select control. Written as plain
+   * classes rather than a pile of utilities for two reasons — a menu is a single
+   * recognisable thing and should be edited in one place, and half of these are
+   * portalled to <body>, outside the .pg-editor element that defines the chrome
+   * variables, so a menu has to carry its own colours to survive the trip.
+   *
+   * The panel sits a shade above the chrome rather than below it: a menu is
+   * something laid on top, and a hairline of white at the rim is what sells the
+   * lift. Rows are label-left, shortcut-right, with the shortcut two steps
+   * quieter than the label so it reads as reference rather than as content.
+   */
+  .pg-menu {
+    --pg-menu-bg: #1c1c1c;
+    --pg-menu-border: #303030;
+    --pg-menu-text: #f0f0f0;
+    --pg-menu-hover: #2c2c2c;
+    --pg-menu-shortcut: #898989;
+    --pg-menu-disabled: #626262;
+    --pg-menu-divider: #303030;
+
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    border: 1px solid var(--pg-menu-border);
+    border-radius: 12px;
+    background-color: var(--pg-menu-bg);
+    color: var(--pg-menu-text);
+    font-family: var(--pagiera-font);
+    font-size: 12px;
+    box-shadow:
+      0 16px 40px rgb(0 0 0 / 0.55),
+      0 2px 8px rgb(0 0 0 / 0.4);
+  }
+
+  /* A row: icon, label, and whatever sits at the right rim. */
+  /* Radix Presence waits for these animations before unmounting its portal. */
+  .pg-popup-radix {
+    transform-origin: var(--radix-select-content-transform-origin);
+  }
+  .pg-popup-radix[data-state="open"] {
+    animation: pg-popup-open 160ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+  .pg-popup-radix[data-state="closed"] {
+    pointer-events: none;
+    animation: pg-popup-close 120ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+  @keyframes pg-popup-open {
+    from { opacity: 0; scale: .97; }
+    to { opacity: 1; scale: 1; }
+  }
+  @keyframes pg-popup-close {
+    from { opacity: 1; scale: 1; }
+    to { opacity: 0; scale: .98; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pg-popup-radix[data-state] { animation-duration: 1ms; }
+  }
+
+  .pg-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 30px;
+    padding: 6px 9px;
+    border-radius: 7px;
+    color: var(--pg-menu-text);
+    font-size: 12px;
+    text-align: left;
+    transition: background-color 90ms ease, color 90ms ease;
+  }
+
+  .pg-menu-item:hover:not(:disabled),
+  .pg-menu-item[data-highlighted],
+  .pg-menu-item[aria-expanded="true"] {
+    background-color: var(--pg-menu-hover);
+    color: #ffffff;
+  }
+
+  /* The row you are already on. Framer marks it the same way it marks hover,
+     which is what keeps the menu from looking like two competing selections. */
+  .pg-menu-item[data-active="true"] {
+    background-color: var(--pg-menu-hover);
+    color: #ffffff;
+  }
+
+  .pg-menu-item:disabled,
+  .pg-menu-item[data-disabled] {
+    color: var(--pg-menu-disabled);
+    pointer-events: none;
+    opacity: 1;
+  }
+
+  .pg-menu-item:disabled .pg-menu-shortcut,
+  .pg-menu-item[data-disabled] .pg-menu-shortcut {
+    color: var(--pg-menu-disabled);
+  }
+
+  .pg-menu-item[data-destructive="true"] {
+    color: #f27272;
+  }
+  .pg-menu-item[data-destructive="true"]:hover:not(:disabled) {
+    background-color: rgb(239 68 68 / 0.16);
+    color: #ff9090;
+  }
+
+  /* Keyboard hints and submenu chevrons both live at the right rim. */
+  .pg-menu-shortcut {
+    margin-left: auto;
+    padding-left: 16px;
+    color: var(--pg-menu-shortcut);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pg-menu-sep {
+    height: 1px;
+    margin: 5px 2px;
+    background-color: var(--pg-menu-divider);
+  }
+
+  .pg-menu-label {
+    padding: 6px 8px 4px;
+    color: #6e6e6e;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}

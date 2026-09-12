@@ -88,7 +88,7 @@ export function HistoryPanel({
     if (!listRevisions) {
         return (
             <div className="p-3">
-                <p className="rounded-2xl border border-ed-border bg-ed-subtle p-3 text-[9px] leading-relaxed text-ed-faint">
+                <p className="rounded-[18px] bg-ed-subtle p-3 text-[9px] leading-relaxed text-ed-faint">
                     History needs a <code>listRevisions</code> adapter from the host app.
                 </p>
             </div>
@@ -97,7 +97,7 @@ export function HistoryPanel({
 
     return (
         <div className="p-3">
-            <div className="mb-3 rounded-2xl border border-ed-border bg-ed-subtle p-3">
+            <div className="mb-3 rounded-[18px] bg-ed-subtle p-3">
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ed-text">
                     <IconHistory size={13} /> History
                 </p>
@@ -125,7 +125,7 @@ export function HistoryPanel({
                     return (
                         <div
                             key={revision.id}
-                            className="flex items-center justify-between gap-2 rounded-xl border border-ed-border bg-ed-field px-2.5 py-2"
+                            className="flex items-center justify-between gap-2 rounded-2xl bg-ed-field px-2.5 py-2"
                         >
                             <span className="min-w-0">
                                 <span className="block text-[10px] font-medium text-ed-text">
@@ -142,7 +142,7 @@ export function HistoryPanel({
                                 type="button"
                                 disabled={isCurrent || busyId === revision.id || !restoreRevision}
                                 onClick={() => void restore(revision)}
-                                className="flex shrink-0 items-center gap-1 rounded-full bg-ed-subtle px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text disabled:opacity-30"
+                                className="flex shrink-0 items-center gap-1 rounded-md bg-ed-subtle px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text disabled:opacity-30"
                             >
                                 {busyId === revision.id ? (
                                     <IconLoader2 size={10} className="animate-spin" />

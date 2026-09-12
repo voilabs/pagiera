@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ../../scripts/check-docs.cjs && next build",
+    "docs:check": "node ../../scripts/check-docs.cjs",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
   },
   "dependencies": {
     "framer-motion": "^13.1.1",
+    "marked": "^18.0.11",
     "next": "16.3.2",
     "pagiera": "^0.2.0-alpha.38",
     "react": "19.2.8",

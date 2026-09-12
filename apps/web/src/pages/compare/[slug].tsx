@@ -7,7 +7,7 @@ import { Manrope } from "next/font/google";
 import { ComparisonView } from "@/components/comparison-view";
 import { ConversionFooter } from "@/components/conversion-footer";
 import { Seo } from "@/components/seo";
-import { SiteHeader } from "@/components/site-header";
+import { SiteBar } from "@/components/site-bar";
 import { COMPARISONS, type Comparison, getComparison } from "@/lib/comparisons";
 import {
   breadcrumbSchema,
@@ -46,7 +46,7 @@ export default function ComparePage({
 
   return (
     <div
-      className={`${manrope.variable} min-w-80 overflow-clip bg-[#0d0915] font-sans text-[#f7f3ff]`}
+      className={`${manrope.variable} min-w-80 overflow-clip bg-[#0b0b0b] font-sans text-[#f5f5f5]`}
     >
       <Seo
         description={description}
@@ -66,7 +66,7 @@ export default function ComparePage({
         path={path}
         title={title}
       />
-      <SiteHeader />
+      <SiteBar active="compare" />
       <main>
         <ComparisonView comparison={comparison} others={others} />
       </main>

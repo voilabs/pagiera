@@ -66,7 +66,7 @@ export function DataPanel({
                             layout
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="group flex items-center gap-2.5 rounded-xl border border-ed-border p-2.5 transition-colors hover:border-ed-accent/50"
+                            className="group flex items-center gap-2.5 rounded-2xl p-2.5 transition-colors hover:border-ed-accent/50"
                         >
                             <button
                                 type="button"

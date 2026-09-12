@@ -5,23 +5,32 @@ import { TemplateFrame } from "@/components/template-frame";
 import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
+/** Mirrors templates/registry.json: accents and page counts are taken from
+ *  each template's own preview metadata rather than invented here. */
 const templates = [
   {
-    accent: "#6a25f0",
+    accent: "#d7ff3f",
     category: "Portfolio",
     id: "nocturne",
     name: "Nocturne Studio",
     pages: 4,
   },
   {
-    accent: "#8f5cff",
+    accent: "#8b7bff",
     category: "SaaS",
     id: "relay",
     name: "Relay",
     pages: 1,
   },
   {
-    accent: "#171020",
+    accent: "#75e9a1",
+    category: "App",
+    id: "nexthive",
+    name: "NextHive",
+    pages: 1,
+  },
+  {
+    accent: "#ffffff",
     category: "Social",
     id: "x-clone",
     name: "X Clone",
@@ -61,13 +70,13 @@ export function TemplatesSection() {
       </div>
 
       <motion.div
-        className="mt-20 overflow-hidden rounded-[38px] border border-white/10 bg-[#171020] p-3 shadow-[0_45px_100px_rgba(0,0,0,.24)] max-md:mt-14 max-md:rounded-[28px] max-md:p-2"
+        className="mt-20 overflow-hidden rounded-[38px] border border-white/[.06] bg-[#141020] p-3 shadow-[0_45px_100px_rgba(0,0,0,.24)] max-md:mt-14 max-md:rounded-[28px] max-md:p-2"
         initial={{ opacity: 0, y: 36 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         viewport={{ amount: 0.15, once: true }}
         whileInView={{ opacity: 1, y: 0 }}
       >
-        <div className="relative h-[680px] overflow-hidden rounded-[29px] bg-[#171020] max-lg:h-[560px] max-md:h-[430px] max-md:rounded-[22px]">
+        <div className="relative h-[680px] overflow-hidden rounded-[29px] bg-[#141020] max-lg:h-[560px] max-md:h-[430px] max-md:rounded-[22px]">
           <AnimatePresence mode="wait">
             <motion.div
               animate={{ opacity: 1, scale: 1 }}
@@ -86,7 +95,7 @@ export function TemplatesSection() {
             </motion.div>
           </AnimatePresence>
 
-          <div className="absolute inset-x-4 bottom-4 flex items-center gap-3 rounded-[20px] border border-white/12 bg-[#171020]/76 p-2.5 pl-4 text-white shadow-2xl backdrop-blur-xl max-md:inset-x-2 max-md:bottom-2 max-md:flex-wrap">
+          <div className="absolute inset-x-4 bottom-4 flex items-center gap-3 rounded-[20px] border border-white/[.08] bg-[#141020]/80 p-2.5 pl-4 text-white shadow-2xl backdrop-blur-xl max-md:inset-x-2 max-md:bottom-2 max-md:flex-wrap">
             <span
               className="size-2.5 rounded-full"
               style={{ background: active.accent }}
@@ -101,7 +110,7 @@ export function TemplatesSection() {
               </i>
             </span>
             <a
-              className="ml-auto flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[10px] font-semibold text-[#171020] transition hover:bg-[#eee8f7]"
+              className="ml-auto flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[10px] font-semibold text-[#141020] transition hover:bg-[#eaeaea]"
               href={`/templates/${active.id}/preview`}
               rel="noreferrer"
               target="_blank"
@@ -111,23 +120,32 @@ export function TemplatesSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-3 max-md:grid-cols-1">
+        <div className="grid grid-cols-4 gap-2 pt-3 max-lg:grid-cols-2 max-md:grid-cols-1">
           {templates.map((template, index) => {
             const selected = template.id === active.id;
             return (
+              // No outline and no global purple: the selected tab is simply a
+              // lifted surface, and the only colour it carries is the
+              // template's own accent — the same one shown on the preview.
               <button
                 aria-pressed={selected}
                 className={cn(
-                  "group flex min-h-24 cursor-pointer items-center rounded-[22px] border px-5 text-left transition-colors",
+                  "group flex min-h-24 cursor-pointer items-center rounded-[22px] px-5 text-left transition-colors",
                   selected
-                    ? "border-[#6a25f0]/45 bg-[#6a25f0]/14 text-white"
-                    : "border-transparent bg-white/[.035] text-white/72 hover:border-white/10 hover:bg-white/[.06]",
+                    ? "bg-white/[.08] text-white"
+                    : "bg-transparent text-white/60 hover:bg-white/[.04]",
                 )}
                 key={template.id}
                 onClick={() => setActiveId(template.id)}
                 type="button"
               >
-                <span className="font-mono text-[9px] text-[#6a25f0]">
+                <span
+                  className={cn(
+                    "font-mono text-[9px] transition-colors",
+                    selected ? undefined : "text-white/28",
+                  )}
+                  style={selected ? { color: template.accent } : undefined}
+                >
                   0{index + 1}
                 </span>
                 <span className="ml-5">
@@ -140,10 +158,10 @@ export function TemplatesSection() {
                 </span>
                 <span
                   className={cn(
-                    "ml-auto grid size-9 place-items-center rounded-full border transition",
+                    "ml-auto grid size-9 place-items-center rounded-full transition",
                     selected
-                      ? "border-[#6a25f0] bg-[#6a25f0] text-white"
-                      : "border-white/10 text-[#a982ff] group-hover:bg-white/[.06]",
+                      ? "bg-white text-[#141020]"
+                      : "bg-white/[.06] text-white/40 group-hover:bg-white/[.1] group-hover:text-white/70",
                   )}
                 >
                   <Icon name="arrow" size={14} />

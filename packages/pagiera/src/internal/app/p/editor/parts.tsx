@@ -1,4 +1,5 @@
 "use client";
+import { TextEffectsContent } from "@/lib/render/text-effects";
 
 import {
     IconArrowDown,
@@ -7,6 +8,7 @@ import {
     IconBox,
     IconCheck,
     IconCircleDot,
+    IconChevronDown,
     IconChevronRight,
     IconCopy,
     IconCloudDownload,
@@ -52,22 +54,27 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { resolveStyle } from "@/lib/editor/style";
 import { ICON_CATALOG, IconGlyph } from "@/lib/editor/icon";
-import { childrenOf, displayName } from "@/lib/editor/tree";
+import { childrenOf, displayName, subtreeIds } from "@/lib/editor/tree";
 import {
     type Breakpoint,
     type CanvasElement,
     DRAG_MIME,
     type ElementStyle,
     type ElementType,
+    type EntranceSplit,
     isContainer,
     MOVE_MIME,
     type ResizeHandle,
 } from "@/lib/editor/types";
+import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./ui";
+import { shaderDocument } from "@/lib/editor/shaders";
+import { interactiveDocument } from "@/lib/editor/interactive";
 import { markdownToHtml } from "@/lib/render/markdown";
+import { splitTextParts } from "@/lib/render/page-render";
 import { PagieraMark } from "./brand";
 import type { SaveStatus } from "./use-editor";
 
-const TYPE_ICONS: Record<
+export const TYPE_ICONS: Record<
     ElementType,
     React.ComponentType<{ size?: number; stroke?: number; className?: string }>
 > = {
@@ -105,8 +112,19 @@ const TYPE_ICONS: Record<
 /* ------------------------------------------------------------------ canvas */
 
 /** What an element shows on the canvas when it is not being text-edited. */
-export function ElementBody({ element }: { element: CanvasElement }) {
-    if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox="" className="pointer-events-none h-full w-full border-0 bg-transparent" />;
+export function ElementBody({
+    element,
+    entranceSplit = "none",
+    effectsPreview = false,
+}: {
+    element: CanvasElement;
+    /** Break the text the way the published page will, so Play is honest. */
+    entranceSplit?: EntranceSplit;
+    effectsPreview?: boolean;
+}) {
+    if (element.interactive) return null;
+    if (element.shader) return <iframe title={element.name ?? "Shader"} srcDoc={shaderDocument(element.shader.preset, element.shader)} sandbox="allow-scripts" className="pointer-events-none h-full w-full border-0 bg-transparent" />;
+if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox={element.codeLanguage === "tsx" ? "allow-scripts" : ""} className="pointer-events-none h-full w-full border-0 bg-transparent" />;
     if (element.type === "Image") {
         if (element.src) {
             return (
@@ -157,8 +175,9 @@ export function ElementBody({ element }: { element: CanvasElement }) {
     if (element.type === "Input" || element.type === "Textarea" || element.type === "Select") {
         // A field shows the text a visitor would see before they touch it: its
         // placeholder, or the value it is pre-filled with.
-        const preview = element.defaultValue || element.placeholder || element.type;
-        return <span className="pointer-events-none flex w-full select-none items-center gap-1 truncate opacity-65"><span className="min-w-0 flex-1 truncate">{preview}</span>{element.type === "Select" && <IconSelector size={13} className="shrink-0" />}</span>;
+        const preview = element.type === 'Select' ? element.options?.find(option => option.value === element.defaultValue)?.label || element.placeholder || element.options?.[0]?.label || 'Select' : element.defaultValue || element.placeholder || element.type;
+        const appearance = element.fieldAppearance;
+        return <span className="pointer-events-none flex w-full select-none items-center gap-1 truncate" style={{ color: !element.defaultValue ? appearance?.placeholderColor : undefined, opacity: element.disabled ? (appearance?.disabledOpacity ?? 45) / 100 : 1 }}><span className="min-w-0 flex-1 truncate">{preview}</span>{element.type === "Select" && appearance?.arrow !== 'none' && <span style={{ color: appearance?.arrowColor, fontSize: appearance?.arrowSize ?? 16 }} className="shrink-0">{appearance?.arrow === 'chevron' ? '⌄' : <IconSelector size={13} />}</span>}</span>;
     }
 
     if (element.type === "FileInput") {
@@ -190,77 +209,103 @@ export function ElementBody({ element }: { element: CanvasElement }) {
     if (!element.content) return null;
     return (
         <span className="pointer-events-none block w-full select-none whitespace-pre-wrap">
-            {element.content}
+            {element.textEffects && (element.textEffects.hover !== "none" || element.textEffects.scroll !== "none") ? <TextEffectsContent content={element.content} effects={element.textEffects} enabled={effectsPreview} /> : entranceSplit === "none"
+                ? element.content
+                : splitTextParts(element.content, entranceSplit)}
         </span>
     );
 }
 
-const CORNER_HANDLES: Array<{ handle: ResizeHandle; className: string }> = [
-    { handle: "nw", className: "-top-[5px] -left-[5px] cursor-nwse-resize" },
-    { handle: "ne", className: "-top-[5px] -right-[5px] cursor-nesw-resize" },
-    { handle: "sw", className: "-bottom-[5px] -left-[5px] cursor-nesw-resize" },
-    { handle: "se", className: "-bottom-[5px] -right-[5px] cursor-nwse-resize" },
-];
-
-const EDGE_HANDLES: Record<ResizeHandle, string> = {
-    nw: "",
-    ne: "",
-    sw: "",
-    se: "",
-    n: "left-1/2 -top-[5px] -translate-x-1/2 cursor-ns-resize",
-    s: "left-1/2 -bottom-[5px] -translate-x-1/2 cursor-ns-resize",
-    w: "top-1/2 -left-[5px] -translate-y-1/2 cursor-ew-resize",
-    e: "top-1/2 -right-[5px] -translate-y-1/2 cursor-ew-resize",
+/**
+ * Where each handle sits on the box, as fractions of its width and height.
+ *
+ * Fractions rather than classes because the dot's own size has to be undone
+ * from the canvas zoom: at 33% a 10px handle rendered 3px across, which is not
+ * something a hand can catch.
+ */
+const HANDLE_SPOTS: Partial<Record<ResizeHandle, { x: number; y: number; cursor: string }>> = {
+    nw: { x: 0, y: 0, cursor: "nwse-resize" },
+    ne: { x: 1, y: 0, cursor: "nesw-resize" },
+    sw: { x: 0, y: 1, cursor: "nesw-resize" },
+    se: { x: 1, y: 1, cursor: "nwse-resize" },
 };
 
+const CORNERS: ResizeHandle[] = ["nw", "ne", "sw", "se"];
+
 /**
- * Only the axes the element can actually be resized on get a handle: a `fill`
- * or `auto` dimension is decided by the layout, not by dragging.
+ * The transform box: four corners and four edge midpoints, sitting on the
+ * outline itself.
  */
 export function ResizeHandles({
     element,
     style,
+    scale,
     onMouseDown,
 }: {
     element: CanvasElement;
     style: ElementStyle;
+    /** The canvas zoom, so a handle stays the same size on screen. */
+    scale: number;
     onMouseDown: (
         event: React.MouseEvent,
         handle: ResizeHandle,
         element: CanvasElement,
     ) => void;
 }) {
-    // `fill` gets handles too: dragging inward is the only way back to an
-    // explicit width once an element has been stretched to its container.
-    const canWidth = style.widthMode === "fixed" || style.widthMode === "fill";
-    const canHeight = style.heightMode === "fixed";
-    if (!canWidth && !canHeight) return null;
-
-    const edges = (list: readonly ResizeHandle[]) =>
-        list.map((h) => ({ handle: h, className: EDGE_HANDLES[h] }));
-
-    // With both axes free, the corners scale the box (and a text's type with
-    // it) while the edge midpoints change one dimension on its own — the
-    // arrangement every design tool uses, and the only way to widen something
-    // without also making it taller.
-    const handles: Array<{ handle: ResizeHandle; className: string }> =
-        canWidth && canHeight
-            ? [...CORNER_HANDLES, ...edges(["n", "s", "w", "e"])]
-            : canWidth
-                ? edges(["w", "e"])
-                : edges(["n", "s"]);
+    /*
+     * Four corners, and nothing else.
+     *
+     * A corner is where a hand goes to resize something, and it says both
+     * dimensions at once; the edge midpoints only repeated what the inspector
+     * states exactly. The handles used to be rationed by sizing mode too, so
+     * an auto-height text had no corners at all — now a drag on one simply
+     * makes that size explicit.
+     */
+    // One size on screen whatever the zoom, and a hit area wider than the dot
+    // it draws — the same trick every design tool uses to make a 10px handle
+    // catchable.
+    const dot = 8 / scale;
+    const hit = 18 / scale;
 
     return (
         <>
-            {handles.map(({ handle, className }) => (
-                <button
-                    type="button"
-                    key={handle}
-                    aria-label={`Resize ${handle}`}
-                    onMouseDown={(event) => onMouseDown(event, handle, element)}
-                    className={`absolute z-[60] h-[10px] w-[10px] rounded-full border-[1.5px] border-ed-accent bg-ed-surface shadow-sm ${className}`}
-                />
-            ))}
+            {CORNERS.map((handle) => {
+                const spot = HANDLE_SPOTS[handle];
+                if (!spot) return null;
+                return (
+                    <button
+                        type="button"
+                        key={handle}
+                        aria-label={`Resize ${handle}`}
+                        onMouseDown={(event) => onMouseDown(event, handle, element)}
+                        className="absolute z-[60] flex items-center justify-center"
+                        style={{
+                            left: `${spot.x * 100}%`,
+                            top: `${spot.y * 100}%`,
+                            width: hit,
+                            height: hit,
+                            transform: "translate(-50%, -50%)",
+                            cursor: spot.cursor,
+                        }}
+                    >
+                        {/* A white square with an accent edge, sitting on the
+                            corner it moves. White because it has to read on a
+                            near-black canvas and on a white artboard alike;
+                            square because that is what a corner of a box looks
+                            like when you take hold of it. */}
+                        <span
+                            className="border-ed-accent"
+                            style={{
+                                width: dot,
+                                height: dot,
+                                background: "#fff",
+                                borderWidth: 1 / scale,
+                                borderRadius: 1 / scale,
+                            }}
+                        />
+                    </button>
+                );
+            })}
         </>
     );
 }
@@ -365,7 +410,7 @@ export function ElementsPanel({
                     <h3 className="px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-ed-faint">
                         {group.title}
                     </h3>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-3 gap-1.5">
                         {group.types.map((type) => {
                             const Icon = TYPE_ICONS[type];
                             return (
@@ -378,12 +423,12 @@ export function ElementsPanel({
                                         event.dataTransfer.effectAllowed = "copy";
                                     }}
                                     onClick={() => onInsert(type)}
-                                    className="group flex cursor-grab flex-col items-center justify-center gap-2 rounded-xl border border-ed-border bg-ed-surface p-3.5 transition-colors duration-150 hover:border-ed-accent/40 hover:bg-ed-subtle active:cursor-grabbing"
+                                    className="group flex min-h-[78px] cursor-grab flex-col items-center justify-center gap-1.5 rounded-[14px] bg-ed-subtle/45 px-1.5 py-2.5 transition-all duration-150 hover:-translate-y-px hover:border-ed-accent/40 hover:bg-ed-field hover:shadow-md active:cursor-grabbing"
                                 >
-                                    <span className="pointer-events-none flex size-8 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors group-hover:bg-ed-accent/15 group-hover:text-ed-accent">
-                                        <Icon size={20} stroke={1.5} />
+                                    <span className="pointer-events-none flex size-7 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors group-hover:bg-ed-accent/15 group-hover:text-ed-accent">
+                                        <Icon size={15} stroke={1.55} />
                                     </span>
-                                    <span className="pointer-events-none text-[10px] font-medium text-ed-muted group-hover:text-ed-text">
+                                    <span className="pointer-events-none max-w-full truncate text-[9px] font-medium text-ed-muted group-hover:text-ed-text">
                                         {type}
                                     </span>
                                 </button>
@@ -396,57 +441,7 @@ export function ElementsPanel({
     );
 }
 
-export function IconsPanel({ search, onInsert }: {
-    search: string;
-    onInsert: (iconName: CanvasElement["iconName"]) => void;
-}) {
-    const query = search.trim().toLowerCase();
-    const icons = ICON_CATALOG.filter((item) =>
-        `${item.name} ${item.value} ${item.category}`.toLowerCase().includes(query),
-    );
-    const categories = Array.from(new Set(icons.map((item) => item.category)));
-
-    return (
-        <div className="flex flex-col gap-4 p-2.5">
-            <div className="flex items-center justify-between px-1">
-                <p className="text-[10px] text-ed-faint">
-                    {query ? `${icons.length} results` : `${ICON_CATALOG.length} icons`}
-                </p>
-                <span className="rounded-full bg-ed-field px-2 py-0.5 text-[8px] font-semibold text-ed-muted">
-                    Tabler
-                </span>
-            </div>
-            {categories.map((category) => (
-                <section key={category}>
-                    <h3 className="px-1 pb-2 text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">
-                        {category}
-                    </h3>
-                    <div className="grid grid-cols-4 gap-1.5">
-                        {icons.filter((item) => item.category === category).map(({ name, value, icon: Icon }) => (
-                            <button
-                                key={value}
-                                type="button"
-                                title={name}
-                                onClick={() => onInsert(value)}
-                                className="group flex aspect-square min-w-0 select-none flex-col items-center justify-center gap-1.5 rounded-xl bg-ed-subtle text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-accent"
-                            >
-                                <Icon size={20} stroke={1.7} />
-                                <span className="w-full truncate px-1 text-center text-[7px] text-ed-faint group-hover:text-ed-muted">
-                                    {name}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-                </section>
-            ))}
-            {icons.length === 0 && (
-                <div className="rounded-2xl bg-ed-subtle px-4 py-10 text-center text-[10px] text-ed-faint">
-                    No icons match “{search}”.
-                </div>
-            )}
-        </div>
-    );
-}
+export { IconsPanel } from "./ui/icons-panel";
 
 export function LayersPanel({
     elements,
@@ -461,6 +456,10 @@ export function LayersPanel({
     onReparent,
     componentMode = false,
     onOpenComponent,
+    collapsedIds,
+    onCollapsedChange,
+    breakpointGroups = [],
+    onBreakpointChange,
 }: {
     elements: CanvasElement[];
     breakpoint: Breakpoint;
@@ -474,12 +473,23 @@ export function LayersPanel({
     onReparent: (id: string, parentId: string | undefined, beforeId?: string) => void;
     componentMode?: boolean;
     onOpenComponent?: (element: CanvasElement) => void;
+    /** Folded branches, held by the shell so its header can fold them all. */
+    collapsedIds: Set<string>;
+    onCollapsedChange: (next: Set<string>) => void;
+    /**
+     * The artboards, in canvas order.
+     *
+     * The tree lists every one of them rather than only the one being edited:
+     * the page is the same page at each width, and which width you are looking
+     * at is a property of the artboard, not a filter over the document.
+     */
+    breakpointGroups?: Array<{ id: string; name: string; hint: string; isBase: boolean }>;
+    onBreakpointChange?: (id: string) => void;
 }) {
     const [dropTarget, setDropTarget] = useState<{
         id: string;
         placement: "before" | "inside" | "after";
     } | null>(null);
-    const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
     const [layerMenu, setLayerMenu] = useState<{ id: string; x: number; y: number } | null>(null);
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
@@ -500,8 +510,29 @@ export function LayersPanel({
     // Follow document/canvas flow from top to bottom. This keeps a stack page
     // readable as Navigation → Hero → Sections → Footer instead of presenting
     // the entire page backwards.
-    const rows = (parentId: string | undefined, depth: number): React.ReactNode[] => {
-        const siblings = childrenOf(elements, parentId);
+    /**
+     * Builds the visible rows.
+     *
+     * `lines` carries one flag per ancestor level: true where that ancestor
+     * has another sibling below, which is exactly when its guide line has to
+     * continue past this row. Without it the tree draws lines through
+     * branches that have already ended.
+     */
+    const rows = (
+        parentId: string | undefined,
+        depth: number,
+        lines: boolean[] = [],
+        /** The artboard these rows are listed under, if any. */
+        group?: string,
+    ): React.ReactNode[] => {
+        const bp = group ?? breakpoint;
+        const siblings = childrenOf(elements, parentId).filter((el) => {
+            // A parked frame sits beside the artboards rather than inside one,
+            // so it is listed once, after them, instead of repeated under every
+            // width — which is also why the artboards leave it out.
+            if (parentId !== undefined || breakpointGroups.length === 0) return true;
+            return group === undefined ? Boolean(el.parked) : !el.parked;
+        });
         return siblings.flatMap((el, siblingIndex) => {
                 // On a page, a component instance is one atomic layer. Its
                 // implementation belongs to the component canvas and opens on
@@ -511,35 +542,55 @@ export function LayersPanel({
                 // Searching temporarily expands every branch so a collapsed
                 // parent can never hide a matching descendant.
                 const collapsed = canCollapse && !query && collapsedIds.has(el.id);
-                const nested = componentInstance || collapsed ? [] : rows(el.id, depth + 1);
+                const hasMoreSiblings = siblingIndex < siblings.length - 1;
+                const nested = componentInstance || collapsed
+                    ? []
+                    : rows(el.id, depth + 1, [...lines, hasMoreSiblings], group);
                 // Keep a branch visible when a descendant matches the search.
                 if (!matches(el) && nested.length === 0) return [];
 
                 return [
                     <LayerRow
-                        key={el.id}
+                        key={`${group ?? "all"}:${el.id}`}
                         element={el}
-                        style={resolveStyle(el, breakpoint)}
+                        style={resolveStyle(el, bp)}
                         depth={depth}
-                        isSelected={selectedIds.includes(el.id)}
+                        lines={lines}
+                        isLastChild={!hasMoreSiblings}
+                        // The same logical layer is listed under every
+                        // artboard, but only the artboard being edited owns the
+                        // selection highlight. Painting all three rows as
+                        // selected made one click look like three selections.
+                        isSelected={selectedIds.includes(el.id) && (!group || group === breakpoint)}
                         dropPlacement={dropTarget?.id === el.id ? dropTarget.placement : undefined}
                         nextSiblingId={siblings[siblingIndex + 1]?.id}
-                        onSelect={onSelect}
+                        onSelect={(id, additive) => {
+                            // Selecting inside an artboard is also a statement
+                            // about which artboard you are working in: the
+                            // inspector has to edit the width you just clicked.
+                            if (group && group !== breakpoint) onBreakpointChange?.(group);
+                            onSelect(id, additive);
+                        }}
                         onDropTargetChange={setDropTarget}
                         onReparent={onReparent}
                         isComponentInstance={componentInstance}
                         onOpenComponent={onOpenComponent}
                         canCollapse={canCollapse}
                         collapsed={collapsed}
-                        onToggleCollapsed={() => setCollapsedIds((current) => {
-                            const next = new Set(current);
-                            if (next.has(el.id)) next.delete(el.id);
-                            else next.add(el.id);
-                            return next;
-                        })}
+                        onToggleCollapsed={(deep) => {
+                            const next = new Set(collapsedIds);
+                            const collapsing = !next.has(el.id);
+                            const ids = deep ? subtreeIds(elements, el.id) : new Set([el.id]);
+                            for (const id of ids) {
+                                if (collapsing) next.add(id);
+                                else next.delete(id);
+                            }
+                            onCollapsedChange(next);
+                        }}
                         onContextMenu={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
+                            if (group && group !== breakpoint) onBreakpointChange?.(group);
                             onSelect(el.id, false);
                             setLayerMenu({
                                 id: el.id,
@@ -553,7 +604,34 @@ export function LayersPanel({
             });
     };
 
-    const list = rows(undefined, 0);
+    const list = breakpointGroups.length === 0
+        ? rows(undefined, 0)
+        : [
+            ...breakpointGroups.flatMap((group) => {
+                const open = !collapsedIds.has(group.id);
+                const body = open ? rows(undefined, 1, [], group.id) : [];
+                // A search that matches nothing inside an artboard does not
+                // leave the artboard's own row behind as a false hit.
+                if (query && body.length === 0) return [];
+                return [
+                    <BreakpointRow
+                        key={group.id}
+                        group={group}
+                        open={open}
+                        active={group.id === breakpoint}
+                        onToggle={() => {
+                            const next = new Set(collapsedIds);
+                            if (open) next.add(group.id);
+                            else next.delete(group.id);
+                            onCollapsedChange(next);
+                        }}
+                        onSelect={() => onBreakpointChange?.(group.id)}
+                    />,
+                    ...body,
+                ];
+            }),
+            ...rows(undefined, 0),
+        ];
     if (list.length === 0) {
         return <p className="p-4 text-center text-ed-faint">No layers match “{search}”</p>;
     }
@@ -600,21 +678,18 @@ export function LayersPanel({
                                     onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}
                                     onContextMenu={(event) => { if (event.target === event.currentTarget) { event.preventDefault(); close(); } }}
                                 >
-                                    <motion.div
+                                    <Menu
                                         role="menu"
                                         aria-label={`${displayName(element)} layer actions`}
-                                        initial={{ opacity: 0, scale: 0.94, y: -6 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.96, y: -4 }}
-                                        transition={{ type: "spring", stiffness: 520, damping: 34, mass: 0.7 }}
-                                        className="absolute flex w-[214px] origin-top-left flex-col rounded-xl border border-ed-border bg-ed-surface/95 p-1.5 shadow-2xl backdrop-blur-md"
+                                        className="pg-menu absolute w-[214px] origin-top-left"
                                         style={{ left: layerMenu.x, top: layerMenu.y }}
                                         onMouseDown={(event) => event.stopPropagation()}
+                                        onClick={(event) => event.stopPropagation()}
                                     >
-                                        <p className="truncate px-3 pb-1.5 pt-1 text-[9px] font-semibold text-ed-faint">{displayName(element)}</p>
+                                        <MenuLabel>{displayName(element)}</MenuLabel>
                                         <MenuItem icon={<IconArrowUp size={14} className="text-ed-muted" />} label="Move up" onClick={() => { onReorder(element.id, "down"); close(); }} />
                                         <MenuItem icon={<IconArrowDown size={14} className="text-ed-muted" />} label="Move down" onClick={() => { onReorder(element.id, "up"); close(); }} />
-                                        <div className="mx-1 my-1 h-px bg-ed-field" />
+                                        <MenuSeparator />
                                         <MenuItem
                                             icon={style.hidden ? <IconEye size={14} className="text-ed-muted" /> : <IconEyeOff size={14} className="text-ed-muted" />}
                                             label={style.hidden ? "Show layer" : "Hide layer"}
@@ -625,9 +700,9 @@ export function LayersPanel({
                                             label={element.locked ? "Unlock layer" : "Lock layer"}
                                             onClick={() => { onToggleLocked(element.id); close(); }}
                                         />
-                                        <div className="mx-1 my-1 h-px bg-ed-field" />
+                                        <MenuSeparator />
                                         <MenuItem icon={<IconTrash size={14} className="text-red-400/80" />} label="Delete" shortcut="Del" destructive onClick={() => { onDelete(element.id); close(); }} />
-                                    </motion.div>
+                                    </Menu>
                                 </motion.div>
                             );
                         })()}
@@ -639,10 +714,63 @@ export function LayersPanel({
     );
 }
 
+/**
+ * An artboard's row in the tree.
+ *
+ * It reads as chrome rather than as a layer — it is not something you can
+ * delete, drag or hide — so it carries the width it governs instead of the
+ * layer controls, and clicking it moves the editor to that width.
+ */
+function BreakpointRow({
+    group,
+    open,
+    active,
+    onToggle,
+    onSelect,
+}: {
+    group: { id: string; name: string; hint: string; isBase: boolean };
+    open: boolean;
+    active: boolean;
+    onToggle: () => void;
+    onSelect: () => void;
+}) {
+    return (
+        <div
+            className={`group/bp flex h-8 w-full items-center gap-1 rounded-md pl-1 pr-2 transition-colors ${
+                active ? "bg-ed-field text-ed-text" : "text-ed-muted hover:bg-ed-field-hover"
+            }`}
+        >
+            <button
+                type="button"
+                aria-label={open ? `Collapse ${group.name}` : `Expand ${group.name}`}
+                onClick={onToggle}
+                className="flex size-4 shrink-0 items-center justify-center rounded text-ed-faint transition-colors hover:text-ed-text"
+            >
+                <IconChevronRight size={12} className={`transition-transform ${open ? "rotate-90" : ""}`} />
+            </button>
+            <button
+                type="button"
+                onClick={onSelect}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            >
+                <IconFrame size={13} className={`shrink-0 ${active ? "text-ed-accent" : "text-ed-faint"}`} />
+                <span className={`min-w-0 flex-1 truncate text-[11.5px] ${active ? "font-medium" : ""}`}>
+                    {group.name}
+                </span>
+                <span className="shrink-0 text-[9.5px] font-medium uppercase tracking-[.04em] text-ed-faint">
+                    {group.isBase ? "Main" : group.hint}
+                </span>
+            </button>
+        </div>
+    );
+}
+
 function LayerRow({
     element,
     style,
     depth,
+    lines = [],
+    isLastChild = true,
     isSelected,
     dropPlacement,
     nextSiblingId,
@@ -659,6 +787,9 @@ function LayerRow({
     element: CanvasElement;
     style: ElementStyle;
     depth: number;
+    /** One flag per ancestor: does its guide line continue past this row. */
+    lines?: boolean[];
+    isLastChild?: boolean;
     isSelected: boolean;
     dropPlacement?: "before" | "inside" | "after";
     nextSiblingId?: string;
@@ -669,7 +800,8 @@ function LayerRow({
     onOpenComponent?: (element: CanvasElement) => void;
     canCollapse: boolean;
     collapsed: boolean;
-    onToggleCollapsed: () => void;
+    /** `deep` folds the whole branch — alt-click. */
+    onToggleCollapsed: (deep: boolean) => void;
     onContextMenu: (event: React.MouseEvent) => void;
 }) {
     const Icon = isComponentInstance ? IconComponents : TYPE_ICONS[element.type];
@@ -680,14 +812,15 @@ function LayerRow({
         // a middle zone for nesting, matching the canvas tree structure.
         // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop surface
         <div
-            className={`group relative flex h-8 items-center gap-2 pr-2 text-[11px] transition-colors ${dropPlacement === "inside"
-                    ? "bg-[var(--ed-accent-soft)] text-ed-text"
+            className={`group relative mx-1 flex h-[30px] items-center gap-1.5 rounded-[6px] pr-2 text-[12px] transition-colors ${dropPlacement === "inside"
+                    ? "bg-[var(--ed-accent-soft)] text-ed-text ring-1 ring-inset ring-ed-accent/40"
                     : isSelected
-                        ? "bg-[var(--ed-accent-soft)] text-ed-text"
+                        ? "bg-ed-accent text-white"
                         : "text-ed-muted hover:bg-ed-field hover:text-ed-text"
                 }`}
-            style={{ paddingLeft: 12 + depth * 14 }}
+            style={{ paddingLeft: 7 + depth * 13 }}
             onContextMenu={onContextMenu}
+            data-layer-depth={depth}
             onDragOver={(event) => {
                 if (!event.dataTransfer.types.includes(MOVE_MIME)) return;
                 event.preventDefault();
@@ -717,6 +850,30 @@ function LayerRow({
                 onDropTargetChange(null);
             }}
         >
+            {/* Hierarchy guides. They sit under the row's own content and
+                never take the pointer, so dragging and selection are
+                unaffected by them. */}
+            {lines.map((continues, level) => (
+                continues ? (
+                    <span
+                        key={`line-${level}`}
+                        className="pointer-events-none absolute top-0 bottom-0 w-px bg-[var(--ed-nav-border)]"
+                        style={{ left: 13 + level * 13 }}
+                    />
+                ) : null
+            ))}
+            {depth > 0 && (
+                <>
+                    <span
+                        className="pointer-events-none absolute top-0 w-px bg-[var(--ed-nav-border)]"
+                        style={{ left: 13 + (depth - 1) * 13, height: isLastChild ? "50%" : "100%" }}
+                    />
+                    <span
+                        className="pointer-events-none absolute h-px bg-[var(--ed-nav-border)]"
+                        style={{ left: 13 + (depth - 1) * 13, top: "50%", width: 8 }}
+                    />
+                </>
+            )}
             {dropPlacement === "before" && (
                 <span className="pointer-events-none absolute inset-x-1 top-0 z-10 h-0.5 -translate-y-1/2 rounded-full bg-ed-accent">
                     <span className="absolute -left-0.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-ed-accent" />
@@ -734,9 +891,9 @@ function LayerRow({
                     aria-expanded={!collapsed}
                     onClick={(event) => {
                         event.stopPropagation();
-                        onToggleCollapsed();
+                        onToggleCollapsed(event.altKey);
                     }}
-                    className="flex size-4 shrink-0 items-center justify-center rounded text-ed-faint hover:bg-ed-field-hover hover:text-ed-text"
+                    className={`flex size-4 shrink-0 items-center justify-center rounded transition-colors ${isSelected ? "text-white/70 hover:bg-white/15 hover:text-white" : "text-ed-faint hover:bg-ed-field-hover hover:text-ed-text"}`}
                 >
                     <IconChevronRight size={12} className={`transition-transform ${collapsed ? "" : "rotate-90"}`} />
                 </button>
@@ -763,7 +920,7 @@ function LayerRow({
                 aria-pressed={isSelected}
                 className="flex min-w-0 flex-1 cursor-grab items-center gap-2 text-left active:cursor-grabbing"
             >
-                <Icon size={13} stroke={1.5} className={isComponentInstance ? "text-ed-accent" : undefined} />
+                <Icon size={12} stroke={1.55} className={isSelected ? "text-white/85" : isComponentInstance ? "text-ed-accent" : "text-ed-faint"} />
                 <span
                     className={`flex-1 truncate ${style.hidden ? "text-ed-faint line-through" : ""}`}
                 >
@@ -771,14 +928,14 @@ function LayerRow({
                 </span>
                 {Number.isFinite(style.zIndex) && style.zIndex !== 0 && (
                     <span
-                        className="shrink-0 rounded-full bg-[var(--ed-accent-soft)] px-1.5 py-0.5 font-mono text-[8px] text-ed-accent"
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[8px] ${isSelected ? "bg-white/15 text-white" : "bg-[var(--ed-accent-soft)] text-ed-accent"}`}
                         title={`z-index: ${style.zIndex}`}
                     >
                         z{style.zIndex}
                     </span>
                 )}
                 {isComponentInstance && (
-                    <span className="shrink-0 rounded-full bg-[var(--ed-accent-soft)] px-2 py-0.5 text-[8px] font-semibold text-ed-accent">
+                    <span className="shrink-0 rounded-md bg-[var(--ed-accent-soft)] px-2 py-0.5 text-[8px] font-semibold text-ed-accent">
                         {element.variant ?? "Component"}
                     </span>
                 )}
@@ -820,8 +977,8 @@ function slugify(value: string) {
  */
 type PagesMode =
     | { kind: "idle" }
-    | { kind: "create"; name: string; slug: string; slugTouched: boolean }
-    | { kind: "edit"; id: string; name: string; slug: string }
+    | { kind: "create"; slug: string }
+    | { kind: "edit"; id: string; slug: string }
     | { kind: "delete"; id: string };
 
 export function PagesPanel({
@@ -851,6 +1008,23 @@ export function PagesPanel({
 }) {
     const [mode, setMode] = useState<PagesMode>({ kind: "idle" });
     const idle = () => setMode({ kind: "idle" });
+    /** Pending single-click navigation, cancelled when a double click follows. */
+    const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => {
+        if (openTimer.current) clearTimeout(openTimer.current);
+    }, []);
+    const openLater = (id: string) => {
+        if (openTimer.current) return;
+        openTimer.current = setTimeout(() => {
+            openTimer.current = null;
+            onNavigate(id);
+        }, 220);
+    };
+    const cancelOpen = () => {
+        if (!openTimer.current) return;
+        clearTimeout(openTimer.current);
+        openTimer.current = null;
+    };
 
     return (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -867,7 +1041,7 @@ export function PagesPanel({
                             setMode(
                                 mode.kind === "create"
                                     ? { kind: "idle" }
-                                    : { kind: "create", name: "", slug: "", slugTouched: false },
+                                    : { kind: "create", slug: "" },
                             )
                         }
                         className={`flex size-6 items-center justify-center rounded-lg transition-colors ${mode.kind === "create"
@@ -887,33 +1061,28 @@ export function PagesPanel({
             )}
 
             <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
-                {/* A new page is written in the same form a rename uses, in the
-                    place the page is about to appear. */}
                 {mode.kind === "create" && (
-                    <PageForm
-                        title="New page"
-                        name={mode.name}
-                        slug={mode.slug}
-                        busy={busy}
-                        submitLabel="Create"
-                        onName={(name) =>
-                            setMode({
-                                ...mode,
-                                name,
-                                // The slug follows the name until the author
-                                // takes it over; after that it is theirs.
-                                slug: mode.slugTouched ? mode.slug : slugify(name),
-                            })
-                        }
-                        onSlug={(slug) => setMode({ ...mode, slug, slugTouched: true })}
-                        onCancel={idle}
-                        onSubmit={() => {
-                            const name = mode.name.trim();
-                            if (!name) return;
-                            onCreate(name, slugify(mode.slug) || slugify(name));
-                            idle();
-                        }}
-                    />
+                    <div className="mx-2.5 mb-1 flex h-9 items-center gap-2 rounded-lg border border-ed-accent bg-ed-field px-3">
+                        <span className="font-mono text-[11px] text-ed-faint">/</span>
+                        <input
+                            autoFocus
+                            value={mode.slug}
+                            disabled={busy}
+                            placeholder="new-page"
+                            onChange={(event) => setMode({ kind: "create", slug: event.target.value })}
+                            onBlur={idle}
+                            onKeyDown={(event) => {
+                                if (event.key === "Escape") idle();
+                                if (event.key === "Enter") {
+                                    const slug = slugify(mode.slug);
+                                    if (!slug) return;
+                                    onCreate(slug.replace(/-/g, " "), slug);
+                                    idle();
+                                }
+                            }}
+                            className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-ed-text outline-none placeholder:text-ed-faint"
+                        />
+                    </div>
                 )}
 
                 <div className="flex flex-col gap-1 px-2.5 pb-2.5">
@@ -926,24 +1095,26 @@ export function PagesPanel({
 
                         if (mode.kind === "edit" && mode.id === page.id) {
                             return (
-                                <PageForm
-                                    key={page.id}
-                                    title={`Editing ${page.name}`}
-                                    name={mode.name}
-                                    slug={mode.slug}
-                                    busy={busy}
-                                    lockSlug={isHome}
-                                    submitLabel="Save"
-                                    onName={(name) => setMode({ ...mode, name })}
-                                    onSlug={(slug) => setMode({ ...mode, slug })}
-                                    onCancel={idle}
-                                    onSubmit={() => {
-                                        const name = mode.name.trim();
-                                        if (!name) return;
-                                        onRename(page.id, name, isHome ? page.slug : slugify(mode.slug));
-                                        idle();
-                                    }}
-                                />
+                                <div key={page.id} className="mx-0 flex h-9 items-center gap-2 rounded-lg border border-ed-accent bg-ed-field px-3">
+                                    <IconFile size={13} className="shrink-0 text-ed-accent" />
+                                    <span className="font-mono text-[11px] text-ed-faint">/</span>
+                                    <input
+                                        autoFocus
+                                        value={mode.slug}
+                                        disabled={busy}
+                                        onChange={(event) => setMode({ kind: "edit", id: page.id, slug: event.target.value })}
+                                        onBlur={() => {
+                                            const slug = slugify(mode.slug);
+                                            if (slug && slug !== page.slug) onRename(page.id, page.name, slug);
+                                            idle();
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Escape") idle();
+                                            if (event.key === "Enter") event.currentTarget.blur();
+                                        }}
+                                        className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-ed-text outline-none"
+                                    />
+                                </div>
                             );
                         }
 
@@ -974,31 +1145,28 @@ export function PagesPanel({
                         return (
                             <div
                                 key={page.id}
-                                className={`group flex items-center rounded-lg transition-colors ${isCurrent
-                                    ? "bg-ed-accent text-white"
+                                onDoubleClick={() => {
+                                    cancelOpen();
+                                    if (!busy && !isHome) setMode({ kind: "edit", id: page.id, slug: page.slug });
+                                }}
+                                className={`group relative flex items-center rounded-lg transition-colors ${isCurrent
+                                    ? "bg-ed-field-hover text-ed-text before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-r before:bg-ed-accent"
                                     : isNavigating ? "bg-ed-field" : "hover:bg-ed-subtle"
                                     }`}
                             >
                                 <button
                                     type="button"
-                                    onClick={() => onNavigate(page.id)}
+                                    onClick={() => openLater(page.id)}
                                     disabled={busy || isCurrent}
-                                    className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left"
+                                    className="flex h-9 min-w-0 flex-1 items-center gap-2.5 px-3 text-left disabled:pointer-events-none"
                                 >
-                                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${isCurrent ? "bg-white/20 text-white" : "bg-ed-field text-ed-muted"}`}>
+                                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isCurrent ? "bg-ed-accent-soft text-ed-accent" : "text-ed-muted"}`}>
                                         {isHome ? <IconHome size={13} stroke={1.6} /> : <IconFile size={13} stroke={1.6} />}
                                     </span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="flex items-center gap-1.5">
-                                            <span className={`truncate text-[11px] font-semibold ${isCurrent ? "text-white" : "text-ed-text"}`}>{page.name}</span>
-                                            {page.published && (
-                                                <span className={`size-1.5 shrink-0 rounded-full ${isCurrent ? "bg-white/80" : "bg-emerald-500"}`} title="Published" />
-                                            )}
-                                        </span>
-                                        <span className={`mt-0.5 block truncate font-mono text-[9px] ${isCurrent ? "text-white/70" : "text-ed-faint"}`}>
-                                            {isHome ? "/" : `/${page.slug}`}
-                                        </span>
+                                    <span className={`min-w-0 flex-1 truncate font-mono text-[11px] ${isCurrent ? "font-semibold text-ed-text" : "text-ed-muted"}`}>
+                                        {isHome ? "/" : `/${page.slug}`}
                                     </span>
+                                    {page.published && <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" title="Published" />}
                                     {isNavigating && (
                                         <motion.span
                                             aria-label="Opening page"
@@ -1015,12 +1183,6 @@ export function PagesPanel({
                                     Hidden until the row is hovered or focused, so a
                                     long list still reads as names and URLs. */}
                                 <span className={`flex shrink-0 items-center pr-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${isCurrent ? "[&_a]:text-white/70 [&_button]:text-white/70" : ""}`}>
-                                    <RowAction
-                                        label={`Edit ${page.name}`}
-                                        onClick={() => setMode({ kind: "edit", id: page.id, name: page.name, slug: page.slug })}
-                                    >
-                                        <IconPencil size={12} />
-                                    </RowAction>
                                     <RowAction
                                         label={`Duplicate ${page.name}`}
                                         onClick={() => onDuplicate(page.id, `${page.name} copy`)}
@@ -1081,94 +1243,6 @@ function RowAction({
     );
 }
 
-/**
- * The one form for naming a page, used by both create and rename.
- *
- * Creating and renaming ask for exactly the same two things, so they are the
- * same form. Previously they were two different shapes in two different places
- * — a name-only strip in the header, and a name-and-slug card inside the row —
- * which is why the slug could only be set after the page already existed.
- */
-function PageForm({
-    title,
-    name,
-    slug,
-    busy,
-    lockSlug,
-    submitLabel,
-    onName,
-    onSlug,
-    onCancel,
-    onSubmit,
-}: {
-    title: string;
-    name: string;
-    slug: string;
-    busy: boolean;
-    lockSlug?: boolean;
-    submitLabel: string;
-    onName: (value: string) => void;
-    onSlug: (value: string) => void;
-    onCancel: () => void;
-    onSubmit: () => void;
-}) {
-    return (
-        <form
-            className="mb-1 flex flex-col gap-2 rounded-lg border border-ed-border bg-ed-subtle p-3"
-            onSubmit={(event) => {
-                event.preventDefault();
-                onSubmit();
-            }}
-        >
-            <p className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">{title}</p>
-            <input
-                // biome-ignore lint/a11y/noAutofocus: the form only exists because the author just asked for it
-                autoFocus
-                type="text"
-                value={name}
-                aria-label="Page name"
-                placeholder="Page name"
-                onChange={(event) => onName(event.target.value)}
-                className="h-8 rounded-lg bg-ed-field px-2.5 text-[11px] text-ed-text outline-none placeholder:text-ed-faint focus:ring-1 focus:ring-inset focus:ring-ed-accent"
-            />
-            <label className={`flex h-8 items-center gap-1 rounded-lg bg-ed-field px-2.5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-ed-accent ${lockSlug ? "opacity-55" : ""}`}>
-                <span className="font-mono text-[10px] text-ed-faint">/</span>
-                <input
-                    type="text"
-                    value={slug}
-                    aria-label="Page URL"
-                    placeholder="url-path"
-                    disabled={lockSlug}
-                    onChange={(event) => onSlug(event.target.value)}
-                    className="min-w-0 flex-1 bg-transparent font-mono text-[10px] text-ed-text outline-none placeholder:text-ed-faint"
-                />
-            </label>
-            {lockSlug && (
-                <p className="text-[9px] leading-relaxed text-ed-faint">
-                    The home page is what the site serves at <code className="text-ed-muted">/</code>, so its
-                    URL is fixed.
-                </p>
-            )}
-            <div className="flex justify-end gap-1.5">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="rounded-lg px-2.5 py-1.5 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    disabled={busy || !name.trim()}
-                    className="rounded-lg bg-ed-accent px-3 py-1.5 text-[10px] font-semibold text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-35"
-                >
-                    {submitLabel}
-                </button>
-            </div>
-        </form>
-    );
-}
-
 /* ------------------------------------------------------------ context menu */
 
 export function ContextMenu({
@@ -1182,6 +1256,7 @@ export function ContextMenu({
     onUnwrap,
     onToggleFree,
     isFree,
+    onCreateComponent,
     onAskLuma,
     onDelete,
 }: {
@@ -1196,20 +1271,23 @@ export function ContextMenu({
     onToggleFree: () => void;
     /** Whether this element is already placed freely. */
     isFree: boolean;
+    /** Absent for a layer that is already part of a component. */
+    onCreateComponent?: () => void;
     onAskLuma: () => void;
     onDelete: () => void;
 }) {
     return (
-        <div
-            className="fixed z-[100] flex min-w-[210px] flex-col rounded-xl border border-ed-border bg-ed-surface/95 p-1.5 shadow-2xl backdrop-blur-md"
+        <Menu
+            className="fixed z-[100] min-w-[216px]"
             style={{ left: x, top: y }}
+            onClick={(event) => event.stopPropagation()}
         >
             <MenuItem
                 icon={<PagieraMark size={14} className="rounded-[4px]" />}
                 label="Ask Luma…"
                 onClick={onAskLuma}
             />
-            <div className="mx-1 my-1 h-px bg-ed-field" />
+            <MenuSeparator />
             <MenuItem
                 icon={<IconArrowUp size={14} className="text-ed-muted" />}
                 label="Bring forward"
@@ -1220,7 +1298,7 @@ export function ContextMenu({
                 label="Send backward"
                 onClick={onSendBackward}
             />
-            <div className="mx-1 my-1 h-px bg-ed-field" />
+            <MenuSeparator />
             <MenuItem
                 icon={<IconArrowsMove size={14} className="text-ed-muted" />}
                 label={isFree ? "Return to flow" : "Place freely"}
@@ -1236,7 +1314,14 @@ export function ContextMenu({
                 label="Move out of parent"
                 onClick={onUnwrap}
             />
-            <div className="mx-1 my-1 h-px bg-ed-field" />
+            {onCreateComponent && (
+                <MenuItem
+                    icon={<IconComponents size={14} className="text-ed-muted" />}
+                    label="Create component"
+                    onClick={onCreateComponent}
+                />
+            )}
+            <MenuSeparator />
             <MenuItem
                 icon={<IconCopy size={14} className="text-ed-muted" />}
                 label="Duplicate"
@@ -1249,7 +1334,7 @@ export function ContextMenu({
                 shortcut="Ctrl C"
                 onClick={onCopy}
             />
-            <div className="mx-1 my-1 h-px bg-ed-field" />
+            <MenuSeparator />
             <MenuItem
                 icon={<IconTrash size={14} className="text-red-400/80" />}
                 label="Delete"
@@ -1257,39 +1342,7 @@ export function ContextMenu({
                 destructive
                 onClick={onDelete}
             />
-        </div>
-    );
-}
-
-function MenuItem({
-    icon,
-    label,
-    shortcut,
-    destructive = false,
-    onClick,
-}: {
-    icon: React.ReactNode;
-    label: string;
-    shortcut?: string;
-    destructive?: boolean;
-    onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={(event) => {
-                event.stopPropagation();
-                onClick();
-            }}
-            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[11px] font-medium transition-colors ${destructive
-                    ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                    : "text-ed-text hover:bg-ed-field-hover hover:text-ed-text"
-                }`}
-        >
-            {icon}
-            {label}
-            {shortcut && <span className="ml-auto text-[10px] text-ed-faint">{shortcut}</span>}
-        </button>
+        </Menu>
     );
 }
 
@@ -1435,7 +1488,7 @@ export function SectionSeam({
                 <button
                     type="button"
                     onClick={onInsert}
-                    className="flex items-center gap-1 rounded-full bg-ed-accent px-2.5 py-1 text-[10px] font-semibold text-white shadow-md hover:brightness-110"
+                    className="flex items-center gap-1 rounded-lg bg-ed-accent px-2.5 py-1 text-[10px] font-semibold text-white shadow-md hover:brightness-110"
                 >
                     <IconPlus size={11} /> Add section
                 </button>

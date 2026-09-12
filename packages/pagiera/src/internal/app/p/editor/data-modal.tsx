@@ -481,7 +481,7 @@ function FailureView({ failure }: { failure: Failure }) {
                     <p className="break-words text-[11px] leading-relaxed text-ed-muted">{failure.message}</p>
                 </div>
             </div>
-            <div className="overflow-hidden rounded-lg border border-ed-border">
+            <div className="overflow-hidden rounded-xl">
                 {rows.map(([label, value], index) => (
                     <div
                         key={label}
@@ -570,7 +570,7 @@ function ResponseView({
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ed-faint">
                     First rows
                 </p>
-                <div className="overflow-x-auto rounded-lg border border-ed-border">
+                <div className="overflow-x-auto rounded-xl">
                     <table className="w-full border-collapse text-left">
                         <thead>
                             <tr className="border-b border-ed-border bg-ed-subtle">

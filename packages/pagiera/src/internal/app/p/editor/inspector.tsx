@@ -1,8 +1,11 @@
 "use client";
+import { normalizeFieldAppearance, type FieldAppearance } from "@/lib/editor/field-appearance";
+import { normalizeTextEffects, type TextEffects } from "@/lib/editor/text-effects";
 
 import {
     IconAlignBoxCenterMiddle,
     IconAlignBoxLeftMiddle,
+    IconAlignBoxLeftStretch,
     IconAlignBoxRightMiddle,
     IconArrowsHorizontal,
     IconArrowsVertical,
@@ -16,7 +19,9 @@ import {
     IconX,
 } from "@tabler/icons-react";
 import type React from "react";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { SHADER_PRESETS, shaderSettingsFor, shaderDocument, type ShaderSettings } from "@/lib/editor/shaders";
+import { normalizeInteractive, interactiveDocument, type InteractiveSettings } from "@/lib/editor/interactive";
 import { usePagieraFonts } from "pagiera/provider";
 import { ICON_CATALOG } from "@/lib/editor/icon";
 import { hasOverride, resolveStyle } from "@/lib/editor/style";
@@ -43,6 +48,7 @@ import {
     type DataSource,
     type Direction,
     type ElementStyle,
+    ENTRANCE_SPLITS,
     ENTRANCES,
     FONT_STACKS,
     isContainer,
@@ -52,6 +58,7 @@ import {
     type PinSide,
     type PositionMode,
     type RootStyle,
+    SCROLL_EFFECTS,
     SHADOW_PRESETS,
     type StyleKey,
     type TextAlign,
@@ -67,12 +74,13 @@ import {
     Overridable,
     Pair,
     Segmented,
+    ScrubInput,
     SelectInput,
     SizeField,
     SliderInput,
     TextArea,
     TextInput,
-} from "./fields";
+} from "./ui";
 
 type Ctx = {
     element: CanvasElement;
@@ -101,6 +109,8 @@ type Ctx = {
      * a URL instead.
      */
     uploadImage?: (file: File) => Promise<string>;
+    /** The site's own settings, so a layer can name and reuse the site font. */
+    rootStyle: RootStyle;
 };
 
 type Wrap = (keys: StyleKey[], node: React.ReactNode) => React.ReactNode;
@@ -371,11 +381,18 @@ export function Inspector({
     ...ctx
 }: Ctx & { tab: InspectorTab }) {
     if (tab === "Content") return <ContentTab {...ctx} />;
-    if (tab === "Interact") return <InteractTab {...ctx} />;
+    if (tab === "Layout") return <LayoutTab {...ctx} />;
+    if (tab === "Effects") return <InteractTab {...ctx} />;
     return <StyleTab {...ctx} />;
 }
 
-export const INSPECTOR_TABS = ["Content", "Style", "Interact"] as const;
+/*
+ * Four tabs, split by the question each one answers: what this layer says,
+ * where it sits, what it is painted with, and what it does. Size, spacing and
+ * typography used to share a single Style tab, which is what made it read as
+ * one long undifferentiated list.
+ */
+export const INSPECTOR_TABS = ["Content", "Layout", "Style", "Effects"] as const;
 export type InspectorTab = (typeof INSPECTOR_TABS)[number];
 
 /* -------------------------------------------------------------------- style */
@@ -384,19 +401,32 @@ export type InspectorTab = (typeof INSPECTOR_TABS)[number];
  * The element at rest, from the outside in: how big it is, how it arranges
  * what is inside it, then what it is painted with.
  */
+/** Where the layer sits: its box, how it arranges its children, its spacing. */
+function LayoutTab(ctx: Ctx) {
+    const { element } = ctx;
+    const ov = makeOverridable(ctx);
+
+    return (
+        <div className="flex flex-col">
+            <SizeGroup ctx={ctx} ov={ov} />
+            {ctx.parentLayout === "stack" && <FlexChildGroup ctx={ctx} ov={ov} />}
+            {isContainer(element.type) && <LayoutGroup ctx={ctx} ov={ov} />}
+            <SpacingGroup ctx={ctx} ov={ov} />
+            <CompositionGroup ctx={ctx} ov={ov} />
+        </div>
+    );
+}
+
+/** What the layer is painted with. */
 function StyleTab(ctx: Ctx) {
     const { element } = ctx;
     const ov = makeOverridable(ctx);
     const textual = isTextual(element.type);
 
     return (
-        <div className="flex flex-col divide-y divide-ed-border/80">
-            <CompositionGroup ctx={ctx} ov={ov} />
-            <SizeGroup ctx={ctx} ov={ov} />
-            {ctx.parentLayout === "stack" && <FlexChildGroup ctx={ctx} ov={ov} />}
-            {isContainer(element.type) && <LayoutGroup ctx={ctx} ov={ov} />}
-            <SpacingGroup ctx={ctx} ov={ov} />
+        <div className="flex flex-col">
             {/* The group most likely to be edited for this element opens first. */}
+            {shaderSettingsFor(element) && <ShaderGroup ctx={ctx} />}
             {textual && <TypographyGroup ctx={ctx} ov={ov} />}
             <FillGroup ctx={ctx} ov={ov} defaultOpen={!textual} />
             <BorderGroup ctx={ctx} ov={ov} />
@@ -412,12 +442,39 @@ function StyleTab(ctx: Ctx) {
  * column would leave each half of the pair too narrow to compare against the
  * other.
  */
+function ShaderColor({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+    const [draft, setDraft] = useState(value);
+    useEffect(() => setDraft(value), [value]);
+    return <ColorInput label={label} value={draft} onChange={next => {
+        setDraft(next);
+        if (/^#[0-9a-f]{6}$/i.test(next)) onChange(next);
+    }} />;
+}
+
+function ShaderGroup({ ctx }: { ctx: Ctx }) {
+    const settings = shaderSettingsFor(ctx.element)!;
+    const update = (patch: Partial<ShaderSettings>) => {
+        const shader = { ...settings, ...patch };
+        ctx.onProps({ shader, code: shaderDocument(shader.preset, shader), codeLanguage: "tsx" });
+    };
+    return <Group title="Shader" defaultOpen>
+        <SelectInput label="Preset" value={settings.preset} options={SHADER_PRESETS.map(item => ({ label: item.name, value: item.id }))} onChange={id => {
+            const preset = SHADER_PRESETS.find(item => item.id === id)!;
+            update({ preset: id, colors: [...preset.colors] });
+        }} />
+        {settings.colors.map((color, index) => <ShaderColor key={index} label={`Colour ${index + 1}`} value={color} onChange={value => update({ colors: settings.colors.map((previous, i) => i === index ? value : previous) })} />)}
+        <NumberInput label="Speed" value={settings.speed} min={0} max={5} step={.1} suffix="×" onChange={speed => update({ speed })} onCommitStart={ctx.onCommitStart} onCommitEnd={ctx.onCommitEnd} />
+        <NumberInput label="Scale" value={settings.scale} min={.2} max={5} step={.1} suffix="×" onChange={scale => update({ scale })} onCommitStart={ctx.onCommitStart} onCommitEnd={ctx.onCommitEnd} />
+        <p className="text-[11px] text-ed-muted">Speed 0 freezes the animation. Colours are shared across breakpoints.</p>
+    </Group>;
+}
+
 function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, parentLayout, onStyle, onCommitStart, onCommitEnd } = ctx;
     const placed = parentLayout === "absolute";
 
     return (
-        <Group title="Layout">
+        <Group title="Size">
             {placed && (
                 <Field label="Coordinates">
                     <Pair>
@@ -449,7 +506,7 @@ function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                 </Field>
             )}
 
-            <Field label="Size">
+            <div className="flex flex-col gap-1.5">
                 {ov(
                     ["widthMode", "w"],
                     <SizeField
@@ -474,7 +531,7 @@ function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                         onCommitEnd={onCommitEnd}
                     />,
                 )}
-            </Field>
+            </div>
 
             {/* Constraints only mean anything when the parent positions absolutely. */}
             {placed && (
@@ -604,7 +661,7 @@ function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const isGrid = element.type === "Grid" || element.type === "Repeat";
 
     return (
-        <Group title="Flow">
+        <Group title="Layout">
             {ov(
                 ["layout"],
                 <Segmented
@@ -770,110 +827,147 @@ function LayoutGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
  * values behind a click and listed them vertically, which read as a form
  * rather than a box.
  */
+/**
+ * One numeric cell in the box model.
+ *
+ * The cells carry no border of their own: the diagram's own rectangles already
+ * say what each number belongs to, and eight bordered inputs inside two nested
+ * boxes turn into a grid of noise.
+ */
+function SpacingCell({
+    value,
+    onChange,
+    label,
+    disabled,
+}: {
+    value: number;
+    onChange: (value: number) => void;
+    label: string;
+    disabled?: boolean;
+}) {
+    return (
+        <input
+            type="number"
+            min={0}
+            aria-label={label}
+            title={label}
+            disabled={disabled}
+            value={Number.isFinite(value) ? value : 0}
+            onFocus={(event) => event.target.select()}
+            onChange={(event) => {
+                const next = Number(event.target.value);
+                if (Number.isFinite(next)) onChange(Math.max(0, next));
+            }}
+            className="h-6 w-10 rounded-md bg-transparent text-center text-[11px] tabular-nums text-ed-text outline-none transition-colors [appearance:textfield] hover:bg-ed-field focus:bg-ed-field focus:ring-1 focus:ring-inset focus:ring-[var(--ed-accent)] disabled:cursor-not-allowed disabled:text-ed-faint [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+    );
+}
+
+/**
+ * Padding and margin as the nested box every browser inspector draws.
+ *
+ * The two used to sit behind a pair of sub-tabs, which meant you could only
+ * see half of an element's spacing at a time — and spacing is nearly always
+ * read as a whole: the gap outside plus the gap inside is what decides whether
+ * something looks right.
+ */
 function SpacingGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle } = ctx;
-    const [tab, setTab] = useState<"padding" | "margin">("padding");
-    const [linkMarginX, setLinkMarginX] = useState(style.marginL === style.marginR);
-    const [linkMarginY, setLinkMarginY] = useState(style.marginT === style.marginB);
+    const [uniformPadding, setUniformPadding] = useState(
+        style.padT === style.padR && style.padR === style.padB && style.padB === style.padL,
+    );
     const horizontallyCentered = style.marginL === "auto" && style.marginR === "auto";
+    const marginValue = (side: "marginL" | "marginR") =>
+        typeof style[side] === "number" ? (style[side] as number) : 0;
 
-    const uniform =
-        style.padT === style.padR &&
-        style.padR === style.padB &&
-        style.padB === style.padL;
-
-    const side = (
-        key: "padT" | "padR" | "padB" | "padL",
-        label: string,
-        value: number,
-    ) =>
+    const pad = (key: "padT" | "padR" | "padB" | "padL", label: string, value: number) =>
         ov(
             [key],
-            <NumberInput
-                compact
+            <SpacingCell
                 label={label}
-                suffix="px"
-                min={0}
                 value={value}
-                onChange={(next) => onStyle({ [key]: next } as Partial<ElementStyle>)}
+                onChange={(next) =>
+                    onStyle(
+                        uniformPadding
+                            ? { padT: next, padR: next, padB: next, padL: next }
+                            : ({ [key]: next } as Partial<ElementStyle>),
+                    )
+                }
             />,
         );
 
     return (
-        <Group title="Spacing" defaultOpen={false}>
-            <div className="flex border-b border-ed-border">
-                {(["padding", "margin"] as const).map((value) => (
-                    <button
-                        type="button"
-                        key={value}
-                        onClick={() => setTab(value)}
-                        className={`relative px-1 pb-2 pt-1 text-[11px] font-medium transition-colors ${value === "margin" ? "ml-5" : ""} ${tab === value ? "text-ed-text" : "text-ed-muted hover:text-ed-text"}`}
-                    >
-                        {value === "padding" ? "Padding" : "Margin"}
-                        {tab === value && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-ed-accent" />}
-                    </button>
-                ))}
-            </div>
+        <Group title="Spacing">
+            <div className="relative rounded-lg border border-dashed border-ed-border bg-ed-subtle p-1.5">
+                <span className="absolute left-2 top-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-ed-faint">Margin</span>
 
-            {tab === "padding" ? (
-                <>
-                    <Field label={uniform ? "All sides" : "All sides (mixed)"}>
-                        {ov(
-                            ["padT", "padR", "padB", "padL"],
-                            <NumberInput
-                                compact
-                                suffix="px"
-                                min={0}
-                                value={style.padT}
-                                onChange={(value) =>
-                                    onStyle({
-                                        padT: value,
-                                        padR: value,
-                                        padB: value,
-                                        padL: value,
-                                    })
-                                }
-                            />,
-                        )}
-                    </Field>
-                    <Field label="Per side">
-                        <div className="grid grid-cols-2 gap-2">
-                            {side("padT", "T", style.padT)}
-                            {side("padR", "R", style.padR)}
-                            {side("padL", "L", style.padL)}
-                            {side("padB", "B", style.padB)}
-                        </div>
-                    </Field>
-                </>
-            ) : (
-                <Field label="Per side">
-                    <div className="space-y-2">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center justify-items-center gap-x-1 gap-y-0.5 pt-3">
+                    <span />
+                    {ov(["marginT"], <SpacingCell label="Margin top" value={style.marginT} onChange={(marginT) => onStyle({ marginT })} />)}
+                    <span />
+
+                    {ov(
+                        ["marginL"],
+                        <SpacingCell
+                            label={horizontallyCentered ? "Left margin is auto" : "Margin left"}
+                            disabled={horizontallyCentered}
+                            value={marginValue("marginL")}
+                            onChange={(marginL) => onStyle({ marginL })}
+                        />,
+                    )}
+
+                    {/* The padding box sits inside the margin box, the way the
+                        two actually nest on the page. */}
+                    <div className="relative w-full rounded-lg bg-ed-surface p-1.5">
+                        <span className="absolute left-2 top-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-ed-faint">Padding</span>
                         <button
                             type="button"
-                            aria-pressed={horizontallyCentered}
-                            onClick={() => onStyle(horizontallyCentered ? { marginL: 0, marginR: 0 } : { marginL: "auto", marginR: "auto" })}
-                            className={`flex h-8 w-full items-center justify-center gap-2 rounded-md border text-[10px] font-medium transition-colors ${horizontallyCentered ? "border-ed-accent/40 bg-ed-accent/10 text-ed-accent" : "border-ed-border bg-ed-field text-ed-muted hover:text-ed-text"}`}
+                            aria-label={uniformPadding ? "Set each padding side on its own" : "Set every padding side together"}
+                            aria-pressed={uniformPadding}
+                            onClick={() => setUniformPadding((current) => !current)}
+                            className={`absolute right-1 top-1 flex size-5 items-center justify-center rounded transition-colors ${uniformPadding ? "text-ed-accent" : "text-ed-faint hover:text-ed-muted"}`}
                         >
-                            <IconAlignBoxCenterMiddle size={13} />
-                            {horizontallyCentered ? "Horizontally centered" : "Center horizontally"}
+                            {uniformPadding ? <IconLink size={12} /> : <IconUnlink size={12} />}
                         </button>
-                        <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-1.5">
-                            {ov(["marginT"], <NumberInput compact label="T" suffix="px" min={0} value={style.marginT} onChange={(value) => onStyle(linkMarginY ? { marginT: value, marginB: value } : { marginT: value })} />)}
-                            <button type="button" aria-label={linkMarginY ? "Unlink top and bottom margins" : "Link top and bottom margins"} aria-pressed={linkMarginY} onClick={() => setLinkMarginY((current) => !current)} className={`mb-px flex size-7 self-end items-center justify-center rounded-md border transition-colors ${linkMarginY ? "border-ed-accent/40 bg-ed-accent/10 text-ed-accent" : "border-ed-border bg-ed-field text-ed-faint hover:text-ed-text"}`}>
-                                {linkMarginY ? <IconLink size={12} /> : <IconUnlink size={12} />}
-                            </button>
-                            {ov(["marginB"], <NumberInput compact label="B" suffix="px" min={0} value={style.marginB} onChange={(value) => onStyle(linkMarginY ? { marginT: value, marginB: value } : { marginB: value })} />)}
-                        </div>
-                        <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-1.5">
-                            {ov(["marginL"], <NumberInput compact label={style.marginL === "auto" ? "L · auto" : "L"} suffix="px" min={0} disabled={style.marginL === "auto"} value={typeof style.marginL === "number" ? style.marginL : 0} onChange={(value) => onStyle(linkMarginX ? { marginL: value, marginR: value } : { marginL: value })} />)}
-                            <button type="button" aria-label={linkMarginX ? "Unlink left and right margins" : "Link left and right margins"} aria-pressed={linkMarginX} onClick={() => setLinkMarginX((current) => !current)} className={`mb-px flex size-7 self-end items-center justify-center rounded-md border transition-colors ${linkMarginX ? "border-ed-accent/40 bg-ed-accent/10 text-ed-accent" : "border-ed-border bg-ed-field text-ed-faint hover:text-ed-text"}`}>
-                                {linkMarginX ? <IconLink size={12} /> : <IconUnlink size={12} />}
-                            </button>
-                            {ov(["marginR"], <NumberInput compact label={style.marginR === "auto" ? "R · auto" : "R"} suffix="px" min={0} disabled={style.marginR === "auto"} value={typeof style.marginR === "number" ? style.marginR : 0} onChange={(value) => onStyle(linkMarginX ? { marginL: value, marginR: value } : { marginR: value })} />)}
+
+                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center justify-items-center gap-x-1 gap-y-0.5 pt-3">
+                            <span />
+                            {pad("padT", "Padding top", style.padT)}
+                            <span />
+                            {pad("padL", "Padding left", style.padL)}
+                            <span className="h-7 w-full rounded bg-ed-field" />
+                            {pad("padR", "Padding right", style.padR)}
+                            <span />
+                            {pad("padB", "Padding bottom", style.padB)}
+                            <span />
                         </div>
                     </div>
-                </Field>
-            )}
+
+                    {ov(
+                        ["marginR"],
+                        <SpacingCell
+                            label={horizontallyCentered ? "Right margin is auto" : "Margin right"}
+                            disabled={horizontallyCentered}
+                            value={marginValue("marginR")}
+                            onChange={(marginR) => onStyle({ marginR })}
+                        />,
+                    )}
+
+                    <span />
+                    {ov(["marginB"], <SpacingCell label="Margin bottom" value={style.marginB} onChange={(marginB) => onStyle({ marginB })} />)}
+                    <span />
+                </div>
+            </div>
+
+            <button
+                type="button"
+                aria-pressed={horizontallyCentered}
+                onClick={() => onStyle(horizontallyCentered ? { marginL: 0, marginR: 0 } : { marginL: "auto", marginR: "auto" })}
+                className={`flex h-8 w-full items-center justify-center gap-2 rounded-md border text-[10px] font-medium transition-colors ${horizontallyCentered ? "border-ed-accent bg-[var(--ed-accent-soft)] text-ed-accent" : "border-ed-border bg-ed-field text-ed-muted hover:text-ed-text"}`}
+            >
+                <IconAlignBoxCenterMiddle size={13} />
+                {horizontallyCentered ? "Horizontally centered" : "Center horizontally"}
+            </button>
         </Group>
     );
 }
@@ -963,14 +1057,14 @@ function FillGroup({
                             key={preset}
                             aria-label="Apply gradient preset"
                             onClick={() => onStyle({ gradient: preset })}
-                            className="h-5 flex-1 rounded border border-ed-border"
+                            className="h-5 flex-1 rounded"
                             style={{ backgroundImage: preset }}
                         />
                     ))}
                     <button
                         type="button"
                         onClick={() => onStyle({ gradient: "" })}
-                        className="h-5 flex-1 rounded border border-ed-border text-[9px] text-ed-muted hover:text-ed-text"
+                        className="h-5 flex-1 rounded text-[9px] text-ed-muted hover:text-ed-text"
                     >
                         None
                     </button>
@@ -989,8 +1083,33 @@ function FillGroup({
     );
 }
 
+/**
+ * Every face the site can set on a layer: the fonts the host provides, the
+ * ones the author uploaded, and the generic stacks — the same list the site
+ * font picker offers, so what you can choose for the site you can also choose
+ * for one heading.
+ */
+function fontOptionsFor(rootStyle: RootStyle, providerFonts: Array<{ title: string; family: string }>) {
+    const custom = (rootStyle.customFonts ?? []).map((font) => ({
+        label: font.name,
+        value: `"${font.name}", sans-serif`,
+    }));
+    const provided = providerFonts.map((font) => ({ label: font.title, value: font.family }));
+    const options = [...custom, ...provided, ...FONT_STACKS];
+    return options.filter((font, index) => options.findIndex((candidate) => candidate.value === font.value) === index);
+}
+
 function TypographyGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
-    const { style, onStyle } = ctx;
+    const { style, onStyle, onCommitStart, onCommitEnd, rootStyle } = ctx;
+    const providerFonts = usePagieraFonts();
+    const fontOptions = useMemo(() => {
+        const all = fontOptionsFor(rootStyle, providerFonts);
+        // "Inherit" is the site font by another name, so it says which one.
+        const site = all.find((font) => font.value === rootStyle.fontFamily);
+        return all.map((font) => font.value === "inherit"
+            ? { ...font, label: site && site.value !== "inherit" ? `Site font · ${site.label}` : "Site font" }
+            : font);
+    }, [providerFonts, rootStyle]);
 
     return (
         <Group title="Text">
@@ -1004,23 +1123,28 @@ function TypographyGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
             )}
             {ov(
                 ["fontSize"],
-                <NumberInput
+                <ScrubInput
                     label="Size"
                     suffix="px"
-                    min={1}
+                    min={8}
+                    max={160}
                     value={style.fontSize}
                     onChange={(fontSize) => onStyle({ fontSize })}
+                    onCommitStart={onCommitStart}
+                    onCommitEnd={onCommitEnd}
                 />,
             )}
             {ov(
                 ["lineHeight"],
-                <NumberInput
+                <ScrubInput
                     label="Line height"
-                    min={0.5}
-                    max={10}
+                    min={0.8}
+                    max={3}
                     step={0.05}
                     value={style.lineHeight}
                     onChange={(lineHeight) => onStyle({ lineHeight })}
+                    onCommitStart={onCommitStart}
+                    onCommitEnd={onCommitEnd}
                 />,
             )}            {ov(
                 ["fontWeight"],
@@ -1059,30 +1183,39 @@ function TypographyGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                             value: "right" as TextAlign,
                             icon: <IconAlignBoxRightMiddle size={12} />,
                         },
-                        { label: "Justify", value: "justify" as TextAlign },
+                        {
+                            label: "Justify",
+                            value: "justify" as TextAlign,
+                            icon: <IconAlignBoxLeftStretch size={12} />,
+                        },
                     ]}
                     onChange={(textAlign) => onStyle({ textAlign })}
                 />,
             )}
 
+            {ov(
+                ["fontFamily"],
+                <SelectInput
+                    label="Font"
+                    value={style.fontFamily}
+                    options={fontOptions}
+                    onChange={(fontFamily) => onStyle({ fontFamily })}
+                />,
+            )}
+
             <More>
                 {ov(
-                    ["fontFamily"],
-                    <SelectInput
-                        label="Font"
-                        value={style.fontFamily}
-                        options={FONT_STACKS}
-                        onChange={(fontFamily) => onStyle({ fontFamily })}
-                    />,
-                )}
-                {ov(
                     ["letterSpacing"],
-                    <NumberInput
+                    <ScrubInput
                         label="Tracking"
                         suffix="px"
+                        min={-5}
+                        max={20}
                         step={0.1}
                         value={style.letterSpacing}
                         onChange={(letterSpacing) => onStyle({ letterSpacing })}
+                        onCommitStart={onCommitStart}
+                        onCommitEnd={onCommitEnd}
                     />,
                 )}
                 {ov(
@@ -1234,7 +1367,7 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const stickyWarning = stickyBlocker(ctx);
 
     return (
-        <Group title="Position">
+        <Group title="Position" defaultOpen={false}>
             {ov(
                 ["position"],
                 <SelectInput
@@ -1436,9 +1569,62 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
 /** Entrance effects play on the published page and in Preview, not on canvas. */
 /* ------------------------------------------------------------------ content */
 
+function InteractiveGroup({ element, onProps }: { element: CanvasElement; onProps: Ctx["onProps"] }) {
+    const settings = normalizeInteractive(element.interactive)!;
+    const update = (patch: Partial<InteractiveSettings>) => {
+        const interactive = { ...settings, ...patch };
+        onProps({ interactive, code: interactiveDocument(interactive), codeLanguage: "tsx" });
+    };
+    return <Group title={settings.kind === "carousel" ? "Carousel" : "Marquee"} defaultOpen>
+        <Segmented label="Autoplay" value={settings.autoplay ? "on" : "off"} options={[{ label: "On", value: "on" }, { label: "Off", value: "off" }]} onChange={value => update({ autoplay: value === "on" })} />
+        <NumberInput label={settings.kind === "carousel" ? "Interval" : "Duration"} value={settings.interval} min={1} max={120} suffix="s" onChange={interval => update({ interval })} />
+        {settings.kind === "marquee" && <Segmented label="Direction" value={settings.reverse ? "right" : "left"} options={[{ label: "Left", value: "left" }, { label: "Right", value: "right" }]} onChange={value => update({ reverse: value === "right" })} />}
+        {settings.kind === "marquee" && <p className="text-[11px] leading-relaxed text-ed-muted">Drop elements here or move them in Layers. The loop pauses while its layers are selected; click the canvas background to play. Edit spacing and appearance in Layout / Style.</p>}
+        {settings.kind === "carousel" && <>
+        <SelectInput label="Transition" value={settings.transition ?? "slide"} options={[{ label: "Slide", value: "slide" }, { label: "Fade", value: "fade" }, { label: "Zoom", value: "zoom" }]} onChange={transition => update({ transition })} />
+        <NumberInput label="Animation" value={settings.duration ?? 450} min={0} max={2000} step={50} suffix="ms" onChange={duration => update({ duration })} />
+        <SelectInput label="Easing" value={settings.easing ?? "ease"} options={[{ label: "Smooth", value: "ease" }, { label: "Linear", value: "linear" }, { label: "Ease in / out", value: "ease-in-out" }]} onChange={easing => update({ easing })} />
+        <More>
+            {([ ["loop", "Loop"], ["arrows", "Arrows"], ["dots", "Dots"], ["swipe", "Swipe / drag"], ["pauseOnHover", "Pause on hover"] ] as const).map(([key, label]) => <Segmented key={key} label={label} value={settings[key] !== false ? "on" : "off"} options={[{ label: "On", value: "on" }, { label: "Off", value: "off" }]} onChange={value => update({ [key]: value === "on" })} />)}
+        </More>
+        <ShaderColor label="Controls colour" value={settings.color} onChange={color => update({ color })} />
+        <p className="text-[11px] leading-relaxed text-ed-muted">Each direct child is a slide. Use + Slide on the canvas to add a blank frame. Design it with any elements, and rename, reorder or duplicate slides in Layers. Slide appearance is edited in Layout / Style.</p>
+        </>}
+    </Group>;
+}
+
+function CarouselControlGroup({ element, elements, onProps }: Pick<Ctx, "element" | "elements" | "onProps">) {
+    const seen = new Set<string>();
+    let parent = elements.find(candidate => candidate.id === element.parentId);
+    while (parent && parent.interactive?.kind !== "carousel" && !seen.has(parent.id)) {
+        seen.add(parent.id);
+        parent = elements.find(candidate => candidate.id === parent!.parentId);
+    }
+    if (!parent || parent.interactive?.kind !== "carousel") return null;
+    const value = element.carouselControl;
+    const update = (patch: Partial<NonNullable<CanvasElement["carouselControl"]>>) => onProps({ carouselControl: { action: "go-to", slide: 1, ...value, ...patch } });
+    const slides = elements.filter(candidate => candidate.parentId === parent.id && !candidate.carouselControl);
+    return <Group title="Carousel control" defaultOpen>
+        <SelectInput label="Role" value={value?.action ?? "none"} options={[{ label: "Slide content", value: "none" }, { label: "Previous slide", value: "previous" }, { label: "Next slide", value: "next" }, { label: "Go to slide", value: "go-to" }, { label: "Controls group", value: "group" }]} onChange={action => action === "none" ? onProps({ carouselControl: undefined }) : update({ action })} />
+        {value?.action === "go-to" && <>
+            <SelectInput label="Target slide" value={String(value.slide)} options={slides.map((slide, index) => ({ label: `${index + 1} · ${slide.name || "Slide"}`, value: String(index + 1) }))} onChange={slide => update({ slide: Number(slide) })} />
+            <Segmented label="Active fill" value={value.activeColor ? "on" : "off"} options={[{ label: "Keep design", value: "off" }, { label: "Custom", value: "on" }]} onChange={state => update({ activeColor: state === "on" ? "#5402e6" : undefined })} />
+            {value.activeColor && <ShaderColor label="Active colour" value={value.activeColor} onChange={activeColor => update({ activeColor })} />}
+            <NumberInput label="Inactive opacity" value={value.inactiveOpacity ?? 100} min={0} max={100} suffix="%" onChange={inactiveOpacity => update({ inactiveOpacity })} />
+        </>}
+        <p className="text-[11px] leading-relaxed text-ed-muted">Design this layer freely in Layout / Style. Place controls directly inside the carousel to keep them on every slide. Use a Controls group to arrange your own pagination. Custom controls replace their built-in equivalents in Preview.</p>
+    </Group>;
+}
+
 function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRepeat, uploadImage }: Ctx) {
     return (
-        <div className="flex flex-col divide-y divide-ed-border">
+        <div className="flex flex-col">
+            {element.interactive && <InteractiveGroup element={element} onProps={onProps} />}
+            <CarouselControlGroup element={element} elements={elements} onProps={onProps} />
+            {element.disclosure && <Group title={element.disclosure.kind === 'tabs' ? 'Tabs' : 'Accordion'} defaultOpen>
+                <p className="text-[11px] leading-relaxed text-ed-muted">Headers and panels are editable layers. Use Layers to design their content, and Layout / Style for spacing, colours and corners. Play effects to test interactions; edit mode keeps all panels visible.</p>
+                {element.disclosure.role !== 'root' && <TextInput label="Panel key" value={element.disclosure.target} onChange={target => onProps({ disclosure: { ...element.disclosure!, target } })} />}
+            </Group>}
             {(element.type === "Repeat" || element.type === "Request") && (
                 <Group title="Data">
                     <SelectInput
@@ -1458,65 +1644,7 @@ function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRe
                 </Group>
             )}
 
-            {!insideRepeat && element.type !== "Repeat" && element.type !== "Request" && (
-                <Group title="Request result">
-                    <SelectInput
-                        label="Source"
-                        value={element.sourceId ?? ""}
-                        options={[
-                            { label: "Not connected", value: "" },
-                            ...sources.map((source) => ({ label: source.name, value: source.id })),
-                        ]}
-                        onChange={(sourceId) => onProps({ sourceId: sourceId || undefined, binding: sourceId ? element.binding : undefined })}
-                    />
-                    {element.sourceId && (bindingKeys.length > 0 ? (
-                        <SelectInput
-                            label="Field"
-                            value={element.binding ?? ""}
-                            options={[{ label: "Choose a field…", value: "" }, ...bindingKeys.map((key) => ({ label: key, value: key }))]}
-                            onChange={(binding) => onProps({ binding: binding || undefined })}
-                        />
-                    ) : (
-                        <TextInput
-                            label="Field"
-                            value={element.binding ?? ""}
-                            placeholder="title, author.name or image.url"
-                            onChange={(binding) => onProps({ binding: binding || undefined })}
-                        />
-                    ))}
-                    <p className="text-[10px] leading-relaxed text-ed-faint">
-                        Uses the returned object directly. Repeat is only needed when you want to render every item in a list.
-                    </p>
-                </Group>
-            )}
 
-            {insideRepeat && element.type !== "Repeat" && element.type !== "Request" && (
-                <Group title="Bound field">
-                    {bindingKeys.length > 0 ? (
-                        <SelectInput
-                            label="Field"
-                            value={element.binding ?? ""}
-                            options={[
-                                { label: "Not bound", value: "" },
-                                ...bindingKeys.map((key) => ({ label: key, value: key })),
-                            ]}
-                            onChange={(binding) => onProps({ binding: binding || undefined })}
-                        />
-                    ) : (
-                        <TextInput
-                            label="Field"
-                            value={element.binding ?? ""}
-                            placeholder="title, or author.name"
-                            onChange={(binding) => onProps({ binding: binding || undefined })}
-                        />
-                    )}
-                    <p className="text-[10px] leading-relaxed text-ed-faint">
-                        {element.type === "Image" || element.type === "Video"
-                            ? "The field supplies this element's source URL."
-                            : "The field supplies this element's text."}
-                    </p>
-                </Group>
-            )}
 
             {isTextual(element.type) && (
                 <Group title="Text">
@@ -1697,6 +1825,64 @@ function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRe
             )}
 
             {element.type === "Icon" && <IconGroup element={element} onProps={onProps} />}
+            {!insideRepeat && element.type !== "Repeat" && element.type !== "Request" && (
+                <Group title="Data binding" defaultOpen={false}>
+                    <SelectInput
+                        label="Source"
+                        value={element.sourceId ?? ""}
+                        options={[
+                            { label: "Not connected", value: "" },
+                            ...sources.map((source) => ({ label: source.name, value: source.id })),
+                        ]}
+                        onChange={(sourceId) => onProps({ sourceId: sourceId || undefined, binding: sourceId ? element.binding : undefined })}
+                    />
+                    {element.sourceId && (bindingKeys.length > 0 ? (
+                        <SelectInput
+                            label="Field"
+                            value={element.binding ?? ""}
+                            options={[{ label: "Choose a field…", value: "" }, ...bindingKeys.map((key) => ({ label: key, value: key }))]}
+                            onChange={(binding) => onProps({ binding: binding || undefined })}
+                        />
+                    ) : (
+                        <TextInput
+                            label="Field"
+                            value={element.binding ?? ""}
+                            placeholder="title, author.name or image.url"
+                            onChange={(binding) => onProps({ binding: binding || undefined })}
+                        />
+                    ))}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        Uses the returned object directly. Repeat is only needed when you want to render every item in a list.
+                    </p>
+                </Group>
+            )}
+            {insideRepeat && element.type !== "Repeat" && element.type !== "Request" && (
+                <Group title="Data binding" defaultOpen={false}>
+                    {bindingKeys.length > 0 ? (
+                        <SelectInput
+                            label="Field"
+                            value={element.binding ?? ""}
+                            options={[
+                                { label: "Not bound", value: "" },
+                                ...bindingKeys.map((key) => ({ label: key, value: key })),
+                            ]}
+                            onChange={(binding) => onProps({ binding: binding || undefined })}
+                        />
+                    ) : (
+                        <TextInput
+                            label="Field"
+                            value={element.binding ?? ""}
+                            placeholder="title, or author.name"
+                            onChange={(binding) => onProps({ binding: binding || undefined })}
+                        />
+                    )}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        {element.type === "Image" || element.type === "Video"
+                            ? "The field supplies this element's source URL."
+                            : "The field supplies this element's text."}
+                    </p>
+                </Group>
+            )}
 
             <Group title="Layer name" defaultOpen={false}>
                 <TextInput
@@ -1735,6 +1921,7 @@ function FieldGroup({
 
     return (
         <Group title="Field">
+            <FieldDesign element={element} onProps={onProps} />
             {type === "Input" && (
                 <SelectInput
                     label="Type"
@@ -2065,12 +2252,50 @@ function BezierEditor({ value, onChange }: { value: string; onChange: (value: st
  * the same effects the groups below already showed, so the state of an element
  * was readable in two places that could disagree.
  */
+function FieldDesign({ element, onProps }: { element: CanvasElement; onProps: Ctx['onProps'] }) {
+    const field = normalizeFieldAppearance(element.fieldAppearance ?? {})!;
+    const update = (patch: Partial<FieldAppearance>) => onProps({ fieldAppearance: normalizeFieldAppearance({ ...field, ...patch }) });
+    return <More>
+        <ShaderColor label="Placeholder colour" value={field.placeholderColor} onChange={placeholderColor => update({ placeholderColor })} />
+        <ShaderColor label="Focus / checked colour" value={field.focusColor} onChange={focusColor => update({ focusColor })} />
+        <NumberInput label="Disabled opacity" value={field.disabledOpacity} min={0} max={100} suffix="%" onChange={disabledOpacity => update({ disabledOpacity })} />
+        {element.type === 'Select' && <>
+            <SelectInput label="Select arrow" value={field.arrow} options={[{ label: 'System', value: 'native' }, { label: 'Chevron', value: 'chevron' }, { label: 'None', value: 'none' }]} onChange={arrow => update({ arrow })} />
+            {field.arrow === 'chevron' && <><ShaderColor label="Arrow colour" value={field.arrowColor} onChange={arrowColor => update({ arrowColor })} /><NumberInput label="Arrow size" value={field.arrowSize} min={8} max={40} suffix="px" onChange={arrowSize => update({ arrowSize })} /></>}
+            <p className="text-[10px] text-ed-faint">The closed field is fully styled here. The system option popup follows the visitor’s browser. Use Layout / Style for padding, typography, background and corners.</p>
+        </>}
+    </More>;
+}
+
+function TextEffectsGroup({ element, onProps }: Ctx) {
+    const effect = normalizeTextEffects(element.textEffects ?? {})!;
+    const update = (patch: Partial<TextEffects>) => onProps({ textEffects: normalizeTextEffects({ ...effect, ...patch }) });
+    return <Group title="Text effects" defaultOpen>
+        <SelectInput label="Hover" value={effect.hover} options={[{ label: 'None', value: 'none' }, { label: 'Underline', value: 'underline' }, { label: 'Glow', value: 'glow' }, { label: 'Staggered lift', value: 'lift' }, { label: 'Diagonal roll', value: 'roll' }]} onChange={hover => update({ hover })} />
+        <SelectInput label="Scroll" value={effect.scroll} options={[{ label: 'None', value: 'none' }, { label: 'Reveal', value: 'reveal' }, { label: 'Rise', value: 'rise' }, { label: 'Blur reveal', value: 'blur' }]} onChange={scroll => update({ scroll })} />
+        {(effect.hover !== 'none' || effect.scroll !== 'none') && <>
+            <SelectInput label="Animate" value={effect.split} options={[{ label: 'Whole text', value: 'none' }, { label: 'Words', value: 'words' }, { label: 'Letters', value: 'letters' }]} onChange={split => update({ split })} />
+            {effect.hover !== 'none' && <><NumberInput label="Hover duration" value={effect.duration} min={50} max={3000} suffix="ms" onChange={duration => update({ duration })} /><NumberInput label="Hover stagger" value={effect.stagger} min={0} max={200} suffix="ms" onChange={stagger => update({ stagger })} /></>}
+            {(effect.hover === 'lift' || effect.hover === 'roll' || effect.scroll === 'rise') && <NumberInput label="Distance" value={effect.distance} min={0} max={100} suffix="px" onChange={distance => update({ distance })} />}
+            {effect.hover === 'roll' && <>
+                <NumberInput label="Roll angle" value={effect.angle ?? 15} min={-60} max={60} suffix="°" onChange={angle => update({ angle })} />
+                <Segmented label="Repeat" value={effect.repeat ? 'loop' : 'once'} options={[{ label: 'Once', value: 'once' }, { label: 'While hovering', value: 'loop' }]} onChange={value => update({ repeat: value === 'loop' })} />
+                <p className="text-[10px] leading-relaxed text-ed-faint">The original exits upwards as its copy rolls in from below. Negative angles reverse the diagonal; 0° rolls straight up.</p>
+            </>}
+            {effect.scroll !== 'none' && <><NumberInput label="Scroll start" value={effect.start} min={0} max={95} suffix="%" onChange={start => update({ start })} /><NumberInput label="Scroll end" value={effect.end} min={effect.start + 1} max={100} suffix="%" onChange={end => update({ end })} /></>}
+            <p className="text-[10px] leading-relaxed text-ed-faint">Play effects to test hover. Scroll progress follows the text crossing the viewport and reverses as you scroll back. Unsupported browsers and reduced-motion preferences keep the text readable.</p>
+        </>}
+    </Group>;
+}
+
 function InteractTab(ctx: Ctx) {
     return (
-        <div className="flex flex-col divide-y divide-ed-border">
+        <div className="flex flex-col">
             <ClickGroup {...ctx} />
+            {['Text', 'Heading', 'Button', 'Quote', 'ListItem', 'Label'].includes(ctx.element.type) && <TextEffectsGroup {...ctx} />}
             <HoverGroup {...ctx} />
             <PressGroup {...ctx} />
+            <ScrollGroup {...ctx} />
             <EntranceGroup {...ctx} />
             <LoopGroup {...ctx} />
         </div>
@@ -2265,9 +2490,17 @@ function HoverGroup({ element, style, onProps }: Ctx) {
                 />
             )}
             <ColorInput label="Background" value={hover.bg ?? style.bg} onChange={(bg) => setHover({ bg })} />
+            <SliderInput
+                label="Background opacity"
+                min={0}
+                max={100}
+                suffix="%"
+                value={hover.bgOpacity ?? style.bgOpacity}
+                onChange={(bgOpacity) => setHover({ bgOpacity })}
+            />
             <ColorInput label="Text" value={hover.color ?? style.color} onChange={(color) => setHover({ color })} />
             <SliderInput
-                label="Opacity"
+                label="Layer opacity"
                 min={0}
                 max={100}
                 suffix="%"
@@ -2317,7 +2550,7 @@ function HoverGroup({ element, style, onProps }: Ctx) {
 }
 
 /** The style the element takes while the pointer is held down on it. */
-function PressGroup({ element, onProps }: Ctx) {
+function PressGroup({ element, style, onProps }: Ctx) {
     const press = element.press;
 
     return (
@@ -2338,6 +2571,19 @@ function PressGroup({ element, onProps }: Ctx) {
         >
             {press ? (
                 <>
+                    <ColorInput
+                        label="Background"
+                        value={press.bg ?? style.bg}
+                        onChange={(bg) => onProps({ press: { ...press, bg } })}
+                    />
+                    <SliderInput
+                        label="Background opacity"
+                        min={0}
+                        max={100}
+                        suffix="%"
+                        value={press.bgOpacity ?? style.bgOpacity}
+                        onChange={(bgOpacity) => onProps({ press: { ...press, bgOpacity } })}
+                    />
                     <SliderInput
                         label="Scale"
                         min={10}
@@ -2347,7 +2593,7 @@ function PressGroup({ element, onProps }: Ctx) {
                         onChange={(scale) => onProps({ press: { ...press, scale } })}
                     />
                     <SliderInput
-                        label="Opacity"
+                        label="Layer opacity"
                         min={0}
                         max={100}
                         suffix="%"
@@ -2363,6 +2609,54 @@ function PressGroup({ element, onProps }: Ctx) {
                 >
                     Add a press effect
                 </button>
+            )}
+        </Group>
+    );
+}
+
+/**
+ * Motion tied to the scrollbar rather than to arrival.
+ *
+ * An entrance plays once and is done; this one's progress is the element's
+ * progress across the viewport, so scrolling back up plays it back. Browsers
+ * without scroll-driven animations simply show the finished element, which is
+ * why the effect can be offered without a JavaScript fallback.
+ */
+function ScrollGroup(ctx: Ctx) {
+    const { style, onStyle } = ctx;
+    const ov = makeOverridable(ctx);
+    const moves = style.scrollEffect === "rise" || style.scrollEffect === "parallax";
+
+    return (
+        <Group title="Scroll" defaultOpen={false}>
+            {ov(
+                ["scrollEffect"],
+                <SelectInput
+                    label="Effect"
+                    value={style.scrollEffect}
+                    options={SCROLL_EFFECTS}
+                    onChange={(scrollEffect) => onStyle({ scrollEffect })}
+                />,
+            )}
+            {style.scrollEffect !== "none" && (
+                <>
+                    {ov(
+                        ["scrollAmount"],
+                        <SliderInput
+                            label={moves ? "Distance" : "Strength"}
+                            min={0}
+                            max={moves ? 400 : 100}
+                            suffix={moves ? "px" : "%"}
+                            value={style.scrollAmount}
+                            onChange={(scrollAmount) => onStyle({ scrollAmount })}
+                        />,
+                    )}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        {style.entrance === "none"
+                            ? "Runs as the layer crosses the viewport, and rewinds when you scroll back. Open Preview to see it."
+                            : "Scroll replaces the entrance on this layer — it is tied to the scrollbar, not to arriving."}
+                    </p>
+                </>
             )}
         </Group>
     );
@@ -2398,12 +2692,21 @@ function EntranceGroup(ctx: Ctx) {
             style.entranceCurve === "spring"
                 ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)`
                 : `cubic-bezier(${style.entranceBezier})`;
+        const to: Keyframe = { opacity: 1, translate: "none", scale: 1 };
         for (const node of nodes) {
-            node.animate([from, { opacity: 1, translate: "none", scale: 1 }], {
-                duration: style.entranceDuration,
-                delay: style.entranceDelay,
-                easing,
-                fill: "both",
+            // A split entrance belongs to the pieces, so preview the pieces:
+            // the canvas renders the same spans the published page will.
+            const parts = Array.from(node.querySelectorAll<HTMLElement>(".pg-part"));
+            const targets = style.entranceSplit !== "none" && parts.length ? parts : [node];
+            targets.forEach((target, index) => {
+                target.animate([from, to], {
+                    duration: style.entranceDuration,
+                    delay:
+                        style.entranceDelay +
+                        (targets.length > 1 ? index * style.entranceStagger : 0),
+                    easing,
+                    fill: "both",
+                });
             });
         }
     };
@@ -2435,6 +2738,27 @@ function EntranceGroup(ctx: Ctx) {
             )}
             {style.entrance !== "none" && (
                 <>
+                    {ov(
+                        ["entranceSplit"],
+                        <SelectInput
+                            label="Arrive"
+                            value={style.entranceSplit}
+                            options={ENTRANCE_SPLITS}
+                            onChange={(entranceSplit) => onStyle({ entranceSplit })}
+                        />,
+                    )}
+                    {style.entranceSplit !== "none" &&
+                        ov(
+                            ["entranceStagger"],
+                            <SliderInput
+                                label="Stagger"
+                                min={0}
+                                max={400}
+                                suffix="ms"
+                                value={style.entranceStagger}
+                                onChange={(entranceStagger) => onStyle({ entranceStagger })}
+                            />,
+                        )}
                     {ov(
                         ["entranceDuration"],
                         <SliderInput
@@ -2575,19 +2899,21 @@ function LoopGroup({ element, onProps }: Ctx) {
 export function PageInspector({
     rootStyle,
     onChange,
+    layoutOptions = [],
 }: {
     rootStyle: RootStyle;
     onChange: (patch: Partial<RootStyle>) => void;
+    /** Shared components this site can wrap its pages in. */
+    layoutOptions?: Array<{ label: string; value: string }>;
 }) {
     const providerFonts = usePagieraFonts();
     const customFontOptions = (rootStyle.customFonts ?? []).map((font) => ({
         label: font.name,
         value: `"${font.name}", sans-serif`,
     }));
-    const siteFontOptions = [...customFontOptions, ...providerFonts.map((font) => ({ label: font.title, value: font.family })), ...FONT_STACKS]
-        .filter((font, index, options) => options.findIndex((candidate) => candidate.value === font.value) === index);
+    const siteFontOptions = fontOptionsFor(rootStyle, providerFonts);
     return (
-        <div className="flex flex-col divide-y divide-ed-border">
+        <div className="flex flex-col">
             <p className="pb-3 text-[10px] leading-relaxed text-ed-muted">
                 Global canvas, typography and layout settings for every breakpoint.
             </p>
@@ -2622,6 +2948,59 @@ export function PageInspector({
                     value={rootStyle.bg}
                     onChange={(bg) => onChange({ bg })}
                 />
+            </Group>
+
+            {/*
+              * The site's layout: what wraps every page.
+              *
+              * A navbar is one design, not one per page, so it is named here
+              * once and drawn on every page that does not opt out. It is made
+              * of a shared component, which is where it is edited — change it
+              * there and every page follows.
+              */}
+            <Group title="Layout">
+                <SelectInput
+                    label="Header"
+                    value={rootStyle.siteHeaderId ?? ""}
+                    options={[{ label: "None", value: "" }, ...layoutOptions]}
+                    onChange={(siteHeaderId) => onChange({ siteHeaderId })}
+                />
+                <SelectInput
+                    label="Footer"
+                    value={rootStyle.siteFooterId ?? ""}
+                    options={[{ label: "None", value: "" }, ...layoutOptions]}
+                    onChange={(siteFooterId) => onChange({ siteFooterId })}
+                />
+                <p className="text-[10px] leading-relaxed text-ed-faint">
+                    {layoutOptions.length === 0
+                        ? "Make a shared asset out of a navbar or a footer first — anything in Assets can be used here."
+                        : "Drawn on every page of the site. Edit it in the asset it is made of and every page follows."}
+                </p>
+                {(rootStyle.siteHeaderId || rootStyle.siteFooterId) && (
+                    <>
+                        <Segmented
+                            label="On this page"
+                            value={rootStyle.useSiteHeader === false ? "hidden" : "shown"}
+                            options={[
+                                { label: "Header", value: "shown" },
+                                { label: "No header", value: "hidden" },
+                            ]}
+                            onChange={(mode) => onChange({ useSiteHeader: mode === "hidden" ? false : undefined })}
+                        />
+                        <Segmented
+                            label=""
+                            value={rootStyle.useSiteFooter === false ? "hidden" : "shown"}
+                            options={[
+                                { label: "Footer", value: "shown" },
+                                { label: "No footer", value: "hidden" },
+                            ]}
+                            onChange={(mode) => onChange({ useSiteFooter: mode === "hidden" ? false : undefined })}
+                        />
+                        <p className="text-[10px] leading-relaxed text-ed-faint">
+                            This page only — for a landing page that wants nothing around it.
+                        </p>
+                    </>
+                )}
             </Group>
 
             <Group title="Typography">
@@ -2827,7 +3206,7 @@ export function MultiSelectPanel({
                             aria-label={ALIGN_LABELS[action]}
                             disabled={!canArrange}
                             onClick={() => onAlign(action)}
-                            className="flex items-center justify-center rounded border border-ed-border bg-ed-field p-2 text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
+                            className="flex items-center justify-center rounded bg-ed-field p-2 text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
                         >
                             {icon}
                         </button>
@@ -2841,7 +3220,7 @@ export function MultiSelectPanel({
                         type="button"
                         disabled={!canArrange || count < 3}
                         onClick={() => onDistribute("horizontal")}
-                        className="flex items-center justify-center gap-1.5 rounded border border-ed-border bg-ed-field p-2 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
+                        className="flex items-center justify-center gap-1.5 rounded bg-ed-field p-2 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
                     >
                         <IconArrowsHorizontal size={13} /> Horizontal
                     </button>
@@ -2849,7 +3228,7 @@ export function MultiSelectPanel({
                         type="button"
                         disabled={!canArrange || count < 3}
                         onClick={() => onDistribute("vertical")}
-                        className="flex items-center justify-center gap-1.5 rounded border border-ed-border bg-ed-field p-2 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
+                        className="flex items-center justify-center gap-1.5 rounded bg-ed-field p-2 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text disabled:pointer-events-none disabled:opacity-30"
                     >
                         <IconArrowsVertical size={13} /> Vertical
                     </button>

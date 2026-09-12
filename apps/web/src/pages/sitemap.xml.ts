@@ -1,5 +1,7 @@
 import type { GetServerSideProps } from "next";
 import { COMPARISON_SLUGS } from "@/lib/comparisons";
+import { DOC_SLUGS } from "@/lib/docs-catalog";
+import { GUIDE_SLUGS } from "@/lib/guides";
 import { absoluteUrl } from "@/lib/site";
 
 /**
@@ -10,6 +12,21 @@ import { absoluteUrl } from "@/lib/site";
 const ROUTES: Array<{ changefreq: string; path: string; priority: string }> = [
   { changefreq: "weekly", path: "/", priority: "1.0" },
   { changefreq: "weekly", path: "/templates", priority: "0.8" },
+  { changefreq: "weekly", path: "/docs", priority: "0.8" },
+  { changefreq: "weekly", path: "/docs/agents", priority: "0.7" },
+  ...DOC_SLUGS.filter((slug) => slug !== "agents").map((slug) => ({
+    changefreq: "weekly",
+    path: `/docs/${slug}`,
+    priority: "0.7",
+  })),
+  { changefreq: "weekly", path: "/guides", priority: "0.8" },
+  { changefreq: "monthly", path: "/faq", priority: "0.7" },
+  { changefreq: "monthly", path: "/compare", priority: "0.7" },
+  ...GUIDE_SLUGS.map((slug) => ({
+    changefreq: "monthly",
+    path: `/guides/${slug}`,
+    priority: "0.7",
+  })),
   ...COMPARISON_SLUGS.map((slug) => ({
     changefreq: "monthly",
     path: `/compare/${slug}`,

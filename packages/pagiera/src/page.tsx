@@ -199,7 +199,7 @@ function stylesheet(document: PagieraDocument) {
 }
 
 function ElementContent({ element }: { element: PagieraElement }) {
-    if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox="" style={{ width: "100%", height: "100%", border: 0 }} />;
+    if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox={element.codeLanguage === "tsx" ? "allow-scripts" : ""} style={{ width: "100%", height: "100%", border: 0 }} />;
     if (element.type === "Image") return element.src ? <img src={element.src} alt={element.alt ?? ""} style={{ display: "block", width: "100%", height: "100%", objectFit: element.objectFit ?? "cover" }} /> : null;
     if (element.type === "Video") return element.src ? <iframe src={element.src} title={element.name ?? "Video"} style={{ width: "100%", height: "100%", border: 0 }} /> : null;
     if (element.type === "Icon") return <IconGlyph element={element} name={element.iconName} />;

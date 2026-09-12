@@ -1,11 +1,18 @@
 import { Pool } from "pg";
+import { inspectMcpServer, type PagieraMcpServer } from "./mcp-server";
 import { createClient, type RedisClientType } from "redis";
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { spawn } from "node:child_process";
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import manropeDataUrl from "./manrope-data.js";
 
 export type PagieraServerConfig = {
+    /** Trusted operator configuration, never persisted in page documents. */
+    mcpServers?: PagieraMcpServer[];
+    /** Required for any MCP access. Verify the signed-in administrator here. */
+    authorizeMcp?: (request: Request) => boolean | Promise<boolean>;
     postgresUrl: string;
     redisUrl: string;
     openRouterApiKey: string;
@@ -39,6 +46,49 @@ const TEMPLATE_CACHE_REVISION = 4;
 const BUILTIN_TEMPLATE_IDS = ["nocturne", "editorial-blog", "orbit-saas", "pulse-social"] as const;
 type BuiltinTemplateId = (typeof BUILTIN_TEMPLATE_IDS)[number];
 
+async function findEsbuildBin() {
+    let directory = process.cwd();
+    for (let depth = 0; depth < 8; depth += 1) {
+        const standard = resolve(directory, "node_modules", "esbuild", "bin", "esbuild");
+        try { await access(standard); return standard; } catch { /* bun keeps packages below .bun */ }
+        const bunStore = resolve(directory, "node_modules", ".bun");
+        try {
+            const entry = (await readdir(bunStore)).find((name) => name.startsWith("esbuild@"));
+            if (entry) {
+                const candidate = resolve(bunStore, entry, "node_modules", "esbuild", "bin", "esbuild");
+                await access(candidate);
+                return candidate;
+            }
+        } catch { /* walk toward the workspace root */ }
+        const parent = dirname(directory);
+        if (parent === directory) break;
+        directory = parent;
+    }
+    throw new Error("Pagiera TSX compiler could not find esbuild. Install the package's dependencies first.");
+}
+
+async function findNodeModuleFile(packageName: string, file: string) {
+    let directory = process.cwd();
+    for (let depth = 0; depth < 8; depth += 1) {
+        const standard = resolve(directory, "node_modules", packageName, file);
+        try { await access(standard); return standard; } catch { /* try Bun's content store */ }
+        const bunStore = resolve(directory, "node_modules", ".bun");
+        try {
+            const prefix = `${packageName.replaceAll("/", "+")}@`;
+            const entry = (await readdir(bunStore)).find((name) => name.startsWith(prefix));
+            if (entry) {
+                const candidate = resolve(bunStore, entry, "node_modules", packageName, file);
+                await access(candidate);
+                return candidate;
+            }
+        } catch { /* walk toward the workspace root */ }
+        const parent = dirname(directory);
+        if (parent === directory) break;
+        directory = parent;
+    }
+    throw new Error(`Pagiera TSX compiler could not resolve ${packageName}/${file}.`);
+}
+
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sites (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, slug text NOT NULL UNIQUE,
@@ -51,6 +101,8 @@ ALTER TABLE sites ADD COLUMN IF NOT EXISTS page_transition text;
 ALTER TABLE sites ADD COLUMN IF NOT EXISTS page_transition_duration integer;
 ALTER TABLE sites ADD COLUMN IF NOT EXISTS components jsonb NOT NULL DEFAULT '[]';
 ALTER TABLE sites ADD COLUMN IF NOT EXISTS published_components jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS layout jsonb NOT NULL DEFAULT '{}';
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS published_layout jsonb NOT NULL DEFAULT '{}';
 CREATE TABLE IF NOT EXISTS pages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), site_id uuid NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   name text NOT NULL, slug text NOT NULL, elements jsonb NOT NULL DEFAULT '[]', root_style jsonb NOT NULL DEFAULT '{}',
@@ -120,6 +172,46 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const bodyOf = async (request: Request) => request.json().catch(() => ({})) as Promise<Record<string, any>>;
     const ok = (value: unknown, status = 200) => Response.json(value, { status });
     const fail = (error: unknown, status = 400) => ok({ error: error instanceof Error ? error.message : String(error) }, status);
+
+    const compileTsx = async (source: string) => {
+        if (!source.trim()) throw new Error("TSX source is empty.");
+        if (source.length > 100_000) throw new Error("TSX source is too large (100 KB maximum).");
+        // esbuild's native bridge cannot live inside a Next/Turbopack server
+        // graph. Resolve its CLI at runtime and run it as a bounded child
+        // process instead; a compiler failure cannot take down the host app.
+        const esbuildBin = await findEsbuildBin();
+        const reactEntry = await findNodeModuleFile("react", "index.js");
+        const reactJsxEntry = await findNodeModuleFile("react", "jsx-runtime.js");
+        const reactDomEntry = await findNodeModuleFile("react-dom", "client.js");
+        const directory = await mkdtemp(join(tmpdir(), "pagiera-tsx-"));
+        const entry = join(directory, "entry.tsx");
+        const component = join(directory, "component.tsx");
+        const output = join(directory, "bundle.js");
+        const entrySource = `import React from "react";\nimport { createRoot } from "react-dom/client";\nimport UserComponent from "./component";\nconst node = document.getElementById("root");\ncreateRoot(node!).render(React.createElement(UserComponent));`;
+        try {
+            await Promise.all([writeFile(entry, entrySource, "utf8"), writeFile(component, source, "utf8")]);
+            await new Promise<void>((accept, reject) => {
+                const errors: Buffer[] = [];
+                const child = spawn(process.execPath, [esbuildBin, entry, "--bundle", "--minify", "--format=iife", "--platform=browser", "--target=es2020", "--jsx=automatic", `--alias:react=${reactEntry}`, `--alias:react/jsx-runtime=${reactJsxEntry}`, `--alias:react-dom/client=${reactDomEntry}`, `--outfile=${output}`], {
+                    env: process.env,
+                    stdio: ["ignore", "ignore", "pipe"],
+                    windowsHide: true,
+                });
+                const timer = setTimeout(() => { child.kill(); reject(new Error("TSX compilation timed out.")); }, 10_000);
+                child.stderr.on("data", (chunk: Buffer) => errors.push(chunk));
+                child.once("error", (error) => { clearTimeout(timer); reject(error); });
+                child.once("exit", (code) => {
+                    clearTimeout(timer);
+                    if (code === 0) accept();
+                    else reject(new Error(Buffer.concat(errors).toString("utf8").trim() || "TSX compilation failed."));
+                });
+            });
+            const script = (await readFile(output, "utf8")).replaceAll("</script", "<\\/script");
+            return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{width:100%;height:100%;margin:0}*{box-sizing:border-box}</style></head><body><div id="root"></div><script>${script}</script></body></html>`;
+        } finally {
+            await rm(directory, { recursive: true, force: true });
+        }
+    };
 
     const cachedTemplateJson = async (cacheKey: string, url: string, force = false) => {
         const parsedUrl = new URL(url);
@@ -528,6 +620,19 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 await invalidate();
                 return ok({ status: "ok", transition });
             }
+            if (request.method === "POST" && path === "/settings/layout") {
+                const body = await bodyOf(request);
+                const parsed = validation.parseRootStyle({
+                    siteHeaderId: body.headerId,
+                    siteFooterId: body.footerId,
+                });
+                const layout = await pages.setSiteLayout({
+                    headerId: parsed.siteHeaderId,
+                    footerId: parsed.siteFooterId,
+                });
+                await invalidate();
+                return ok({ status: "ok", layout });
+            }
             if (request.method === "GET" && parts[0] === "published" && parts[1]) {
                 const page = await getPublishedDocument(parts.slice(1).join("/"));
                 if (!page) return fail("Published page not found", 404);
@@ -664,6 +769,26 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 const query = Object.fromEntries(new URLSearchParams(typeof body.sampleQuery === "string" ? body.sampleQuery.slice(0, 500) : ""));
                 const result = await sourceRuntime.loadSource(source, { context: { origin: url.origin, query, params: {}, page: { slug: "preview" } }, revalidate: false, allowPrivateHosts: config.allowPrivateHosts, maxBytes: config.maxSourceBytes });
                 return ok({ status: "ok", ...result, total: result.rows.length });
+            }
+            if (path === "/code/compile" && request.method === "POST") {
+                const body = await bodyOf(request);
+                const source = typeof body.source === "string" ? body.source : "";
+                return ok({ status: "ok", html: await compileTsx(source) });
+            }
+            if (path === "/mcp" && request.method === "POST") {
+                if (!config.authorizeMcp || !await config.authorizeMcp(request)) return fail("MCP access requires an authorized host adapter.", 403);
+                const body = await bodyOf(request);
+                const servers = config.mcpServers ?? [];
+                if (body.action === "list") return ok({ servers: servers.map(({ id, name, transport }) => ({ id, name, transport })) });
+                if (body.action !== "inspect" || typeof body.id !== "string") return fail("Invalid MCP action");
+                const server = servers.find(server => server.id === body.id);
+                if (!server) return fail("MCP server is not configured", 404);
+                const rateKey = "pagiera:mcp-inspect";
+                const count = await redis.incr(rateKey);
+                if (count === 1) await redis.expire(rateKey, 60);
+                if (count > 10) return fail("Too many MCP connections. Try again shortly.", 429);
+                try { return ok(await inspectMcpServer(server)); }
+                catch { return fail("MCP connection failed. Check the server configuration and credentials.", 502); }
             }
             if (path === "/ai" && request.method === "POST") {
                 const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";

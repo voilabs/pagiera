@@ -17,10 +17,10 @@ export function ComparisonView({
 }) {
   return (
     <>
-      <section className="relative m-2 overflow-hidden rounded-[36px] bg-[#f7f5fb] px-6 pt-[190px] pb-24 text-[#17101f] max-md:m-1 max-md:rounded-[28px] max-md:px-4 max-md:pt-32 max-md:pb-16">
+      <section className="relative m-2 overflow-hidden rounded-[36px] bg-[#f6f6f6] px-6 pt-24 pb-24 text-[#131313] max-md:m-1 max-md:rounded-[28px] max-md:px-4 max-md:pt-16 max-md:pb-16">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(56%_46%_at_50%_18%,rgba(106,37,240,.5),rgba(143,92,247,.22)_45%,transparent_72%)] [mask-image:radial-gradient(closest-side,#000_58%,transparent),repeating-conic-gradient(#000_0%_25%,transparent_0%_50%)] [mask-position:0_0] [mask-repeat:repeat] [mask-size:12px_12px,12px_12px]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-[linear-gradient(#f7f5fb_28%,rgba(247,245,251,.72)_62%,transparent)]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(transparent,#f7f5fb)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(transparent,#f6f6f6)]" />
 
         <motion.div
           animate={{ opacity: 1, y: 0 }}
@@ -28,7 +28,7 @@ export function ComparisonView({
           initial={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/[.08] bg-white/80 px-3.5 py-1.5 text-[10px] font-bold tracking-[.08em] text-[#3d3548] uppercase backdrop-blur-md">
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/[.08] bg-white/80 px-3.5 py-1.5 text-[10px] font-bold tracking-[.08em] text-[#383838] uppercase backdrop-blur-md">
             <i className="size-1.5 rounded-full bg-[#6a25f0]" /> Comparison
           </span>
           <h1 className="mt-8 text-[clamp(48px,6.4vw,88px)] leading-[.92] font-semibold tracking-[-0.075em] max-md:mt-6 max-md:text-[clamp(40px,11vw,58px)]">
@@ -36,7 +36,7 @@ export function ComparisonView({
             <em className="font-serif font-normal text-[#6a25f0]">vs</em>{" "}
             {comparison.rival}
           </h1>
-          <p className="mx-auto mt-7 max-w-[620px] text-sm leading-7 text-[#5b5566]">
+          <p className="mx-auto mt-7 max-w-[620px] text-sm leading-7 text-[#585858]">
             {comparison.headline}
           </p>
           <div className="mt-9 flex justify-center gap-2 max-sm:mx-auto max-sm:w-[min(330px,100%)] max-sm:flex-col">
@@ -55,10 +55,10 @@ export function ComparisonView({
         </motion.div>
       </section>
 
-      <section className="bg-[#0d0915] px-[max(24px,calc((100vw-1120px)/2))] py-28 text-white max-md:py-20">
+      <section className="bg-[#0b0b0b] px-[max(24px,calc((100vw-1120px)/2))] py-28 text-white max-md:py-20">
         {/* The short answer, first and unqualified. */}
-        <div className="rounded-[30px] border border-white/[.08] bg-[#171020] p-10 max-md:rounded-[24px] max-md:p-6">
-          <h2 className="text-[10px] font-bold tracking-[.13em] text-[#a982ff] uppercase">
+        <div className="rounded-[30px] border border-white/[.08] bg-[#131313] p-10 max-md:rounded-[24px] max-md:p-6">
+          <h2 className="text-[10px] font-bold tracking-[.13em] text-[#939393] uppercase">
             The short answer
           </h2>
           <p className="mt-5 text-lg leading-9 text-white/82 max-md:text-base max-md:leading-8">
@@ -75,7 +75,7 @@ export function ComparisonView({
           id="at-a-glance"
         >
           At a{" "}
-          <em className="font-serif font-normal text-[#a982ff]">glance.</em>
+          <em className="font-serif font-normal text-[#939393]">glance.</em>
         </h2>
 
         <div className="mt-10 overflow-x-auto rounded-[26px] border border-white/[.08]">
@@ -92,7 +92,7 @@ export function ComparisonView({
                   Aspect
                 </th>
                 <th
-                  className="px-6 py-5 text-[13px] font-semibold text-[#a982ff]"
+                  className="px-6 py-5 text-[13px] font-semibold text-[#939393]"
                   scope="col"
                 >
                   Pagiera
@@ -140,12 +140,12 @@ export function ComparisonView({
 
         <h2 className="mt-24 text-[clamp(34px,4.2vw,58px)] leading-[.96] font-medium tracking-[-.07em] max-md:mt-16">
           Common{" "}
-          <em className="font-serif font-normal text-[#a982ff]">questions.</em>
+          <em className="font-serif font-normal text-[#939393]">questions.</em>
         </h2>
         <dl className="mt-10 grid gap-3">
           {comparison.faq.map((entry) => (
             <div
-              className="rounded-[24px] border border-white/[.08] bg-[#171020] p-7 max-md:p-5"
+              className="rounded-[24px] border border-white/[.08] bg-[#131313] p-7 max-md:p-5"
               key={entry.question}
             >
               <dt className="text-[15px] font-semibold tracking-[-.02em] text-white">
@@ -173,7 +173,7 @@ export function ComparisonView({
                   <span className="text-[14px] font-semibold tracking-[-.03em]">
                     Pagiera vs {entry.rival}
                   </span>
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 text-[#a982ff] transition-colors group-hover:border-[#6a25f0] group-hover:bg-[#6a25f0] group-hover:text-white">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 text-[#939393] transition-colors group-hover:border-[#6a25f0] group-hover:bg-[#6a25f0] group-hover:text-white">
                     <Icon name="arrow" size={14} />
                   </span>
                 </a>

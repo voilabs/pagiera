@@ -30,6 +30,8 @@ export type PagieraStudioAdapters = {
         | { status: "ok"; rows: Array<Record<string, unknown>>; keys: string[]; total: number }
         | { status: "error"; message: string }
     >;
+    compileCode?(source: string): Promise<{ status: "ok"; html: string }>;
+    mcp?(request: { action: "list" | "inspect"; id?: string }): Promise<{ servers?: Array<{ id: string; name: string; transport: string }>; tools?: Array<{ name: string; description?: string }> }>;
     createPage?(name: string, slug: string): Promise<PagieraMutationResult>;
     renamePage?(id: string, name: string, slug: string): Promise<PagieraMutationResult>;
     duplicatePage?(id: string, name: string, slug: string): Promise<PagieraMutationResult>;

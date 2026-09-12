@@ -218,7 +218,7 @@ export function TemplatePreview({
                             key={item.slug}
                             type="button"
                             onClick={() => setSlug(item.slug)}
-                            className={`h-7 shrink-0 rounded-full px-3 text-[10px] font-medium transition-colors ${
+                            className={`h-7 shrink-0 rounded-lg px-3 text-[10px] font-medium transition-colors ${
                                 item.slug === page?.slug
                                     ? "bg-ed-field-hover text-ed-text"
                                     : "text-ed-faint hover:text-ed-muted"
@@ -228,14 +228,14 @@ export function TemplatePreview({
                         </button>
                     ))}
                 </div>
-                <div className="flex shrink-0 gap-1 rounded-full bg-ed-subtle p-1">
+                <div className="flex shrink-0 gap-1 rounded-lg bg-ed-subtle p-1">
                     {devices.map((item) => (
                         <button
                             key={item.id}
                             type="button"
                             onClick={() => setDeviceId(item.id)}
                             title={`${item.name} · ${item.width}px`}
-                            className={`h-6 rounded-full px-2.5 text-[9px] font-medium transition-colors ${
+                            className={`h-6 rounded-md px-2.5 text-[9px] font-medium transition-colors ${
                                 item.id === device?.id
                                     ? "bg-ed-surface text-ed-text"
                                     : "text-ed-faint hover:text-ed-muted"

@@ -41,6 +41,7 @@ export type AiDesignOperation =
     | { kind: "page"; style: Partial<RootStyle> };
 
 export type AiDesignPlan = {
+    targetBreakpoint?: string;
     message: string;
     steps: string[];
     operations: AiDesignOperation[];

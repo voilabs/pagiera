@@ -17,6 +17,8 @@ const NUMBER_PROPERTIES: Array<{ label: string; value: StyleKey }> = [
 
 export function VariablesPanel({ rootStyle, selectedElement, setRootStyle, setElements }: { rootStyle: RootStyle; selectedElement?: CanvasElement; setRootStyle: (patch: Partial<RootStyle>) => void; setElements: (updater: (elements: CanvasElement[]) => CanvasElement[]) => void }) {
     const variables = rootStyle.variables ?? [];
+    const [query, setQuery] = useState("");
+    const [filter, setFilter] = useState<"all" | "color" | "number">("all");
     const [property, setProperty] = useState<StyleKey>("bg");
 
     const updateVariable = (id: string, patch: Partial<DesignVariable>) => {
@@ -34,7 +36,7 @@ export function VariablesPanel({ rootStyle, selectedElement, setRootStyle, setEl
         }));
     };
 
-    const add = (type: DesignVariable["type"]) => setRootStyle({ variables: [...variables, { id: newId(), name: type === "color" ? "Brand colour" : "Spacing", type, value: type === "color" ? "#8b7bff" : 16 }] });
+    const add = (type: DesignVariable["type"]) => setRootStyle({ variables: [...variables, { id: newId(), name: type === "color" ? "Brand colour" : "Spacing", type, value: type === "color" ? "#5402e6" : 16 }] });
     const bind = (variable: DesignVariable) => {
         if (!selectedElement) return;
         const allowed = variable.type === "color" ? COLOR_PROPERTIES : NUMBER_PROPERTIES;
@@ -48,9 +50,43 @@ export function VariablesPanel({ rootStyle, selectedElement, setRootStyle, setEl
         }));
     };
 
-    return <div className="flex flex-col">
-        <div className="border-b border-ed-border p-3"><div className="rounded-xl border border-ed-border bg-ed-subtle p-3"><IconPalette size={16} className="mb-2 text-ed-accent" /><p className="text-[11px] font-semibold text-ed-text">Design variables</p><p className="mt-1 text-[9px] leading-relaxed text-ed-muted">Bind shared colours and numbers. Editing a variable updates every bound layer.</p></div></div>
-        <div className="flex gap-1.5 border-b border-ed-border p-3"><button type="button" onClick={() => add("color")} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-ed-field px-2 py-2 text-[10px] text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"><IconPlus size={11} /> Colour</button><button type="button" onClick={() => add("number")} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-ed-field px-2 py-2 text-[10px] text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"><IconPlus size={11} /> Number</button></div>
-        {variables.length === 0 ? <p className="p-5 text-center text-[10px] text-ed-faint">No variables yet.</p> : <div className="space-y-2 p-3">{variables.map((variable) => { const options = variable.type === "color" ? COLOR_PROPERTIES : NUMBER_PROPERTIES; return <div key={variable.id} className="rounded-xl border border-ed-border bg-ed-subtle p-2.5"><div className="flex items-center gap-2"><input value={variable.name} onChange={(event) => updateVariable(variable.id, { name: event.target.value })} className="min-w-0 flex-1 bg-transparent text-[10px] font-medium text-ed-text outline-none" />{variable.type === "color" ? <input type="color" value={String(variable.value)} onChange={(event) => updateVariable(variable.id, { value: event.target.value })} className="size-6 cursor-pointer rounded border-0 bg-transparent" /> : <input type="number" value={Number(variable.value)} onChange={(event) => updateVariable(variable.id, { value: Number(event.target.value) })} className="w-14 rounded-md bg-ed-field px-1.5 py-1 text-right text-[10px] text-ed-text outline-none" />}<button type="button" onClick={() => setRootStyle({ variables: variables.filter((item) => item.id !== variable.id) })} className="text-ed-faint hover:text-red-400"><IconTrash size={12} /></button></div>{selectedElement && <div className="mt-2 flex gap-1.5"><Select value={options.some((item) => item.value === property) ? property : options[0].value} onValueChange={(value) => setProperty(value as StyleKey)}><SelectTrigger className="h-7 min-w-0 flex-1"><SelectValue /></SelectTrigger><SelectContent>{options.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select><button type="button" onClick={() => bind(variable)} className="rounded-lg bg-ed-accent px-2 text-[9px] font-medium text-white">Bind</button></div>}</div>; })}</div>}
+
+    const remove = (id: string) => {
+        setRootStyle({ variables: variables.filter(item => item.id !== id) });
+        // Keep resolved values, but remove dangling variable references.
+        setElements(elements => elements.map(element => {
+            const bindings = element.styleBindings;
+            if (!bindings || !Object.values(bindings).includes(id)) return element;
+            return { ...element, styleBindings: Object.fromEntries(Object.entries(bindings).filter(([, value]) => value !== id)) };
+        }));
+    };
+    const visible = variables.filter(v => (filter === "all" || v.type === filter) && v.name.toLowerCase().includes(query.trim().toLowerCase()));
+    return <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="text-sm font-medium text-ed-text">{variables.length} variables</p><p className="mt-1 text-xs text-ed-muted">Change a value once to update its bound layers.</p></div>
+            <div className="flex gap-2">{(["color", "number"] as const).map(type => <button key={type} type="button" onClick={() => add(type)} className="flex h-9 items-center gap-2 rounded-lg bg-ed-field px-3 text-xs text-ed-text hover:bg-ed-field-hover"><IconPlus size={14} />{type === "color" ? "Colour" : "Number"}</button>)}</div>
+        </div>
+        <div className="flex flex-wrap gap-3">
+            <input aria-label="Search variables" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search variables…" className="h-10 min-w-0 flex-1 rounded-xl bg-ed-field px-3 text-xs text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" />
+            <div className="flex gap-1">{(["all", "color", "number"] as const).map(type => <button key={type} type="button" aria-pressed={filter === type} onClick={() => setFilter(type)} className={"rounded-lg px-3 text-xs " + (filter === type ? "bg-ed-field text-ed-text" : "text-ed-muted")}>{type === "all" ? "All" : type === "color" ? "Colours" : "Numbers"}</button>)}</div>
+        </div>
+        {!selectedElement && <p className="text-xs text-ed-faint">Select a layer on the canvas before opening settings to bind a variable.</p>}
+        {selectedElement && <p className="text-xs text-ed-muted">Bind to: <span className="text-ed-text">{selectedElement.name || selectedElement.type}</span></p>}
+        <div className="space-y-2">{visible.map(variable => {
+            const options = variable.type === "color" ? COLOR_PROPERTIES : NUMBER_PROPERTIES;
+            return <div key={variable.id} className="rounded-xl bg-ed-field/50 p-4">
+                <div className="flex items-center gap-3">
+                    {variable.type === "color" ? <input aria-label={variable.name + " colour"} type="color" value={String(variable.value)} onChange={e => updateVariable(variable.id, { value: e.target.value })} className="size-8 cursor-pointer rounded-lg border-0 bg-transparent" /> : <IconPalette size={20} className="text-ed-faint" />}
+                    <input aria-label="Variable name" value={variable.name} onChange={e => updateVariable(variable.id, { name: e.target.value })} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" />
+                    {variable.type === "number" ? <input aria-label={variable.name + " value"} type="number" value={Number(variable.value)} onChange={e => { const value = e.target.valueAsNumber; if (Number.isFinite(value)) updateVariable(variable.id, { value }); }} className="h-8 w-20 rounded-lg bg-ed-field px-2 text-right text-xs text-ed-text" /> : <span className="font-mono text-xs text-ed-muted">{variable.value}</span>}
+                    <button type="button" aria-label={"Delete " + variable.name} title="Delete variable; keep current layer values" onClick={() => remove(variable.id)} className="rounded-lg p-2 text-ed-faint hover:bg-red-500/10 hover:text-red-400"><IconTrash size={15} /></button>
+                </div>
+                {selectedElement && <div className="mt-3 flex gap-2">
+                    <Select value={options.some(item => item.value === property) ? property : options[0].value} onValueChange={value => setProperty(value as StyleKey)}><SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger><SelectContent>{options.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
+                    <button type="button" onClick={() => bind(variable)} className="rounded-lg bg-ed-accent px-4 text-xs font-medium text-white">Bind to layer</button>
+                </div>}
+            </div>;
+        })}</div>
+        {visible.length === 0 && <div className="rounded-2xl bg-ed-field/40 px-6 py-12 text-center"><IconPalette size={26} className="mx-auto text-ed-accent" /><p className="mt-3 text-sm text-ed-text">{variables.length ? "No matching variables" : "Create your first design variable"}</p><p className="mt-2 text-xs text-ed-muted">{variables.length ? "Try another search or type." : "Start with a brand colour or a shared spacing value."}</p></div>}
     </div>;
 }

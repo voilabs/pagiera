@@ -47,8 +47,14 @@ export function TemplatesPanel({
     onImport,
     exportUrl,
     onInstalled,
+    category: controlledCategory,
+    onCategoryChange,
+    onCategoriesChange,
 }: {
     busy: boolean;
+    category?: string;
+    onCategoryChange?: (category: string) => void;
+    onCategoriesChange?: (categories: string[]) => void;
     registryUrl?: string;
     onInstall: (templateId: string, fontFamily: string) => Promise<{ pageId?: string }>;
     /** Installs a bundle the author supplied from a file. */
@@ -61,7 +67,9 @@ export function TemplatesPanel({
     const [status, setStatus] = useState<RegistryState>("loading");
     const [error, setError] = useState("");
     const [query, setQuery] = useState("");
-    const [category, setCategory] = useState("All");
+    const [localCategory, setLocalCategory] = useState("All");
+    const category = controlledCategory ?? localCategory;
+    const setCategory = onCategoryChange ?? setLocalCategory;
     const [installing, setInstalling] = useState<string>();
     const [installStage, setInstallStage] = useState<InstallStage>();
     const [pendingTemplate, setPendingTemplate] = useState<TemplateRegistryEntry>();
@@ -124,6 +132,12 @@ export function TemplatesPanel({
     }, [pendingTemplate, providerFonts]);
 
     const categories = useMemo(() => ["All", ...new Set(templates.map((template) => template.category))], [templates]);
+    useEffect(() => {
+        onCategoriesChange?.(categories);
+    }, [categories, onCategoriesChange]);
+    useEffect(() => {
+        if (!categories.includes(category)) setCategory("All");
+    }, [categories, category, setCategory]);
     const visible = useMemo(() => {
         const needle = query.trim().toLowerCase();
         return templates.filter((template) =>
@@ -183,20 +197,20 @@ export function TemplatesPanel({
     };
 
     return (
-        <div className="min-h-full bg-ed-surface">
-            <div className="sticky top-0 z-10 border-b border-ed-border bg-ed-surface/90 backdrop-blur-xl">
+        <div className="min-h-full bg-ed-canvas">
+            <div className="sticky top-0 z-10 bg-ed-canvas/95 backdrop-blur-xl">
                 <div className="mx-auto max-w-[1480px] px-6 py-5 lg:px-10">
-                <div className="flex items-start justify-between gap-5">
+                <div className="flex flex-wrap items-start justify-between gap-5">
                     <div className="flex min-w-0 items-center gap-3.5">
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-ed-accent-soft text-ed-accent"><IconTemplate size={18} /></span>
-                        <div className="min-w-0"><h2 className="text-[18px] font-semibold tracking-[-.025em] text-ed-text">Template marketplace</h2><p className="mt-1 text-[11px] text-ed-faint">Discover and install complete, responsive Pagiera sites.</p></div>
+                        <div className="min-w-0"><p className="mb-2 text-[10px] uppercase tracking-[.18em] text-ed-faint">Your next starting point</p><h2 className="text-2xl font-semibold tracking-tight text-ed-text">Templates</h2><p className="mt-2 text-xs text-ed-muted">Explore complete sites. Make every detail yours.</p></div>
                     </div>
                     {exportUrl && (
                         <a
                             href={exportUrl("my-template")}
                             download
                             title="Download this site as a template bundle"
-                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text"
+                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text"
                         >
                             <IconDownload size={13} /> Export
                         </a>
@@ -220,24 +234,24 @@ export function TemplatesPanel({
                                 onClick={() => fileRef.current?.click()}
                                 disabled={busyImport || busy}
                                 title="Replace this site with a template bundle from a file"
-                                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40"
+                                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40"
                             >
                                 <IconUpload size={13} /> {busyImport ? "Importing…" : "Import"}
                             </button>
                         </>
                     )}
-                    <button type="button" onClick={() => void refresh(true)} disabled={status === "loading"} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ed-field text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40" title="Refresh template catalog">
+                    <button type="button" onClick={() => void refresh(true)} disabled={status === "loading"} className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40" title="Refresh template catalog">
                         <IconRefresh size={14} className={status === "loading" ? "animate-spin" : ""} />
                     </button>
                 </div>
 
                 <div className="mt-5 flex max-w-[720px] gap-2.5">
-                    <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-full bg-ed-field px-4 transition-colors focus-within:ring-1 focus-within:ring-ed-accent">
+                    <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-lg bg-ed-field px-4 transition-colors focus-within:ring-1 focus-within:ring-ed-accent">
                         <IconSearch size={13} className="shrink-0 text-ed-faint" />
                         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search templates, styles and categories…" className="min-w-0 flex-1 bg-transparent text-[11px] text-ed-text outline-none placeholder:text-ed-faint" />
                     </div>
                     <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger aria-label="Template category" className="h-10 min-w-0 w-[150px] rounded-full px-4 text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Template category" className="h-10 min-w-0 w-[150px] rounded-lg px-4 text-[10px]"><SelectValue /></SelectTrigger>
                         <SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                     </Select>
                 </div>
@@ -252,13 +266,13 @@ export function TemplatesPanel({
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
                     {visible.map((template, index) => (
                         <motion.article key={template.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.035, 0.16), duration: 0.28 }} className="group overflow-hidden rounded-3xl bg-ed-subtle p-2 transition-colors hover:bg-ed-field">
-                            <div className="relative aspect-[16/10] overflow-hidden rounded-[20px]" style={{ background: template.preview.background, color: template.preview.foreground }}>
+                            <div className="relative aspect-[16/10] overflow-hidden rounded-lg" style={{ background: template.preview.background, color: template.preview.foreground }}>
                                 <div className="absolute inset-0 opacity-75" style={{ background: `radial-gradient(circle at 90% 0%, ${template.preview.accent}66, transparent 55%)` }} /><span className="relative block px-6 pt-6 font-mono text-[8px] font-bold tracking-[.14em]" style={{ color: template.preview.accent }}>{template.preview.eyebrow}</span><p className="relative mt-12 max-w-[88%] px-6 text-[28px] font-semibold leading-[.92] tracking-[-.05em]">{template.preview.headline}</p>
                                 {template.thumbnail && <img src={templateThumbnailUrl(template, registryUrl)} alt={`${template.name} template preview`} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" onError={(event) => { event.currentTarget.hidden = true; }} />}
-                                {template.featured && <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[8px] font-semibold text-white backdrop-blur">Featured</span>}
+                                {template.featured && <span className="absolute right-3 top-3 rounded-md bg-black/60 px-2.5 py-1 text-[8px] font-semibold text-white backdrop-blur">Featured</span>}
                             </div>
                             <div className="p-3 pb-2">
-                                <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><h3 className="truncate text-[13px] font-semibold tracking-[-.015em] text-ed-text">{template.name}</h3><p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-[1.55] text-ed-muted">{template.description}</p></div><button type="button" disabled={busy || Boolean(installing)} onClick={() => { setError(""); setInstallError(""); setPendingTemplate(template); }} className="flex size-9 shrink-0 select-none items-center justify-center rounded-full bg-ed-surface text-ed-text transition-colors hover:bg-ed-accent hover:text-white disabled:cursor-wait disabled:opacity-45" aria-label={`Review and install ${template.name}`}><IconArrowUpRight size={14} /></button></div>
+                                <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><h3 className="truncate text-[13px] font-semibold tracking-[-.015em] text-ed-text">{template.name}</h3><p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-[1.55] text-ed-muted">{template.description}</p></div><button type="button" disabled={busy || Boolean(installing)} onClick={() => { setError(""); setInstallError(""); setPendingTemplate(template); }} className="flex size-9 shrink-0 select-none items-center justify-center rounded-lg bg-ed-surface text-ed-text transition-colors hover:bg-ed-accent hover:text-white disabled:cursor-wait disabled:opacity-45" aria-label={`Review and install ${template.name}`}><IconArrowUpRight size={14} /></button></div>
                                 <div className="mt-3 flex items-center gap-2 text-[9px] text-ed-faint"><span>{template.category}</span><i className="size-0.5 rounded-full bg-ed-faint" /><span>{template.pages.length} pages</span><i className="size-0.5 rounded-full bg-ed-faint" /><span>v{template.version}</span></div>
                             </div>
                         </motion.article>
@@ -288,7 +302,7 @@ export function TemplatesPanel({
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 6, scale: 0.98 }}
                                 transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                                className="flex max-h-[min(880px,94vh)] w-full max-w-[1180px] flex-col rounded-3xl bg-ed-surface p-2 text-ed-text shadow-2xl"
+                                className="flex max-h-[min(880px,94vh)] w-full max-w-[1180px] flex-col rounded-2xl bg-ed-surface p-2 text-ed-text shadow-[0_24px_64px_rgb(0_0_0/0.55)]"
                             >
                                 <div className="flex shrink-0 items-center gap-3 px-4 py-3.5">
                                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ed-field text-ed-accent"><IconTemplate size={17} /></span>
@@ -340,7 +354,7 @@ export function TemplatesPanel({
                                                         </p>
                                                     </div>
                                                     <Select value={selectedFont} onValueChange={setSelectedFont}>
-                                                        <SelectTrigger aria-label="Template site font" className="h-8 w-[170px] shrink-0 rounded-full px-3 text-[10px]"><SelectValue placeholder="Choose font" /></SelectTrigger>
+                                                        <SelectTrigger aria-label="Template site font" className="h-8 w-[170px] shrink-0 rounded-lg px-3 text-[10px]"><SelectValue placeholder="Choose font" /></SelectTrigger>
                                                         <SelectContent>{fontOptions.map((font) => <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>)}</SelectContent>
                                                     </Select>
                                                 </div>

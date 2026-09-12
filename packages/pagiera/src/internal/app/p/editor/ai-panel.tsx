@@ -17,6 +17,12 @@ import { useEffect, useRef, useState } from "react";
 import type { AiDesignPlan } from "@/lib/editor/ai-types";
 import type { Breakpoint, CanvasElement, RootStyle } from "@/lib/editor/types";
 import { PagieraMark } from "./brand";
+import { AiWelcome } from "./ui/ai-welcome";
+import type { McpAdapter } from "./ui/mcp-panel";
+import { AiComposer } from "./ui/ai-composer";
+import { AiMentionMenu } from "./ui/ai-mention-menu";
+import { AiChanges } from "./ui/ai-changes";
+import { scopeAiPlan } from "@/lib/editor/ai-scope";
 
 /**
  * The design conversation.
@@ -69,6 +75,7 @@ type Chat = {
 export type AiFocus = { id: string; name: string; type: string };
 
 export type AiDesignRequest = {
+    targetBreakpoint?: string;
     prompt: string;
     breakpoint: Breakpoint;
     focus?: AiFocus;
@@ -94,11 +101,6 @@ export type AiDesignGenerator = (
 const uid = () => globalThis.crypto?.randomUUID?.() ?? `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const now = () => Date.now();
 
-const SUGGESTIONS = [
-    "A calm editorial site for an architecture studio",
-    "A dark launch page for a privacy-first developer tool",
-    "Redesign this page with stronger hierarchy and less noise",
-];
 
 /* --------------------------------------------------------------- storage */
 
@@ -208,7 +210,7 @@ function RunReport({ turn }: { turn: Turn }) {
                 <span className="min-w-0 flex-1">
                     <span className="block text-[11px] font-semibold text-ed-text">{headline}</span>
                     <span className="mt-0.5 block truncate text-[9px] text-ed-faint">
-                        {turn.applied > 0 ? `${turn.applied} elements on canvas` : "Reading the brief"}
+                        {turn.applied > 0 ? `${turn.applied} changes prepared` : "Reading the brief"}
                     </span>
                 </span>
                 <IconChevronDown size={12} className={`shrink-0 text-ed-faint transition-transform ${open ? "rotate-180" : ""}`} />
@@ -260,10 +262,12 @@ export function AiPanel({
     elements,
     rootStyle,
     breakpoint,
-    focus,
-    onClearFocus,
+    focus: externalFocus,
+    onClearFocus: clearExternalFocus,
     onApply,
     generate,
+    enterToSend = true,
+    onOpenAiSettings,
     onActiveChatChange,
 }: {
     pageId: string;
@@ -274,12 +278,26 @@ export function AiPanel({
     onClearFocus?: () => void;
     onApply: (plan: AiDesignPlan) => void;
     generate?: AiDesignGenerator;
+    mcp?: McpAdapter;
+    enterToSend?: boolean;
+    onOpenAiSettings?: () => void;
     /** Lets the panel's own header name the open chat. */
     onActiveChatChange?: (title?: string) => void;
 }) {
     const [chats, setChats] = useState<Chat[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [input, setInput] = useState("");
+    const [taggedFocus, setTaggedFocus] = useState<AiFocus>();
+    const focus = taggedFocus ?? externalFocus;
+    const onClearFocus = () => { setTaggedFocus(undefined); clearExternalFocus?.(); };
+    const [targetBreakpoint, setTargetBreakpoint] = useState<string>();
+    const [pendingPlans, setPendingPlans] = useState<AiDesignPlan[]>([]);
+    const pendingSnapshot = useRef("");
+    const [planError, setPlanError] = useState("");
+    const mention = input.match(/@([^@\n]*)$/)?.[1]?.toLowerCase();
+    const mentionedLayers = mention === undefined ? [] : elements.filter(element => !element.parked && (element.name ?? element.type).toLowerCase().includes(mention)).slice(0, 8);
+    const mentionedBreakpoints = mention === undefined ? [] : (rootStyle.breakpoints ?? [{ id: "desktop", name: "Desktop" }, { id: "tablet", name: "Tablet" }, { id: "mobile", name: "Mobile" }]).filter(item => item.name.toLowerCase().includes(mention));
+    const clearMention = () => setInput(current => current.replace(/@([^@\n]*)$/, ""));
     const [busy, setBusy] = useState(false);
     const [restoredPage, setRestoredPage] = useState<string | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
@@ -306,11 +324,29 @@ export function AiPanel({
     }, [activeTitle]);
 
     useEffect(() => {
-        setChats(restore(pageId));
-        setActiveChatId(null);
+        const restored = restore(pageId);
+        if (!restored.length) restored.push({ id: uid(), title: "New chat", createdAt: now(), updatedAt: now(), turns: [] });
+        setChats(restored);
+        setActiveChatId(restored[0].id);
+        setInput("");
+        setTaggedFocus(undefined);
+        setTargetBreakpoint(undefined);
+        try {
+            const draft = JSON.parse(sessionStorage.getItem(key(pageId) + ":draft") ?? "null");
+            if (draft && restored.some(chat => chat.id === draft.chatId)) {
+                setActiveChatId(draft.chatId);
+                if (typeof draft.text === "string") setInput(draft.text);
+                if (typeof draft.breakpoint === "string" && (rootStyle.breakpoints?.map(item => item.id) ?? ["desktop", "tablet", "mobile"]).includes(draft.breakpoint)) setTargetBreakpoint(draft.breakpoint);
+            }
+        } catch { /* A broken draft must not prevent opening Luma. */ }
         setBusy(false);
         setRestoredPage(pageId);
     }, [pageId]);
+
+    useEffect(() => {
+        if (restoredPage !== pageId) return;
+        try { sessionStorage.setItem(key(pageId) + ":draft", JSON.stringify({ chatId: activeChatId, text: input, focusId: focus?.id, breakpoint: targetBreakpoint })); } catch { /* Optional session storage. */ }
+    }, [pageId, restoredPage, activeChatId, input, focus?.id, targetBreakpoint]);
 
     useEffect(() => {
         if (restoredPage !== pageId) return;
@@ -336,6 +372,8 @@ export function AiPanel({
 
     const createChat = () => {
         if (busy) return;
+        setPendingPlans([]);
+        setPlanError("");
         const id = uid();
         setChats((current) => [{ id, title: "New chat", createdAt: now(), updatedAt: now(), turns: [] }, ...current]);
         setActiveChatId(id);
@@ -353,6 +391,8 @@ export function AiPanel({
 
     const submit = async () => {
         const prompt = input.trim();
+        if (prompt === "/mcp") { onOpenAiSettings?.(); setInput(""); return; }
+        if (pendingPlans.length) return;
         if (!prompt || busy || !activeChatId) return;
         const chatId = activeChatId;
         const turnId = uid();
@@ -373,6 +413,10 @@ export function AiPanel({
         }));
         setInput("");
         setBusy(true);
+        const staged: AiDesignPlan[] = [];
+        const scopedRefs = new Set<string>();
+        pendingSnapshot.current = JSON.stringify({ elements, rootStyle });
+        setPlanError("");
 
         const controller = new AbortController();
         const token = cancellation.current;
@@ -386,7 +430,7 @@ export function AiPanel({
                     // Partial plans are the page arriving element by element.
                     // The final plan carries no operations and is only a summary.
                     if (event.partial && event.plan.operations.length > 0) {
-                        onApply(event.plan);
+                        staged.push(scopeAiPlan(event.plan, elements, focus?.id, targetBreakpoint, scopedRefs));
                         patchTurn(chatId, turnId, (turn) => ({
                             ...turn,
                             applied: turn.applied + event.plan.operations.length,
@@ -434,6 +478,7 @@ export function AiPanel({
             const plan = await generate({
                 prompt,
                 breakpoint,
+                targetBreakpoint,
                 focus,
                 history: [...history, { role: "user" as const, text: prompt }],
                 document: {
@@ -446,6 +491,8 @@ export function AiPanel({
             // Some adapters cannot cancel their upstream work. They may still
             // resolve, but a stopped run must never touch the canvas.
             if (!live()) throw new DOMException("The design run was stopped.", "AbortError");
+            if (!staged.length && plan?.operations?.length) staged.push(scopeAiPlan(plan, elements, focus?.id, targetBreakpoint, scopedRefs));
+            setPendingPlans(staged.filter(item => item.operations.length));
 
             patchTurn(chatId, turnId, (turn) => ({
                 ...turn,
@@ -478,20 +525,18 @@ export function AiPanel({
         <AnimatePresence initial={false} mode="popLayout">
         {!activeChat ? (
             <motion.div key="chat-list" initial={{ opacity: 0, x: -18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }} className="absolute inset-0 flex min-h-0 flex-col">
-                <div className="flex h-11 shrink-0 items-center justify-between border-b border-ed-border px-3.5">
+                <div className="flex h-12 shrink-0 items-center justify-between px-4">
                     <span>
-                        <span className="block text-[11px] font-semibold text-ed-text">Conversations</span>
-                        <span className="block text-[8px] text-ed-faint">Design history</span>
+                        <span className="block text-[11px] font-semibold text-ed-text">Luma workspace</span>
+                        <span className="mt-0.5 block text-[10px] text-ed-faint">Your conversations</span>
                     </span>
-                    <button type="button" onClick={createChat} aria-label="New chat" className="flex size-7 items-center justify-center rounded-full bg-ed-accent text-white hover:opacity-90"><IconPlus size={13} /></button>
+                    <button type="button" onClick={createChat} aria-label="New chat" className="flex size-7 items-center justify-center rounded-lg bg-ed-accent text-white hover:opacity-90"><IconPlus size={13} /></button>
                 </div>
                 <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
                     {chats.length === 0 ? (
-                        <div className="rounded-3xl bg-ed-subtle p-5">
-                            <PagieraMark size={28} className="rounded-[9px]" />
-                            <p className="mt-4 text-[13px] font-semibold text-ed-text">Design with Luma</p>
-                            <p className="mt-1.5 text-[10px] leading-relaxed text-ed-muted">Describe the product, the audience and the feeling. Luma chooses a design system and builds the page from Pagiera's responsive blocks.</p>
-                            <button type="button" onClick={createChat} className="mt-4 flex items-center gap-1.5 rounded-xl bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white"><IconPlus size={12} />New chat</button>
+                        <div>
+                            <AiWelcome onChoose={prompt => { createChat(); setInput(prompt); }} disabled={busy} />
+                            <button type="button" onClick={createChat} className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-ed-field text-xs font-medium text-ed-text hover:bg-ed-field-hover"><IconPlus size={14} />Start a conversation</button>
                         </div>
                     ) : (
                         <div className="space-y-1.5">
@@ -500,7 +545,7 @@ export function AiPanel({
                                 return <button key={chat.id} type="button" onClick={() => setActiveChatId(chat.id)} className="group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-ed-subtle">
                                     <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-ed-subtle text-ed-muted group-hover:bg-ed-field group-hover:text-ed-accent"><IconMessage size={14} /></span>
                                     <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-[10px] font-semibold text-ed-text">{chat.title}</span>
+                                        <span className="block truncate text-xs font-medium text-ed-text">{chat.title}</span>
                                         <span className="mt-0.5 block truncate text-[9px] text-ed-faint">{last?.reply ?? last?.prompt ?? "No messages yet"}</span>
                                     </span>
                                     <span className="text-[8px] text-ed-faint">{new Date(chat.updatedAt).toISOString().slice(5, 10)}</span>
@@ -512,32 +557,30 @@ export function AiPanel({
             </motion.div>
         ) : (
         <motion.div key={activeChat.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }} className="absolute inset-0 flex min-h-0 flex-col">
-            <div className="flex h-11 shrink-0 items-center justify-between border-b border-ed-border px-2.5">
+            <div className="flex h-11 shrink-0 items-center justify-between px-3">
                 <span className="flex min-w-0 items-center gap-1.5">
-                    <button type="button" onClick={() => setActiveChatId(null)} disabled={busy} aria-label="Back to chats" className="flex size-7 shrink-0 items-center justify-center rounded-full text-ed-muted hover:bg-ed-field hover:text-ed-text disabled:opacity-30"><IconArrowLeft size={14} /></button>
+                    <button type="button" onClick={() => setActiveChatId(null)} disabled={busy} aria-label="Back to chats" className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field hover:text-ed-text disabled:opacity-30"><IconArrowLeft size={14} /></button>
                     <span className="truncate text-[10px] font-semibold text-ed-text">{activeChat.title}</span>
                 </span>
-                <button type="button" onClick={deleteChat} title="Delete chat" className="flex size-7 shrink-0 items-center justify-center rounded-full text-ed-faint hover:bg-red-500/10 hover:text-red-400"><IconTrash size={13} /></button>
+                <div className="flex items-center gap-1">
+                    <button type="button" onClick={createChat} disabled={busy || pendingPlans.length > 0} aria-label="New chat" className="flex size-7 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field disabled:opacity-40"><IconPlus size={14} /></button>
+                    <button type="button" onClick={deleteChat} title="Delete chat" className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ed-faint hover:bg-red-500/10 hover:text-red-400"><IconTrash size={13} /></button>
+                </div>
             </div>
 
-            <div className="custom-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto p-3.5">
+            <div className="custom-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4">
                 {turns.length === 0 && (
-                    <div className="py-8">
-                        <PagieraMark size={32} className="rounded-[10px]" />
-                        <p className="mt-4 text-[14px] font-semibold tracking-[-.02em] text-ed-text">What are we designing?</p>
-                        <p className="mt-1.5 max-w-[250px] text-[10px] leading-relaxed text-ed-muted">Name the product, who it is for and the action the page should drive. Luma picks the palette, type and composition.</p>
-                        <div className="mt-5 space-y-2">
-                            {SUGGESTIONS.map((suggestion) => (
-                                <button key={suggestion} type="button" disabled={busy} onClick={() => setInput(suggestion)} className="block w-full select-none rounded-2xl border border-ed-border px-3 py-3 text-left text-[10px] leading-relaxed text-ed-muted transition-colors hover:bg-ed-subtle hover:text-ed-text disabled:pointer-events-none disabled:opacity-40">{suggestion}</button>
-                            ))}
-                        </div>
+                    <div className="flex min-h-48 flex-col justify-center py-8">
+                        <PagieraMark size={28} className="mb-4 rounded-lg" />
+                        <h2 className="text-sm font-medium text-ed-text">What would you like to change?</h2>
+                        <p className="mt-2 text-xs leading-relaxed text-ed-muted">Select a layer or use @ to target it. Describe the change — existing content stays in place.</p>
                     </div>
                 )}
 
                 {turns.map((turn) => (
                     <div key={turn.id} className="space-y-3">
                         <div className="flex justify-end">
-                            <div className="max-w-[calc(100%-38px)] rounded-2xl rounded-br-md bg-ed-field px-3 py-2.5 text-[10px] leading-relaxed text-ed-text">
+                            <div className="max-w-[92%] break-words rounded-2xl rounded-br-md bg-ed-field px-3.5 py-3 text-xs leading-relaxed text-ed-text">
                                 <p className="whitespace-pre-wrap">{turn.prompt}</p>
                                 {turn.scope && <span className="mt-1 block text-[9px] text-ed-faint">↳ {turn.scope}</span>}
                             </div>
@@ -550,7 +593,7 @@ export function AiPanel({
                                 <span className={`flex size-7 shrink-0 items-center justify-center rounded-xl ${turn.error ? "bg-red-500/10 text-red-300" : "bg-ed-field text-ed-muted"}`}>
                                     {turn.error ? <IconX size={13} /> : <PagieraMark size={16} className="rounded-md" />}
                                 </span>
-                                <div className="max-w-[calc(100%-38px)] space-y-2 py-1 text-[10px] leading-relaxed text-ed-text">
+                                <div className="min-w-0 flex-1 space-y-3 break-words py-1 text-xs leading-relaxed text-ed-text">
                                     {turn.summary && turn.summary.length > 0 && (
                                         <div className="space-y-1">
                                             {turn.summary.map((step) => (
@@ -574,39 +617,32 @@ export function AiPanel({
                 <div ref={endRef} />
             </div>
 
-            <form className="border-t border-ed-border p-3" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-                {/* What the next request will act on. Shown even when nothing is
-                    focused, because "the whole page" is the fact worth knowing
-                    before sending — its absence used to be silent. */}
-                <div className="mb-2 flex w-fit max-w-full items-center gap-2 rounded-lg bg-ed-field px-2 py-1.5">
-                    <PagieraMark size={13} className="shrink-0 rounded-[4px]" />
-                    <span className="min-w-0 flex-1 truncate text-[10px] text-ed-text">
-                        {focus ? <>{focus.name}<span className="text-ed-faint"> · {focus.type}</span></> : "Entire page"}
-                    </span>
-                    {focus && (
-                        <button type="button" onClick={onClearFocus} disabled={busy} title="Work on the whole page instead" className="flex size-4 shrink-0 items-center justify-center rounded text-ed-muted hover:text-ed-text disabled:opacity-30"><IconX size={10} /></button>
-                    )}
-                </div>
-                <div className={`rounded-2xl bg-ed-field p-2.5 ${busy ? "ring-1 ring-ed-border" : "focus-within:ring-1 focus-within:ring-ed-accent"}`}>
-                    <textarea
-                        value={input}
-                        disabled={busy}
-                        onChange={(event) => setInput(event.target.value)}
-                        onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }}
-                        placeholder={busy ? "Building your page…" : focus ? `Change ${focus.name}…` : "Describe the page you want…"}
-                        rows={3}
-                        className="min-h-14 w-full resize-none bg-transparent text-[10px] leading-relaxed text-ed-text outline-none placeholder:text-ed-faint disabled:cursor-not-allowed"
-                    />
-                    <div className="mt-1 flex items-center justify-between">
-                        <span className="truncate text-[8px] text-ed-faint">{busy ? "Changes are appearing on canvas" : "Enter to send · Shift Enter for a line"}</span>
-                        {busy ? (
-                            <button type="button" onClick={stop} className="flex shrink-0 items-center gap-1.5 rounded-lg border border-red-500/40 px-2 py-1 text-[9px] font-semibold text-red-400 transition-colors hover:bg-red-500/10"><IconPlayerStopFilled size={9} /> Stop</button>
-                        ) : (
-                            <button type="submit" disabled={!input.trim()} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ed-accent text-white disabled:opacity-30"><IconArrowUp size={13} /></button>
-                        )}
-                    </div>
-                </div>
-            </form>
+            {pendingPlans.length > 0 && <div className="mx-3 my-2 rounded-xl bg-ed-accent/10 p-3 text-xs">
+                <b>{pendingPlans.reduce((count, plan) => count + plan.operations.length, 0)} changes ready</b>
+                <p className="my-2 text-ed-muted">Review these edits before applying. Nothing has changed yet.</p>
+                <AiChanges plans={pendingPlans} elements={elements} rootStyle={rootStyle} />
+                {planError && <p role="alert" className="my-2 text-red-400">{planError}</p>}
+                <div className="flex gap-2"><button type="button" onClick={() => {
+                    if (pendingSnapshot.current !== JSON.stringify({ elements, rootStyle })) { setPlanError("The document changed since generation. Discard this plan and generate again."); return; }
+                    for (const plan of pendingPlans) onApply(plan);
+                    setPendingPlans([]);
+                }} className="rounded-lg bg-ed-accent px-3 py-2 text-white">Apply changes</button><button type="button" onClick={() => setPendingPlans([])}>Discard</button></div>
+            </div>}
+            <AiComposer value={input} onChange={setInput} onSubmit={() => { void submit(); }} busy={busy} blocked={pendingPlans.length > 0} onStop={stop} enterToSend={enterToSend} onSettings={onOpenAiSettings}
+                context={<>
+                    <span className="max-w-full truncate rounded-md bg-ed-subtle px-2 py-1">{focus ? focus.name : "Current page"}</span>
+                    {focus && <button type="button" aria-label="Clear target" disabled={busy || pendingPlans.length > 0} onClick={onClearFocus} className="rounded p-1 hover:text-ed-text"><IconX size={11} /></button>}
+                    {targetBreakpoint && <button type="button" disabled={busy || pendingPlans.length > 0} onClick={() => setTargetBreakpoint(undefined)} className="rounded-md bg-ed-accent/10 px-2 py-1 text-ed-accent">{targetBreakpoint} ×</button>}
+                </>}
+                suggestions={mention !== undefined && <AiMentionMenu
+                    breakpoints={mentionedBreakpoints.map(item => ({ id: item.id, name: item.name, detail: "Breakpoint" }))}
+                    layers={mentionedLayers.map(item => ({ id: item.id, name: item.name ?? item.type, detail: item.componentRole ? "Component" : item.type, component: Boolean(item.componentRole) }))}
+                    disabled={busy || pendingPlans.length > 0}
+                    onBreakpoint={id => { setTargetBreakpoint(id); clearMention(); }}
+                    onLayer={id => { const item = mentionedLayers.find(layer => layer.id === id); if (item) setTaggedFocus({ id: item.id, name: item.name ?? item.type, type: item.type }); clearMention(); }}
+                    onClose={clearMention}
+                />} />
+
         </motion.div>
         )}
         </AnimatePresence>

@@ -48,7 +48,7 @@ export function TemplateStore({
       <StoreHero templates={templates} />
 
       <section
-        className="bg-[#0d0915] px-[max(24px,calc((100vw-1240px)/2))] py-32 text-white max-md:py-20"
+        className="bg-[#0b0b0b] px-[max(24px,calc((100vw-1240px)/2))] py-32 text-white max-md:py-20"
         id="library"
       >
         <div className="mb-12 flex items-end justify-between gap-8 max-lg:flex-col max-lg:items-stretch">
@@ -58,7 +58,7 @@ export function TemplateStore({
             </span>
             <h2 className="mt-4 text-[clamp(38px,4.6vw,64px)] leading-[.94] font-medium tracking-[-.07em]">
               Curated{" "}
-              <em className="font-serif font-normal text-[#a982ff]">
+              <em className="font-serif font-normal text-[#939393]">
                 starting points.
               </em>
             </h2>
@@ -117,7 +117,7 @@ export function TemplateStore({
           {visible.map((template, index) => (
             <motion.article
               animate={{ opacity: 1, y: 0 }}
-              className="min-w-0 rounded-[30px] border border-white/[.08] bg-[#171020] p-2.5 pb-6 transition-colors duration-300 hover:border-[#6a25f0]/40 max-md:rounded-[24px]"
+              className="min-w-0 rounded-[30px] border border-white/[.08] bg-[#131313] p-2.5 pb-6 transition-colors duration-300 hover:border-[#6a25f0]/40 max-md:rounded-[24px]"
               initial={{ opacity: 0, y: 30 }}
               key={template.id}
               layout
@@ -134,7 +134,7 @@ export function TemplateStore({
 
         {visible.length === 0 && (
           <div className="grid place-items-center gap-4 rounded-[28px] border border-dashed border-white/12 bg-white/[.02] py-24 text-center">
-            <span className="grid size-12 place-items-center rounded-full bg-white/[.06] text-[#a982ff]">
+            <span className="grid size-12 place-items-center rounded-full bg-white/[.06] text-[#939393]">
               <Icon name="search" size={20} />
             </span>
             <p className="text-sm text-white/55">
@@ -168,13 +168,13 @@ function StoreHero({ templates }: { templates: TemplateCatalogItem[] }) {
   const pages = templates.reduce((total, item) => total + item.pages.length, 0);
 
   return (
-    <section className="relative m-2 overflow-hidden rounded-[36px] bg-[#f7f5fb] px-6 pt-[190px] pb-24 text-[#17101f] max-md:m-1 max-md:rounded-[28px] max-md:px-4 max-md:pt-32 max-md:pb-16">
+    <section className="relative m-2 overflow-hidden rounded-[36px] bg-[#f6f6f6] px-6 pt-24 pb-24 text-[#131313] max-md:m-1 max-md:rounded-[28px] max-md:px-4 max-md:pt-16 max-md:pb-16">
       {/* Pixel field: a purple wash rasterised into 12px blocks that dissolve outward. */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(56%_46%_at_50%_18%,rgba(106,37,240,.5),rgba(143,92,247,.22)_45%,transparent_72%)] [mask-image:radial-gradient(closest-side,#000_58%,transparent),repeating-conic-gradient(#000_0%_25%,transparent_0%_50%)] [mask-position:0_0] [mask-repeat:repeat] [mask-size:12px_12px,12px_12px]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(106,37,240,.5)_1.5px,transparent_0)] bg-[size:48px_48px] [mask-image:linear-gradient(to_bottom,transparent,black_18%,transparent_72%)]" />
       {/* Keeps the fixed site header legible over the busiest part of the field. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-[linear-gradient(#f7f5fb_28%,rgba(247,245,251,.72)_62%,transparent)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(transparent,#f7f5fb)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(transparent,#f6f6f6)]" />
 
       <motion.div
         animate={{ opacity: 1, y: 0 }}
@@ -182,18 +182,18 @@ function StoreHero({ templates }: { templates: TemplateCatalogItem[] }) {
         initial={{ opacity: 0, y: 24 }}
         transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
       >
-        <span className="inline-flex items-center gap-2 rounded-full border border-black/[.08] bg-white/80 px-3.5 py-1.5 text-[10px] font-bold tracking-[.08em] text-[#3d3548] uppercase backdrop-blur-md">
+        <span className="inline-flex items-center gap-2 rounded-full border border-black/[.08] bg-white/80 px-3.5 py-1.5 text-[10px] font-bold tracking-[.08em] text-[#383838] uppercase backdrop-blur-md">
           <i className="size-1.5 rounded-full bg-[#6a25f0]" /> Pagiera template
           library
         </span>
-        <h1 className="mt-8 text-[clamp(54px,7vw,96px)] leading-[.9] font-semibold tracking-[-0.075em] text-[#17101f] max-md:mt-6 max-md:text-[clamp(46px,13vw,64px)]">
+        <h1 className="mt-8 text-[clamp(54px,7vw,96px)] leading-[.9] font-semibold tracking-[-0.075em] text-[#131313] max-md:mt-6 max-md:text-[clamp(46px,13vw,64px)]">
           Start with taste.
           <span className="block">
             Make it{" "}
             <em className="font-serif font-normal text-[#6a25f0]">yours.</em>
           </span>
         </h1>
-        <p className="mx-auto mt-7 max-w-[560px] text-sm leading-7 text-[#5b5566]">
+        <p className="mx-auto mt-7 max-w-[560px] text-sm leading-7 text-[#585858]">
           Complete responsive systems, not frozen screenshots. Every preview on
           this page is the real site, rendered live by Pagiera.
         </p>
@@ -224,10 +224,10 @@ function StoreHero({ templates }: { templates: TemplateCatalogItem[] }) {
               className="rounded-3xl border border-black/[.07] bg-white/85 px-5 py-5 backdrop-blur-md"
               key={label}
             >
-              <dt className="text-[28px] leading-none font-semibold tracking-[-.06em] text-[#17101f]">
+              <dt className="text-[28px] leading-none font-semibold tracking-[-.06em] text-[#131313]">
                 {value}
               </dt>
-              <dd className="mt-2 text-[10px] font-bold tracking-[.1em] text-[#6b6478] uppercase">
+              <dd className="mt-2 text-[10px] font-bold tracking-[.1em] text-[#676767] uppercase">
                 {label}
               </dd>
             </div>
@@ -251,7 +251,7 @@ function TemplateCard({
     <>
       <button
         aria-label={`Preview ${template.name}`}
-        className="group relative block w-full cursor-pointer overflow-hidden rounded-[22px] border-0 bg-[#0d0915] p-0"
+        className="group relative block w-full cursor-pointer overflow-hidden rounded-[22px] border-0 bg-[#0b0b0b] p-0"
         onClick={onPreview}
         type="button"
       >
@@ -263,7 +263,7 @@ function TemplateCard({
           scale="card"
         />
         <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(13,9,21,.72))] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        <span className="absolute right-4 bottom-4 flex translate-y-2 items-center gap-2 rounded-full bg-white px-3.5 py-2.5 text-[10px] font-bold text-[#171020] opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <span className="absolute right-4 bottom-4 flex translate-y-2 items-center gap-2 rounded-full bg-white px-3.5 py-2.5 text-[10px] font-bold text-[#131313] opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Icon name="play" size={13} />
           Live preview
         </span>
@@ -279,7 +279,7 @@ function TemplateCard({
           </h3>
         </div>
         {template.featured && (
-          <span className="rounded-full border border-[#6a25f0]/40 bg-[#6a25f0]/15 px-2.5 py-2 text-[9px] font-bold text-[#c3a7ff]">
+          <span className="rounded-full border border-[#6a25f0]/40 bg-[#6a25f0]/15 px-2.5 py-2 text-[9px] font-bold text-[#b3b3b3]">
             Featured
           </span>
         )}
@@ -301,7 +301,7 @@ function TemplateCard({
           ))}
         </div>
         <Button
-          className="px-0 text-white/70 hover:bg-transparent hover:text-[#a982ff]"
+          className="px-0 text-white/70 hover:bg-transparent hover:text-[#939393]"
           onClick={onPreview}
           size="sm"
           variant="ghost"
@@ -323,7 +323,7 @@ function PreviewDialog({
   return (
     <motion.div
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[500] grid place-items-center bg-[#07050a]/78 p-5 backdrop-blur-2xl max-md:p-2"
+      className="fixed inset-0 z-[500] grid place-items-center bg-[#060606]/78 p-5 backdrop-blur-2xl max-md:p-2"
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
@@ -332,7 +332,7 @@ function PreviewDialog({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         aria-label={`${template.name} template preview`}
         aria-modal="true"
-        className="grid h-[min(900px,94vh)] w-[min(1440px,96vw)] grid-rows-[62px_1fr] overflow-hidden rounded-[28px] border border-white/10 bg-[#171020] shadow-[0_45px_120px_rgba(0,0,0,.5)] max-md:h-[calc(100vh-16px)] max-md:w-full max-md:grid-rows-[58px_1fr] max-md:rounded-[20px]"
+        className="grid h-[min(900px,94vh)] w-[min(1440px,96vw)] grid-rows-[62px_1fr] overflow-hidden rounded-[28px] border border-white/10 bg-[#131313] shadow-[0_45px_120px_rgba(0,0,0,.5)] max-md:h-[calc(100vh-16px)] max-md:w-full max-md:grid-rows-[58px_1fr] max-md:rounded-[20px]"
         exit={{ opacity: 0, y: 24, scale: 0.98 }}
         initial={{ opacity: 0, y: 40, scale: 0.97 }}
         role="dialog"
@@ -351,7 +351,7 @@ function PreviewDialog({
           </div>
           <div className="flex justify-end gap-2">
             <a
-              className="flex h-9 items-center gap-2 rounded-full bg-white px-3.5 text-[10px] font-bold text-[#171020] transition-colors hover:bg-[#eee8f7] max-md:hidden"
+              className="flex h-9 items-center gap-2 rounded-full bg-white px-3.5 text-[10px] font-bold text-[#131313] transition-colors hover:bg-[#eaeaea] max-md:hidden"
               href={`/templates/${template.id}/preview`}
               rel="noreferrer"
               target="_blank"

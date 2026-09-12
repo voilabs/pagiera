@@ -58,6 +58,8 @@ export type PagieraElement = {
     formResetOnSuccess?: boolean;
     buttonType?: "button" | "submit" | "reset";
     code?: string;
+    codeSource?: string;
+    codeLanguage?: "html" | "tsx";
     hover?: Record<string, unknown>;
     press?: Record<string, unknown>;
     interaction?: {

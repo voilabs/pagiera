@@ -11,6 +11,14 @@ export type DropPlan = {
     /** Screen-space line marking the insertion point, for the overlay. */
     indicator?: { x: number; y: number; length: number; vertical: boolean };
     /**
+     * The space the element would occupy, in screen coordinates.
+     *
+     * A hairline says where the element goes; a slot the size of the element
+     * says what the result will look like, which is what makes a drop into a
+     * container feel like it clicked into place rather than nearly missed.
+     */
+    slot?: { x: number; y: number; w: number; h: number };
+    /**
      * Set when the drop is not aimed between two siblings. The element keeps
      * the spot it was dropped on instead of joining the flow, which is what
      * dragging something into open space plainly means.
@@ -21,7 +29,6 @@ export type DropPlan = {
 const SELECTOR = "[data-canvas-element]";
 
 /** How near a sibling's boundary a drop has to be to count as reordering. */
-const REORDER_BAND = 14;
 
 function idOf(node: Element | null | undefined): string | undefined {
     return (node as HTMLElement | null | undefined)?.dataset?.canvasElement || undefined;
@@ -34,7 +41,27 @@ function idOf(node: Element | null | undefined): string | undefined {
  * nested, never placed between two.
  */
 function edgeBand(size: number) {
-    return Math.max(6, Math.min(16, size * 0.2));
+    // A short box has to keep an interior: with a flat band on each side a
+    // 20px-tall empty container is all edge, so it could only ever be dropped
+    // beside — which is exactly the "it doesn't go in" case.
+    //
+    // A tall one has the opposite problem. Capped at 16px, a 900px section
+    // offered two 16px slivers for "put this next to it" and 868px of "put it
+    // inside" — so reordering sections meant hitting a sliver, which is what
+    // made dragging on an artboard feel like it went wherever it liked. The
+    // cap is now wide enough to aim at, and still never more than a third of
+    // the box, so small containers keep an inside.
+    return Math.max(2, Math.min(44, size * 0.2, size / 3));
+}
+
+/** How tall an insertion slot is drawn when the dragged element has no box. */
+const FALLBACK_SLOT = 44;
+
+/** The dragged element's rendered size, so the slot matches what will land. */
+function draggedBox(draggedId: string) {
+    if (typeof document === "undefined") return undefined;
+    const node = document.querySelector(`[data-canvas-element="${CSS.escape(draggedId)}"]`);
+    return node?.getBoundingClientRect();
 }
 
 /**
@@ -59,6 +86,17 @@ export function resolveDrop(
     fallbackRoot: HTMLElement | null,
     /** Containers that refuse children — component instances and the like. */
     accepts: (parentId: string | undefined) => boolean = () => true,
+    /** How the page itself arranges its own children. */
+    rootLayout: "stack" | "absolute" = "absolute",
+    /**
+     * Place at the pointer instead of inserting into the order.
+     *
+     * Held by the author, not inferred. A stack decides where its children go,
+     * so the only honest way to put something at a spot inside one is to say
+     * so — and the only way to reorder without that being second-guessed is
+     * for the plain drag to always mean "reorder".
+     */
+    freePlacement = false,
 ): DropPlan | undefined {
     if (typeof document === "undefined") return undefined;
     const excluded = subtreeIds(elements, draggedId);
@@ -78,7 +116,7 @@ export function resolveDrop(
         return accepts(undefined)
             ? {
                   parentId: undefined,
-                  ...orderWithin(undefined, fallbackRoot, clientX, clientY, excluded, elements, byId, breakpoint, cascade),
+                  ...orderWithin(undefined, fallbackRoot, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
               }
             : undefined;
     }
@@ -111,14 +149,14 @@ export function resolveDrop(
         if (!beside && accepts(id)) {
             return {
                 parentId: id,
-                ...orderWithin(id, node, clientX, clientY, excluded, elements, byId, breakpoint, cascade),
+                ...orderWithin(id, node, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
             };
         }
         if (beside && accepts(element.parentId)) {
             const scope = parentEl ?? artboardOf(node);
             return {
                 parentId: element.parentId,
-                ...orderWithin(element.parentId, scope, clientX, clientY, excluded, elements, byId, breakpoint, cascade),
+                ...orderWithin(element.parentId, scope, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
             };
         }
 
@@ -128,7 +166,7 @@ export function resolveDrop(
     return accepts(undefined)
         ? {
               parentId: undefined,
-              ...orderWithin(undefined, artboardOf(hit), clientX, clientY, excluded, elements, byId, breakpoint, cascade),
+              ...orderWithin(undefined, artboardOf(hit), clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
           }
         : undefined;
 }
@@ -162,7 +200,10 @@ function orderWithin(
     byId: Map<string, CanvasElement>,
     breakpoint: Breakpoint,
     cascade: Cascade,
-): { beforeId?: string; indicator?: DropPlan["indicator"]; free?: DropPlan["free"] } {
+    draggedId?: string,
+    rootLayout: "stack" | "absolute" = "absolute",
+    freePlacement = false,
+): { beforeId?: string; indicator?: DropPlan["indicator"]; free?: DropPlan["free"]; slot?: DropPlan["slot"] } {
     if (!scope) return {};
     const parent = parentId ? byId.get(parentId) : undefined;
     const parentStyle = parent ? resolveStyle(parent, breakpoint, cascade) : undefined;
@@ -170,9 +211,15 @@ function orderWithin(
     const box = scope.getBoundingClientRect();
     const dropped = { x: clientX - box.left, y: clientY - box.top };
 
-    // Inside a freely positioned parent there is no order to insert into, so
-    // every drop is a placement.
-    if (parent && parentStyle?.layout !== "stack") return { free: dropped };
+    /*
+     * Stacked or free, and the two behave differently on purpose.
+     *
+     * A stack arranges its children, so there is nowhere in it to "place"
+     * anything: every drop is an insertion between two of them. A freely
+     * positioned parent is the opposite — the coordinates are the point.
+     */
+    const stacked = parent ? parentStyle?.layout === "stack" : rootLayout === "stack";
+    if (!stacked || freePlacement) return { free: dropped };
 
     const vertical = (parentStyle?.direction ?? "column") === "column";
 
@@ -185,7 +232,22 @@ function orderWithin(
         }))
         .filter((entry): entry is { id: string; rect: DOMRect } => Boolean(entry.rect));
 
-    if (siblings.length === 0) return { free: dropped };
+    // An empty stack container is a slot in its own right: dropping into it
+    // means "put this inside", not "place it at these coordinates".
+    if (siblings.length === 0) {
+        // An empty stacked page takes the element as its first child.
+        if (!parent) return {};
+        const dragged = draggedId ? draggedBox(draggedId) : undefined;
+        const inner = scope.getBoundingClientRect();
+        return {
+            slot: {
+                x: inner.left + 4,
+                y: inner.top + 4,
+                w: Math.max(8, inner.width - 8),
+                h: Math.max(8, Math.min(inner.height - 8, dragged?.height ?? FALLBACK_SLOT)),
+            },
+        };
+    }
 
     // Each boundary, paired with the sibling a drop there would precede; the
     // last one appends.
@@ -201,7 +263,16 @@ function orderWithin(
         Math.abs(entry.at - pointer) < Math.abs(best.at - pointer) ? entry : best,
     );
 
-    if (Math.abs(nearest.at - pointer) > REORDER_BAND) return { free: dropped };
+    /*
+     * No escape hatch here any more.
+     *
+     * A drop further than a few pixels from a boundary used to fall out of the
+     * flow and be placed at coordinates instead — inside a stack, which cannot
+     * honour coordinates. Dragging a section a little off the seam therefore
+     * yanked it out of the layout rather than moving it, which is what made
+     * reordering inside a frame feel broken. The nearest boundary is always
+     * what was meant.
+     */
 
     const anchor = nearest.before ?? siblings[siblings.length - 1];
     const { rect } = anchor;
@@ -209,10 +280,18 @@ function orderWithin(
         ? (vertical ? rect.top : rect.left)
         : (vertical ? rect.bottom : rect.right);
 
+    const dragged = draggedId ? draggedBox(draggedId) : undefined;
+    const thickness = vertical
+        ? Math.max(6, Math.min(dragged?.height ?? FALLBACK_SLOT, 160))
+        : Math.max(6, Math.min(dragged?.width ?? FALLBACK_SLOT, 160));
+
     return {
         beforeId: nearest.before?.id,
         indicator: vertical
             ? { x: rect.left, y: edge, length: rect.width, vertical: false }
             : { x: edge, y: rect.top, length: rect.height, vertical: true },
+        slot: vertical
+            ? { x: rect.left, y: edge - thickness / 2, w: rect.width, h: thickness }
+            : { x: edge - thickness / 2, y: rect.top, w: thickness, h: rect.height },
     };
 }

@@ -119,12 +119,15 @@ export function createPagieraClient(options: PagieraClientOptions = {}) {
             exportTemplateUrl: (id: string) => `${base}/templates/export?id=${encodeURIComponent(id)}`,
             setSiteFont: (fontFamily: string, customFonts?: unknown[]) => call("/settings/font", "POST", { fontFamily, customFonts }),
             setSiteTransition: (pageTransition: string, pageTransitionDuration: number) => call("/settings/transition", "POST", { pageTransition, pageTransitionDuration }),
+            setSiteLayout: (headerId?: string, footerId?: string) => call("/settings/layout", "POST", { headerId, footerId }),
             publishPage: (id: string) => call(`/pages/${id}/publish`, "POST"),
             unpublishPage: (id: string) => call(`/pages/${id}/unpublish`, "POST"),
             listRevisions: (id: string) => call(`/pages/${id}/revisions`, "GET"),
             restoreRevision: (id: string, revisionId: string) =>
                 call(`/pages/${id}/revisions/${revisionId}/restore`, "POST"),
             previewSource: (source: unknown, sampleQuery: string) => call("/data/preview", "POST", { source, sampleQuery }),
+            compileCode: (source: string) => call("/code/compile", "POST", { source }),
+            mcp: (request: { action: "list" | "inspect"; id?: string }) => call("/mcp", "POST", request),
             generate: (request: unknown, onEvent?: (event: unknown) => void, signal?: AbortSignal) =>
                 streamAi(fetcher, `${base}/ai`, request, onEvent, signal),
         },
