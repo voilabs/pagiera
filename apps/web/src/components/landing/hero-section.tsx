@@ -10,8 +10,10 @@ import { Icon } from "@/components/icons";
 import { Reveal } from "@/components/reveal";
 import { StudioPreview } from "@/components/studio-preview";
 import { ButtonLink } from "@/components/ui/button";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 export function HeroSection() {
+  const { locale, t } = useI18n();
   const [copied, setCopied] = useState(false);
   const shellRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
@@ -58,11 +60,11 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-[1000px] text-center">
         <Reveal as="div" distance={22} duration={0.75} on="mount">
           <h1 className="text-[clamp(48px,7vw,96px)] font-semibold leading-[.98] tracking-[-.065em]">
-            Build visually.
+            {t("Build visually.", "Görsel olarak oluşturun.")}
             <span className="block">
-              Ship with{" "}
+              {t("Ship with", "Yayınlayın,")}{" "}
               <em className="font-serif font-normal text-[#6a25f0]">
-                confidence.
+                {t("confidence.", "güvenle.")}
               </em>
             </span>
           </h1>
@@ -74,9 +76,10 @@ export function HeroSection() {
           distance={18}
           on="mount"
         >
-          The open-source website builder for React and Next.js. Design
-          visually, reuse layouts and publish responsive pages inside your own
-          application.
+          {t(
+            "The open-source website builder for React and Next.js. Design visually, reuse layouts and publish responsive pages inside your own application.",
+            "React ve Next.js için açık kaynak web sitesi oluşturucu. Görsel olarak tasarlayın, düzenleri yeniden kullanın ve kendi uygulamanızda tüm ekranlara uyumlu sayfalar yayınlayın.",
+          )}
         </Reveal>
         <Reveal as="div" delay={0.18} distance={16} on="mount">
           <button
@@ -86,7 +89,9 @@ export function HeroSection() {
           >
             <code>bun add pagiera</code>
             <Icon name="copy" size={15} />
-            <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+            <span aria-live="polite">
+              {copied ? t("Copied", "Kopyalandı") : t("Copy", "Kopyala")}
+            </span>
           </button>
         </Reveal>
         <Reveal
@@ -96,11 +101,20 @@ export function HeroSection() {
           distance={16}
           on="mount"
         >
-          <ButtonLink href="/docs" size="lg" variant="accent">
-            Start building <Icon name="arrow" size={16} />
+          <ButtonLink
+            href={localizedHref("/docs", locale)}
+            size="lg"
+            variant="accent"
+          >
+            {t("Start building", "Oluşturmaya başlayın")}{" "}
+            <Icon name="arrow" size={16} />
           </ButtonLink>
-          <ButtonLink href="/templates" size="lg" variant="secondary">
-            Explore templates
+          <ButtonLink
+            href={localizedHref("/templates", locale)}
+            size="lg"
+            variant="secondary"
+          >
+            {t("Explore templates", "Şablonları keşfedin")}
           </ButtonLink>
         </Reveal>
       </div>

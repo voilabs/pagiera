@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Icon } from "@/components/icons";
 import { ButtonLink } from "@/components/ui/button";
 import type { Comparison } from "@/lib/comparisons";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 /**
  * The order here is deliberate and is the whole SEO/GEO argument: the verdict
@@ -15,6 +16,7 @@ export function ComparisonView({
   comparison: Comparison;
   others: Comparison[];
 }) {
+  const { locale, t } = useI18n();
   return (
     <>
       <section className="relative m-2 overflow-hidden rounded-[36px] bg-[#f6f6f6] px-6 pt-24 pb-24 text-[#131313] max-md:m-1 max-md:rounded-[28px] max-md:px-4 max-md:pt-16 max-md:pb-16">
@@ -29,27 +31,35 @@ export function ComparisonView({
           transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="inline-flex items-center gap-2 rounded-full border border-black/[.08] bg-white/80 px-3.5 py-1.5 text-[10px] font-bold tracking-[.08em] text-[#383838] uppercase backdrop-blur-md">
-            <i className="size-1.5 rounded-full bg-[#6a25f0]" /> Comparison
+            <i className="size-1.5 rounded-full bg-[#6a25f0]" />{" "}
+            {t("Comparison", "Karşılaştırma")}
           </span>
           <h1 className="mt-8 text-[clamp(48px,6.4vw,88px)] leading-[.92] font-semibold tracking-[-0.075em] max-md:mt-6 max-md:text-[clamp(40px,11vw,58px)]">
             Pagiera{" "}
-            <em className="font-serif font-normal text-[#6a25f0]">vs</em>{" "}
+            <em className="font-serif font-normal text-[#6a25f0]">
+              {t("vs", "ve")}
+            </em>{" "}
             {comparison.rival}
           </h1>
           <p className="mx-auto mt-7 max-w-[620px] text-sm leading-7 text-[#585858]">
             {comparison.headline}
           </p>
           <div className="mt-9 flex justify-center gap-2 max-sm:mx-auto max-sm:w-[min(330px,100%)] max-sm:flex-col">
-            <ButtonLink href="#at-a-glance" size="lg" variant="accent">
-              See the differences <Icon name="arrow" size={16} />
+            <ButtonLink
+              href={localizedHref("#at-a-glance", locale)}
+              size="lg"
+              variant="accent"
+            >
+              {t("See the differences", "Farkları görün")}{" "}
+              <Icon name="arrow" size={16} />
             </ButtonLink>
             <ButtonLink
               className="bg-white/85"
-              href="/templates"
+              href={localizedHref("/templates", locale)}
               size="lg"
               variant="secondary"
             >
-              Browse templates
+              {t("Browse templates", "Şablonlara göz atın")}
             </ButtonLink>
           </div>
         </motion.div>
@@ -59,7 +69,7 @@ export function ComparisonView({
         {/* The short answer, first and unqualified. */}
         <div className="rounded-[30px] border border-white/[.08] bg-[#131313] p-10 max-md:rounded-[24px] max-md:p-6">
           <h2 className="text-[10px] font-bold tracking-[.13em] text-[#939393] uppercase">
-            The short answer
+            {t("The short answer", "Kısa yanıt")}
           </h2>
           <p className="mt-5 text-lg leading-9 text-white/82 max-md:text-base max-md:leading-8">
             {comparison.verdict}
@@ -74,14 +84,19 @@ export function ComparisonView({
           className="mt-24 text-[clamp(34px,4.2vw,58px)] leading-[.96] font-medium tracking-[-.07em] max-md:mt-16"
           id="at-a-glance"
         >
-          At a{" "}
-          <em className="font-serif font-normal text-[#939393]">glance.</em>
+          {t("At a", "Bir")}{" "}
+          <em className="font-serif font-normal text-[#939393]">
+            {t("glance.", "bakışta.")}
+          </em>
         </h2>
 
         <div className="mt-10 overflow-x-auto rounded-[26px] border border-white/[.08]">
           <table className="w-full min-w-[680px] border-collapse text-left">
             <caption className="sr-only">
-              Pagiera compared with {comparison.rival}
+              {t(
+                `Pagiera compared with ${comparison.rival}`,
+                `Pagiera ile ${comparison.rival} karşılaştırması`,
+              )}
             </caption>
             <thead>
               <tr className="bg-white/[.04]">
@@ -89,7 +104,7 @@ export function ComparisonView({
                   className="px-6 py-5 text-[10px] font-bold tracking-[.12em] text-white/40 uppercase"
                   scope="col"
                 >
-                  Aspect
+                  {t("Aspect", "Özellik")}
                 </th>
                 <th
                   className="px-6 py-5 text-[13px] font-semibold text-[#939393]"
@@ -130,17 +145,22 @@ export function ComparisonView({
           <ChoiceCard
             accent
             items={comparison.choosePagiera}
-            title="Choose Pagiera when"
+            title={t("Choose Pagiera when", "Şu durumlarda Pagiera’yı seçin")}
           />
           <ChoiceCard
             items={comparison.chooseRival}
-            title={`Choose ${comparison.rival} when`}
+            title={t(
+              `Choose ${comparison.rival} when`,
+              `Şu durumlarda ${comparison.rival} seçin`,
+            )}
           />
         </div>
 
         <h2 className="mt-24 text-[clamp(34px,4.2vw,58px)] leading-[.96] font-medium tracking-[-.07em] max-md:mt-16">
-          Common{" "}
-          <em className="font-serif font-normal text-[#939393]">questions.</em>
+          {t("Common", "Sık sorulan")}{" "}
+          <em className="font-serif font-normal text-[#939393]">
+            {t("questions.", "sorular.")}
+          </em>
         </h2>
         <dl className="mt-10 grid gap-3">
           {comparison.faq.map((entry) => (
@@ -161,17 +181,20 @@ export function ComparisonView({
         {others.length > 0 && (
           <>
             <h2 className="mt-24 text-[10px] font-bold tracking-[.13em] text-[#6a25f0] uppercase max-md:mt-16">
-              Other comparisons
+              {t("Other comparisons", "Diğer karşılaştırmalar")}
             </h2>
             <div className="mt-6 grid grid-cols-3 gap-3 max-md:grid-cols-1">
               {others.map((entry) => (
                 <a
                   className="group flex items-center justify-between gap-4 rounded-[22px] border border-white/[.08] bg-white/[.02] px-6 py-5 transition-colors hover:border-[#6a25f0]/40 hover:bg-white/[.05]"
-                  href={`/compare/${entry.slug}`}
+                  href={localizedHref(`/compare/${entry.slug}`, locale)}
                   key={entry.slug}
                 >
                   <span className="text-[14px] font-semibold tracking-[-.03em]">
-                    Pagiera vs {entry.rival}
+                    {t(
+                      `Pagiera vs ${entry.rival}`,
+                      `Pagiera ve ${entry.rival}`,
+                    )}
                   </span>
                   <span className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 text-[#939393] transition-colors group-hover:border-[#6a25f0] group-hover:bg-[#6a25f0] group-hover:text-white">
                     <Icon name="arrow" size={14} />

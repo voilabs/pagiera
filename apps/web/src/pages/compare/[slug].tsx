@@ -8,7 +8,9 @@ import { ComparisonView } from "@/components/comparison-view";
 import { ConversionFooter } from "@/components/conversion-footer";
 import { Seo } from "@/components/seo";
 import { SiteBar } from "@/components/site-bar";
-import { COMPARISONS, type Comparison, getComparison } from "@/lib/comparisons";
+import { COMPARISONS, type Comparison } from "@/lib/comparisons";
+import { COMPARISONS_TR } from "@/lib/comparisons-tr";
+import { localizedHref, useI18n } from "@/lib/i18n";
 import {
   breadcrumbSchema,
   comparisonPageSchema,
@@ -20,16 +22,21 @@ type ComparePageProps = { comparison: Comparison; others: Comparison[] };
 
 export const getStaticPaths = (() => ({
   fallback: false,
-  paths: COMPARISONS.map((entry) => ({ params: { slug: entry.slug } })),
+  paths: COMPARISONS.flatMap((entry) =>
+    ["en", "tr"].map((locale) => ({ params: { slug: entry.slug }, locale })),
+  ),
 })) satisfies GetStaticPaths;
 
-export const getStaticProps = (async ({ params }) => {
-  const comparison = getComparison(String(params?.slug));
+export const getStaticProps = (async ({ params, locale }) => {
+  const comparisons = locale === "tr" ? COMPARISONS_TR : COMPARISONS;
+  const comparison = comparisons.find(
+    (entry) => entry.slug === String(params?.slug),
+  );
   if (!comparison) return { notFound: true };
   return {
     props: {
       comparison,
-      others: COMPARISONS.filter((entry) => entry.slug !== comparison.slug),
+      others: comparisons.filter((entry) => entry.slug !== comparison.slug),
     },
   };
 }) satisfies GetStaticProps<ComparePageProps>;
@@ -38,11 +45,15 @@ export default function ComparePage({
   comparison,
   others,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
-  const path = `/compare/${comparison.slug}`;
-  const title = `Pagiera vs ${comparison.rival} — which visual builder fits your stack?`;
+  const { locale, t } = useI18n();
+  const path = localizedHref(`/compare/${comparison.slug}`, locale);
+  const title = t(
+    `Pagiera vs ${comparison.rival} — which visual builder fits your stack?`,
+    `Pagiera ve ${comparison.rival} — teknoloji yığınınıza hangi görsel oluşturucu uygun?`,
+  );
   // The meta description doubles as the answer-engine snippet, so it carries
   // the verdict's first sentence rather than a marketing line.
-  const description = `${comparison.verdict.split(". ")[0]}. A side-by-side comparison of ownership, data binding, hosting and licensing.`;
+  const description = `${comparison.verdict.split(". ")[0]}. ${t("A side-by-side comparison of ownership, data binding, hosting and licensing.", "Sahiplik, veri bağlama, barındırma ve lisanslamanın yan yana karşılaştırması.")}`;
 
   return (
     <div
@@ -59,8 +70,14 @@ export default function ComparePage({
           }),
           faqSchema(comparison.faq),
           breadcrumbSchema([
-            { name: "Home", path: "/" },
-            { name: `Pagiera vs ${comparison.rival}`, path },
+            { name: t("Home", "Ana sayfa"), path: localizedHref("/", locale) },
+            {
+              name: t(
+                `Pagiera vs ${comparison.rival}`,
+                `Pagiera ve ${comparison.rival}`,
+              ),
+              path,
+            },
           ]),
         ]}
         path={path}
@@ -71,10 +88,16 @@ export default function ComparePage({
         <ComparisonView comparison={comparison} others={others} />
       </main>
       <ConversionFooter
-        eyebrow="No migration, no vendor account"
-        secondaryHref="/templates"
-        secondaryLabel="Explore templates"
-        title={["Own the canvas.", "Own the output."]}
+        eyebrow={t(
+          "No migration, no vendor account",
+          "Taşıma yok, sağlayıcı hesabı yok",
+        )}
+        secondaryHref={localizedHref("/templates", locale)}
+        secondaryLabel={t("Explore templates", "Şablonları keşfedin")}
+        title={[
+          t("Own the canvas.", "Tuval sizin olsun."),
+          t("Own the output.", "Çıktı sizin olsun."),
+        ]}
       />
     </div>
   );

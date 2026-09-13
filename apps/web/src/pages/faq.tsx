@@ -4,6 +4,8 @@ import { Reveal } from "@/components/reveal";
 import { Seo } from "@/components/seo";
 import { SiteBar } from "@/components/site-bar";
 import { ALL_FAQ, FAQ_GROUPS } from "@/lib/faq";
+import { ALL_FAQ_TR, FAQ_GROUPS_TR } from "@/lib/faq-tr";
+import { localizedHref, useI18n } from "@/lib/i18n";
 import { breadcrumbSchema, faqSchema } from "@/lib/structured-data";
 
 const font = Manrope({ subsets: ["latin"], variable: "--font-pagiera" });
@@ -15,30 +17,48 @@ const groupId = (title: string) =>
   title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 export default function FaqPage() {
+  const { locale, t } = useI18n();
+  const entries = locale === "tr" ? FAQ_GROUPS_TR : FAQ_GROUPS;
+  const description = t(
+    DESCRIPTION,
+    "Pagiera'nın Next.js kurulumu, kendi sunucunuzda barındırılması, düzenlerin yeniden kullanımı, API verileri, sayfa yayımlama ve yapay zekâ veya kodlama ajanı kullanımı hakkında yanıtlar.",
+  );
+  const allFaq = locale === "tr" ? ALL_FAQ_TR : ALL_FAQ;
   return (
     <div className={`${font.variable} docs-page font-sans`}>
       <Seo
-        description={DESCRIPTION}
+        description={description}
         jsonLd={[
           // Every question marked up here is rendered on the page below.
-          faqSchema(ALL_FAQ),
+          faqSchema(allFaq),
           breadcrumbSchema([
-            { name: "Pagiera", path: "/" },
-            { name: "FAQ", path: "/faq" },
+            { name: "Pagiera", path: localizedHref("/", locale) },
+            { name: t("FAQ", "SSS"), path: localizedHref("/faq", locale) },
           ]),
         ]}
         path="/faq"
-        title="Pagiera FAQ — setup, hosting, data and publishing"
+        title={t(
+          "Pagiera FAQ — setup, hosting, data and publishing",
+          "Pagiera SSS — kurulum, barındırma, veri ve yayımlama",
+        )}
       />
       <SiteBar active="faq" />
 
       <div className="docs-layout">
         <aside className="docs-aside">
-          <nav aria-label="FAQ topics" className="docs-sections">
-            {FAQ_GROUPS.map((group) => (
-              <a href={`#${groupId(group.title)}`} key={group.title}>
+          <nav
+            aria-label={t("FAQ topics", "SSS konuları")}
+            className="docs-sections"
+          >
+            {entries.map((group) => (
+              <a
+                href={localizedHref(`#${groupId(group.title)}`, locale)}
+                key={group.title}
+              >
                 <strong>{group.title}</strong>
-                <span>{group.entries.length} questions</span>
+                <span>
+                  {group.entries.length} {t("questions", "soru")}
+                </span>
               </a>
             ))}
           </nav>
@@ -46,25 +66,34 @@ export default function FaqPage() {
 
         <main className="docs-main">
           <Reveal as="div" className="docs-intro" distance={18} on="mount">
-            <span className="docs-eyebrow">Frequently asked questions</span>
-            <h1>Straight answers about building on Pagiera</h1>
+            <span className="docs-eyebrow">
+              {t("Frequently asked questions", "Sık sorulan sorular")}
+            </span>
+            <h1>
+              {t(
+                "Straight answers about building on Pagiera",
+                "Pagiera ile geliştirmeye dair net yanıtlar",
+              )}
+            </h1>
             <p className="docs-lede">
-              {ALL_FAQ.length} questions covering what Pagiera is, what it needs
-              to run, how pages stay editable, where the data comes from and
-              what the AI is allowed to touch.
+              {allFaq.length}{" "}
+              {t(
+                "questions covering what Pagiera is, what it needs to run, how pages stay editable, where the data comes from and what the AI is allowed to touch.",
+                "soru: Pagiera nedir, çalışmak için neye ihtiyaç duyar, sayfalar nasıl düzenlenebilir kalır, veriler nereden gelir ve yapay zekâ nelere müdahale edebilir?",
+              )}
             </p>
             <div className="docs-meta">
-              <a className="docs-chip" href="/docs">
-                Read the documentation →
+              <a className="docs-chip" href={localizedHref("/docs", locale)}>
+                {t("Read the documentation →", "Dokümantasyonu okuyun →")}
               </a>
-              <a className="docs-chip" href="/guides">
-                Browse the guides →
+              <a className="docs-chip" href={localizedHref("/guides", locale)}>
+                {t("Browse the guides →", "Rehberlere göz atın →")}
               </a>
             </div>
           </Reveal>
 
           <div className="docs-markdown">
-            {FAQ_GROUPS.map((group) => (
+            {entries.map((group) => (
               <section key={group.title}>
                 <h2 id={groupId(group.title)}>{group.title}</h2>
                 <p>{group.blurb}</p>
@@ -83,10 +112,16 @@ export default function FaqPage() {
       </div>
 
       <ConversionFooter
-        eyebrow="Still deciding?"
-        secondaryHref="/compare"
-        secondaryLabel="Compare the alternatives"
-        title={["Answers are cheap.", "Building is the proof."]}
+        eyebrow={t("Still deciding?", "Hâlâ karar veremediniz mi?")}
+        secondaryHref={localizedHref("/compare", locale)}
+        secondaryLabel={t(
+          "Compare the alternatives",
+          "Alternatifleri karşılaştırın",
+        )}
+        title={[
+          t("Answers are cheap.", "Yanıt vermek kolay."),
+          t("Building is the proof.", "Kanıt, ortaya koyduğunuz iş."),
+        ]}
       />
     </div>
   );

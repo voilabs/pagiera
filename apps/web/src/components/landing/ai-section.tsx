@@ -1,13 +1,17 @@
 import { motion } from "framer-motion";
 import { Icon } from "@/components/icons";
-
-const actions = [
-  "Target: Hero heading · desktop",
-  "Font size: 64 → 56",
-  "Review changes before applying",
-];
+import { useI18n } from "@/lib/i18n";
 
 export function AiSection() {
+  const { t } = useI18n();
+  const actions = [
+    t("Target: Hero heading · desktop", "Hedef: Giriş başlığı · masaüstü"),
+    t("Font size: 64 → 56", "Yazı boyutu: 64 → 56"),
+    t(
+      "Review changes before applying",
+      "Uygulamadan önce değişiklikleri inceleyin",
+    ),
+  ];
   return (
     <section className="bg-[#0b0b0b] px-3 pb-3">
       <div className="relative overflow-hidden rounded-[48px] border border-white/[.08] bg-[#131313] px-[max(24px,calc((100vw-1240px)/2))] py-32 text-white max-md:rounded-[30px] max-md:py-24">
@@ -18,26 +22,29 @@ export function AiSection() {
               <Icon name="sparkles" size={14} /> Pagiera AI
             </span>
             <h2 className="mt-7 text-[clamp(50px,6.5vw,92px)] leading-[.9] font-medium tracking-[-.075em]">
-              Ask for direction.
+              {t("Ask for direction.", "Yol göstermesini isteyin.")}
               <br />
-              Keep the decisions.
+              {t("Keep the decisions.", "Kararlar sizde kalsın.")}
             </h2>
             <p className="mt-7 max-w-[560px] text-base leading-8 text-white/52">
-              Select a layer or mention a target with @. Luma proposes focused
-              text, style and element changes so you can inspect old and new
-              values before applying them. Your existing page stays in place.
+              {t(
+                "Select a layer or mention a target with @. Luma proposes focused text, style and element changes so you can inspect old and new values before applying them. Your existing page stays in place.",
+                "Bir katman seçin veya @ ile bir hedef belirtin. Luma, uygulamadan önce eski ve yeni değerleri inceleyebilmeniz için metin, stil ve öğe değişiklikleri önerir. Mevcut sayfanız korunur.",
+              )}
             </p>
             <div className="mt-9 flex flex-wrap gap-2">
-              {["Targeted edits", "Before & after", "Your approval"].map(
-                (item) => (
-                  <span
-                    className="rounded-full border border-white/10 bg-white/[.04] px-3.5 py-2 text-[10px] font-semibold text-white/62"
-                    key={item}
-                  >
-                    {item}
-                  </span>
-                ),
-              )}
+              {[
+                t("Targeted edits", "Hedefli düzenlemeler"),
+                t("Before & after", "Öncesi ve sonrası"),
+                t("Your approval", "Sizin onayınız"),
+              ].map((item) => (
+                <span
+                  className="rounded-full border border-white/10 bg-white/[.04] px-3.5 py-2 text-[10px] font-semibold text-white/62"
+                  key={item}
+                >
+                  {item}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -54,9 +61,11 @@ export function AiSection() {
                   <Icon name="sparkles" size={15} />
                 </span>
                 <span className="ml-3">
-                  <strong className="block text-xs">Design agent</strong>
+                  <strong className="block text-xs">
+                    {t("Design agent", "Tasarım ajanı")}
+                  </strong>
                   <i className="mt-1 block text-[9px] not-italic text-white/35">
-                    Working in this page
+                    {t("Working in this page", "Bu sayfada çalışıyor")}
                   </i>
                 </span>
                 <i className="ml-auto size-2 rounded-full bg-[#7ee2a8]" />
@@ -64,7 +73,10 @@ export function AiSection() {
 
               <div className="py-7">
                 <div className="ml-auto max-w-[78%] rounded-2xl rounded-br-sm bg-white px-4 py-3 text-[11px] leading-5 text-[#1a1a1a]">
-                  @Hero heading Reduce the font size to 56. Keep the rest of the page unchanged.
+                  {t(
+                    "@Hero heading Reduce the font size to 56. Keep the rest of the page unchanged.",
+                    "@Giriş başlığı Yazı boyutunu 56 yap. Sayfanın geri kalanını değiştirme.",
+                  )}
                 </div>
                 <div className="mt-7 grid grid-cols-[32px_1fr] gap-3">
                   <span className="grid size-8 place-items-center rounded-xl bg-[#6a25f0]">
@@ -72,7 +84,10 @@ export function AiSection() {
                   </span>
                   <div>
                     <p className="text-[11px] leading-5 text-white/65">
-                      Example proposal — nothing changes until you approve.
+                      {t(
+                        "Example proposal — nothing changes until you approve.",
+                        "Örnek öneri — siz onaylamadan hiçbir şey değişmez.",
+                      )}
                     </p>
                     <div className="mt-4 space-y-2">
                       {actions.map((action, index) => (
@@ -98,7 +113,7 @@ export function AiSection() {
               </div>
 
               <div className="flex h-14 items-center rounded-2xl border border-white/10 bg-white/[.04] px-4 text-[10px] text-white/30">
-                Ask for a change…
+                {t("Ask for a change…", "Bir değişiklik isteyin…")}
                 <span className="ml-auto grid size-9 place-items-center rounded-full bg-[#6a25f0] text-white">
                   <Icon name="arrow" size={14} />
                 </span>

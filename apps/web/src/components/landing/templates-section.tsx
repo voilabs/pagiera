@@ -4,6 +4,7 @@ import { Icon } from "@/components/icons";
 import { TemplateFrame } from "@/components/template-frame";
 import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 /** Mirrors templates/registry.json: accents and page counts are taken from
  *  each template's own preview metadata rather than invented here. */
@@ -39,6 +40,14 @@ const templates = [
 ] as const;
 
 export function TemplatesSection() {
+  const { locale, t } = useI18n();
+  const categoryLabel = (category: string) =>
+    ({
+      Portfolio: t("Portfolio", "Portfolyo"),
+      SaaS: "SaaS",
+      App: t("App", "Uygulama"),
+      Social: t("Social", "Sosyal"),
+    })[category] ?? category;
   const [activeId, setActiveId] = useState<string>(templates[0].id);
   const active = templates.find((item) => item.id === activeId) ?? templates[0];
 
@@ -49,21 +58,27 @@ export function TemplatesSection() {
     >
       <div className="grid grid-cols-[.8fr_1.4fr] gap-20 max-lg:grid-cols-1 max-lg:gap-8">
         <span className="text-[10px] font-bold tracking-[.13em] text-[#6a25f0] uppercase">
-          Start with momentum
+          {t("Start with momentum", "Hızlı bir başlangıç yapın")}
         </span>
         <div>
           <h2 className="text-[clamp(50px,7vw,100px)] leading-[.88] font-medium tracking-[-.08em]">
-            A starting point,
+            {t("A starting point,", "Bir başlangıç noktası,")}
             <br />
-            never a ceiling.
+            {t("never a ceiling.", "asla bir sınır değil.")}
           </h2>
           <div className="mt-8 flex items-end justify-between gap-8 max-md:items-start max-md:flex-col">
             <p className="max-w-[590px] text-base leading-8 text-white/52">
-              Each template is a complete responsive system with pages,
-              components and motion—ready to be pulled apart and made yours.
+              {t(
+                "Each template is a complete responsive system with pages, components and motion—ready to be pulled apart and made yours.",
+                "Her şablon; sayfaları, bileşenleri ve hareketleriyle tüm ekranlara uyumlu eksiksiz bir sistemdir. Parçalarına ayırıp kendinize uyarlamanız için hazırdır.",
+              )}
             </p>
-            <ButtonLink href="/templates" variant="accent">
-              Browse all templates <Icon name="arrow" size={15} />
+            <ButtonLink
+              href={localizedHref("/templates", locale)}
+              variant="accent"
+            >
+              {t("Browse all templates", "Tüm şablonları inceleyin")}{" "}
+              <Icon name="arrow" size={15} />
             </ButtonLink>
           </div>
         </div>
@@ -105,17 +120,18 @@ export function TemplatesSection() {
                 {active.name}
               </strong>
               <i className="text-[9px] not-italic text-white/45">
-                {active.category} · {active.pages}{" "}
-                {active.pages === 1 ? "page" : "pages"}
+                {categoryLabel(active.category)} · {active.pages}{" "}
+                {active.pages === 1 ? t("page", "sayfa") : t("pages", "sayfa")}
               </i>
             </span>
             <a
               className="ml-auto flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[10px] font-semibold text-[#141020] transition hover:bg-[#eaeaea]"
-              href={`/templates/${active.id}/preview`}
+              href={localizedHref(`/templates/${active.id}/preview`, locale)}
               rel="noreferrer"
               target="_blank"
             >
-              Open preview <Icon name="arrow" size={13} />
+              {t("Open preview", "Önizlemeyi aç")}{" "}
+              <Icon name="arrow" size={13} />
             </a>
           </div>
         </div>
@@ -153,7 +169,7 @@ export function TemplatesSection() {
                     {template.name}
                   </strong>
                   <i className="mt-1 block text-[9px] not-italic text-white/38">
-                    {template.category}
+                    {categoryLabel(template.category)}
                   </i>
                 </span>
                 <span

@@ -1,6 +1,7 @@
 import type { MarkedToken, Token } from "marked";
 import { createElement, Fragment, type ReactNode } from "react";
 import { DocsCodeBlock } from "@/components/docs-code-block";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 export const headingId = (text: string) =>
   text
@@ -43,6 +44,7 @@ export function docLink(href: string, image = false): string | undefined {
 
 /** Markdown is rendered as React nodes, never injected as remote HTML. */
 export function DocsMarkdown({ tokens }: { tokens: Token[] }) {
+  const { locale } = useI18n();
   const ids = new Map<string, number>();
   function render(items: Token[]): ReactNode {
     return items.map((raw, index) => {
@@ -89,7 +91,8 @@ export function DocsMarkdown({ tokens }: { tokens: Token[] }) {
           result = <code>{token.text}</code>;
           break;
         case "link": {
-          const href = docLink(token.href);
+          const safeHref = docLink(token.href);
+          const href = safeHref ? localizedHref(safeHref, locale) : undefined;
           result = href ? <a href={href}>{child}</a> : child;
           break;
         }

@@ -10,6 +10,7 @@ import { Icon } from "@/components/icons";
 import { ButtonLink } from "@/components/ui/button";
 import { COMPARISONS } from "@/lib/comparisons";
 import { GUIDES } from "@/lib/guides";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 type ConversionFooterProps = {
   eyebrow?: string;
@@ -19,11 +20,24 @@ type ConversionFooterProps = {
 };
 
 export function ConversionFooter({
-  eyebrow = "Your next site can start here",
-  title = ["Build something", "only you would make."],
+  eyebrow,
+  title,
   secondaryHref = "/templates",
-  secondaryLabel = "Explore templates",
+  secondaryLabel,
 }: ConversionFooterProps) {
+  const { locale, t } = useI18n();
+  const heading = title ?? [
+    t("Build something", "Bir şey oluşturun,"),
+    t("only you would make.", "yalnızca size özgü."),
+  ];
+  const guideLabels: Record<string, string> = {
+    "Next.js setup": t("Next.js setup", "Next.js kurulumu"),
+    "API data binding": t("API data binding", "API veri bağlama"),
+    "Preview & publish": t("Preview & publish", "Önizleme ve yayınlama"),
+    "Coding agents": t("Coding agents", "Kodlama ajanları"),
+    "Layouts & components": t("Layouts & components", "Düzenler ve bileşenler"),
+    "Pagiera as a CMS": t("Pagiera as a CMS", "CMS olarak Pagiera"),
+  };
   const shellRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
   const [copied, setCopied] = useState(false);
@@ -81,16 +95,24 @@ export function ConversionFooter({
           height={48}
         />
         <span className="mt-5 mb-[18px] text-[9px] font-bold tracking-[0.12em] text-white/45 uppercase">
-          {eyebrow}
+          {eyebrow ??
+            t(
+              "Your next site can start here",
+              "Bir sonraki siteniz burada başlayabilir",
+            )}
         </span>
         <h2 className="m-0 text-[clamp(54px,7.2vw,100px)] leading-[0.91] font-medium tracking-[-0.077em] max-sm:text-[clamp(49px,14.7vw,68px)]">
-          {title[0]}
+          {heading[0]}
           <br />
-          <em className="font-serif font-normal text-[#939393]">{title[1]}</em>
+          <em className="font-serif font-normal text-[#939393]">
+            {heading[1]}
+          </em>
         </h2>
         <p className="mt-6.5 w-[min(610px,92%)] text-xs leading-7 text-white/55 max-sm:text-[11px]">
-          Install the complete visual builder, choose a starting point and shape
-          it into something unmistakably yours.
+          {t(
+            "Install the complete visual builder, choose a starting point and shape it into something unmistakably yours.",
+            "Eksiksiz görsel oluşturucuyu kurun, bir başlangıç noktası seçin ve onu tamamen size özgü bir tasarıma dönüştürün.",
+          )}
         </p>
         <div className="mt-7 flex gap-2 max-sm:w-[min(330px,100%)] max-sm:flex-col">
           <ButtonLink
@@ -98,10 +120,11 @@ export function ConversionFooter({
             variant="accent"
             href="https://github.com/voilabs/pagiera"
           >
-            Get Pagiera <Icon name="arrow" size={16} />
+            {t("Get Pagiera", "Pagiera'yı edinin")}{" "}
+            <Icon name="arrow" size={16} />
           </ButtonLink>
           <ButtonLink size="lg" variant="secondary" href={secondaryHref}>
-            {secondaryLabel}
+            {secondaryLabel ?? t("Explore templates", "Şablonları keşfedin")}
           </ButtonLink>
         </div>
       </div>
@@ -111,17 +134,17 @@ export function ConversionFooter({
           <div className="mb-[30px] flex gap-2.5">
             <SocialLink
               href="https://github.com/voilabs/pagiera"
-              label="Pagiera on GitHub"
+              label={t("Pagiera on GitHub", "GitHub'da Pagiera")}
               icon="code"
             />
             <SocialLink
               href="https://www.npmjs.com/package/pagiera"
-              label="Pagiera on npm"
+              label={t("Pagiera on npm", "npm'de Pagiera")}
               icon="brackets"
             />
             <SocialLink
               href="https://pagiera.com"
-              label="Pagiera website"
+              label={t("Pagiera website", "Pagiera web sitesi")}
               icon="globe"
             />
           </div>
@@ -132,9 +155,12 @@ export function ConversionFooter({
             hello@voilabs.com
           </a>
           <p className="m-0 text-xs leading-5 text-white/70 max-sm:text-[10px]">
-            Open source visual building.
+            {t("Open source visual building.", "Açık kaynak görsel oluşturma.")}
             <br />
-            Designed for the expressive web.
+            {t(
+              "Designed for the expressive web.",
+              "Kendini ifade eden web için tasarlandı.",
+            )}
           </p>
         </div>
 
@@ -148,7 +174,8 @@ export function ConversionFooter({
               bun add pagiera
             </code>
             <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-white">
-              <Icon name="copy" size={15} /> {copied ? "Copied" : "Copy"}
+              <Icon name="copy" size={15} />{" "}
+              {copied ? t("Copied", "Kopyalandı") : t("Copy", "Kopyala")}
             </span>
           </button>
         </div>
@@ -157,49 +184,64 @@ export function ConversionFooter({
             links the hubs and lets them carry their own detail pages. The
             guide list stays here because it is the shortest crawl path in. */}
         <nav
-          aria-label="Footer navigation"
+          aria-label={t("Footer navigation", "Altbilgi gezinmesi")}
           className="grid grid-cols-2 gap-x-10 gap-y-5 justify-self-end text-right max-sm:col-span-2 max-sm:mt-2 max-sm:w-full max-sm:justify-self-start max-sm:gap-x-8 max-sm:text-left"
         >
           <div className="grid content-start gap-3.5">
-            <FooterHeading>Product</FooterHeading>
-            <a className={footerLink} href="/#features">
-              Features
+            <FooterHeading>{t("Product", "Ürün")}</FooterHeading>
+            <a
+              className={footerLink}
+              href={localizedHref("/#features", locale)}
+            >
+              {t("Features", "Özellikler")}
             </a>
-            <a className={footerLink} href="/#workflow">
-              How it works
+            <a
+              className={footerLink}
+              href={localizedHref("/#workflow", locale)}
+            >
+              {t("How it works", "Nasıl çalışır")}
             </a>
-            <a className={footerLink} href="/#capabilities">
-              What&apos;s inside
+            <a
+              className={footerLink}
+              href={localizedHref("/#capabilities", locale)}
+            >
+              {t("What's inside", "İçinde neler var")}
             </a>
-            <a className={footerLink} href="/templates">
-              Templates
+            <a
+              className={footerLink}
+              href={localizedHref("/templates", locale)}
+            >
+              {t("Templates", "Şablonlar")}
             </a>
             <a className={footerLink} href="https://github.com/voilabs/pagiera">
               GitHub
             </a>
           </div>
           <div className="grid content-start gap-3.5">
-            <FooterHeading>Learn</FooterHeading>
-            <a className={footerLink} href="/docs">
-              Documentation
+            <FooterHeading>{t("Learn", "Öğrenin")}</FooterHeading>
+            <a className={footerLink} href={localizedHref("/docs", locale)}>
+              {t("Documentation", "Belgeler")}
             </a>
-            <a className={footerLink} href="/docs/agents">
-              For coding agents
+            <a
+              className={footerLink}
+              href={localizedHref("/docs/agents", locale)}
+            >
+              {t("For coding agents", "Kodlama ajanları için")}
             </a>
             {GUIDES.map((guide) => (
               <a
                 className={footerLink}
-                href={`/guides/${guide.slug}`}
+                href={localizedHref(`/guides/${guide.slug}`, locale)}
                 key={guide.slug}
               >
-                {guide.navLabel}
+                {guideLabels[guide.navLabel] ?? guide.navLabel}
               </a>
             ))}
-            <a className={footerLink} href="/faq">
-              FAQ
+            <a className={footerLink} href={localizedHref("/faq", locale)}>
+              {t("FAQ", "Sık sorulan sorular")}
             </a>
-            <a className={footerLink} href="/compare">
-              Compare ({COMPARISONS.length})
+            <a className={footerLink} href={localizedHref("/compare", locale)}>
+              {t("Compare", "Karşılaştır")} ({COMPARISONS.length})
             </a>
           </div>
         </nav>
@@ -217,13 +259,13 @@ export function ConversionFooter({
               className={`${footerLink} underline underline-offset-3`}
               href="https://github.com/voilabs/pagiera/blob/main/LICENSE"
             >
-              MIT License
+              {t("MIT License", "MIT Lisansı")}
             </a>
             <a
               className={`${footerLink} underline underline-offset-3`}
               href="https://github.com/voilabs/pagiera"
             >
-              Source code
+              {t("Source code", "Kaynak kodu")}
             </a>
           </div>
         </div>

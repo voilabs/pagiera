@@ -2,6 +2,7 @@ import type { GetServerSideProps } from "next";
 import { COMPARISON_SLUGS } from "@/lib/comparisons";
 import { DOC_SLUGS } from "@/lib/docs-catalog";
 import { GUIDE_SLUGS } from "@/lib/guides";
+import { LOCALES, localizedHref } from "@/lib/i18n";
 import { absoluteUrl } from "@/lib/site";
 
 /**
@@ -36,17 +37,31 @@ const ROUTES: Array<{ changefreq: string; path: string; priority: string }> = [
 
 function body() {
   const lastmod = new Date().toISOString().slice(0, 10);
-  const urls = ROUTES.map(
-    ({ changefreq, path, priority }) => `  <url>
-    <loc>${absoluteUrl(path)}</loc>
+  // Each locale gets its own <url>, and every one of them carries the whole
+  // cluster — itself included — which is what the hreflang spec asks for. The
+  // URLs come from localizedHref so the sitemap can never disagree with the
+  // links the pages actually render.
+  const urls = ROUTES.flatMap(({ changefreq, path, priority }) =>
+    LOCALES.map((locale) => {
+      const alternates = [
+        ...LOCALES.map(
+          (alternate) =>
+            `    <xhtml:link rel="alternate" hreflang="${alternate}" href="${absoluteUrl(localizedHref(path, alternate))}"/>`,
+        ),
+        `    <xhtml:link rel="alternate" hreflang="x-default" href="${absoluteUrl(localizedHref(path, "en"))}"/>`,
+      ].join("\n");
+      return `  <url>
+    <loc>${absoluteUrl(localizedHref(path, locale))}</loc>
+${alternates}
     <lastmod>${lastmod}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
-  </url>`,
+  </url>`;
+    }),
   ).join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls}
 </urlset>
 `;

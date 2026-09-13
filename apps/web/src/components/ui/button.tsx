@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 const variants = {
   primary:
@@ -32,6 +33,7 @@ export function ButtonLink({
   size = "md",
   variant = "primary",
 }: SharedProps & { href: string }) {
+  const { locale } = useI18n();
   return (
     <a
       className={cn(
@@ -40,7 +42,7 @@ export function ButtonLink({
         sizes[size],
         className,
       )}
-      href={href}
+      href={localizedHref(href, locale)}
     >
       {children}
     </a>

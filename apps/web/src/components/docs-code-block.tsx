@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
+import { useI18n } from "@/lib/i18n";
 
 const KEYWORDS = new Set([
   "async", "await", "const", "export", "from", "function", "if", "import",
@@ -32,6 +33,7 @@ function highlighted(code: string) {
 }
 
 export function DocsCodeBlock({ code, language }: { code: string; language?: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -44,7 +46,7 @@ export function DocsCodeBlock({ code, language }: { code: string; language?: str
   }
 
   return <div className="docs-code">
-    <div className="docs-code-bar"><span>{language || "text"}</span><button onClick={copy} type="button"><Icon name={copied ? "check" : "copy"} size={13} />{copied ? "Copied" : "Copy"}</button></div>
+    <div className="docs-code-bar"><span>{language || t("text", "metin")}</span><button onClick={copy} type="button"><Icon name={copied ? "check" : "copy"} size={13} />{copied ? t("Copied", "Kopyalandı") : t("Copy", "Kopyala")}</button></div>
     <pre><code className={`language-${language || "text"}`}>{highlighted(code)}</code></pre>
   </div>;
 }

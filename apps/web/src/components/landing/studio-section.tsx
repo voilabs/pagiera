@@ -1,7 +1,9 @@
 import { Reveal } from "@/components/reveal";
 import { StudioPreview } from "@/components/studio-preview";
+import { useI18n } from "@/lib/i18n";
 
 export function StudioSection() {
+  const { t } = useI18n();
   return (
     <section
       id="studio"
@@ -12,16 +14,19 @@ export function StudioSection() {
         className="text-sm font-medium text-white/75"
         distance={18}
       >
-        A system that stays editable
+        {t(
+          "A system that stays editable",
+          "Her zaman düzenlenebilir bir sistem",
+        )}
       </Reveal>
       <Reveal
         as="h2"
         className="mt-6 text-[clamp(40px,6vw,80px)] leading-[1.05] tracking-[-.06em]"
         delay={0.08}
       >
-        Change once.
+        {t("Change once.", "Bir kez değiştirin.")}
         <br />
-        Build on it everywhere.
+        {t("Build on it everywhere.", "Her yerde kullanın.")}
       </Reveal>
       <Reveal
         as="p"
@@ -29,9 +34,10 @@ export function StudioSection() {
         delay={0.16}
         distance={20}
       >
-        Keep components and linked layouts in Assets. Design shared navigation
-        and footers once, then use a children placeholder for the content that
-        makes each page different.
+        {t(
+          "Keep components and linked layouts in Assets. Design shared navigation and footers once, then use a children placeholder for the content that makes each page different.",
+          "Bileşenleri ve bağlantılı düzenleri Varlıklar bölümünde tutun. Ortak gezinme alanlarını ve altbilgileri bir kez tasarlayın; ardından her sayfaya özgü içerik için children yer tutucusunu kullanın.",
+        )}
       </Reveal>
       <Reveal
         amount={0.15}

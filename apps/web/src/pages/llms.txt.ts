@@ -1,6 +1,10 @@
 import type { GetServerSideProps } from "next";
 import { COMPARISONS } from "@/lib/comparisons";
 import { DOCS } from "@/lib/docs-catalog";
+import { localizedDocs } from "@/lib/docs-localized";
+import { GUIDES_TR } from "@/lib/guides-tr";
+import { COMPARISONS_TR } from "@/lib/comparisons-tr";
+import { ALL_FAQ_TR } from "@/lib/faq-tr";
 import { ALL_FAQ } from "@/lib/faq";
 import { GUIDES } from "@/lib/guides";
 import { absoluteUrl, IS_INDEXABLE_DEPLOYMENT, SITE_NAME } from "@/lib/site";
@@ -14,8 +18,30 @@ import { absoluteUrl, IS_INDEXABLE_DEPLOYMENT, SITE_NAME } from "@/lib/site";
  * Preview deployments serve nothing, for the same reason robots.txt blocks
  * them — a staging copy competing with production helps no one.
  */
-function body() {
+function body(locale?: string) {
   if (!IS_INDEXABLE_DEPLOYMENT) return "";
+  if (locale === "tr") return [
+    "# Pagiera", "",
+    "> Pagiera, React ve Next.js için MIT lisanslı, açık kaynaklı bir görsel site oluşturucudur. Editör kendi uygulamanızda çalışır; belgeler PostgreSQL’de saklanır ve yayımlanan sayfalar sunucunuzda işlenir.", "",
+    "## Temel bilgiler", "",
+    "- Node.js 20+, React 18.3+, Next.js App Router, PostgreSQL ve Redis gerekir.",
+    "- OpenRouter anahtarı yalnızca yapay zekâ üretimi için gerekir.",
+    "- Kaydetmek taslağı günceller; yayımlamak ayrı bir işlemdir ve uygulamayı dağıtmaz.",
+    "- Request ve Repeat blokları sunucuda çözülür; API verileri ilk HTML çıktısında bulunur.",
+    "- Editör, önizleme ve API rotalarını kendi kimlik doğrulamanızla korumalısınız.", "",
+    "## Dokümantasyon", "",
+    ...localizedDocs("tr").map((doc) => `- [${doc.title}](${absoluteUrl(`/tr/docs/${doc.slug}`)}): ${doc.description}`), "",
+    "## Rehberler", "",
+    ...GUIDES_TR.map((guide) => `- [${guide.title}](${absoluteUrl(`/tr/guides/${guide.slug}`)}): ${guide.answer}`), "",
+    "## Karşılaştırmalar", "",
+    ...COMPARISONS_TR.map((entry) => `- [Pagiera ve ${entry.rival}](${absoluteUrl(`/tr/compare/${entry.slug}`)}): ${entry.verdict}`), "",
+    "## Ürün", "",
+    `- [Genel bakış](${absoluteUrl("/tr")})`,
+    `- [Şablonlar](${absoluteUrl("/tr/templates")})`,
+    `- [Sık sorulan sorular](${absoluteUrl("/tr/faq")})`, "",
+    "## Sık sorulan sorular", "",
+    ...ALL_FAQ_TR.flatMap((entry) => [`### ${entry.question}`, "", entry.answer, ""]),
+  ].join("\n");
 
   const lines: string[] = [
     `# ${SITE_NAME}`,
@@ -72,13 +98,13 @@ function body() {
   return `${lines.join("\n")}\n`;
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+export const getServerSideProps: GetServerSideProps = async ({ res, locale }) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader(
     "Cache-Control",
     "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
   );
-  res.write(body());
+  res.write(body(locale));
   res.end();
   return { props: {} };
 };

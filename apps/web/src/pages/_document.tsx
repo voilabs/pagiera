@@ -6,7 +6,7 @@ const GOOGLE_VERIFICATION =
 
 export default function Document() {
   return (
-    <Html lang="en">
+    <Html>
       <Head>
         <link href="/favicon.ico" rel="icon" sizes="48x48" />
         <link href="/logo.png" rel="icon" sizes="512x512" type="image/png" />

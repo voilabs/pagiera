@@ -1,4 +1,5 @@
 import type { GuideBlock } from "@/lib/guides";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Guides are authored as data, not markdown, so every block renders into the
@@ -17,6 +18,7 @@ export function GuideBlocks({ blocks }: { blocks: GuideBlock[] }) {
 }
 
 function GuideBlockView({ block }: { block: GuideBlock }) {
+  const { t } = useI18n();
   switch (block.type) {
     case "text":
       return <p>{block.body}</p>;
@@ -38,14 +40,20 @@ function GuideBlockView({ block }: { block: GuideBlock }) {
       );
     case "code":
       return (
-        <pre aria-label={`${block.lang} code example`} tabIndex={0}>
+        <pre
+          aria-label={t(
+            `${block.lang} code example`,
+            `${block.lang} kod örneği`,
+          )}
+          tabIndex={0}
+        >
           <code>{block.source}</code>
         </pre>
       );
     case "note":
       return (
         <p className="guide-note">
-          <strong>Note</strong>
+          <strong>{t("Note", "Not")}</strong>
           {block.body}
         </p>
       );

@@ -5,7 +5,9 @@ import { GuideBlocks } from "@/components/guide-blocks";
 import { Reveal } from "@/components/reveal";
 import { Seo } from "@/components/seo";
 import { SiteBar } from "@/components/site-bar";
-import { GUIDES, type Guide, getGuide } from "@/lib/guides";
+import { GUIDES, type Guide } from "@/lib/guides";
+import { GUIDES_TR } from "@/lib/guides-tr";
+import { localizedHref, useI18n } from "@/lib/i18n";
 import {
   breadcrumbSchema,
   faqSchema,
@@ -19,14 +21,20 @@ type Props = { guide: Guide; related: Guide[] };
 
 export const getStaticPaths: GetStaticPaths = async () => ({
   fallback: false,
-  paths: GUIDES.map((guide) => ({ params: { slug: guide.slug } })),
+  paths: GUIDES.flatMap((guide) =>
+    ["en", "tr"].map((locale) => ({ params: { slug: guide.slug }, locale })),
+  ),
 });
 
-export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
-  const guide = getGuide(String(params?.slug));
+export const getStaticProps: GetStaticProps<Props> = async ({
+  params,
+  locale,
+}) => {
+  const guides = locale === "tr" ? GUIDES_TR : GUIDES;
+  const guide = guides.find((entry) => entry.slug === String(params?.slug));
   if (!guide) return { notFound: true };
   const related = guide.related
-    .map((slug) => getGuide(slug))
+    .map((slug) => guides.find((entry) => entry.slug === slug))
     .filter((entry): entry is Guide => Boolean(entry));
   return { props: { guide, related } };
 };
@@ -40,11 +48,12 @@ const sectionId = (text: string) =>
     .replace(/\s+/g, "-");
 
 export default function GuidePage({ guide, related }: Props) {
-  const path = `/guides/${guide.slug}`;
+  const { locale, t } = useI18n();
+  const path = localizedHref(`/guides/${guide.slug}`, locale);
   const outline = [
     ...(guide.steps ?? []).map((step) => step.title),
     ...(guide.sections ?? []).map((section) => section.heading),
-    "Frequently asked questions",
+    t("Frequently asked questions", "Sık sorulan sorular"),
   ];
 
   return (
@@ -70,8 +79,11 @@ export default function GuidePage({ guide, related }: Props) {
             : []),
           faqSchema(guide.faq),
           breadcrumbSchema([
-            { name: "Pagiera", path: "/" },
-            { name: "Guides", path: "/guides" },
+            { name: "Pagiera", path: localizedHref("/", locale) },
+            {
+              name: t("Guides", "Rehberler"),
+              path: localizedHref("/guides", locale),
+            },
             { name: guide.title, path },
           ]),
         ]}
@@ -83,17 +95,26 @@ export default function GuidePage({ guide, related }: Props) {
 
       <div className="docs-layout">
         <aside className="docs-aside">
-          <nav aria-label="Guide sections" className="docs-sections">
-            <a href="/guides">
-              <strong>← All guides</strong>
-              <span>{GUIDES.length} integration guides</span>
+          <nav
+            aria-label={t("Guide sections", "Rehber bölümleri")}
+            className="docs-sections"
+          >
+            <a href={localizedHref("/guides", locale)}>
+              <strong>{t("← All guides", "← Tüm rehberler")}</strong>
+              <span>
+                {(locale === "tr" ? GUIDES_TR : GUIDES).length}{" "}
+                {t("integration guides", "entegrasyon rehberi")}
+              </span>
             </a>
           </nav>
           <div className="docs-toc">
-            <p>On this page</p>
-            <nav aria-label="On this page">
+            <p>{t("On this page", "Bu sayfada")}</p>
+            <nav aria-label={t("On this page", "Bu sayfada")}>
               {outline.map((entry) => (
-                <a href={`#${sectionId(entry)}`} key={entry}>
+                <a
+                  href={localizedHref(`#${sectionId(entry)}`, locale)}
+                  key={entry}
+                >
                   {entry}
                 </a>
               ))}
@@ -114,23 +135,26 @@ export default function GuidePage({ guide, related }: Props) {
             <div className="docs-meta">
               <span className="docs-chip live">
                 <i />
-                Updated{" "}
-                {new Date(guide.updated).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
+                {t("Updated", "Güncellendi")}{" "}
+                {new Date(guide.updated).toLocaleDateString(
+                  locale === "tr" ? "tr-TR" : "en-GB",
+                  {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  },
+                )}
               </span>
               <span className="docs-chip">
                 <i />
-                {guide.minutes} min read
+                {guide.minutes} {t("min read", "dk okuma")}
               </span>
             </div>
           </Reveal>
 
           <div className="docs-markdown">
             <div className="guide-takeaways">
-              <p>Key points</p>
+              <p>{t("Key points", "Önemli noktalar")}</p>
               <ul>
                 {guide.takeaways.map((point) => (
                   <li key={point}>{point}</li>
@@ -157,8 +181,12 @@ export default function GuidePage({ guide, related }: Props) {
             ))}
 
             <section>
-              <h2 id={sectionId("Frequently asked questions")}>
-                Frequently asked questions
+              <h2
+                id={sectionId(
+                  t("Frequently asked questions", "Sık sorulan sorular"),
+                )}
+              >
+                {t("Frequently asked questions", "Sık sorulan sorular")}
               </h2>
               {guide.faq.map((entry) => (
                 <div key={entry.question}>
@@ -170,11 +198,17 @@ export default function GuidePage({ guide, related }: Props) {
           </div>
 
           {related.length > 0 && (
-            <nav aria-label="Related guides" className="guide-related">
-              <p>Keep reading</p>
+            <nav
+              aria-label={t("Related guides", "İlgili rehberler")}
+              className="guide-related"
+            >
+              <p>{t("Keep reading", "Okumaya devam edin")}</p>
               <div>
                 {related.map((entry) => (
-                  <a href={`/guides/${entry.slug}`} key={entry.slug}>
+                  <a
+                    href={localizedHref(`/guides/${entry.slug}`, locale)}
+                    key={entry.slug}
+                  >
                     <span>{entry.category}</span>
                     <strong>{entry.title}</strong>
                   </a>
@@ -186,10 +220,13 @@ export default function GuidePage({ guide, related }: Props) {
       </div>
 
       <ConversionFooter
-        eyebrow="Read it, then build it"
-        secondaryHref="/docs"
-        secondaryLabel="Read the documentation"
-        title={["Enough theory.", "Open the canvas."]}
+        eyebrow={t("Read it, then build it", "Okuyun, ardından oluşturun")}
+        secondaryHref={localizedHref("/docs", locale)}
+        secondaryLabel={t("Read the documentation", "Dokümantasyonu okuyun")}
+        title={[
+          t("Enough theory.", "Bu kadar teori yeter."),
+          t("Open the canvas.", "Tuvali açın."),
+        ]}
       />
     </div>
   );

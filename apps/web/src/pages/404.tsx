@@ -4,14 +4,15 @@ import { Icon } from "@/components/icons";
 import { Seo } from "@/components/seo";
 import { SiteBar } from "@/components/site-bar";
 import { ButtonLink } from "@/components/ui/button";
+import { localizedHref, useI18n } from "@/lib/i18n";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-pagiera" });
 
 const QUICK_LINKS = [
-  ["Features", "/#features"],
-  ["Studio", "/#studio"],
-  ["How it works", "/#workflow"],
-  ["Templates", "/templates"],
+  ["Features", "Özellikler", "/#features"],
+  ["Studio", "Stüdyo", "/#studio"],
+  ["How it works", "Nasıl çalışır", "/#workflow"],
+  ["Templates", "Şablonlar", "/templates"],
 ] as const;
 
 /**
@@ -21,6 +22,7 @@ const QUICK_LINKS = [
  * rather than a stock Next.js page.
  */
 export default function NotFound() {
+  const { locale, t } = useI18n();
   const reduced = Boolean(useReducedMotion());
 
   return (
@@ -28,10 +30,16 @@ export default function NotFound() {
       className={`${manrope.variable} min-w-80 overflow-clip bg-[#f8f8f8] font-sans text-[#111111]`}
     >
       <Seo
-        description="The page you were looking for is not on this canvas. Head back to the Pagiera home page or browse the template library."
+        description={t(
+          "The page you were looking for is not on this canvas. Head back to the Pagiera home page or browse the template library.",
+          "Aradığınız sayfa bu tuvalde yok. Pagiera ana sayfasına dönün veya şablon kütüphanesine göz atın.",
+        )}
         noindex
         path="/404"
-        title="404 — this page isn't on the canvas | Pagiera"
+        title={t(
+          "404 — this page isn't on the canvas | Pagiera",
+          "404 — bu sayfa tuvalde yok | Pagiera",
+        )}
       />
       <SiteBar />
 
@@ -41,7 +49,7 @@ export default function NotFound() {
         <div className="relative z-[2] mx-auto w-full max-w-[900px] text-center">
           <span className="inline-flex items-center gap-2.5 rounded-full border border-[#5402e6]/10 bg-white/60 px-3 py-2 text-[11px] font-bold tracking-[0.09em] text-[#505050] uppercase backdrop-blur-xl">
             <span className="size-2 rounded-full bg-[#5402e6] ring-[5px] ring-[#5402e6]/10" />
-            Error 404
+            {t("Error 404", "Hata 404")}
           </span>
 
           <div className="mt-14 mb-16 flex justify-center max-md:mt-10 max-md:mb-12">
@@ -49,33 +57,44 @@ export default function NotFound() {
           </div>
 
           <h1 className="text-[clamp(38px,5.4vw,68px)] leading-[.94] font-medium tracking-[-.07em]">
-            This page isn’t on the canvas.
+            {t("This page isn’t on the canvas.", "Bu sayfa tuvalde yok.")}
           </h1>
           <p className="mx-auto mt-5 max-w-[520px] text-[clamp(14px,1.3vw,17px)] leading-8 tracking-[-.02em] text-[#626262]">
-            The layer you were looking for was moved, renamed, or never
-            published. Everything else is still where you left it.
+            {t(
+              "The layer you were looking for was moved, renamed, or never published. Everything else is still where you left it.",
+              "Aradığınız katman taşındı, yeniden adlandırıldı veya hiç yayımlanmadı. Diğer her şey bıraktığınız yerde.",
+            )}
           </p>
 
           <div className="mt-8 flex justify-center gap-2.5 max-sm:mx-auto max-sm:w-full max-sm:max-w-[330px] max-sm:flex-col">
-            <ButtonLink href="/" size="lg" variant="purple">
-              Back to home <Icon name="arrow" size={17} />
+            <ButtonLink
+              href={localizedHref("/", locale)}
+              size="lg"
+              variant="purple"
+            >
+              {t("Back to home", "Ana sayfaya dön")}{" "}
+              <Icon name="arrow" size={17} />
             </ButtonLink>
-            <ButtonLink href="/templates" size="lg" variant="secondary">
-              Explore templates
+            <ButtonLink
+              href={localizedHref("/templates", locale)}
+              size="lg"
+              variant="secondary"
+            >
+              {t("Explore templates", "Şablonları keşfedin")}
             </ButtonLink>
           </div>
 
           <nav
-            aria-label="Helpful links"
+            aria-label={t("Helpful links", "Yararlı bağlantılar")}
             className="mt-12 flex flex-wrap items-center justify-center gap-1.5"
           >
-            {QUICK_LINKS.map(([label, href]) => (
+            {QUICK_LINKS.map(([label, labelTr, href]) => (
               <a
                 className="rounded-full border border-black/[.07] bg-white/60 px-4 py-2.5 text-[13px] font-medium text-[#505050] backdrop-blur-xl transition-colors hover:border-[#5402e6]/25 hover:bg-white hover:text-[#5402e6]"
-                href={href}
-                key={label}
+                href={localizedHref(href, locale)}
+                key={t(label, labelTr)}
               >
-                {label}
+                {t(label, labelTr)}
               </a>
             ))}
           </nav>
@@ -83,11 +102,11 @@ export default function NotFound() {
 
         {/* The editor's status bar, as a closing wink. */}
         <div className="relative z-[2] mx-auto mt-16 flex w-full max-w-[900px] items-center gap-1 border-t border-black/[.07] pt-4 text-[11px] text-[#696969] max-md:mt-12">
-          <span className="text-[#8d8d8d]">Page</span>
+          <span className="text-[#8d8d8d]">{t("Page", "Sayfa")}</span>
           <Icon className="text-[#8d8d8d]" name="chevron" size={11} />
           <span>404</span>
           <span className="ml-auto font-mono text-[10px] text-[#8d8d8d]">
-            Not found
+            {t("Not found", "Bulunamadı")}
           </span>
         </div>
       </main>
@@ -106,6 +125,7 @@ function Ambience() {
 }
 
 function SelectedNumerals({ reduced }: { reduced: boolean }) {
+  const { t } = useI18n();
   return (
     <motion.span
       animate={{ opacity: 1, scale: 1 }}
@@ -138,7 +158,7 @@ function SelectedNumerals({ reduced }: { reduced: boolean }) {
 
         <span className="absolute -top-7 left-0 flex items-center gap-1.5 rounded-md bg-[#5402e6] px-2 py-1 text-[10px] font-semibold whitespace-nowrap text-white">
           <Icon name="frame" size={11} />
-          Missing page
+          {t("Missing page", "Eksik sayfa")}
         </span>
         <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full rounded bg-[#5402e6] px-1.5 py-0.5 font-mono text-[10px] font-medium whitespace-nowrap text-white">
           404 × 404

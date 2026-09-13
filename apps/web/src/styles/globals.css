@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+.language-menu { position:relative; flex-shrink:0; }
+.language-trigger { display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 10px 0 11px; border:1px solid #ffffff1a; border-radius:999px; background:transparent; color:#c4c4c4; font:600 11px/1 inherit; cursor:pointer; transition:border-color .2s, background-color .2s, color .2s; }
+.language-trigger:hover { border-color:#ffffff33; background:#ffffff0a; color:#fff; }
+.language-menu.is-open .language-trigger { border-color:#ffffff33; background:#ffffff0f; color:#fff; }
+.language-caret { transform:rotate(90deg); opacity:.6; transition:transform .2s; }
+.language-menu.is-open .language-caret { transform:rotate(-90deg); }
+/* Hidden with visibility, not display: the links stay in the served HTML for
+   crawlers while staying out of the tab order and the accessibility tree. */
+.language-list { position:absolute; top:calc(100% + 8px); right:0; z-index:20; display:grid; gap:2px; min-width:172px; padding:5px; border-radius:14px; background:#17171a; box-shadow:0 18px 40px #0000007a; opacity:0; visibility:hidden; transform:translateY(-5px); transition:opacity .16s ease, transform .16s ease, visibility .16s; }
+.language-menu.is-open .language-list { opacity:1; visibility:visible; transform:none; }
+.language-list a { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:9px 12px; border-radius:9px; font-size:13px; font-weight:500; color:#b4b4b4; white-space:nowrap; transition:background-color .16s ease, color .16s ease; }
+.language-list a:hover { background:#ffffff0c; color:#fff; }
+.language-list a.is-active { color:#fff; }
+.language-list a.is-active svg { color:#a982ff; }
+.language-trigger:focus-visible, .language-list a:focus-visible { outline:2px solid #a982ff; outline-offset:2px; }
+@media (prefers-reduced-motion:reduce) { .language-list, .language-caret { transition:none; } }
+.docs-header-actions { display:flex; align-items:center; justify-content:flex-end; gap:16px; }
+
 @theme {
   --font-sans: var(--font-pagiera), Arial, sans-serif;
   --color-pagiera: #5402e6;

@@ -7,6 +7,7 @@ import { Manrope } from "next/font/google";
 import Head from "next/head";
 import type { PagieraDocument } from "pagiera";
 import { RenderedPage } from "pagiera/runtime";
+import { useI18n } from "@/lib/i18n";
 import {
   getTemplateCatalog,
   getTemplatePreviewDocument,
@@ -19,9 +20,12 @@ type PreviewProps = {
 };
 
 export const getStaticPaths = (async () => ({
-  paths: (await getTemplateCatalog()).map((template) => ({
-    params: { id: template.id },
-  })),
+  paths: (await getTemplateCatalog()).flatMap((template) =>
+    ["en", "tr"].map((locale) => ({
+      params: { id: template.id },
+      locale,
+    })),
+  ),
   fallback: "blocking",
 })) satisfies GetStaticPaths;
 
@@ -39,12 +43,15 @@ export default function TemplatePreview({
   document,
   name,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
+  const { t } = useI18n();
   return (
     <div
       className={`${manrope.variable} min-h-screen bg-[#0d0d0d] font-[var(--font-template)]`}
     >
       <Head>
-        <title>{name} preview — Pagiera</title>
+        <title>
+          {t(`${name} preview — Pagiera`, `${name} önizlemesi — Pagiera`)}
+        </title>
         <meta content="noindex,follow" name="robots" />
         {/* Template documents may ask for these families. They used to load on
             every page from _document, which put a render-blocking third-party

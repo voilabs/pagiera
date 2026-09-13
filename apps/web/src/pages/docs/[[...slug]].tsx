@@ -13,6 +13,10 @@ import {
   getDoc,
 } from "@/lib/docs-catalog";
 import { getDocsContent } from "@/lib/docs-content";
+import { DOCS_CONTENT_TR } from "@/lib/docs-content-tr";
+import { localizedDocs } from "@/lib/docs-localized";
+import { docGroupLabel, localizedHref, useI18n } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { breadcrumbSchema } from "@/lib/structured-data";
 
 const font = Manrope({ subsets: ["latin"], variable: "--font-pagiera" });
@@ -27,14 +31,14 @@ export const getStaticPaths: GetStaticPaths = async () => ({
   paths: [
     { params: { slug: [] } },
     ...DOC_SLUGS.map((slug) => ({ params: { slug: [slug] } })),
-  ],
+  ].flatMap((path) => [ { ...path, locale: "en" }, { ...path, locale: "tr" } ]),
   fallback: false,
 });
 
-export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
+export const getStaticProps: GetStaticProps<Props> = async ({ params, locale }) => {
   const slug = Array.isArray(params?.slug) ? params.slug[0] : undefined;
-  const entry = slug ? (getDoc(slug) ?? null) : null;
-  const markdown = entry ? getDocsContent(entry.slug) : overviewMarkdown();
+  const entry = slug ? (localizedDocs(locale ?? "en").find((doc) => doc.slug === slug) ?? null) : null;
+  const markdown = entry ? (locale === "tr" ? DOCS_CONTENT_TR[entry.slug] : getDocsContent(entry.slug)) : overviewMarkdown(locale);
   if (!markdown) return { notFound: true };
   const tokens = marked.lexer(markdown);
   const counts = new Map<string, number>();
@@ -61,7 +65,45 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
   };
 };
 
-function overviewMarkdown() {
+function overviewMarkdown(locale?: string) {
+  if (locale === "tr") return `## Çalışan bir entegrasyonla başlayın
+
+Pagiera, React ve Next.js uygulamanızın içinde çalışan açık kaynaklı bir görsel site oluşturucudur. Ekibiniz sayfaları görsel olarak düzenler; kimlik doğrulama, veri, depolama ve dağıtım uygulamanızın kontrolünde kalır.
+
+### Çalışan bir editöre giden en kısa yol
+
+1. Çalışma ortamı ve servis gereksinimlerini kontrol edin.
+2. Paketi kurun ve editör stil dosyasını ekleyin.
+3. PostgreSQL ve Redis bağlantılarını yapılandırın.
+4. Pagiera sunucu rotasını bağlayın.
+5. Editör başlangıç verilerini sunucuda yükleyin.
+6. Stüdyoyu kendi kimlik doğrulamanızla koruyun.
+7. Taslağı kaydedin, önizleyin ve yalnızca onaydan sonra yayımlayın.
+
+[Başlangıç](/docs/getting-started) ile ilerleyin, ardından [Next.js kurulumu](/docs/nextjs-setup) rehberini uygulayın.
+
+## Parçalar nasıl bir araya gelir?
+
+Stüdyo bir sayfa belgesini düzenler. PostgreSQL belgeyi saklar, Redis yayımlanan çıktıyı önbelleğe alır ve çalışma zamanı onaylanan sayfaları Next.js sunucunuzda işler. Request ve Repeat blokları HTML dönmeden önce çözümlendiği için API verileri ilk HTML çıktısında bulunur.
+
+## İhtiyacınız olan rehberi seçin
+
+- **İlk kurulum:** [Başlangıç](/docs/getting-started).
+- **App Router bağlantısı:** [Next.js kurulumu](/docs/nextjs-setup).
+- **Dinamik içerik:** [Dinamik rotalar ve veri](/docs/data-binding).
+- **Yayına çıkış:** [Önizleme ve yayımlama](/docs/publishing).
+- **Programatik entegrasyon:** [API başvurusu](/docs/api-reference).
+- **Sorun çözme:** [Sorun giderme](/docs/troubleshooting).
+
+## Sistemleri keşfedin
+
+[Stüdyo iş akışını](/docs/studio), [yerel blokları](/docs/blocks) ve [duyarlı tasarımı](/docs/responsive-design) öğrenin. Ortak [bileşen ve düzenler](/docs/components-layouts) oluşturun, [formları](/docs/forms) bağlayın, [hareket ve etkileşimler](/docs/interactions) ekleyin.
+
+Programatik çalışmalar için [belge modelini](/docs/document-model), [CLI rehberini](/docs/cli) ve [yapay zekâ ile MCP rehberini](/docs/ai-mcp) okuyun. Üretime geçmeden önce [sürümleri](/docs/revisions), [yazı tipleri ve varlıkları](/docs/fonts-assets), [dağıtımı](/docs/deployment) inceleyin.
+
+## Neler değişti?
+
+Doğrulanmış kaynak kodu değişiklikleri ve sürüm durumu için [değişiklik günlüğünü](/docs/changelog) okuyun.`;
   return `## Start with a working integration
 
 Pagiera is an open-source visual website builder that runs inside your React and Next.js application. Your team edits pages visually, while your application owns authentication, data, storage and deployment.
@@ -103,11 +145,13 @@ Read the [changelog](/docs/changelog) for verified source-tree changes and relea
 }
 
 export default function Documentation({ entry, headings, tokens }: Props) {
+  const { locale, t } = useI18n();
+  const docs = localizedDocs(locale);
   const path = entry ? `/docs/${entry.slug}` : "/docs";
-  const title = entry?.title ?? "Documentation";
+  const title = entry?.title ?? t("Documentation", "Dokümantasyon");
   const description =
     entry?.description ??
-    "Learn Pagiera step by step: install the visual editor, connect Next.js, bind API data, preview drafts and publish server-rendered pages.";
+    t("Learn Pagiera step by step: install the visual editor, connect Next.js, bind API data, preview drafts and publish server-rendered pages.", "Pagiera’yı adım adım öğrenin: görsel editörü kurun, Next.js ve API verilerini bağlayın, taslakları önizleyin ve sunucuda işlenen sayfalar yayımlayın.");
 
   return (
     <div className={`${font.variable} docs-page font-sans`}>
@@ -117,43 +161,45 @@ export default function Documentation({ entry, headings, tokens }: Props) {
         path={path}
         jsonLd={breadcrumbSchema([
           { name: "Pagiera", path: "/" },
-          { name: "Documentation", path: "/docs" },
+          { name: t("Documentation", "Dokümantasyon"), path: localizedHref("/docs", locale) },
           ...(entry ? [{ name: entry.title, path }] : []),
         ])}
       />
       <div className="docs-tools">
-        <a className="docs-tools-brand" href="/docs">
+        <a className="docs-tools-brand" href={localizedHref("/docs", locale)}>
           <strong>Pagiera</strong>
-          <span>Docs</span>
+          <span>{t("Docs", "Dokümanlar")}</span>
         </a>
         <DocsCommandMenu />
-        <a className="docs-back-link" href="/">
-          <Icon name="arrow" size={14} /> Back to website
+        <div className="docs-header-actions"><LanguageSwitcher />
+        <a className="docs-back-link" href={localizedHref("/", locale)}>
+          <Icon name="arrow" size={14} /> {t("Back to website", "Siteye dön")}
         </a>
+        </div>
       </div>
       <div className="docs-shell">
         <aside className="docs-nav">
           <div className="docs-nav-title">
             <span>
-              <Icon name="layers" size={14} /> Documentation
+              <Icon name="layers" size={14} /> {t("Documentation", "Dokümantasyon")}
             </span>
-            <small>{DOCS.length} guides</small>
+            <small>{DOCS.length} {t("guides", "rehber")}</small>
           </div>
           <a
             className={!entry ? "docs-nav-home active" : "docs-nav-home"}
-            href="/docs"
+            href={localizedHref("/docs", locale)}
           >
-            Overview
+            {t("Overview", "Genel bakış")}
           </a>
           {DOC_GROUPS.map((group) => {
-            const groupDocs = DOCS.filter((doc) => doc.group === group);
+            const groupDocs = docs.filter((doc) => doc.group === group);
             return groupDocs.length ? (
               <section key={group}>
-                <h2>{group}</h2>
+                <h2>{docGroupLabel(group, locale)}</h2>
                 {groupDocs.map((doc) => (
                   <a
                     className={entry?.slug === doc.slug ? "active" : undefined}
-                    href={`/docs/${doc.slug}`}
+                    href={localizedHref(`/docs/${doc.slug}`, locale)}
                     key={doc.slug}
                   >
                     {doc.title}
@@ -166,13 +212,13 @@ export default function Documentation({ entry, headings, tokens }: Props) {
         <main className="docs-main">
           <header className="docs-article-head">
             <p className="docs-breadcrumb">
-              docs / {entry?.slug ?? "overview"}
+              {t("docs", "dokümanlar")} / {entry?.slug ?? t("overview", "genel bakış")}
             </p>
             <h1>{title}</h1>
             <p>{description}</p>
             <div className="docs-article-meta">
-              <span>Pagiera documentation</span>
-              <span>Step-by-step guide</span>
+              <span>{t("Pagiera documentation", "Pagiera dokümantasyonu")}</span>
+              <span>{t("Step-by-step guide", "Adım adım rehber")}</span>
             </div>
           </header>
           <DocsMarkdown tokens={tokens} />
@@ -180,9 +226,9 @@ export default function Documentation({ entry, headings, tokens }: Props) {
         </main>
         <aside className="docs-outline">
           <div className="docs-rail-label">
-            Documentation <span>Handbook</span>
+            {t("Documentation", "Dokümantasyon")} <span>{t("Handbook", "El kitabı")}</span>
           </div>
-          <p>On this page</p>
+          <p>{t("On this page", "Bu sayfada")}</p>
           <nav>
             {headings.map((heading) => (
               <a
@@ -195,23 +241,23 @@ export default function Documentation({ entry, headings, tokens }: Props) {
             ))}
           </nav>
           <section className="docs-rail-resource">
-            <h2>Build with Pagiera</h2>
+            <h2>{t("Build with Pagiera", "Pagiera ile geliştirin")}</h2>
             <a
               href="https://github.com/voilabs/pagiera"
               target="_blank"
               rel="noreferrer"
             >
-              Explore on GitHub ↗
+              {t("Explore on GitHub", "GitHub’da inceleyin")} ↗
             </a>
           </section>
           <section className="docs-rail-resource">
-            <h2>Need a hand?</h2>
-            <a href="/docs/troubleshooting">Read troubleshooting ↗</a>
-            <a href="/faq">Frequently asked questions ↗</a>
+            <h2>{t("Need a hand?", "Yardım mı gerekiyor?")}</h2>
+            <a href={localizedHref("/docs/troubleshooting", locale)}>{t("Read troubleshooting", "Sorun giderme rehberi")} ↗</a>
+            <a href={localizedHref("/faq", locale)}>{t("Frequently asked questions", "Sık sorulan sorular")} ↗</a>
           </section>
           <section className="docs-rail-resource">
-            <h2>What’s new</h2>
-            <a href="/docs/changelog">Read the changelog ↗</a>
+            <h2>{t("What’s new", "Yenilikler")}</h2>
+            <a href={localizedHref("/docs/changelog", locale)}>{t("Read the changelog", "Değişiklik günlüğü")} ↗</a>
           </section>
         </aside>
       </div>
@@ -220,22 +266,24 @@ export default function Documentation({ entry, headings, tokens }: Props) {
 }
 
 function DocsPager({ current }: { current?: string }) {
+  const { locale, t } = useI18n();
+  const DOCS = localizedDocs(locale);
   const index = current ? DOCS.findIndex((doc) => doc.slug === current) : -1;
   const previous = index > 0 ? DOCS[index - 1] : null;
   const next = index < DOCS.length - 1 ? DOCS[index + 1] : null;
   return (
-    <nav className="docs-pager" aria-label="Documentation pagination">
+    <nav className="docs-pager" aria-label={t("Documentation pagination", "Dokümantasyon sayfaları")}>
       {previous ? (
-        <a href={`/docs/${previous.slug}`}>
-          <span>Previous</span>
+        <a href={localizedHref(`/docs/${previous.slug}`, locale)}>
+          <span>{t("Previous", "Önceki")}</span>
           {previous.title}
         </a>
       ) : (
         <span />
       )}
       {next ? (
-        <a className="next" href={`/docs/${next.slug}`}>
-          <span>Next</span>
+        <a className="next" href={localizedHref(`/docs/${next.slug}`, locale)}>
+          <span>{t("Next", "Sonraki")}</span>
           {next.title}
         </a>
       ) : null}

@@ -4,6 +4,7 @@ import { ConversionFooter } from "@/components/conversion-footer";
 import { Seo } from "@/components/seo";
 import { SiteBar } from "@/components/site-bar";
 import { TemplateStore } from "@/components/template-store";
+import { localizedHref, useI18n } from "@/lib/i18n";
 import {
   breadcrumbSchema,
   templateCollectionSchema,
@@ -24,31 +25,47 @@ export const getStaticProps = (async () => ({
 export default function TemplatesPage({
   templates,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
+  const { locale, t } = useI18n();
   return (
     <div
       className={`${manrope.variable} min-w-80 overflow-clip bg-[#0b0b0b] font-sans text-[#f5f5f5]`}
     >
       <Seo
-        description={`Explore ${templates.length} responsive Pagiera templates—complete multi-page systems you can preview as real rendered websites, then open and edit on the canvas.`}
+        description={t(
+          `Explore ${templates.length} responsive Pagiera templates—complete multi-page systems you can preview as real rendered websites, then open and edit on the canvas.`,
+          `${templates.length} duyarlı Pagiera şablonunu keşfedin. Eksiksiz, çok sayfalı sistemleri gerçek web siteleri olarak önizleyin, ardından tuvalde açıp düzenleyin.`,
+        )}
         jsonLd={[
           templateCollectionSchema(templates),
           breadcrumbSchema([
-            { name: "Home", path: "/" },
-            { name: "Templates", path: "/templates" },
+            { name: t("Home", "Ana sayfa"), path: localizedHref("/", locale) },
+            {
+              name: t("Templates", "Şablonlar"),
+              path: localizedHref("/templates", locale),
+            },
           ]),
         ]}
         path="/templates"
-        title="Templates — responsive starting points for Pagiera"
+        title={t(
+          "Templates — responsive starting points for Pagiera",
+          "Şablonlar — Pagiera için duyarlı başlangıç noktaları",
+        )}
       />
       <SiteBar active="templates" />
       <main>
         <TemplateStore templates={templates} />
       </main>
       <ConversionFooter
-        eyebrow="Built with the same system you’ll use"
-        title={["Pick a direction.", "Then break the rules."]}
-        secondaryHref="/"
-        secondaryLabel="Back to product"
+        eyebrow={t(
+          "Built with the same system you’ll use",
+          "Sizin de kullanacağınız sistemle oluşturuldu",
+        )}
+        title={[
+          t("Pick a direction.", "Bir yön seçin."),
+          t("Then break the rules.", "Sonra kuralları yıkın."),
+        ]}
+        secondaryHref={localizedHref("/", locale)}
+        secondaryLabel={t("Back to product", "Ürüne dön")}
       />
     </div>
   );
