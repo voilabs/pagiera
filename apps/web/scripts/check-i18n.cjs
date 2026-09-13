@@ -70,6 +70,11 @@ assert.deepEqual(
   "next.config.ts locales and i18n.ts LOCALES disagree",
 );
 assert.equal(nextConfig.i18n.defaultLocale, "en", "defaultLocale drives x-default");
+// Detection is what sends a Turkish browser from / to /tr. It is only safe
+// because it fires on the root alone and yields to the NEXT_LOCALE cookie the
+// language switcher writes; turning it off would strand that switcher as the
+// only way anyone ever reaches the Turkish site.
+assert.notEqual(nextConfig.i18n.localeDetection, false, "Automatic locale detection must stay enabled (leave localeDetection unset)");
 
 
 const linkOffenders = [];
