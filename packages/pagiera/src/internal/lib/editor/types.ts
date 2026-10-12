@@ -228,6 +228,9 @@ export type AlignContent = "start" | "center" | "end" | "stretch" | "between";
 export type ListStyle = "bullet" | "number" | "none";
 export type TextAlign = "left" | "center" | "right" | "justify";
 export type TextTransform = "none" | "uppercase" | "lowercase" | "capitalize";
+export type FontStyle = "normal" | "italic";
+/** Which part of an image stays in view when `objectFit` crops it. */
+export type ObjectPosition = "center" | "top" | "bottom" | "left" | "right";
 export type ObjectFit = "cover" | "contain" | "fill" | "none";
 export type Overflow = "visible" | "hidden" | "auto" | "scroll";
 export type Entrance = "none" | "fade" | "up" | "down" | "left" | "right" | "zoom";
@@ -326,6 +329,11 @@ export type ElementStyle = {
     gradient: string;
     color: string;
     radius: number;
+    /** Per-corner override; null inherits radius. */
+    radiusTL: number | null;
+    radiusTR: number | null;
+    radiusBR: number | null;
+    radiusBL: number | null;
     opacity: number;
     borderW: number;
     /** Per-edge override; null inherits borderW. */
@@ -347,6 +355,9 @@ export type ElementStyle = {
     letterSpacing: number;
     textAlign: TextAlign;
     textTransform: TextTransform;
+    fontStyle: FontStyle;
+    /** Lines shown before the text is cut with an ellipsis; 0 shows every line. */
+    lineClamp: number;
 
     // Composition — the pieces that make a layout feel designed rather than
     // stacked: clipping, sticky rails, imagery, glass and blend effects.
@@ -358,6 +369,12 @@ export type ElementStyle = {
     stickyOffset: number;
     /** Edge a sticky or fixed element pins to. */
     pinSide: PinSide;
+    /**
+     * Pixels the page scrolls before a fixed element slides in; 0 shows it from
+     * the start. This is the second header that only appears once the first
+     * one has left the screen.
+     */
+    pinAfter: number;
     /** Background image URL, or "" for none. Painted over `gradient`. */
     bgImage: string;
     bgSize: BgSize;
@@ -441,6 +458,10 @@ export const STYLE_KEYS = [
     "gradient",
     "color",
     "radius",
+    "radiusTL",
+    "radiusTR",
+    "radiusBR",
+    "radiusBL",
     "opacity",
     "borderW",
     "borderT",
@@ -458,11 +479,14 @@ export const STYLE_KEYS = [
     "letterSpacing",
     "textAlign",
     "textTransform",
+    "fontStyle",
+    "lineClamp",
     "overflow",
     "position",
     "zIndex",
     "stickyOffset",
     "pinSide",
+    "pinAfter",
     "bgImage",
     "bgSize",
     "bgPosition",
@@ -487,6 +511,14 @@ export const STYLE_KEYS = [
 ] as const satisfies ReadonlyArray<keyof ElementStyle>;
 
 export type StyleKey = (typeof STYLE_KEYS)[number];
+
+/** The parts of one layer a placed component may replace for itself. */
+export type ComponentSlotProps = {
+    src?: string;
+    alt?: string;
+    href?: string;
+    target?: "_self" | "_blank";
+};
 
 export type CanvasElement = {
     disclosure?: import('./disclosure').Disclosure;
@@ -523,6 +555,13 @@ export type CanvasElement = {
      */
     componentContent?: Record<string, string>;
     /**
+     * What this instance shows instead of its master beyond the words: its own
+     * picture and its own destination, keyed by master slot like
+     * `componentContent`. This is what lets one card component stand for six
+     * different cards. Only on an instance root.
+     */
+    componentProps?: Record<string, ComponentSlotProps>;
+    /**
      * Drawn from the site's layout rather than stored on this page.
      *
      * The header and footer belong to the site, so they are added to every
@@ -547,6 +586,7 @@ export type CanvasElement = {
     src?: string;
     alt?: string;
     objectFit?: ObjectFit;
+    objectPosition?: ObjectPosition;
     iconName?: PagieraIconName;
     /** Marker style for a List; also decides whether it publishes as ol or ul. */
     listStyle?: ListStyle;
@@ -681,6 +721,10 @@ export const BASE_STYLE: ElementStyle = {
     gradient: "",
     color: "#27272a",
     radius: 0,
+    radiusTL: null,
+    radiusTR: null,
+    radiusBR: null,
+    radiusBL: null,
     opacity: 100,
     borderW: 0,
     borderT: null,
@@ -699,12 +743,15 @@ export const BASE_STYLE: ElementStyle = {
     letterSpacing: 0,
     textAlign: "left",
     textTransform: "none",
+    fontStyle: "normal",
+    lineClamp: 0,
 
     overflow: "visible",
     position: "static",
     zIndex: 0,
     stickyOffset: 0,
     pinSide: "top",
+    pinAfter: 0,
     bgImage: "",
     bgSize: "cover",
     bgPosition: "center",

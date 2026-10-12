@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import {
+  Figtree,
   Geist,
   Geist_Mono,
   Manrope,
@@ -30,6 +31,11 @@ const syncopate = Syncopate({
   variable: "--font-syncopate",
 });
 
+const figtree = Figtree({
+  variable: "--font-figtree",
+  subsets: ["latin", "latin-ext"],
+});
+
 const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
@@ -51,6 +57,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             { variable: pressStart2P.variable, title: "Press Start 2P" },
             { variable: syncopate.variable, title: "Syncopate" },
             { variable: manrope.variable, title: "Manrope" },
+            { variable: figtree.variable, title: "Figtree" },
           ]}
         >
           {children}

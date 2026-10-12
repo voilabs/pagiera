@@ -134,7 +134,7 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
                     alt={element.alt ?? ""}
                     draggable={false}
                     className="pointer-events-none h-full w-full"
-                    style={{ objectFit: element.objectFit ?? "cover", borderRadius: "inherit" }}
+                    style={{ objectFit: element.objectFit ?? "cover", objectPosition: element.objectPosition, borderRadius: "inherit" }}
                 />
             );
         }

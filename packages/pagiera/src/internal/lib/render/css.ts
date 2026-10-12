@@ -232,6 +232,20 @@ const SCROLL_KEYFRAMES = `
 @keyframes pg-s-blur{from{opacity:0;filter:blur(var(--pg-blur,10px))}to{opacity:1;filter:blur(0)}}
 `.trim();
 
+/**
+ * A fixed element that appears after a scroll position waits just past the
+ * edge it is pinned to and slides in from there. `translate` rather than
+ * `transform`, so it composes with the element's own rotation or scale.
+ */
+const PIN_AFTER_CSS = `
+.pg-pin-ready [data-pg-pin-after]{translate:0 -110%;transition:translate .3s ease-in-out}
+.pg-pin-ready [data-pg-pin-after][data-pg-pin-side=bottom]{translate:0 110%}
+.pg-pin-ready [data-pg-pin-after][data-pg-pin-side=left]{translate:-110% 0}
+.pg-pin-ready [data-pg-pin-after][data-pg-pin-side=right]{translate:110% 0}
+.pg-pin-ready [data-pg-pin-after].pg-pin-in{translate:none}
+@media (prefers-reduced-motion:reduce){.pg-pin-ready [data-pg-pin-after]{transition:none}}
+`.trim();
+
 export function hasScrollEffects(
     elements: CanvasElement[],
     cascade: Cascade = DEFAULT_CASCADE,
@@ -449,6 +463,8 @@ export function stylesheetFor(
             .join("");
         parts.push(`@media ${plan.query}{${rules}}`);
     }
+
+    if (elements.some((element) => { const pinned = resolveStyle(element, baseId, cascade); return pinned.position === "fixed" && pinned.pinAfter > 0; })) parts.push(PIN_AFTER_CSS);
 
     if (hasEntrances(elements, cascade)) {
         parts.push(ENTRANCE_KEYFRAMES);

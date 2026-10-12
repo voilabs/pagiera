@@ -28,6 +28,7 @@ import { hasOverride, resolveStyle } from "@/lib/editor/style";
 import { displayName } from "@/lib/editor/tree";
 import {
     type Align,
+    type ComponentSlotProps,
     ASPECT_RATIOS,
     CUSTOM_TAGS,
     type CustomTag,
@@ -91,6 +92,8 @@ type Ctx = {
     onStyle: (patch: Partial<ElementStyle>) => void;
     onReset: (keys: StyleKey[]) => void;
     onProps: (patch: Partial<CanvasElement>) => void;
+    /** Changes one layer inside a placed component; see `InstanceGroup`. */
+    onSlot?: (elementId: string, patch: ComponentSlotProps & { content?: string }) => void;
     onCommitStart: () => void;
     onCommitEnd: () => void;
     /** Page data sources, for the Repeat picker. */
@@ -1232,6 +1235,30 @@ function TypographyGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                         onChange={(textTransform) => onStyle({ textTransform })}
                     />,
                 )}
+                {ov(
+                    ["fontStyle"],
+                    <Segmented
+                        label="Style"
+                        value={style.fontStyle}
+                        options={[
+                            { label: "Regular", value: "normal" as const },
+                            { label: "Italic", value: "italic" as const },
+                        ]}
+                        onChange={(fontStyle) => onStyle({ fontStyle })}
+                    />,
+                )}
+                {ov(
+                    ["lineClamp"],
+                    <NumberInput
+                        label="Max lines"
+                        min={0}
+                        value={style.lineClamp}
+                        onChange={(lineClamp) => onStyle({ lineClamp })}
+                    />,
+                )}
+                <p className="text-[10px] leading-relaxed text-ed-faint">
+                    Max lines cuts longer text with an ellipsis. 0 shows every line.
+                </p>
             </More>
         </Group>
     );
@@ -1242,6 +1269,7 @@ function BorderGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     const { style, onStyle } = ctx;
     const knownShadow = SHADOW_PRESETS.some((p) => p.value === style.shadow);
     const separateBorders = [style.borderT, style.borderR, style.borderB, style.borderL].some((value) => value !== null);
+    const separateCorners = [style.radiusTL, style.radiusTR, style.radiusBR, style.radiusBL].some((value) => value !== null);
     const hasBorder = [style.borderT, style.borderR, style.borderB, style.borderL]
         .map((value) => value ?? style.borderW)
         .some((value) => value > 0);
@@ -1258,6 +1286,27 @@ function BorderGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     onChange={(radius) => onStyle({ radius })}
                 />,
             )}
+            <More label="Corners">
+                <Segmented
+                    label="Corners"
+                    value={separateCorners ? "separate" : "linked"}
+                    options={[
+                        { label: "Linked", value: "linked" as const },
+                        { label: "Separate", value: "separate" as const },
+                    ]}
+                    onChange={(value) => value === "linked"
+                        ? onStyle({ radiusTL: null, radiusTR: null, radiusBR: null, radiusBL: null })
+                        : onStyle({ radiusTL: style.radius, radiusTR: style.radius, radiusBR: style.radius, radiusBL: style.radius })}
+                />
+                {separateCorners && (
+                    <div className="grid grid-cols-2 gap-2">
+                        {ov(["radiusTL"], <NumberInput compact label="Top left" min={0} value={style.radiusTL ?? style.radius} onChange={(radiusTL) => onStyle({ radiusTL })} />)}
+                        {ov(["radiusTR"], <NumberInput compact label="Top right" min={0} value={style.radiusTR ?? style.radius} onChange={(radiusTR) => onStyle({ radiusTR })} />)}
+                        {ov(["radiusBL"], <NumberInput compact label="Bottom left" min={0} value={style.radiusBL ?? style.radius} onChange={(radiusBL) => onStyle({ radiusBL })} />)}
+                        {ov(["radiusBR"], <NumberInput compact label="Bottom right" min={0} value={style.radiusBR ?? style.radius} onChange={(radiusBR) => onStyle({ radiusBR })} />)}
+                    </div>
+                )}
+            </More>
             {ov(
                 ["shadow"],
                 <SelectInput
@@ -1442,6 +1491,21 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                             onChange={(stickyOffset) => onStyle({ stickyOffset })}
                         />,
                     )}
+                    {style.position === "fixed" && ov(
+                        ["pinAfter"],
+                        <NumberInput
+                            label="Appears after"
+                            suffix="px"
+                            min={0}
+                            value={style.pinAfter}
+                            onChange={(pinAfter) => onStyle({ pinAfter })}
+                        />,
+                    )}
+                    {style.position === "fixed" && style.pinAfter > 0 && (
+                        <p className="text-[10px] leading-relaxed text-ed-faint">
+                            Slides in once the page has scrolled this far. The canvas shows it only while it is selected, so it does not cover the page underneath.
+                        </p>
+                    )}
                     <p className="text-[10px] leading-relaxed text-ed-faint">
                         {style.position === "absolute"
                             ? "Placed at its own coordinates. Its siblings keep stacking as if it were not there."
@@ -1616,9 +1680,63 @@ function CarouselControlGroup({ element, elements, onProps }: Pick<Ctx, "element
     </Group>;
 }
 
-function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRepeat, uploadImage }: Ctx) {
+/**
+ * Everything a placed component can say for itself, in one list.
+ *
+ * A component's layers are copies of its master, so they are not edited one at
+ * a time on the page. What differs between two placements of the same card —
+ * its words, its picture, where it leads — is gathered here instead, each
+ * field named after the layer it fills.
+ */
+function InstanceGroup({ element, elements, onSlot }: Pick<Ctx, "element" | "elements"> & { onSlot: NonNullable<Ctx["onSlot"]> }) {
+    const slots = useMemo(() => {
+        const inside = new Set<string>([element.id]);
+        let grew = true;
+        while (grew) {
+            grew = false;
+            for (const candidate of elements) {
+                if (candidate.parentId && inside.has(candidate.parentId) && !inside.has(candidate.id)) {
+                    inside.add(candidate.id);
+                    grew = true;
+                }
+            }
+        }
+        return elements.filter((candidate) => inside.has(candidate.id) && (
+            candidate.type === "Image" || candidate.href !== undefined || (isTextual(candidate.type) && candidate.content !== undefined)
+        ));
+    }, [element.id, elements]);
+
+    if (slots.length === 0) return null;
+    return (
+        <Group title="Component content" defaultOpen>
+            <p className="text-[10px] leading-relaxed text-ed-faint">
+                These belong to this placement only. The component keeps its layout and styling; open it to change those everywhere.
+            </p>
+            {slots.map((slot) => (
+                <div key={slot.id} className="flex flex-col gap-2 border-t border-ed-border pt-2 first:border-t-0 first:pt-0">
+                    <p className="truncate text-[10px] font-semibold text-ed-muted">{displayName(slot)}</p>
+                    {isTextual(slot.type) && slot.content !== undefined && (
+                        <TextInput label="Text" value={slot.content ?? ""} onChange={(content) => onSlot(slot.id, { content })} />
+                    )}
+                    {slot.type === "Image" && (
+                        <>
+                            <TextInput label="Source" value={slot.src ?? ""} placeholder="https://…" onChange={(src) => onSlot(slot.id, { src })} />
+                            <TextInput label="Alt text" value={slot.alt ?? ""} placeholder="Describes the image" onChange={(alt) => onSlot(slot.id, { alt })} />
+                        </>
+                    )}
+                    {slot.href !== undefined && (
+                        <TextInput label="Link" value={slot.href ?? ""} placeholder="/page or https://…" onChange={(href) => onSlot(slot.id, { href })} />
+                    )}
+                </div>
+            ))}
+        </Group>
+    );
+}
+
+function ContentTab({ element, elements, onProps, onSlot, sources, bindingKeys, insideRepeat, uploadImage }: Ctx) {
     return (
         <div className="flex flex-col">
+            {element.componentRole === "instance" && !element.layoutRole && onSlot && <InstanceGroup element={element} elements={elements} onSlot={onSlot} />}
             {element.interactive && <InteractiveGroup element={element} onProps={onProps} />}
             <CarouselControlGroup element={element} elements={elements} onProps={onProps} />
             {element.disclosure && <Group title={element.disclosure.kind === 'tabs' ? 'Tabs' : 'Accordion'} defaultOpen>
@@ -1769,6 +1887,18 @@ function ContentTab({ element, elements, onProps, sources, bindingKeys, insideRe
                             { label: "Original", value: "none" as const },
                         ]}
                         onChange={(objectFit) => onProps({ objectFit })}
+                    />
+                    <SelectInput
+                        label="Focus"
+                        value={element.objectPosition ?? "center"}
+                        options={[
+                            { label: "Center", value: "center" as const },
+                            { label: "Top", value: "top" as const },
+                            { label: "Bottom", value: "bottom" as const },
+                            { label: "Left", value: "left" as const },
+                            { label: "Right", value: "right" as const },
+                        ]}
+                        onChange={(objectPosition) => onProps({ objectPosition })}
                     />
                 </Group>
             )}

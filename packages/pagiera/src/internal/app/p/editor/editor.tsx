@@ -119,6 +119,7 @@ import {
     type Breakpoint,
     type BreakpointDefinition,
     type CanvasElement,
+    type ComponentSlotProps,
     type DataSource,
     DRAG_MIME,
     type ElementStyle,
@@ -508,6 +509,9 @@ export default function Editor({
         if (!componentMode || !activeComponentMaster || activeComponentMaster.isLayout) return;
         const directChildren = elements.filter((element) => element.parentId === activeComponentMaster.id);
         if (directChildren.length !== 1) return;
+        // A full-width component — a navbar, a footer, a section — is not an
+        // intrinsic one: hugging it would collapse the band it exists to span.
+        if (activeComponentMaster.base.widthMode === "fill") return;
         const child = directChildren[0];
         const masterNeedsHug =
             activeComponentMaster.base.widthMode !== "auto" ||
@@ -571,10 +575,22 @@ export default function Editor({
 
     const frames = useMemo<Array<{ bp: Breakpoint; width: number; masterId?: string }>>(
         () => componentMode
-            ? activeComponentVariants.map((variant) => {
+            ? activeComponentVariants.flatMap((variant) => {
                   const hasContent = componentHasContent(elements, variant);
+                  // A component that fills its container has no width of its
+                  // own to draw at: it is as wide as the page it lands on. It
+                  // gets the page's artboards, so a navbar or a footer is
+                  // designed at desktop, tablet and phone widths like the
+                  // pages it will sit on, rather than on a sliver.
+                  if (hasContent && variant.base.widthMode === "fill") {
+                      return breakpointDefs.map((item) => ({
+                          bp: item.id,
+                          width: item.canvasWidth ?? item.width,
+                          masterId: variant.id,
+                      }));
+                  }
                   return {
-                      bp: "desktop",
+                      bp: cascade.baseId,
                       // Empty masters do not expose their stale fixed canvas.
                       // The ghost is the entire surface until real content is
                       // present; afterwards this follows the rendered root.
@@ -587,8 +603,17 @@ export default function Editor({
                   };
               })
             : breakpointDefs.map((item) => ({ bp: item.id, width: item.canvasWidth ?? item.width })),
-        [activeComponentVariants, breakpointDefs, componentMode, componentPreviewSizes, elements],
+        [activeComponentVariants, breakpointDefs, cascade.baseId, componentMode, componentPreviewSizes, elements],
     );
+    // Only a full-width component has more than one artboard. Any other is
+    // drawn at the base breakpoint alone, so leaving a narrower one selected
+    // would send every edit into an override nothing on screen shows.
+    const activeComponentSpansBreakpoints = Boolean(
+        componentMode && activeComponentMaster?.base.widthMode === "fill" && componentHasContent(elements, activeComponentMaster),
+    );
+    useEffect(() => {
+        if (componentMode && !activeComponentSpansBreakpoints && breakpoint !== cascade.baseId) setBreakpoint(cascade.baseId);
+    }, [activeComponentSpansBreakpoints, breakpoint, cascade.baseId, componentMode]);
 
     /** Widest frame on screen; the zoom fits against this. */
     const fitWidth = Math.max(320, frames.reduce((total, frame) => total + frame.width, 0) + Math.max(0, frames.length - 1) * 40);
@@ -1434,13 +1459,14 @@ export default function Editor({
     const [contentHeight, setContentHeight] = useState(rootStyle.canvasHeight);
 
     const observeComponentPreview = useCallback((
+        key: string,
         masterId: string,
         surface: HTMLDivElement | null,
         measureWidth: boolean,
         measureHeight: boolean,
     ) => {
-        componentPreviewObservers.current.get(masterId)?.disconnect();
-        componentPreviewObservers.current.delete(masterId);
+        componentPreviewObservers.current.get(key)?.disconnect();
+        componentPreviewObservers.current.delete(key);
         if (!surface || !componentMode || (!measureWidth && !measureHeight)) return;
 
         const root = surface.querySelector<HTMLElement>(
@@ -1453,19 +1479,19 @@ export default function Editor({
             const width = Math.max(1, Math.round(rect.width / scale));
             const height = Math.max(1, Math.round(rect.height / scale));
             setComponentPreviewSizes((current) => {
-                const previous = current[masterId];
+                const previous = current[key];
                 const next = {
                     width: measureWidth ? width : previous?.width ?? width,
                     height: measureHeight ? height : previous?.height ?? height,
                 };
                 return previous?.width === next.width && previous.height === next.height
                     ? current
-                    : { ...current, [masterId]: next };
+                    : { ...current, [key]: next };
             });
         };
         const observer = new ResizeObserver(measure);
         observer.observe(root);
-        componentPreviewObservers.current.set(masterId, observer);
+        componentPreviewObservers.current.set(key, observer);
         // `ref` callbacks run during React's commit. Measuring and setting
         // state synchronously here caused commit -> render -> ref -> setState
         // recursion. ResizeObserver delivers the initial size after layout,
@@ -1564,7 +1590,7 @@ export default function Editor({
      */
     const restingFrames = useRef(new Map<string, React.ReactNode>());
     const frameBody = (frame: Frame, frameElements: CanvasElement[], primary: boolean) => {
-        const key = frame.masterId ?? frame.bp;
+        const key = frame.masterId ? `${frame.masterId}@${frame.bp}` : frame.bp;
         if (!primary && gesturing) {
             const kept = restingFrames.current.get(key);
             if (kept) return kept;
@@ -1753,6 +1779,56 @@ export default function Editor({
                         return next.id === element.id ? { ...next, content } : next;
                     }
                     return candidate.id === element.id ? { ...candidate, content } : candidate;
+                }),
+            );
+        },
+        [byId, componentInstanceFor, patchProps, setElements],
+    );
+
+    /**
+     * Changing one layer of a placed component from the inspector.
+     *
+     * The same rule as typing into it: the layer is a copy, so the change is
+     * filed on the instance under the master slot it replaces — words in
+     * `componentContent`, a picture or a link in `componentProps` — and the
+     * copy is updated in place so the canvas shows it at once. A value put back
+     * to what the master has stops being an override.
+     */
+    const editSlot = useCallback(
+        (elementId: string, patch: ComponentSlotProps & { content?: string }) => {
+            const element = byId.get(elementId);
+            if (!element) return;
+            const instance = componentInstanceFor(element);
+            if (!instance) {
+                patchProps(element.id, patch);
+                return;
+            }
+            const slot = element.componentSourceId ?? element.id;
+            const master = byId.get(slot);
+            const { content, ...props } = patch;
+            setElements((els) =>
+                els.map((candidate) => {
+                    let next = candidate;
+                    if (candidate.id === instance.id) {
+                        const words = { ...candidate.componentContent };
+                        if (content !== undefined) {
+                            if ((master?.content ?? "") === content) delete words[slot];
+                            else words[slot] = content;
+                        }
+                        const own: ComponentSlotProps = { ...candidate.componentProps?.[slot], ...props };
+                        for (const key of Object.keys(own) as Array<keyof ComponentSlotProps>) {
+                            if (own[key] === undefined || (own[key] ?? "") === (master?.[key] ?? "")) delete own[key];
+                        }
+                        const slots = { ...candidate.componentProps };
+                        if (Object.keys(own).length) slots[slot] = own;
+                        else delete slots[slot];
+                        next = {
+                            ...candidate,
+                            componentContent: Object.keys(words).length ? words : undefined,
+                            componentProps: Object.keys(slots).length ? slots : undefined,
+                        };
+                    }
+                    return next.id === element.id ? { ...next, ...patch } : next;
                 }),
             );
         },
@@ -2159,12 +2235,15 @@ export default function Editor({
             if (copy) sourceIdByOriginalId.set(element.id, copy.id);
         });
         const componentId = clone.rootId;
+        // A full-width section keeps how it adapts: its component is edited on
+        // one artboard per breakpoint, so those overrides stay visible and
+        // editable. Anything else is drawn at the base breakpoint alone, where
+        // carried-over overrides would publish a state the component editor
+        // never shows — those are dropped.
+        const keepsBreakpoints = selectedElement.base.widthMode === "fill";
         const masterCopies = clone.elements.map((element) => ({
             ...element,
-            // A component has variants, not hidden page-breakpoint styles.
-            // Keeping the source element's overrides makes the published
-            // result differ from the only state visible in component mode.
-            overrides: undefined,
+            overrides: keepsBreakpoints ? element.overrides : undefined,
             name: element.id === clone.rootId
                 ? (selectedElement.name?.trim() || `${selectedElement.type} Component`)
                 : element.name,
@@ -3675,6 +3754,23 @@ export default function Editor({
         [samples],
     );
 
+    /**
+     * Elements that are selected, or hold the selection somewhere inside them.
+     * A fixed element waiting for a scroll position is only drawn while it is
+     * one of these — see `renderNode`.
+     */
+    const selectionPathIds = useMemo(() => {
+        const ids = new Set<string>();
+        for (const id of selectedIds) {
+            let cursor = byId.get(id);
+            while (cursor && !ids.has(cursor.id)) {
+                ids.add(cursor.id);
+                cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+            }
+        }
+        return ids;
+    }, [byId, selectedIds]);
+
     type Frame = { bp: Breakpoint; width: number; masterId?: string };
 
     const renderNode = (
@@ -3696,6 +3792,11 @@ export default function Editor({
             ? { ...resolvedStyle, ...(previewVisible !== undefined ? { hidden: !previewVisible } : undefined), ...hovering, ...pressing }
             : resolvedStyle;
         if (style.hidden) return null;
+        // A still canvas has no scroll position, so an element that appears
+        // after one would sit pinned over whatever it is meant to replace —
+        // usually the page's real header. It is drawn while it is being worked
+        // on and stays out of the way otherwise.
+        if (style.position === "fixed" && style.pinAfter > 0 && !componentMode && !selectionPathIds.has(el.id)) return null;
 
         const children = childrenIn(el.id);
         const componentInstance = componentInstanceFor(raw);
@@ -4695,7 +4796,9 @@ export default function Editor({
                             ) : leftTab === "Assets" ? (
                                 <AssetsPanel
                                     assets={componentAssets}
-                                    activeMasterId={activeComponentMaster?.id}
+                                    elements={elements}
+                                    rootStyle={rootStyle}
+                                    activeMasterId={componentMode ? activeComponentMaster?.id : undefined}
                                     onOpen={(master) => { setRootStyle({ ...rootStyle, documentMode: "component" }); setActiveComponentMasterId(master.id); setSelectedIds([master.id]); setBreakpoint("desktop"); setLeftTab("Components"); }}
                                     onCreate={() => createBlankComponent()}
                                     onCreateLayout={() => createBlankComponent("Layout")}
@@ -4929,7 +5032,13 @@ export default function Editor({
                             })}
                             {frames.map((frame) => {
                                 const frameMaster = frame.masterId ? componentMasters.find((master) => master.id === frame.masterId) : undefined;
-                                const primary = componentMode ? frame.masterId === activeComponentMaster?.id : frame.bp === breakpoint;
+                                // A full-width component is drawn once per breakpoint, so its
+                                // artboards are told apart by both the variant and the width.
+                                const spansBreakpoints = componentMode && frameMaster?.base.widthMode === "fill" && componentHasContent(elements, frameMaster);
+                                const frameKey = frame.masterId ? (spansBreakpoints ? `${frame.masterId}@${frame.bp}` : frame.masterId) : frame.bp;
+                                const primary = componentMode
+                                    ? frame.masterId === activeComponentMaster?.id && (!spansBreakpoints || frame.bp === breakpoint)
+                                    : frame.bp === breakpoint;
                                 const frameElementIds = componentMode && frame.masterId ? subtreeIds(elements, frame.masterId) : undefined;
                                 // A parked layer is drawn once, on the canvas
                                 // beside the artboards. It used to be drawn
@@ -4943,7 +5052,7 @@ export default function Editor({
                                     frameMaster && componentHasContent(elements, frameMaster),
                                 );
                                 const measuredComponentHeight = frameMaster
-                                    ? componentPreviewSizes[frameMaster.id]?.height
+                                    ? componentPreviewSizes[frameKey]?.height
                                     : undefined;
                                 const frameCanvasHeight = componentMode
                                     ? !hasComponentContent
@@ -4962,7 +5071,7 @@ export default function Editor({
                                 const showFrameRange = frameHeaderWidth >= 330;
                                 const showFrameActions = frameHeaderWidth >= 210;
                                 return (
-                                    <div key={frame.masterId ?? frame.bp} className="flex flex-col gap-2">
+                                    <div key={frameKey} className="flex flex-col gap-2">
                                         <div
                                             draggable={!componentMode}
                                             onDragStart={(event) => { if (componentMode) return; setDraggedBreakpointId(frame.bp); event.dataTransfer.effectAllowed = "move"; }}
@@ -4988,7 +5097,7 @@ export default function Editor({
                                             ) : (
                                                 <button
                                                     type="button"
-                                                    onClick={() => { if (frameMaster) { setActiveComponentMasterId(frameMaster.id); setSelectedIds([frameMaster.id]); } else setBreakpoint(frame.bp); }}
+                                                    onClick={() => { if (frameMaster) { setActiveComponentMasterId(frameMaster.id); setSelectedIds([frameMaster.id]); if (spansBreakpoints) setBreakpoint(frame.bp); } else setBreakpoint(frame.bp); }}
                                                     onDoubleClick={() => { if (!componentMode) setEditingBreakpointId(frame.bp); }}
                                                     title={componentMode ? undefined : "Double-click to rename"}
                                                     className={`min-w-0 flex-1 truncate text-left text-[11px] font-medium capitalize transition-colors ${
@@ -4997,7 +5106,7 @@ export default function Editor({
                                                             : "text-ed-faint hover:text-ed-muted"
                                                     }`}
                                                 >
-                                                    {componentMode ? `${frameMaster?.name ?? "Asset"} / ${frameMaster?.variant ?? "Default"}` : definition?.name ?? frame.bp}
+                                                    {componentMode ? `${frameMaster?.name ?? "Asset"} / ${frameMaster?.variant ?? "Default"}${spansBreakpoints ? ` · ${definition?.name ?? frame.bp}` : ""}` : definition?.name ?? frame.bp}
                                                 </button>
                                             )}
 
@@ -5063,6 +5172,7 @@ export default function Editor({
                                                     if (primary) frameRef.current = node;
                                                     if (componentMode && frame.masterId) {
                                                         observeComponentPreview(
+                                                            frameKey,
                                                             frame.masterId,
                                                             node,
                                                             frameMaster?.base.widthMode === "auto",
@@ -5183,7 +5293,7 @@ export default function Editor({
                                                         ))}
                                                 </div>
                                             </div>
-                                            {componentMode && <button type="button" aria-label="Resize component width" onMouseDown={(event) => { if (frameMaster && frameMaster.id !== activeComponentMaster?.id) { setActiveComponentMasterId(frameMaster.id); setSelectedIds([frameMaster.id]); } beginComponentWidthResize(event, frameMaster); }} className="absolute -right-1.5 inset-y-0 z-30 w-3 cursor-ew-resize opacity-0 transition-opacity group-hover/frame:opacity-100"><span className="absolute inset-y-1/2 left-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ed-accent shadow-[0_0_0_3px_var(--ed-accent-soft)]" /></button>}
+                                            {componentMode && !spansBreakpoints && <button type="button" aria-label="Resize component width" onMouseDown={(event) => { if (frameMaster && frameMaster.id !== activeComponentMaster?.id) { setActiveComponentMasterId(frameMaster.id); setSelectedIds([frameMaster.id]); } beginComponentWidthResize(event, frameMaster); }} className="absolute -right-1.5 inset-y-0 z-30 w-3 cursor-ew-resize opacity-0 transition-opacity group-hover/frame:opacity-100"><span className="absolute inset-y-1/2 left-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ed-accent shadow-[0_0_0_3px_var(--ed-accent-soft)]" /></button>}
                                             {primary && <button type="button" aria-label={`Resize ${componentMode ? "component" : "page"} canvas height`} onMouseDown={beginCanvasResize} className="absolute -bottom-1.5 inset-x-0 z-30 h-3 cursor-ns-resize opacity-0 transition-opacity group-hover/frame:opacity-100"><span className="absolute left-1/2 top-1/2 h-1 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ed-accent shadow-[0_0_0_3px_var(--ed-accent-soft)]" /></button>}
                                         </div>
                                     </div>
@@ -5325,6 +5435,7 @@ export default function Editor({
                                         onStyle={(patch) => patchStyle([selectedElement.id], patch)}
                                         onReset={(keys) => resetOverrides([selectedElement.id], keys)}
                                         onProps={(patch) => patchProps(selectedElement.id, patch)}
+                                        onSlot={editSlot}
                                         onCommitStart={beginTransaction}
                                         onCommitEnd={endTransaction}
                                         sources={dataSources}

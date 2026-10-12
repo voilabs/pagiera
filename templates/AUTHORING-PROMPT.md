@@ -161,6 +161,7 @@ Content fields, by element type:
 | --- | --- | --- |
 | `content` | Heading, Text, Button | Max 10 000 chars. Plain text, no HTML. |
 | `src`, `alt`, `objectFit` | Image, Video | `objectFit`: `cover\|contain\|fill\|none`. |
+| `objectPosition` | Image | `center\|top\|bottom\|left\|right` — the part kept in view when the image is cropped. |
 | `iconName` | Icon | Must be a known Pagiera icon name. |
 | `href`, `target` | Button, any linkable | `target`: `_self\|_blank`. |
 | `placeholder`, `fieldName`, `inputType`, `required` | Input, Textarea | `inputType`: `text\|email\|password\|number\|tel\|url\|search`. |
@@ -171,7 +172,7 @@ Content fields, by element type:
 
 ## 6. ElementStyle
 
-All 57 keys, with the default used when the key is absent. Write only what
+Every key, with the default used when the key is absent. Write only what
 differs from the default — the validator fills the rest.
 
 > **There are no per-type defaults in a bundle.** When the builder installs a
@@ -212,6 +213,7 @@ differs from the default — the validator fills the rest.
 | `gradient` | `""` | full CSS gradient; painted over `bg` |
 | `color` | `"#27272a"` | text color |
 | `radius` | `0` | 0–9999 |
+| `radiusTL`, `radiusTR`, `radiusBR`, `radiusBL` | `null` | 0–9999, or `null` to follow `radius` |
 | `opacity` | `100` | 0–100 |
 | `borderW` | `0` | 0–999 |
 | `borderC` | `"transparent"` | CSS color |
@@ -230,6 +232,8 @@ differs from the default — the validator fills the rest.
 | `letterSpacing` | `0` | −50–50 (px) |
 | `textAlign` | `"left"` | `left\|center\|right\|justify` |
 | `textTransform` | `"none"` | `none\|uppercase\|lowercase\|capitalize` |
+| `fontStyle` | `"normal"` | `normal\|italic` |
+| `lineClamp` | `0` | 0–99 lines; longer text ends in an ellipsis, `0` shows every line |
 
 **Composition**
 
@@ -239,6 +243,7 @@ differs from the default — the validator fills the rest.
 | `position` | `"static"` | `static\|sticky` |
 | `zIndex` | `0` | −9999–9999 (CSS stacking, separate from `z`) |
 | `stickyOffset` | `0` | −9999–9999; only read when `position: "sticky"` |
+| `pinAfter` | `0` | 0–100000 px scrolled before a `position: "fixed"` element slides in; `0` shows it from the start |
 | `bgImage` | `""` | plain URL — **no** quotes, parentheses or backticks |
 | `bgSize` | `"cover"` | `cover\|contain\|auto` |
 | `bgPosition` | `"center"` | |

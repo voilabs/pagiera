@@ -147,6 +147,20 @@ Sıradan katmanlardan yeniden kullanılabilir bir parça oluşturun, ardından b
 3. Örnekler oluşturun ve ana bileşendeki düzenlemenin bunlara yansıdığını doğrulayın.
 4. Her varyantı ve geçersiz kılınmış her örneği ayrı ayrı test edin.
 
+### Bir örnek neleri değiştirebilir
+
+Yerleştirilmiş bir bileşeni seçip Content sekmesini açın. Component content, içindeki her metin, görsel ve bağlantı katmanını listeler:
+
+- Text, o katmanın metnini değiştirir.
+- Source ve Alt text, bir görseli değiştirir.
+- Link, bağlantılı bir katmanın gittiği yeri değiştirir.
+
+Bu değerler yalnızca o yerleşime aittir. Düzen, stil ve geri kalan her şey ana bileşenden gelmeye devam eder; bu yüzden ana bileşende sonradan yapılan değişiklik bütün örneklere ulaşır. Bir alanı ana bileşendeki değere geri getirmek geçersiz kılmayı kaldırır.
+
+### Bir bileşeni düzenlemek
+
+Bir bileşeni açtığınızda kendi tuvalinde gösterilir. Kökü kullanılabilir genişliği dolduran bileşen — gezinme çubuğu, alt bilgi, bölüm — sayfanın her breakpoint'i için bir kez çizilir ve dar bir tuvalde yapılan düzenlemeler, tıpkı sayfada olduğu gibi o breakpoint'in geçersiz kılmaları olarak saklanır. İçeriğine göre boyutlanan veya sabit boyutlu bileşen, temel breakpoint'te bir kez çizilir.
+
 ## Ortak sayfa düzenleri
 
 Sayfa düzeni, düzen olarak işaretlenmiş ve tam olarak bir alt içerik yuvası içeren ana bileşendir. Yuva, sayfanın kendi kök içeriğini alır; çevresindeki katmanlar üst bilgi ve alt bilgi gibi ortak arayüzü sağlar.
@@ -379,6 +393,19 @@ Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacınd
 - Web sitesi derleme iş akışına katalog, içerik, iç bağlantı ve yerel blok kapsamı kontrolleri eklendi.
 - Tam düzenleyici stil dosyası içe aktarımı pagiera/full.css olarak düzeltildi.
 - Dokümantasyon kataloğu makine tarafından okunabilir site dizinine eklendi.
+
+### Stüdyo ve görüntüleme
+
+- İtalik metin stili ve uzun metni üç noktayla kesen Max lines ayarı eklendi. İkisi de Typography altındadır ve breakpoint'e göre değişebilir.
+- Köşeler için ayrı yuvarlama değerleri eklendi. Border and shadow → Corners seçeneği Separate yapılana kadar köşeler Corner radius değerini izler.
+- Kırpılan bir görselin hangi bölümünün görünür kalacağını belirleyen Focus ayarı eklendi.
+- Sabit öğeler için Appears after eklendi: sayfa verilen mesafe kadar kaydırıldığında öğe kayarak görünür. Tuval böyle bir öğeyi yalnızca kendisi veya katmanlarından biri seçiliyken çizer; böylece altındaki sayfayı örtmez. JavaScript yoksa öğe baştan itibaren gösterilir.
+- Site üst bilgisi veya alt bilgisi içinde, aynı bileşenin başka bir katmanını açan tetikleyiciler düzeltildi (örneğin menü düğmesi ve açtığı çekmece); bileşeni site düzeni üzerinden alan sayfalarda hiçbir şey yapmıyorlardı.
+- Kökü kullanılabilir genişliği dolduran ve tek çocuğu olan bir bileşen, düzenlemek için açıldığında artık o çocuğun boyutuna küçültülmüyor.
+- Tam genişlikteki bileşenler artık her breakpoint için ayrı bir tuvalde açılıyor. Daha önce bir piksel genişliğinde bir tuvale çiziliyorlardı ve breakpoint geçersiz kılmaları düzenlenemiyordu.
+- Yerleştirilmiş bileşenler, metne ek olarak örnek başına görsel kaynağını, alt metnini ve bağlantı hedefini değiştirebiliyor. Content sekmesi bunları Component content altında listeler.
+- Assets paneli her bileşeni canlı önizlemeli bir kart olarak gösteriyor. Karta tıklamak bileşeni açar, sürüklemek bir kopyasını yerleştirir; varyantlar yalnızca birden fazla olduğunda etiket olarak görünür, site üst bilgisi ve alt bilgisi ayrıca işaretlenir.
+- Create component, tam genişlikteki bir katmanın breakpoint geçersiz kılmalarını koruyor; böylece duyarlı bir bölüm bileşene dönüştükten sonra da duyarlı kalıyor.
 
 ### Ajan araçları
 

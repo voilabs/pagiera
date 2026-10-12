@@ -104,7 +104,9 @@ function declarationMap(style: Record<string, unknown>, type: string) {
         background: String(style.gradient || fillOf(style.bg, style.bgOpacity) || "transparent"),
         color: String(style.color || "inherit"),
         border: Number(style.borderW ?? 0) > 0 ? `${Number(style.borderW)}px ${String(style.borderStyle || "solid")} ${String(style.borderC || "transparent")}` : undefined,
-        borderRadius: px(style.radius),
+        borderRadius: [style.radiusTL, style.radiusTR, style.radiusBR, style.radiusBL].some((corner) => typeof corner === "number")
+            ? [style.radiusTL, style.radiusTR, style.radiusBR, style.radiusBL].map((corner) => `${Number(corner ?? style.radius ?? 0)}px`).join(" ")
+            : px(style.radius),
         boxShadow: style.shadow ? String(style.shadow) : undefined,
         opacity: Number(style.opacity ?? 100) / 100,
         overflow: style.overflow ? String(style.overflow) : undefined,
@@ -112,6 +114,7 @@ function declarationMap(style: Record<string, unknown>, type: string) {
         fontWeight: style.fontWeight ? String(style.fontWeight) : undefined,
         lineHeight: style.lineHeight ? String(style.lineHeight) : undefined,
         letterSpacing: px(style.letterSpacing),
+        fontStyle: style.fontStyle === "italic" ? "italic" : undefined,
         textAlign: style.textAlign ? String(style.textAlign) : undefined,
         textTransform: style.textTransform ? String(style.textTransform) : undefined,
         cursor: style.cursor ? String(style.cursor) : undefined,
@@ -200,7 +203,7 @@ function stylesheet(document: PagieraDocument) {
 
 function ElementContent({ element }: { element: PagieraElement }) {
     if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc={element.code} sandbox={element.codeLanguage === "tsx" ? "allow-scripts" : ""} style={{ width: "100%", height: "100%", border: 0 }} />;
-    if (element.type === "Image") return element.src ? <img src={element.src} alt={element.alt ?? ""} style={{ display: "block", width: "100%", height: "100%", objectFit: element.objectFit ?? "cover" }} /> : null;
+    if (element.type === "Image") return element.src ? <img src={element.src} alt={element.alt ?? ""} style={{ display: "block", width: "100%", height: "100%", objectFit: element.objectFit ?? "cover", objectPosition: element.objectPosition }} /> : null;
     if (element.type === "Video") return element.src ? <iframe src={element.src} title={element.name ?? "Video"} style={{ width: "100%", height: "100%", border: 0 }} /> : null;
     if (element.type === "Icon") return <IconGlyph element={element} name={element.iconName} />;
     // Markup rather than prose: every other textual element would print the

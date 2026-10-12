@@ -111,6 +111,7 @@ export function RenderedPage({
             {includeScripts && elements.some((element) => element.draggable) && <script dangerouslySetInnerHTML={{ __html: DRAG_SCRIPT }} />}
             {includeScripts && elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <script dangerouslySetInnerHTML={{ __html: ACTION_SCRIPT }} />}
             {includeScripts && elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <script dangerouslySetInnerHTML={{ __html: FORM_SCRIPT }} />}
+            {includeScripts && elements.some((element) => { const pinned = resolveStyle(element, baseId, cascade); return pinned.position === "fixed" && pinned.pinAfter > 0; }) && <script dangerouslySetInnerHTML={{ __html: PIN_SCRIPT }} />}
             {includeScripts && rootStyle.customJs && (
                 <script
                     // Last, so the page's own behaviour is already wired up and
@@ -223,6 +224,12 @@ function RenderedNode({
     // A band's background reaches both edges while its content stays centred
     // inside the page's content width.
     const body = band ? <div className="pg-inner">{content}</div> : content;
+    // A fixed element may wait for the page to scroll before it shows; the
+    // threshold and the edge it slides in from travel as attributes so one
+    // static script and one static rule serve every such element.
+    const pinAfter = style.position === "fixed" && style.pinAfter > 0
+        ? { "data-pg-pin-after": style.pinAfter, "data-pg-pin-side": style.pinSide }
+        : undefined;
     const interactionHref =
         element.interaction?.action === "scroll-to"
             ? `#${classFor(element.interaction.value)}`
@@ -395,6 +402,7 @@ function RenderedNode({
                     // accepting the prop.
                     suppressHydrationWarning: style.entrance !== "none" || undefined,
                     id: classFor(element.id),
+                    ...pinAfter,
                     "data-pg-drag": element.draggable ? "true" : undefined,
                     "data-pg-action": element.interaction?.action,
                     "data-pg-target": element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined,
@@ -427,6 +435,7 @@ function RenderedNode({
         id: classFor(element.id),
         htmlFor: tag === "label" && element.labelFor ? classFor(element.labelFor) : undefined,
         type: tag === "button" ? (element.buttonType ?? "button") : undefined,
+        ...pinAfter,
         "data-pg-drag": element.draggable ? "true" : undefined,
         "data-pg-action": element.interaction?.action,
         "data-pg-target": element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined,
@@ -488,6 +497,14 @@ function semanticTag(element: CanvasElement) {
 
 const DRAG_SCRIPT = `(function(){document.querySelectorAll('[data-pg-drag]').forEach(function(n){n.style.touchAction='none';n.style.cursor='grab';n.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();var sx=e.clientX,sy=e.clientY,ox=Number(n.dataset.dx||0),oy=Number(n.dataset.dy||0);n.setPointerCapture(e.pointerId);n.style.cursor='grabbing';var move=function(p){var x=ox+p.clientX-sx,y=oy+p.clientY-sy;n.dataset.dx=String(x);n.dataset.dy=String(y);n.style.translate=x+'px '+y+'px'};var up=function(){n.style.cursor='grab';n.removeEventListener('pointermove',move);n.removeEventListener('pointerup',up)};n.addEventListener('pointermove',move);n.addEventListener('pointerup',up)})})})();`;
 
+/**
+ * Reveals fixed elements that wait for a scroll position.
+ *
+ * The hidden state hangs off a class this script sets, so a visitor without
+ * JavaScript sees the element pinned from the start rather than never.
+ */
+const PIN_SCRIPT = `(function(){var nodes=document.querySelectorAll('[data-pg-pin-after]');if(!nodes.length)return;document.documentElement.classList.add('pg-pin-ready');var sync=function(){for(var i=0;i<nodes.length;i++)nodes[i].classList.toggle('pg-pin-in',window.scrollY>Number(nodes[i].dataset.pgPinAfter))};sync();addEventListener('scroll',sync,{passive:true})})();`;
+
 const ACTION_SCRIPT = `(function(){document.querySelectorAll('[data-pg-target]').forEach(function(trigger){trigger.style.cursor='pointer';trigger.addEventListener('click',function(event){var target=document.getElementById(trigger.dataset.pgTarget);if(!target)return;event.preventDefault();var action=trigger.dataset.pgAction;var open=target.dataset.pgOpen==='true';var next=action==='show-layer'?true:action==='hide-layer'?false:!open;target.dataset.pgOpen=next?'true':'false';target.style.setProperty('display',next?(target.dataset.pgDisplay||'flex'):'none','important');trigger.setAttribute('aria-expanded',String(next));target.setAttribute('aria-hidden',String(!next))})})})();`;
 
 const FORM_SCRIPT = `(function(){function headers(raw){var out={};String(raw||'').split(/\\r?\\n/).forEach(function(line){var at=line.indexOf(':');if(at>0)out[line.slice(0,at).trim()]=line.slice(at+1).trim()});return out}function fields(data){var out={};data.forEach(function(value,key){var next=value instanceof File?value.name:String(value);if(out[key]===undefined)out[key]=next;else if(Array.isArray(out[key]))out[key].push(next);else out[key]=[out[key],next]});return out}function tokens(value,map){return String(value||'').replace(/{{\\s*form\\.([A-Za-z0-9_.-]+)\\s*}}/g,function(_,key){var found=map[key];return found==null?'':Array.isArray(found)?found.join(','):String(found)})}document.querySelectorAll('form[data-pg-form-mode="request"]').forEach(function(form){if(form.dataset.pgFormBound)return;form.dataset.pgFormBound='true';form.addEventListener('submit',async function(event){event.preventDefault();var status=form.querySelector('[data-pg-form-status]');var submit=form.querySelector('[type="submit"]');var data=new FormData(form),map=fields(data),method=form.dataset.pgFormMethod||'POST',kind=form.dataset.pgFormContent||'json',url=form.getAttribute('action')||location.href,custom=tokens(form.dataset.pgFormBody,map),requestHeaders=headers(tokens(form.dataset.pgFormHeaders,map)),options={method:method,headers:requestHeaders};if(method==='GET'){var query=new URLSearchParams(custom||Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] }));var target=new URL(url,location.href);query.forEach(function(value,key){target.searchParams.append(key,value)});url=target.href}else if(kind==='form-data'){if(custom){try{var parsed=JSON.parse(custom);Object.keys(parsed).forEach(function(key){data.set(key,String(parsed[key]))})}catch(_){data.set('_body',custom)}}options.body=data}else if(kind==='urlencoded'){options.body=custom||new URLSearchParams(Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] })).toString();if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/x-www-form-urlencoded;charset=UTF-8'}else{options.body=custom||JSON.stringify(map);if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/json'}form.setAttribute('aria-busy','true');form.dataset.pgState='loading';if(submit)submit.disabled=true;if(status)status.textContent='';try{var response=await fetch(url,options);if(!response.ok)throw new Error('HTTP '+response.status);form.dataset.pgState='success';if(status)status.textContent=form.dataset.pgFormSuccess||'Sent successfully.';if(form.dataset.pgFormReset==='true')form.reset();form.dispatchEvent(new CustomEvent('pagiera:form-success',{bubbles:true,detail:{response:response}}))}catch(error){form.dataset.pgState='error';if(status)status.textContent=form.dataset.pgFormError||'Something went wrong.';form.dispatchEvent(new CustomEvent('pagiera:form-error',{bubbles:true,detail:{error:error}}))}finally{form.removeAttribute('aria-busy');if(submit)submit.disabled=false}})})})();`;
@@ -547,7 +564,7 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
             <img
                 src={element.src}
                 alt={element.alt ?? ""}
-                style={{ objectFit: element.objectFit ?? "cover", borderRadius: "inherit" }}
+                style={{ objectFit: element.objectFit ?? "cover", objectPosition: element.objectPosition, borderRadius: "inherit" }}
             />
         );
     }

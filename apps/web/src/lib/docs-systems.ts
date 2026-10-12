@@ -184,6 +184,20 @@ Build a reusable piece from ordinary layers, then create a component master and 
 3. Create instances and verify that a master edit reaches them.
 4. Test each variant and any overridden instance separately.
 
+### What an instance can change
+
+Select a placed component and open the Content tab. Component content lists every text, image and link layer inside it:
+
+- Text replaces the words of that layer.
+- Source and Alt text replace an image.
+- Link replaces where a linked layer leads.
+
+These values belong to that placement only. Layout, styling and everything else still come from the master, so a later change to the master reaches every instance. Setting a field back to the master's value removes the override.
+
+### Editing a component
+
+Opening a component shows it on its own canvas. A component whose root fills the available width — a navbar, a footer, a section — is drawn once for each breakpoint of the page, and edits made on a narrower artboard are stored as that breakpoint's overrides, exactly as on a page. A component that hugs its content or has a fixed size is drawn once, at the base breakpoint.
+
 ## Shared page layouts
 
 A page layout is a component master marked as a layout with exactly one children slot. The slot receives the page's own root content; surrounding layers provide shared chrome such as a header and footer.
@@ -464,6 +478,19 @@ These entries describe work in the current source tree, not a published npm rele
 - Added catalog, content, internal-link and native-block coverage checks to the website build workflow.
 - Corrected the full editor stylesheet import to pagiera/full.css.
 - Included the documentation catalog in the machine-readable site index.
+
+### Studio and rendering
+
+- Added an italic text style and a Max lines setting that cuts longer text with an ellipsis. Both are under Typography and can differ per breakpoint.
+- Added separate corner radii. Corners stay linked to Corner radius until Border and shadow → Corners is switched to Separate.
+- Added an image Focus setting that chooses which part of a cropped image stays in view.
+- Added Appears after for fixed elements: the element slides in once the page has scrolled the given distance. The canvas draws such an element only while it or one of its layers is selected, so it does not cover the page underneath. Without JavaScript it is shown from the start.
+- Fixed triggers inside the site header or footer that open another layer of the same component, such as a menu button and its drawer; they did nothing on pages that received the component through the site layout.
+- A component whose root fills the available width and holds a single child is no longer shrunk to that child when it is opened for editing.
+- Full-width components now open on one artboard per breakpoint. They were previously drawn on a canvas one pixel wide, and their breakpoint overrides could not be edited.
+- Placed components can replace an image source, its alt text and a link destination per instance, in addition to text. The Content tab lists them under Component content.
+- The Assets panel shows each component as a card with a live preview. Clicking a card opens the component and dragging it places a copy; variants appear as chips only when there is more than one, and the site header and footer are labelled.
+- Create component keeps the breakpoint overrides of a full-width layer, so a responsive section stays responsive after it becomes a component.
 
 ### Agent tooling
 

@@ -1,12 +1,8 @@
-import {
-    IconChevronRight,
-    IconCode,
-    IconComponents,
-    IconFile,
-    IconFrame,
-    IconPlus,
-} from "@tabler/icons-react";
-import type { CanvasElement } from "@/lib/editor/types";
+import { IconCode, IconComponents, IconFrame, IconPlus } from "@tabler/icons-react";
+import { useMemo } from "react";
+import { subtreeIds } from "@/lib/editor/tree";
+import { DEFAULT_ROOT_STYLE, type CanvasElement, type RootStyle } from "@/lib/editor/types";
+import { ElementsThumbnail } from "../library";
 
 const COMPONENT_MIME = "application/pagiera-component";
 
@@ -14,10 +10,12 @@ type Asset = { id: string; name: string; variants: CanvasElement[] };
 
 function Section({
     title,
+    hint,
     onAdd,
     children,
 }: {
     title: string;
+    hint?: string;
     onAdd?: () => void;
     children: React.ReactNode;
 }) {
@@ -31,24 +29,117 @@ function Section({
                     </button>
                 )}
             </div>
-            <div>{children}</div>
+            {hint && <p className="px-2 pb-2 text-[10px] leading-relaxed text-ed-muted">{hint}</p>}
+            <div className="flex flex-col gap-2 px-2">{children}</div>
         </section>
     );
 }
 
-function Row({ icon, label, tone = "purple", onClick }: { icon: React.ReactNode; label: string; tone?: "purple" | "blue" | "muted"; onClick?: () => void }) {
-    const color = tone === "blue" ? "text-sky-500" : tone === "purple" ? "text-ed-accent" : "text-ed-muted";
+/**
+ * The layers of one master, ready to be drawn as a picture of it.
+ *
+ * The master becomes an ordinary root so the renderer draws it at all, and
+ * anything pinned to the screen is left out: a still image has no scroll
+ * position, so a fixed bar or drawer would sit on top of the component it
+ * belongs to instead of beside it.
+ */
+function previewLayers(elements: CanvasElement[], master: CanvasElement): CanvasElement[] {
+    const inside = subtreeIds(elements, master.id);
+    const pinned = new Set<string>();
+    for (const element of elements) {
+        if (inside.has(element.id) && element.id !== master.id && element.base.position === "fixed") {
+            for (const id of subtreeIds(elements, element.id)) pinned.add(id);
+        }
+    }
+    return elements
+        .filter((element) => inside.has(element.id) && !pinned.has(element.id))
+        .map((element) => ({
+            ...element,
+            ...(element.id === master.id ? { parentId: undefined, componentRole: undefined, componentId: undefined } : undefined),
+            href: undefined,
+            interaction: undefined,
+            draggable: undefined,
+            loop: undefined,
+            base: { ...element.base, entrance: "none" as const },
+        }));
+}
+
+/**
+ * One component, shown as what it looks like.
+ *
+ * The whole card opens the component and can be dragged onto the page. A
+ * component used to be a disclosure row with a "Default" file inside it, which
+ * made the most common action — open it, or place it — two clicks deep and
+ * said nothing about which component was which.
+ */
+function ComponentCard({
+    asset,
+    elements,
+    rootStyle,
+    role,
+    activeMasterId,
+    onOpen,
+}: {
+    asset: Asset;
+    elements: CanvasElement[];
+    rootStyle: RootStyle;
+    role?: string;
+    activeMasterId?: string;
+    onOpen: (master: CanvasElement) => void;
+}) {
+    const master = asset.variants[0];
+    const layers = useMemo(() => previewLayers(elements, master), [elements, master]);
+    const active = asset.variants.some((variant) => variant.id === activeMasterId);
+    const drag = (variant: CanvasElement) => (event: React.DragEvent) => {
+        event.dataTransfer.setData(COMPONENT_MIME, variant.id);
+        event.dataTransfer.effectAllowed = "copy";
+    };
+
     return (
-        <button type="button" onClick={onClick} className="group flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[11px] text-ed-muted transition-colors hover:bg-white/[0.055] hover:text-ed-text">
-            <IconChevronRight size={11} className="text-ed-faint transition-transform group-hover:translate-x-0.5" />
-            <span className={color}>{icon}</span>
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-        </button>
+        <div className={`overflow-hidden rounded-xl border bg-ed-subtle transition-colors ${active ? "border-ed-accent" : "border-white/[0.07] hover:border-white/[0.16]"}`}>
+            <button
+                type="button"
+                draggable
+                onDragStart={drag(master)}
+                onClick={() => onOpen(master)}
+                title="Click to edit · drag onto the page to place"
+                className="block w-full cursor-grab text-left active:cursor-grabbing"
+            >
+                {layers.length > 1 || master.content || master.src ? (
+                    <ElementsThumbnail elements={layers} title={`${asset.name} preview`} rootStyle={rootStyle} />
+                ) : (
+                    <span className="flex h-14 items-center justify-center border-b border-ed-border text-[10px] text-ed-faint">Empty — open to design it</span>
+                )}
+                <span className="flex items-center gap-2 px-2.5 py-2">
+                    {master.code ? <IconCode size={13} className="shrink-0 text-ed-muted" /> : master.isLayout ? <IconFrame size={13} className="shrink-0 text-ed-accent" /> : <IconComponents size={13} className="shrink-0 text-ed-accent" />}
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-ed-text">{asset.name}</span>
+                    {role && <span className="rounded-full bg-ed-accent/15 px-1.5 py-0.5 text-[8px] font-semibold text-ed-accent">{role}</span>}
+                </span>
+            </button>
+            {asset.variants.length > 1 && (
+                <div className="flex flex-wrap gap-1 border-t border-white/[0.07] px-2 py-1.5">
+                    {asset.variants.map((variant) => (
+                        <button
+                            key={variant.id}
+                            type="button"
+                            draggable
+                            onDragStart={drag(variant)}
+                            onClick={() => onOpen(variant)}
+                            className={`rounded-md px-1.5 py-0.5 text-[9px] transition-colors ${activeMasterId === variant.id ? "bg-ed-accent/20 text-ed-text" : "bg-white/[0.05] text-ed-muted hover:text-ed-text"}`}
+                        >
+                            {variant.variant ?? "Default"}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 
 export function AssetsPanel({
     assets,
+    elements,
+    rootStyle,
     activeMasterId,
     onOpen,
     onCreate,
@@ -58,6 +149,9 @@ export function AssetsPanel({
     onCode,
 }: {
     assets: Asset[];
+    /** The document the masters live in, so each card can draw its component. */
+    elements: CanvasElement[];
+    rootStyle: RootStyle;
     activeMasterId?: string;
     onOpen: (master: CanvasElement) => void;
     onCreate: () => void;
@@ -66,49 +160,47 @@ export function AssetsPanel({
     onRemoveLayout: () => void;
     onCode: () => void;
 }) {
-    const codeAssets = assets.flatMap((asset) => asset.variants).filter((variant) => Boolean(variant.code));
+    // A thumbnail is a page of its own: the site's font and breakpoints, none
+    // of this page's width cap, custom code or background.
+    const previewRoot = useMemo<RootStyle>(
+        () => ({
+            ...DEFAULT_ROOT_STYLE,
+            fullWidth: true,
+            bg: "transparent",
+            fontFamily: rootStyle.fontFamily,
+            customFonts: rootStyle.customFonts,
+            breakpoints: rootStyle.breakpoints,
+            baseBreakpointId: rootStyle.baseBreakpointId,
+        }),
+        [rootStyle.baseBreakpointId, rootStyle.breakpoints, rootStyle.customFonts, rootStyle.fontFamily],
+    );
+    const roleOf = (asset: Asset) =>
+        asset.id === rootStyle.siteHeaderId ? "Site header"
+            : asset.id === rootStyle.siteFooterId ? "Site footer"
+            : asset.id === pageLayoutId ? "Applied"
+            : undefined;
+    const card = (asset: Asset) => (
+        <ComponentCard key={asset.id} asset={asset} elements={elements} rootStyle={previewRoot} role={roleOf(asset)} activeMasterId={activeMasterId} onOpen={onOpen} />
+    );
+    const layouts = assets.filter((asset) => asset.variants[0]?.isLayout);
+    const code = assets.filter((asset) => !asset.variants[0]?.isLayout && asset.variants.some((variant) => Boolean(variant.code)));
+    const components = assets.filter((asset) => !asset.variants[0]?.isLayout && !code.includes(asset));
+
     return (
         <div className="px-2 pb-4">
-            <Section title="Layouts" onAdd={onCreateLayout}>
-                <p className="px-2 pb-2 text-[10px] leading-relaxed text-ed-muted">Drag a layout onto a page. Its content appears inside Children.</p>
-                {assets.filter(asset => asset.variants[0]?.isLayout).map(asset => <button key={asset.id} type="button" draggable onDragStart={event => { event.dataTransfer.setData(COMPONENT_MIME, asset.variants[0].id); event.dataTransfer.effectAllowed = "copy"; }} onClick={() => onOpen(asset.variants[0])} className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12px] text-ed-text hover:bg-ed-field"><IconFrame size={14} className="text-ed-accent"/><span className="flex-1 truncate">{asset.name}</span>{pageLayoutId === asset.id && <span className="text-[9px] text-ed-muted">Applied</span>}</button>)}
-                {pageLayoutId && <button type="button" onClick={onRemoveLayout} className="mt-2 px-2 text-[10px] text-ed-muted hover:text-ed-text">Remove layout from this page</button>}
+            <Section title="Components" hint={components.length ? "Click one to edit it everywhere. Drag it onto the page to place a copy." : undefined} onAdd={onCreate}>
+                {components.length === 0
+                    ? <p className="py-2 text-[10px] leading-relaxed text-ed-faint">No components yet. Add one, or right-click a layer and choose Create component.</p>
+                    : components.map(card)}
             </Section>
 
-            <Section title="Components" onAdd={onCreate}>
-                {assets.length === 0 ? (
-                    <p className="px-7 py-2 text-[10px] leading-relaxed text-ed-faint">No components yet. Add one to build a reusable asset.</p>
-                ) : assets.filter(asset => !asset.variants[0]?.isLayout).map((asset) => (
-                    <details key={asset.id} className="group/asset" open={assets.length < 4}>
-                        <summary className="flex h-8 cursor-pointer list-none items-center gap-2 rounded-lg px-2 text-[11px] text-ed-muted transition-colors hover:bg-white/[0.055] hover:text-ed-text [&::-webkit-details-marker]:hidden">
-                            <IconChevronRight size={11} className="text-ed-faint transition-transform group-open/asset:rotate-90" />
-                            <IconComponents size={14} className="text-ed-accent" />
-                            <span className="min-w-0 flex-1 truncate">{asset.name}</span>
-                            {asset.variants.length > 1 && <span className="rounded-full bg-ed-accent/15 px-1.5 py-0.5 text-[8px] font-semibold text-ed-accent">{asset.variants.length}</span>}
-                        </summary>
-                        <div className="ml-[25px] border-l border-white/[0.08] pl-2">
-                            {asset.variants.map((variant) => (
-                                <button
-                                    key={variant.id}
-                                    type="button"
-                                    draggable
-                                    onDragStart={(event) => { event.dataTransfer.setData(COMPONENT_MIME, variant.id); event.dataTransfer.effectAllowed = "copy"; }}
-                                    onClick={() => onOpen(variant)}
-                                    className={`flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[10px] transition-colors ${activeMasterId === variant.id ? "bg-ed-accent/15 text-ed-text" : "text-ed-muted hover:bg-white/[0.055] hover:text-ed-text"}`}
-                                >
-                                    <IconFile size={12} className="text-ed-faint" />
-                                    <span className="truncate">{variant.variant ?? "Default"}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </details>
-                ))}
+            <Section title="Layouts" hint="A layout wraps a page: drag one onto the page and its content appears inside Children." onAdd={onCreateLayout}>
+                {layouts.map(card)}
+                {pageLayoutId && <button type="button" onClick={onRemoveLayout} className="self-start text-[10px] text-ed-muted hover:text-ed-text">Remove layout from this page</button>}
             </Section>
 
             <Section title="Code" onAdd={onCode}>
-                {codeAssets.map((variant) => (
-                    <Row key={variant.id} icon={<IconCode size={14} />} label={`${variant.name || "Component"}.tsx`} tone="muted" onClick={() => onOpen(variant)} />
-                ))}
+                {code.map(card)}
             </Section>
         </div>
     );

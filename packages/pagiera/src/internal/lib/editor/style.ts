@@ -187,6 +187,17 @@ function backgroundColorOf(style: ElementStyle) {
     return `color-mix(in srgb, ${style.bg} ${opacity}%, transparent)`;
 }
 
+/**
+ * One radius for the box, or four once any corner has been given its own.
+ * A corner left unset keeps following `radius`, so rounding a single corner
+ * does not require restating the other three.
+ */
+function radiusOf(style: ElementStyle) {
+    const corners = [style.radiusTL, style.radiusTR, style.radiusBR, style.radiusBL];
+    if (corners.every((corner) => corner === null || corner === undefined)) return style.radius || undefined;
+    return corners.map((corner) => `${corner ?? style.radius}px`).join(" ");
+}
+
 const ALIGN_SELF_MAP: Record<AlignSelf, CSSProperties["alignSelf"]> = {
     auto: "auto",
     start: "flex-start",
@@ -278,7 +289,7 @@ export function styleToCss(
             ? `blur(${style.backdropBlur}px)`
             : undefined,
         color: style.color,
-        borderRadius: style.radius || undefined,
+        borderRadius: radiusOf(style),
         opacity: style.opacity === 100 ? undefined : style.opacity / 100,
         borderTopWidth: borderT || undefined,
         borderRightWidth: borderR || undefined,
@@ -302,6 +313,7 @@ export function styleToCss(
         letterSpacing: style.letterSpacing || undefined,
         textAlign: style.textAlign,
         textTransform: style.textTransform,
+        fontStyle: style.fontStyle === "italic" ? "italic" : undefined,
     };
 
     // Grid and Repeat ignore the flex axis and lay their children out in
@@ -316,6 +328,17 @@ export function styleToCss(
     // An absolute container is still a positioning context for its children.
     if (style.layout === "absolute") {
         css.display = "block";
+    }
+
+    // Clamping is a property of the box that holds the lines, and the only
+    // form every engine implements is the legacy flexbox one — so a clamped
+    // text gives up its own display mode for it. The count is a string because
+    // a bare number here would be written out as pixels.
+    if (style.lineClamp > 0) {
+        css.display = "-webkit-box";
+        css.WebkitBoxOrient = "vertical";
+        css.WebkitLineClamp = String(style.lineClamp);
+        css.overflow = "hidden";
     }
 
     // `fixed` answers to the viewport, not to any parent, so it is decided
@@ -403,6 +426,11 @@ export function styleToCss(
         css.flexBasis = 0;
         if (style.grow > 0) css.flexShrink = 1;
     }
+    // A clamped text clips its overflow, and a box that clips has no automatic
+    // minimum size. Growing from a zero basis would then let the layout
+    // squeeze it below the lines it was asked to show, so it grows from its
+    // own clamped height instead.
+    if (style.lineClamp > 0 && css.flexBasis === 0) css.flexBasis = "auto";
     if (style.gridSpan > 1) css.gridColumn = `span ${style.gridSpan}`;
 
     return css;

@@ -93,6 +93,11 @@ function thumbnailElements(preset: ComponentPreset): CanvasElement[] {
  */
 function PresetThumbnail({ preset }: { preset: ComponentPreset }) {
     const elements = useMemo(() => thumbnailElements(preset), [preset]);
+    return <ElementsThumbnail elements={elements} title={`${preset.name} preview`} />;
+}
+
+/** The same scaled, scriptless render for any set of layers — a preset, or a site's own component. */
+export function ElementsThumbnail({ elements, title, rootStyle = THUMB_ROOT }: { elements: CanvasElement[]; title: string; rootStyle?: RootStyle }) {
     const hostRef = useRef<HTMLDivElement>(null);
     const [body, setBody] = useState<HTMLElement | null>(null);
     const [width, setWidth] = useState(0);
@@ -140,7 +145,7 @@ function PresetThumbnail({ preset }: { preset: ComponentPreset }) {
         >
             {scale > 0 && (
                 <iframe
-                    title={`${preset.name} preview`}
+                    title={title}
                     sandbox="allow-same-origin"
                     srcDoc="<!doctype html><html><head><meta charset='utf-8'></head><body style='margin:0'></body></html>"
                     onLoad={(event) => setBody(event.currentTarget.contentDocument?.body ?? null)}
@@ -155,7 +160,7 @@ function PresetThumbnail({ preset }: { preset: ComponentPreset }) {
                     }}
                 />
             )}
-            {body && createPortal(<RenderedPage elements={elements} rootStyle={THUMB_ROOT} includeScripts={false} />, body)}
+            {body && createPortal(<RenderedPage elements={elements} rootStyle={rootStyle} includeScripts={false} />, body)}
         </div>
     );
 }

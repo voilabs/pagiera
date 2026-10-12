@@ -58,6 +58,13 @@ function borderSide(value: unknown, fallback: number | null) {
     return num(value, fallback ?? 0, 0, 999);
 }
 
+/** A corner follows `radius` until it is given a value of its own. */
+function cornerRadius(value: unknown, fallback: number | null) {
+    if (value === null) return null;
+    if (value === undefined) return fallback;
+    return num(value, fallback ?? 0, 0, 9999);
+}
+
 function horizontalMargin(value: unknown, fallback: number | "auto") {
     if (value === "auto") return "auto" as const;
     return num(value, typeof fallback === "number" ? fallback : 0, 0, 9999);
@@ -292,6 +299,35 @@ function parseAttributes(input: unknown): ElementAttribute[] | undefined {
     return out.length > 0 ? out : undefined;
 }
 
+/**
+ * An instance's own pictures and links, slot by slot.
+ *
+ * Each value passes the same check the field it replaces would: an image
+ * source here ends up in an `<img>`, a link in an `href`, exactly as if it had
+ * been typed onto the layer itself.
+ */
+function parseComponentProps(input: unknown): CanvasElement["componentProps"] {
+    if (!input || typeof input !== "object") return undefined;
+    const out: NonNullable<CanvasElement["componentProps"]> = {};
+    for (const [slot, raw] of Object.entries(input as Record<string, unknown>).slice(0, MAX_ELEMENTS)) {
+        const key = str(slot, MAX_SHORT_STRING);
+        if (!key || !raw || typeof raw !== "object") continue;
+        const value = raw as Record<string, unknown>;
+        const src = value.src === undefined ? undefined : safeImageSource(value.src);
+        const alt = str(value.alt, MAX_SHORT_STRING);
+        const href = value.href === undefined ? undefined : safeUrl(value.href);
+        const target = value.target === "_blank" ? ("_blank" as const) : value.target === "_self" ? ("_self" as const) : undefined;
+        const props = {
+            ...(src === undefined ? undefined : { src }),
+            ...(alt === undefined ? undefined : { alt }),
+            ...(href === undefined ? undefined : { href }),
+            ...(target === undefined ? undefined : { target }),
+        };
+        if (Object.keys(props).length > 0) out[key] = props;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /** Choices for a Select or Radio. A choice with no value cannot be submitted. */
 function parseOptions(input: unknown): FieldOption[] | undefined {
     if (!Array.isArray(input)) return undefined;
@@ -398,6 +434,10 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
         gradient: cssValue(raw.gradient, base.gradient),
         color: cssValue(raw.color, base.color),
         radius: num(raw.radius, base.radius, 0, 9999),
+        radiusTL: cornerRadius(raw.radiusTL, base.radiusTL),
+        radiusTR: cornerRadius(raw.radiusTR, base.radiusTR),
+        radiusBR: cornerRadius(raw.radiusBR, base.radiusBR),
+        radiusBL: cornerRadius(raw.radiusBL, base.radiusBL),
         opacity: num(raw.opacity, base.opacity, 0, 100),
         borderW: num(raw.borderW, base.borderW, 0, 999),
         borderT: borderSide(raw.borderT, base.borderT),
@@ -420,10 +460,13 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
             ["none", "uppercase", "lowercase", "capitalize"],
             base.textTransform,
         ),
+        fontStyle: oneOf(raw.fontStyle, ["normal", "italic"] as const, base.fontStyle),
+        lineClamp: num(raw.lineClamp, base.lineClamp, 0, 99),
 
         overflow: oneOf(raw.overflow, ["visible", "hidden", "auto", "scroll"] as const, base.overflow),
         position: oneOf(raw.position, ["static", "sticky", "fixed", "absolute"] as const, base.position),
         pinSide: oneOf(raw.pinSide, ["top", "bottom", "left", "right"] as const, base.pinSide),
+        pinAfter: num(raw.pinAfter, base.pinAfter, 0, 100000),
         zIndex: num(raw.zIndex, base.zIndex, -9999, 9999),
         stickyOffset: num(raw.stickyOffset, base.stickyOffset, -9999, 9999),
         bgImage: raw.bgImage === undefined ? base.bgImage : imageUrl(raw.bgImage),
@@ -577,6 +620,7 @@ export function parseElements(
                               .slice(0, MAX_ELEMENTS),
                       )
                     : undefined,
+            componentProps: parseComponentProps(el.componentProps),
             styleBindings:
                 el.styleBindings && typeof el.styleBindings === "object"
                     ? Object.fromEntries(
@@ -604,6 +648,7 @@ export function parseElements(
             src: el.type === "Image" ? safeImageSource(el.src) : safeUrl(el.src),
             alt: str(el.alt, MAX_SHORT_STRING),
             objectFit: oneOf(el.objectFit, ["cover", "contain", "fill", "none"] as const, "cover"),
+            objectPosition: el.objectPosition === undefined ? undefined : oneOf(el.objectPosition, ["center", "top", "bottom", "left", "right"] as const, "center"),
             iconName: oneOf(el.iconName, PAGIERA_ICON_NAMES, "star"),
             listStyle: oneOf(el.listStyle, ["bullet", "number", "none"] as const, "bullet"),
             svg: safeSvg(el.svg),

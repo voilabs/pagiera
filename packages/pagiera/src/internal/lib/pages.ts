@@ -104,6 +104,8 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
             const clone: CanvasElement = {
                 ...source,
                 ...(ownWords === undefined ? undefined : { content: ownWords }),
+                // Its own picture and destination, for the same reason.
+                ...instance.componentProps?.[slot],
                 id: idBySource.get(slot)!,
                 parentId: isRoot ? instance.parentId : parentSlot ? idBySource.get(parentSlot) : undefined,
                 z: isRoot ? instance.z : source.z,
@@ -114,6 +116,7 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
                 // The instance's own words survive the rebuild that produced
                 // this clone; the master never carries them.
                 componentContent: isRoot ? instance.componentContent : undefined,
+                componentProps: isRoot ? instance.componentProps : undefined,
                 interaction: source.interaction && source.interaction.action !== "navigate"
                     ? { ...source.interaction, value: idBySource.get(source.interaction.value) ?? source.interaction.value }
                     : source.interaction,
@@ -183,6 +186,12 @@ function layoutBand(
             componentId: isRoot ? componentId : undefined,
             componentSourceId: slot,
             variant: isRoot ? master.variant : undefined,
+            // A trigger inside the band names another layer of the same band —
+            // a menu button and the drawer it opens. Both were just given new
+            // ids, so the reference has to follow or the button opens nothing.
+            interaction: source.interaction && source.interaction.action !== "navigate" && ids.has(source.interaction.value)
+                ? { ...source.interaction, value: idFor(slotOf(source.interaction.value)) }
+                : source.interaction,
             layoutRole: role,
             // The page is not where a layout is edited: it is edited once, in
             // the component it is made of, and every page follows.

@@ -18,6 +18,7 @@ export type PagieraElement = {
     target?: "_self" | "_blank";
     alt?: string;
     objectFit?: "cover" | "contain" | "fill" | "none";
+    objectPosition?: "center" | "top" | "bottom" | "left" | "right";
     iconName?: PagieraIconName;
     /** Marker style for a List; also decides whether it publishes as ol or ul. */
     listStyle?: "bullet" | "number" | "none";
