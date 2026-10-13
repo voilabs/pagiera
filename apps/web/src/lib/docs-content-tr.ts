@@ -372,6 +372,56 @@ PostgreSQL kalıcı depolamadır. Redis; yayımlanmış sayfa önbelleğine, şa
 
 Yetkisiz isteklerin reddedildiğini, gizli bilgilerin sunucuda kaldığını, taslak rotalarının gizli kaldığını, veri kaynağı hatalarının öngörülebilir davrandığını ve yedeklerin geri yüklenebildiğini doğrulayın. Kimlik bilgilerini günlüğe kaydetmeden veritabanı bağlantısını, istek hatalarını ve yapay zekâ sağlayıcısı hatalarını izleyin. Üretime geçmeden önce [güvenlik](/docs/security) sayfasını okuyun.`,
 
+  translations: `## Nasıl çalışır
+
+Pagiera çevirilerinizi saklamaz. Bir katman, istediği metni bir çeviri anahtarıyla adlandırır; uygulamanız da görüntülediği dilin metinlerini sağlar. Katmana yazılan metin, görsel veya bağlantı yedek değer olarak yerinde kalır.
+
+1. Bir katman seçin ve Content → Translation bölümünü açın.
+2. Bir anahtar girin, örneğin nav.home. Metin katmanları ve düğmeler Text key; görseller Source key ve Alt key; bağlantılı katmanlar Link key; form alanları Placeholder key alır.
+3. Geçerli dilin metinlerini oluşturucuya verin.
+
+\`\`\`tsx
+import { RenderedPage } from "pagiera/runtime";
+
+const translations = {
+  tr: { nav: { home: "Anasayfa" }, "hero.cta": "Randevu Al" },
+  en: { nav: { home: "Home" }, "hero.cta": "Book an appointment" },
+};
+
+<RenderedPage
+  elements={page.elements}
+  rootStyle={page.rootStyle}
+  data={page.data}
+  translations={translations[locale]}
+/>
+\`\`\`
+
+Anahtarlar düz veya iç içe olabilir: nav.home hem "nav.home" girdisini hem de nav içindeki home değerini bulur. Dilin tanımlamadığı bir anahtar hiçbir şeyi değiştirmez; böylece kısmen çevrilmiş bir site boşluk yerine yazıldığı metni gösterir. translations verilmezse sayfa tam olarak yazıldığı gibi görüntülenir.
+
+Bir veri kaynağına bağlı katman yine verisini gösterir. Yerleştirilmiş bir bileşenin içinde, metni, görseli veya bağlantısı o yerleşim için değiştirilmiş bir katman, o alan için bileşenin anahtarını izlemeyi bırakır.
+
+Anahtarlar harf, rakam, nokta, tire, alt çizgi ve iki nokta kabul eder. Bunların dışındaki her şey sayfa kaydedilirken atılır.
+
+## Stüdyoda dilleri önizlemek
+
+Bütün dilleri stüdyoya verin; araç çubuğunda bir dil seçici belirir. Bir dil seçmek, anahtarlı katmanları o dildeki halleriyle gösterir; Original ise yazılan sayfayı gösterir. Translation bölümü her anahtarın altında, o anahtar için metni olmayan dilleri listeler.
+
+\`\`\`tsx
+<PagieraStudio
+  page={page}
+  pages={pages}
+  library={library}
+  adapters={{
+    ...client.adapters,
+    saveTranslation: (locale, key, value) => saveString(locale, key, value),
+  }}
+  translations={translations}
+/>
+\`\`\`
+
+saveTranslation isteğe bağlıdır. Verildiğinde, bir dil seçiliyken tuvalde yazılan metin o dil ve anahtar için fonksiyonunuza gönderilir ve tuval bunu hemen gösterir. Verilmediğinde dil önizlemesi salt okunurdur: yazılan metni düzenlemek için Original seçeneğine dönün.
+
+Çeviriler sizin verinizdir. Kimin değiştirebileceğine kendi saveTranslation fonksiyonunuzda karar verin ve metinleri uygulamanızın zaten tuttuğu yerde tutun.`,
   changelog: `## Henüz yayımlanmamış değişiklikler
 
 Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacındaki çalışmaları açıklar. Pakette kullanılabilirlik, kurduğunuz sürüme göre kontrol edilmelidir.
@@ -406,6 +456,9 @@ Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacınd
 - Yerleştirilmiş bileşenler, metne ek olarak örnek başına görsel kaynağını, alt metnini ve bağlantı hedefini değiştirebiliyor. Content sekmesi bunları Component content altında listeler.
 - Assets paneli her bileşeni canlı önizlemeli bir kart olarak gösteriyor. Karta tıklamak bileşeni açar, sürüklemek bir kopyasını yerleştirir; varyantlar yalnızca birden fazla olduğunda etiket olarak görünür, site üst bilgisi ve alt bilgisi ayrıca işaretlenir.
 - Create component, tam genişlikteki bir katmanın breakpoint geçersiz kılmalarını koruyor; böylece duyarlı bir bölüm bileşene dönüştükten sonra da duyarlı kalıyor.
+- Çeviri anahtarları eklendi. Metin, görsel kaynağı, alt metin, bağlantı ve placeholder alanlarının her biri bir anahtar adlandırabilir; RenderedPage geçerli dilin metinlerini translations prop'u ile alır ve stüdyo kendisine verilen her dili önizler. Bkz. [çeviriler](/docs/translations).
+- Effects → Hover altına Appears → On parent hover eklendi. Katman, üst öğesinin üzerine gelinene veya odaklanılana kadar gizlidir, göründüğünde belirerek gelir ve tuvalde yalnızca seçiliyken çizilir; böylece açılır menüler ve önizleme kartları artık sayfanın veya bileşenin üzerinde açık durmaz.
+- Giriş animasyonlarının, katman aç/kapa etkileşimlerinin, sürüklenebilir katmanların, istek formlarının ve özel sayfa JavaScript'inin istemci tarafı gezinmeden sonra çalışmaması düzeltildi. Yalnızca tam sayfa yüklemesinde çalışıyorlardı, çünkü sayfalar arasında geçerken eklenen bir betiği tarayıcı hiç çalıştırmaz; oluşturucu artık bu durumda onları kendisi çalıştırıyor.
 
 ### Ajan araçları
 

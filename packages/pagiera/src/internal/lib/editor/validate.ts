@@ -300,6 +300,25 @@ function parseAttributes(input: unknown): ElementAttribute[] | undefined {
 }
 
 /**
+ * Translation keys, field by field.
+ *
+ * A key is a lookup into the host's dictionary and nothing else, so its
+ * alphabet is the one translation files use: words joined by dots, dashes,
+ * underscores or colons. Anything outside it is dropped rather than repaired —
+ * a key that silently became a different key would show the wrong sentence.
+ */
+function parseTranslationKeys(input: unknown): CanvasElement["i18n"] {
+    if (!input || typeof input !== "object") return undefined;
+    const raw = input as Record<string, unknown>;
+    const out: NonNullable<CanvasElement["i18n"]> = {};
+    for (const field of ["content", "src", "alt", "href", "placeholder"] as const) {
+        const key = str(raw[field], MAX_SHORT_STRING)?.trim();
+        if (key && /^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(key)) out[field] = key;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
  * An instance's own pictures and links, slot by slot.
  *
  * Each value passes the same check the field it replaces would: an image
@@ -636,6 +655,7 @@ export function parseElements(
                     : undefined,
 
             content: str(el.content, MAX_CONTENT),
+            i18n: parseTranslationKeys(el.i18n),
             code: str(el.code, MAX_CODE),
             codeSource: str(el.codeSource, 100_000),
             codeLanguage: oneOf(el.codeLanguage, ["html", "tsx"] as const, "html"),

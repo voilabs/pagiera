@@ -26,9 +26,11 @@ import { usePagieraFonts } from "pagiera/provider";
 import { ICON_CATALOG } from "@/lib/editor/icon";
 import { hasOverride, resolveStyle } from "@/lib/editor/style";
 import { displayName } from "@/lib/editor/tree";
+import { lookupTranslation, type Translations } from "@/lib/render/translate";
 import {
     type Align,
     type ComponentSlotProps,
+    type ElementTranslationKeys,
     ASPECT_RATIOS,
     CUSTOM_TAGS,
     type CustomTag,
@@ -94,6 +96,10 @@ type Ctx = {
     onProps: (patch: Partial<CanvasElement>) => void;
     /** Changes one layer inside a placed component; see `InstanceGroup`. */
     onSlot?: (elementId: string, patch: ComponentSlotProps & { content?: string }) => void;
+    /** The site's strings by language, when the host supplies them. */
+    translations?: Record<string, Translations>;
+    /** The language the canvas is previewing, or "" for the authored page. */
+    previewLocale?: string;
     onCommitStart: () => void;
     onCommitEnd: () => void;
     /** Page data sources, for the Repeat picker. */
@@ -1733,10 +1739,59 @@ function InstanceGroup({ element, elements, onSlot }: Pick<Ctx, "element" | "ele
     );
 }
 
-function ContentTab({ element, elements, onProps, onSlot, sources, bindingKeys, insideRepeat, uploadImage }: Ctx) {
+/**
+ * Which translation each language-dependent part of a layer reads.
+ *
+ * The layer keeps what was typed into it; a key only says where another
+ * language's version is to be found. So the fields here are names, not
+ * sentences, and under each one is what the languages actually have for it —
+ * including the ones that have nothing yet.
+ */
+function TranslationGroup({ element, onProps, translations, previewLocale }: Pick<Ctx, "element" | "onProps" | "translations" | "previewLocale">) {
+    const fields: Array<{ field: keyof ElementTranslationKeys; label: string }> = [
+        ...(isTextual(element.type) || element.type === "Button" ? [{ field: "content" as const, label: "Text key" }] : []),
+        ...(element.type === "Image" || element.type === "Video" ? [{ field: "src" as const, label: "Source key" }] : []),
+        ...(element.type === "Image" ? [{ field: "alt" as const, label: "Alt key" }] : []),
+        ...(element.href !== undefined || element.type === "Button" ? [{ field: "href" as const, label: "Link key" }] : []),
+        ...(element.type === "Input" || element.type === "Textarea" || element.type === "Select" ? [{ field: "placeholder" as const, label: "Placeholder key" }] : []),
+    ];
+    if (fields.length === 0) return null;
+
+    const keys = element.i18n ?? {};
+    const locales = Object.keys(translations ?? {});
+    const setKey = (field: keyof ElementTranslationKeys, value: string) => {
+        const next = { ...keys, [field]: value.trim() || undefined };
+        for (const name of Object.keys(next) as Array<keyof ElementTranslationKeys>) if (!next[name]) delete next[name];
+        onProps({ i18n: Object.keys(next).length > 0 ? next : undefined });
+    };
+
+    return (
+        <Group title="Translation" defaultOpen={Object.keys(keys).length > 0}>
+            <p className="text-[10px] leading-relaxed text-ed-faint">
+                A key such as nav.home. Each language shows its own string for it; a language without one keeps what this layer already says.
+            </p>
+            {fields.map(({ field, label }) => {
+                const key = keys[field];
+                const missing = key ? locales.filter((code) => lookupTranslation(translations?.[code], key) === undefined) : [];
+                const shown = key && previewLocale ? lookupTranslation(translations?.[previewLocale], key) : undefined;
+                return (
+                    <div key={field} className="flex flex-col gap-1">
+                        <TextInput label={label} value={key ?? ""} placeholder="section.name" onChange={(value) => setKey(field, value)} />
+                        {shown !== undefined && <p className="truncate text-[10px] text-ed-muted">{previewLocale?.toUpperCase()}: {shown}</p>}
+                        {missing.length > 0 && <p className="text-[10px] text-amber-500">Not translated in {missing.map((code) => code.toUpperCase()).join(", ")}</p>}
+                    </div>
+                );
+            })}
+            {locales.length === 0 && <p className="text-[10px] leading-relaxed text-ed-faint">No languages are connected to the studio yet, so nothing can be previewed here. Keys are still saved with the page.</p>}
+        </Group>
+    );
+}
+
+function ContentTab({ element, elements, onProps, onSlot, sources, bindingKeys, insideRepeat, uploadImage, translations, previewLocale }: Ctx) {
     return (
         <div className="flex flex-col">
             {element.componentRole === "instance" && !element.layoutRole && onSlot && <InstanceGroup element={element} elements={elements} onSlot={onSlot} />}
+            <TranslationGroup element={element} onProps={onProps} translations={translations} previewLocale={previewLocale} />
             {element.interactive && <InteractiveGroup element={element} onProps={onProps} />}
             <CarouselControlGroup element={element} elements={elements} onProps={onProps} />
             {element.disclosure && <Group title={element.disclosure.kind === 'tabs' ? 'Tabs' : 'Accordion'} defaultOpen>
@@ -2582,7 +2637,20 @@ function ClickGroup({ element, style, elements, onProps, onStyle }: Ctx) {
 }
 
 /** The style the element takes while the pointer is over it. */
-function HoverGroup({ element, style, onProps }: Ctx) {
+function HoverGroup({ element, style, onProps, onStyle }: Ctx) {
+    const revealed = element.hover?.hidden === false;
+    /**
+     * Hidden until the parent is hovered: the layer has no box on the page, and
+     * the hover state is what gives it one. Both halves are set together,
+     * because either alone is a layer that is always hidden or never is.
+     */
+    const setRevealed = (on: boolean) => {
+        const next = { ...(element.hover ?? {}) };
+        if (on) next.hidden = false;
+        else delete next.hidden;
+        onStyle({ hidden: on });
+        onProps({ hover: Object.keys(next).length > 0 ? next : undefined, ...(on ? { hoverTrigger: "parent" as const } : undefined) });
+    };
     const hover = element.hover ?? {};
     const active = Object.keys(hover).length > 0;
     const setHover = (patch: Partial<ElementStyle>) => onProps({ hover: { ...hover, ...patch } });
@@ -2618,6 +2686,24 @@ function HoverGroup({ element, style, onProps }: Ctx) {
                     ]}
                     onChange={(hoverTrigger) => onProps({ hoverTrigger })}
                 />
+            )}
+            {element.parentId && (
+                <>
+                    <Segmented
+                        label="Appears"
+                        value={revealed ? "hover" : "always"}
+                        options={[
+                            { label: "Always", value: "always" as const },
+                            { label: "On parent hover", value: "hover" as const },
+                        ]}
+                        onChange={(value) => setRevealed(value === "hover")}
+                    />
+                    {revealed && (
+                        <p className="text-[10px] leading-relaxed text-ed-faint">
+                            Hidden until its parent is hovered or focused — a dropdown, a preview card. The canvas shows it only while it is selected; pick it in Layers to edit it.
+                        </p>
+                    )}
+                </>
             )}
             <ColorInput label="Background" value={hover.bg ?? style.bg} onChange={(bg) => setHover({ bg })} />
             <SliderInput

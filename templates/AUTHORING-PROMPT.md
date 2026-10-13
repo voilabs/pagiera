@@ -164,6 +164,7 @@ Content fields, by element type:
 | `objectPosition` | Image | `center\|top\|bottom\|left\|right` — the part kept in view when the image is cropped. |
 | `iconName` | Icon | Must be a known Pagiera icon name. |
 | `href`, `target` | Button, any linkable | `target`: `_self\|_blank`. |
+| `i18n` | any | `{ content?, src?, alt?, href?, placeholder? }` — a translation key per field, e.g. `{ "content": "nav.home" }`. The authored value stays as the fallback. Keys match `[A-Za-z0-9_][A-Za-z0-9_.:-]*`. |
 | `placeholder`, `fieldName`, `inputType`, `required` | Input, Textarea | `inputType`: `text\|email\|password\|number\|tel\|url\|search`. |
 | `buttonType` | Button | `button\|submit\|reset`. Use `submit` inside a Form. |
 | `formAction`, `formMethod`, `formSubmitMode`, `formContentType`, `formBody`, `formHeaders`, `formSuccessMessage`, `formErrorMessage`, `formResetOnSuccess` | Form | See §10. |

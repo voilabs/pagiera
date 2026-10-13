@@ -58,7 +58,16 @@ export type PagieraStudioAdapters = {
      */
     uploadImage?(file: File): Promise<string>;
     publishedHref?(slug: string): string;
+    /**
+     * Stores one translated string. With it, text typed on the canvas while a
+     * language is previewed is written to that language; without it the
+     * language preview is read-only.
+     */
+    saveTranslation?(locale: string, key: string, value: string): Promise<unknown> | unknown;
 };
+
+/** One language's strings; flat keys and nested objects both work. */
+export type PagieraTranslations = { [key: string]: string | PagieraTranslations };
 
 export type PagieraStudioProps = {
     page: PagieraStudioPage;
@@ -68,6 +77,12 @@ export type PagieraStudioProps = {
     templateRegistryUrl?: string;
     /** Server-resolved editor panel used for the very first render. */
     initialPanel?: string;
+    /**
+     * The site's strings by language, e.g. `{ tr: {...}, en: {...} }`. Naming
+     * any adds a language switch to the toolbar so layers with a translation
+     * key can be previewed in each one.
+     */
+    translations?: Record<string, PagieraTranslations>;
 };
 
 export const PagieraStudio: ComponentType<PagieraStudioProps>;

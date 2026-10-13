@@ -101,11 +101,21 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
             // the page is read, which is what made text inside a placed
             // component impossible to change.
             const ownWords = instance.componentContent?.[slot];
+            // What an instance says for itself is not the master's sentence
+            // any more, so the master's translation key no longer describes
+            // it. Left in place, every language would put the shared
+            // translation back over the one thing this placement changed.
+            const ownProps = instance.componentProps?.[slot];
+            const sharedKeys = source.i18n && (ownWords !== undefined || ownProps)
+                ? Object.fromEntries(Object.entries(source.i18n).filter(([field]) =>
+                      field === "content" ? ownWords === undefined : ownProps?.[field as keyof typeof ownProps] === undefined))
+                : source.i18n;
             const clone: CanvasElement = {
                 ...source,
                 ...(ownWords === undefined ? undefined : { content: ownWords }),
                 // Its own picture and destination, for the same reason.
-                ...instance.componentProps?.[slot],
+                ...ownProps,
+                i18n: sharedKeys && Object.keys(sharedKeys).length ? sharedKeys : undefined,
                 id: idBySource.get(slot)!,
                 parentId: isRoot ? instance.parentId : parentSlot ? idBySource.get(parentSlot) : undefined,
                 z: isRoot ? instance.z : source.z,

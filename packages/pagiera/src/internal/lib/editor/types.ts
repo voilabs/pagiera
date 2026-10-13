@@ -512,6 +512,21 @@ export const STYLE_KEYS = [
 
 export type StyleKey = (typeof STYLE_KEYS)[number];
 
+/**
+ * Translation keys for the parts of an element that differ by language.
+ *
+ * A key names a string in whatever dictionary the host renders the page with.
+ * The authored value stays on the element as the fallback, so a key the
+ * current language does not define changes nothing.
+ */
+export type ElementTranslationKeys = {
+    content?: string;
+    src?: string;
+    alt?: string;
+    href?: string;
+    placeholder?: string;
+};
+
 /** The parts of one layer a placed component may replace for itself. */
 export type ComponentSlotProps = {
     src?: string;
@@ -575,6 +590,8 @@ export type CanvasElement = {
 
     // Content is shared across breakpoints.
     content?: string;
+    /** Which translation each language-dependent field reads; see `ElementTranslationKeys`. */
+    i18n?: ElementTranslationKeys;
     /** Compiled sandbox document used by code components. */
     code?: string;
     /** Authoring source retained so code components can be reopened and edited. */

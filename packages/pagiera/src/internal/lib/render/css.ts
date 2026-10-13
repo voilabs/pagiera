@@ -174,16 +174,29 @@ function interactionDeclarations(
             (delta as Record<string, unknown>)[property as string] = activeCss[property];
         }
     }
+    // A hidden layer has no box at all, so "show it" is not among the
+    // differences above — the resting rule is what hides it. Revealing one is
+    // giving it back the display its own layout asks for.
+    if (resting.hidden && patch.hidden === false) delta.display = activeCss.display;
     return declarationsToCss(delta);
+}
+
+/** Whether hovering is what makes this layer exist on the page at all. */
+function revealsOnHover(element: CanvasElement) {
+    return element.hover?.hidden === false;
 }
 
 function hoverSelector(element: CanvasElement, byId: Map<string, CanvasElement>) {
     const parent = element.hoverTrigger === "parent" && element.parentId
         ? byId.get(element.parentId)
         : undefined;
-    return parent
-        ? `.${classFor(parent.id)}:hover .${classFor(element.id)}`
-        : `.${classFor(element.id)}:hover`;
+    if (!parent) return `.${classFor(element.id)}:hover`;
+    const hovered = `.${classFor(parent.id)}:hover .${classFor(element.id)}`;
+    // A menu that only a pointer can open is closed to everyone on a keyboard,
+    // so focus inside the parent opens a revealed layer too.
+    return revealsOnHover(element)
+        ? `${hovered},.${classFor(parent.id)}:focus-within .${classFor(element.id)}`
+        : hovered;
 }
 
 /**
@@ -429,6 +442,10 @@ export function stylesheetFor(
             ".pg-md table{width:100%;border-collapse:collapse}" +
             ".pg-md :is(th,td){border:1px solid rgba(127,127,127,.35);padding:.45em .7em;text-align:left}" +
             ".pg-md hr{border:0;border-top:1px solid rgba(127,127,127,.35);margin:2em 0}" +
+            // A layer that opens or closes another one is a control. This
+            // used to be set from the script that wires it up, which changed
+            // the element before hydration and logged a mismatch for it.
+            ".pg-node[data-pg-target]{cursor:pointer}" +
             ".pg-link{text-decoration:none;color:inherit}",
     );
 
@@ -533,6 +550,9 @@ export function stylesheetFor(
     for (const element of elements) {
         if (element.hover || element.press) parts.push(`.${classFor(element.id)}{transition:transform .42s cubic-bezier(.16,1,.3,1),scale .42s cubic-bezier(.16,1,.3,1),rotate .42s cubic-bezier(.16,1,.3,1),translate .42s cubic-bezier(.16,1,.3,1),background-color .32s ease,color .32s ease,border-color .32s ease,box-shadow .42s cubic-bezier(.16,1,.3,1),opacity .32s ease,filter .42s ease;will-change:transform}`);
         if (element.hover && Object.keys(element.hover).length) parts.push(`${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.hover)}}`);
+        // Coming out of `display:none` there is no previous frame to animate
+        // from, so a revealed layer would simply pop in. This gives it one.
+        if (revealsOnHover(element)) parts.push(`@starting-style{${hoverSelector(element, byId)}{opacity:0;translate:0 8px}}@media (prefers-reduced-motion:reduce){.${classFor(element.id)}{transition:none}}`);
         if (element.press && Object.keys(element.press).length) parts.push(`.${classFor(element.id)}:active{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.press)}}`);
         if (element.loop) {
             const name = element.loop.type;

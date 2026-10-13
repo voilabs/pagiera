@@ -85,6 +85,7 @@ import {
 import { alignElements, distributeElements } from "@/lib/editor/arrange";
 import { baseOf, cascadeOf, duplicateThresholds, windowRangeChip, windowRangeLabel } from "@/lib/editor/cascade";
 import type { AiDesignPlan } from "@/lib/editor/ai-types";
+import { lookupTranslation, translateElement, type Translations } from "@/lib/render/translate";
 import { bindElement, type Row, rowsFor } from "@/lib/render/bind";
 import { resolveFont } from "@/lib/render/css";
 import { inlineStyleObject } from "@/lib/render/custom";
@@ -345,6 +346,12 @@ export type EditorAdapters = {
     previewSource?: SourcePreviewer;
     /** Compiles author TSX into an isolated, self-contained browser document. */
     compileCode?: (source: string) => Promise<{ status: "ok"; html: string }>;
+    /**
+     * Stores one translated string. With it, text typed on the canvas while a
+     * language is being previewed is written to that language; without it the
+     * preview is read-only.
+     */
+    saveTranslation?: (locale: string, key: string, value: string) => Promise<unknown> | unknown;
 };
 
 const defaultEditorHref = (pageId: string, panel?: string) => `/editor/${encodeURIComponent(pageId)}${panel ? `/${encodeURIComponent(panel)}` : ""}`;
@@ -419,7 +426,14 @@ export default function Editor({
     adapters,
     templateRegistryUrl,
     initialPanel,
+    translations,
 }: {
+    /**
+     * The site's strings, by language: `{ tr: {...}, en: {...} }`. Naming any
+     * adds a language switch to the toolbar, and the canvas then shows layers
+     * that carry a translation key as they read in the chosen language.
+     */
+    translations?: Record<string, Translations>;
     page: EditorPage;
     pages: PageEntry[];
     library: LibraryPage[];
@@ -473,6 +487,17 @@ export default function Editor({
         [documentElements, rootStyle.pageLayoutId],
     );
     const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
+    /** The language the canvas is previewing; "" shows the page as authored. */
+    const [previewLocale, setPreviewLocale] = useState("");
+    /** Strings typed here since the host's dictionaries were handed over. */
+    const [translationEdits, setTranslationEdits] = useState<Record<string, Record<string, string>>>({});
+    const localeCodes = useMemo(() => Object.keys(translations ?? {}), [translations]);
+    const translate = useMemo(() => {
+        if (!previewLocale || !translations?.[previewLocale]) return undefined;
+        const dictionary = translations[previewLocale];
+        const edits = translationEdits[previewLocale];
+        return (key: string) => edits?.[key] ?? lookupTranslation(dictionary, key);
+    }, [previewLocale, translationEdits, translations]);
     const [breakpointPanel, setBreakpointPanel] = useState(false);
     const componentMode = rootStyle.documentMode === "component";
     const componentMasters = elements.filter((element) => element.componentRole === "master");
@@ -1756,6 +1781,20 @@ export default function Editor({
      */
     const editContent = useCallback(
         (element: CanvasElement, content: string) => {
+            // While a language is on screen, the words on the canvas are that
+            // language's. Typing over them changes its string, never the
+            // authored text underneath — which would overwrite the original
+            // with a translation.
+            const key = element.i18n?.content;
+            if (previewLocale && key) {
+                if (!adapters?.saveTranslation) {
+                    setPageError(`"${key}" is shown in ${previewLocale}. Switch the language back to Original to edit the text, or connect saveTranslation to edit translations here.`);
+                    return;
+                }
+                setTranslationEdits((current) => ({ ...current, [previewLocale]: { ...current[previewLocale], [key]: content } }));
+                void adapters.saveTranslation(previewLocale, key, content);
+                return;
+            }
             const instance = componentInstanceFor(element);
             if (!instance) {
                 patchProps(element.id, { content });
@@ -1782,7 +1821,7 @@ export default function Editor({
                 }),
             );
         },
-        [byId, componentInstanceFor, patchProps, setElements],
+        [adapters, byId, componentInstanceFor, patchProps, previewLocale, setElements],
     );
 
     /**
@@ -3780,7 +3819,7 @@ export default function Editor({
         keyPrefix = "",
     ): React.ReactNode => {
         const directRow = row ?? (raw.sourceId ? canvasData[raw.sourceId]?.[0] : undefined);
-        const el = bindElement(raw, directRow);
+        const el = bindElement(translateElement(raw, translate), directRow);
         const resolvedStyle = styleFor(el, frame.bp);
         const isActiveFrame = frame.bp === breakpoint;
         const previewVisible = previewVisibility[el.id];
@@ -3791,7 +3830,10 @@ export default function Editor({
         const style = previewVisible !== undefined || hovering || pressing
             ? { ...resolvedStyle, ...(previewVisible !== undefined ? { hidden: !previewVisible } : undefined), ...hovering, ...pressing }
             : resolvedStyle;
-        if (style.hidden) return null;
+        // A layer that only appears while its parent is hovered stays off the
+        // canvas like any hidden one — otherwise every dropdown would lie open
+        // over the page — but it is drawn while it is being worked on.
+        if (style.hidden && !(el.hover?.hidden === false && selectionPathIds.has(el.id))) return null;
         // A still canvas has no scroll position, so an element that appears
         // after one would sit pinned over whatever it is meant to replace —
         // usually the page's real header. It is drawn while it is being worked
@@ -4467,6 +4509,15 @@ export default function Editor({
             <div className="mx-0.5 h-4 w-px bg-ed-border" />
             <div className="flex items-center gap-1 text-[10px] font-medium text-ed-muted">
                 {componentMode && <><Select value={activeComponentMaster?.id} onValueChange={(id) => { setActiveComponentMasterId(id); setSelectedIds([id]); }}><SelectTrigger aria-label="Variant"><SelectValue placeholder="Select variant" /></SelectTrigger><SelectContent>{activeComponentVariants.map((master) => <SelectItem key={master.id} value={master.id}>{master.variant ?? "Default"}</SelectItem>)}</SelectContent></Select><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} title="Add variant" className="flex size-6 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30"><IconPlus size={12} /></button></>}
+                {localeCodes.length > 0 && (
+                    <Select value={previewLocale || "__original"} onValueChange={(code) => setPreviewLocale(code === "__original" ? "" : code)}>
+                        <SelectTrigger aria-label="Preview language"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__original">Original</SelectItem>
+                            {localeCodes.map((code) => <SelectItem key={code} value={code}>{code.toUpperCase()}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                )}
                 <ToolGroup>
                     <ToolButton size="sm" label="Zoom out (Ctrl -)" onClick={() => stepZoom(-1)}>
                         <IconMinus size={12} />
@@ -5436,6 +5487,8 @@ export default function Editor({
                                         onReset={(keys) => resetOverrides([selectedElement.id], keys)}
                                         onProps={(patch) => patchProps(selectedElement.id, patch)}
                                         onSlot={editSlot}
+                                        translations={translations}
+                                        previewLocale={previewLocale}
                                         onCommitStart={beginTransaction}
                                         onCommitEnd={endTransaction}
                                         sources={dataSources}

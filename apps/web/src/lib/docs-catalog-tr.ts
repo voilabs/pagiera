@@ -12,6 +12,7 @@ export const DOCS_CATALOG_TR: Record<string, { title: string; description: strin
   revisions: { title: "Kaydetme ve revizyonlar", description: "İyimser eşzamanlılığı yönetin, taslakları kurtarın ve kaydetmeyi yayımlamadan ayırın.", group: "Başvuru" },
   "fonts-assets": { title: "Yazı tipleri, simgeler ve varlıklar", description: "Ana uygulamanın yazı tiplerini kaydedin, medya seçin ve içeriği erişilebilir tutun.", group: "Oluşturma" },
   deployment: { title: "Dağıtım ve işletim", description: "Üretim yapılandırması, güvenlik sınırları, önbellekler ve kurtarma kontrolleri.", group: "Başvuru" },
+  translations: { title: "Çeviriler", description: "Katmanlara çeviri anahtarı verin ve sayfayı istediğiniz dilde görüntüleyin.", group: "Oluşturma" },
   changelog: { title: "Değişiklik günlüğü", description: "Henüz yayımlanmamış değişiklikler, dokümantasyon eklemeleri ve uyumluluk notları.", group: "Başvuru" },
   "getting-started": { title: "Başlarken", description: "Gereksinimler, kurulum ve ortam değişkenleri.", group: "Başlangıç" },
   "nextjs-setup": { title: "Next.js kurulumu", description: "Sunucuyu bağlayın, başlangıç verilerini yükleyin ve stüdyoyu açın.", group: "Başlangıç" },

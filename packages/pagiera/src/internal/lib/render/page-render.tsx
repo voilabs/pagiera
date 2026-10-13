@@ -4,7 +4,7 @@ import { shaderDocument } from "../editor/shaders";
 import { interactiveDocument, restoreInteractiveElement, upgradeCarouselElements } from "../editor/interactive";
 import { CarouselContent } from "./carousel-content";
 import { MarqueeContent } from "./marquee";
-import { MarqueeRuntime } from "./marquee-runtime";
+import { MarqueeRuntime, PageScript } from "./marquee-runtime";
 import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import { isBand, resolveStyle } from "@/lib/editor/style";
 import { childrenOf, parkedIds } from "@/lib/editor/tree";
@@ -14,6 +14,7 @@ import { classFor, ENTRANCE_SCRIPT, hasEntrances, stylesheetFor } from "./css";
 import { customTagOf, withCustom } from "./custom";
 import { markdownToHtml } from "./markdown";
 import { IconGlyph } from "@/lib/editor/icon";
+import { resolverFor, translateElement, type TranslationResolver, type Translations } from "./translate";
 
 /**
  * Host components a page may be rendered with.
@@ -54,9 +55,17 @@ export function RenderedPage({
     includeScripts = true,
     components,
     context,
+    translations,
 }: {
     elements: CanvasElement[];
     rootStyle: RootStyle;
+    /**
+     * The strings of the language this page is being rendered in.
+     *
+     * An element names the string it wants with a translation key; this is
+     * where the key is looked up. Leaving it out renders the page as authored.
+     */
+    translations?: Translations;
     /** Rows already fetched for each data source; see `loadPageData`. */
     data?: PageData;
     /** Template thumbnails render inside a scriptless sandbox. */
@@ -83,6 +92,16 @@ export function RenderedPage({
         (element) => !parked.has(element.id) && element.componentRole !== "master",
     );
 
+    // Tells one page from the next for the scripts below: following a link
+    // inside the same route keeps their elements mounted, so they need to know
+    // the document under them changed.
+    let signature = 5381;
+    for (const element of elements) {
+        for (let index = 0; index < element.id.length; index++) signature = ((signature << 5) + signature + element.id.charCodeAt(index)) | 0;
+    }
+    const pageKey = `${elements.length}:${signature}`;
+    const translate = resolverFor(translations);
+
     return (
         <>
             <style
@@ -99,27 +118,18 @@ export function RenderedPage({
                         data={data}
                         components={components}
                         context={context}
+                        translate={translate}
                     />
                 ))}
             </MarqueeRuntime>
-            {includeScripts && hasEntrances(elements) && (
-                <script
-                    // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed script with no interpolated content
-                    dangerouslySetInnerHTML={{ __html: ENTRANCE_SCRIPT }}
-                />
-            )}
-            {includeScripts && elements.some((element) => element.draggable) && <script dangerouslySetInnerHTML={{ __html: DRAG_SCRIPT }} />}
-            {includeScripts && elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <script dangerouslySetInnerHTML={{ __html: ACTION_SCRIPT }} />}
-            {includeScripts && elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <script dangerouslySetInnerHTML={{ __html: FORM_SCRIPT }} />}
-            {includeScripts && elements.some((element) => { const pinned = resolveStyle(element, baseId, cascade); return pinned.position === "fixed" && pinned.pinAfter > 0; }) && <script dangerouslySetInnerHTML={{ __html: PIN_SCRIPT }} />}
-            {includeScripts && rootStyle.customJs && (
-                <script
-                    // Last, so the page's own behaviour is already wired up and
-                    // author code can build on it rather than race it.
-                    // biome-ignore lint/security/noDangerouslySetInnerHtml: the page author's own script for their own site; the parser narrows it and the editor never executes it
-                    dangerouslySetInnerHTML={{ __html: rootStyle.customJs }}
-                />
-            )}
+            {includeScripts && hasEntrances(elements) && <PageScript name="entrance" code={ENTRANCE_SCRIPT} page={pageKey} />}
+            {includeScripts && elements.some((element) => element.draggable) && <PageScript name="drag" code={DRAG_SCRIPT} page={pageKey} />}
+            {includeScripts && elements.some((element) => element.interaction && ["toggle-layer", "show-layer", "hide-layer"].includes(element.interaction.action)) && <PageScript name="action" code={ACTION_SCRIPT} page={pageKey} />}
+            {includeScripts && elements.some((element) => element.type === "Form" && element.formSubmitMode !== "native") && <PageScript name="form" code={FORM_SCRIPT} page={pageKey} />}
+            {includeScripts && elements.some((element) => { const pinned = resolveStyle(element, baseId, cascade); return pinned.position === "fixed" && pinned.pinAfter > 0; }) && <PageScript name="pin" code={PIN_SCRIPT} page={pageKey} />}
+            {/* Last, so the page's own behaviour is already wired up and author
+                code can build on it rather than race it. */}
+            {includeScripts && rootStyle.customJs && <PageScript name="custom" code={rootStyle.customJs} page={pageKey} />}
         </>
     );
 }
@@ -132,7 +142,9 @@ function RenderedNode({
     row,
     components,
     context,
+    translate,
 }: {
+    translate?: TranslationResolver;
     element: CanvasElement;
     elements: CanvasElement[];
     rootStyle: RootStyle;
@@ -153,15 +165,18 @@ function RenderedNode({
     // Page-address tokens first, row binding second: the row may legitimately
     // contain a field called `slug`, and resolving in the other order would let
     // one shadow the other.
+    // Language first: a translated sentence may itself carry `{{params.slug}}`,
+    // and a field bound to data should end up showing the data.
+    const spoken = translateElement(raw, translate);
     const addressed = context
         ? {
-              ...raw,
-              href: bindPageContext(raw.href, context),
-              defaultValue: bindPageContext(raw.defaultValue, context),
-              content: bindPageContext(raw.content, context),
-              formAction: bindPageContext(raw.formAction, context),
+              ...spoken,
+              href: bindPageContext(spoken.href, context),
+              defaultValue: bindPageContext(spoken.defaultValue, context),
+              content: bindPageContext(spoken.content, context),
+              formAction: bindPageContext(spoken.formAction, context),
           }
-        : raw;
+        : spoken;
     const element = bindElement(addressed, directRow);
     const children = childrenOf(elements, element.id);
     const style = resolveStyle(element, baseId, cascade);
@@ -194,6 +209,7 @@ function RenderedNode({
                           row={dataRow}
                           components={components}
                           context={context}
+                          translate={translate}
                       />
                   )),
               )
@@ -207,6 +223,7 @@ function RenderedNode({
                       row={element.type === "Request" ? data[element.sourceId ?? ""]?.[0] : row}
                       components={components}
                       context={context}
+                      translate={translate}
                   />
               ));
 
@@ -495,7 +512,7 @@ function semanticTag(element: CanvasElement) {
     return "div";
 }
 
-const DRAG_SCRIPT = `(function(){document.querySelectorAll('[data-pg-drag]').forEach(function(n){n.style.touchAction='none';n.style.cursor='grab';n.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();var sx=e.clientX,sy=e.clientY,ox=Number(n.dataset.dx||0),oy=Number(n.dataset.dy||0);n.setPointerCapture(e.pointerId);n.style.cursor='grabbing';var move=function(p){var x=ox+p.clientX-sx,y=oy+p.clientY-sy;n.dataset.dx=String(x);n.dataset.dy=String(y);n.style.translate=x+'px '+y+'px'};var up=function(){n.style.cursor='grab';n.removeEventListener('pointermove',move);n.removeEventListener('pointerup',up)};n.addEventListener('pointermove',move);n.addEventListener('pointerup',up)})})})();`;
+const DRAG_SCRIPT = `(function(){document.querySelectorAll('[data-pg-drag]').forEach(function(n){if(n.__pgDrag)return;n.__pgDrag=true;n.style.touchAction='none';n.style.cursor='grab';n.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();var sx=e.clientX,sy=e.clientY,ox=Number(n.dataset.dx||0),oy=Number(n.dataset.dy||0);n.setPointerCapture(e.pointerId);n.style.cursor='grabbing';var move=function(p){var x=ox+p.clientX-sx,y=oy+p.clientY-sy;n.dataset.dx=String(x);n.dataset.dy=String(y);n.style.translate=x+'px '+y+'px'};var up=function(){n.style.cursor='grab';n.removeEventListener('pointermove',move);n.removeEventListener('pointerup',up)};n.addEventListener('pointermove',move);n.addEventListener('pointerup',up)})})})();`;
 
 /**
  * Reveals fixed elements that wait for a scroll position.
@@ -503,9 +520,9 @@ const DRAG_SCRIPT = `(function(){document.querySelectorAll('[data-pg-drag]').for
  * The hidden state hangs off a class this script sets, so a visitor without
  * JavaScript sees the element pinned from the start rather than never.
  */
-const PIN_SCRIPT = `(function(){var nodes=document.querySelectorAll('[data-pg-pin-after]');if(!nodes.length)return;document.documentElement.classList.add('pg-pin-ready');var sync=function(){for(var i=0;i<nodes.length;i++)nodes[i].classList.toggle('pg-pin-in',window.scrollY>Number(nodes[i].dataset.pgPinAfter))};sync();addEventListener('scroll',sync,{passive:true})})();`;
+const PIN_SCRIPT = `(function(){var sync=function(){var nodes=document.querySelectorAll('[data-pg-pin-after]');for(var i=0;i<nodes.length;i++)nodes[i].classList.toggle('pg-pin-in',window.scrollY>Number(nodes[i].dataset.pgPinAfter))};if(!document.querySelector('[data-pg-pin-after]'))return;document.documentElement.classList.add('pg-pin-ready');sync();if(window.__pgPin)return;window.__pgPin=true;addEventListener('scroll',sync,{passive:true})})();`;
 
-const ACTION_SCRIPT = `(function(){document.querySelectorAll('[data-pg-target]').forEach(function(trigger){trigger.style.cursor='pointer';trigger.addEventListener('click',function(event){var target=document.getElementById(trigger.dataset.pgTarget);if(!target)return;event.preventDefault();var action=trigger.dataset.pgAction;var open=target.dataset.pgOpen==='true';var next=action==='show-layer'?true:action==='hide-layer'?false:!open;target.dataset.pgOpen=next?'true':'false';target.style.setProperty('display',next?(target.dataset.pgDisplay||'flex'):'none','important');trigger.setAttribute('aria-expanded',String(next));target.setAttribute('aria-hidden',String(!next))})})})();`;
+const ACTION_SCRIPT = `(function(){document.querySelectorAll('[data-pg-target]').forEach(function(trigger){if(trigger.__pgBound)return;trigger.__pgBound=true;trigger.addEventListener('click',function(event){var target=document.getElementById(trigger.dataset.pgTarget);if(!target)return;event.preventDefault();var action=trigger.dataset.pgAction;var open=target.dataset.pgOpen==='true';var next=action==='show-layer'?true:action==='hide-layer'?false:!open;target.dataset.pgOpen=next?'true':'false';target.style.setProperty('display',next?(target.dataset.pgDisplay||'flex'):'none','important');trigger.setAttribute('aria-expanded',String(next));target.setAttribute('aria-hidden',String(!next))})})})();`;
 
 const FORM_SCRIPT = `(function(){function headers(raw){var out={};String(raw||'').split(/\\r?\\n/).forEach(function(line){var at=line.indexOf(':');if(at>0)out[line.slice(0,at).trim()]=line.slice(at+1).trim()});return out}function fields(data){var out={};data.forEach(function(value,key){var next=value instanceof File?value.name:String(value);if(out[key]===undefined)out[key]=next;else if(Array.isArray(out[key]))out[key].push(next);else out[key]=[out[key],next]});return out}function tokens(value,map){return String(value||'').replace(/{{\\s*form\\.([A-Za-z0-9_.-]+)\\s*}}/g,function(_,key){var found=map[key];return found==null?'':Array.isArray(found)?found.join(','):String(found)})}document.querySelectorAll('form[data-pg-form-mode="request"]').forEach(function(form){if(form.dataset.pgFormBound)return;form.dataset.pgFormBound='true';form.addEventListener('submit',async function(event){event.preventDefault();var status=form.querySelector('[data-pg-form-status]');var submit=form.querySelector('[type="submit"]');var data=new FormData(form),map=fields(data),method=form.dataset.pgFormMethod||'POST',kind=form.dataset.pgFormContent||'json',url=form.getAttribute('action')||location.href,custom=tokens(form.dataset.pgFormBody,map),requestHeaders=headers(tokens(form.dataset.pgFormHeaders,map)),options={method:method,headers:requestHeaders};if(method==='GET'){var query=new URLSearchParams(custom||Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] }));var target=new URL(url,location.href);query.forEach(function(value,key){target.searchParams.append(key,value)});url=target.href}else if(kind==='form-data'){if(custom){try{var parsed=JSON.parse(custom);Object.keys(parsed).forEach(function(key){data.set(key,String(parsed[key]))})}catch(_){data.set('_body',custom)}}options.body=data}else if(kind==='urlencoded'){options.body=custom||new URLSearchParams(Object.entries(map).flatMap(function(pair){return Array.isArray(pair[1])?pair[1].map(function(value){return [pair[0],value]}):[[pair[0],pair[1]]] })).toString();if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/x-www-form-urlencoded;charset=UTF-8'}else{options.body=custom||JSON.stringify(map);if(!requestHeaders['Content-Type'])requestHeaders['Content-Type']='application/json'}form.setAttribute('aria-busy','true');form.dataset.pgState='loading';if(submit)submit.disabled=true;if(status)status.textContent='';try{var response=await fetch(url,options);if(!response.ok)throw new Error('HTTP '+response.status);form.dataset.pgState='success';if(status)status.textContent=form.dataset.pgFormSuccess||'Sent successfully.';if(form.dataset.pgFormReset==='true')form.reset();form.dispatchEvent(new CustomEvent('pagiera:form-success',{bubbles:true,detail:{response:response}}))}catch(error){form.dataset.pgState='error';if(status)status.textContent=form.dataset.pgFormError||'Something went wrong.';form.dispatchEvent(new CustomEvent('pagiera:form-error',{bubbles:true,detail:{error:error}}))}finally{form.removeAttribute('aria-busy');if(submit)submit.disabled=false}})})})();`;
 

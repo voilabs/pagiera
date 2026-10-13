@@ -5,6 +5,7 @@ import { createPagieraClient, editorPanel, editorPath } from "pagiera";
 import type { PagieraStudioProps } from "pagiera/full";
 import PagieraStudio from "pagiera/full";
 import { useEffect, useMemo, useState } from "react";
+import { translations } from "@/lib/translations";
 
 export type EditorBootstrap = {
   page: PagieraStudioProps["page"];
@@ -33,6 +34,7 @@ export function PagieraEditor({
       pages={bootstrap.pages}
       library={bootstrap.library}
       initialPanel={initialPanel}
+      translations={translations}
       adapters={{
         ...client.adapters,
         editorHref,

@@ -15,7 +15,19 @@ export type PagieraComponents = {
     Link?: ElementType;
 };
 
+/**
+ * One language's strings. Flat keys (`{ "nav.home": "Home" }`) and nested
+ * objects (`{ nav: { home: "Home" } }`) both work.
+ */
+export type PagieraTranslations = { [key: string]: string | PagieraTranslations };
+
 export const RenderedPage: ComponentType<{
+    /**
+     * The strings of the language being rendered. A layer that carries a
+     * translation key shows this language's string for it; a key that is
+     * missing here, and every layer without a key, keeps its authored value.
+     */
+    translations?: PagieraTranslations;
     elements: unknown[];
     rootStyle: unknown;
     /** Rows already fetched for each data source; see `loadPageData`. */

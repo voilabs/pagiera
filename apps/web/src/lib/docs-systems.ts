@@ -452,6 +452,63 @@ PostgreSQL is persistent storage. Redis participates in published-page caching, 
 Verify unauthorized requests are rejected, secrets stay server-side, draft routes stay private, data-source failures behave predictably, and backups can be restored. Monitor database connectivity, request errors and AI provider failures without logging credentials. Read [security](/docs/security) before production.`,
   },
   {
+    slug: "translations",
+    title: "Translations",
+    group: "Build" as const,
+    description:
+      "Give layers translation keys and render a page in any language.",
+    content: `## How it works
+
+Pagiera does not store your translations. A layer names the string it wants with a translation key, and your application supplies the strings for the language it is rendering. The text, image or link typed into the layer stays there as the fallback.
+
+1. Select a layer and open Content → Translation.
+2. Enter a key, for example nav.home. Text layers and buttons take a Text key; images take a Source key and an Alt key; linked layers take a Link key; form fields take a Placeholder key.
+3. Pass the current language's strings to the renderer.
+
+\`\`\`tsx
+import { RenderedPage } from "pagiera/runtime";
+
+const translations = {
+  tr: { nav: { home: "Anasayfa" }, "hero.cta": "Randevu Al" },
+  en: { nav: { home: "Home" }, "hero.cta": "Book an appointment" },
+};
+
+<RenderedPage
+  elements={page.elements}
+  rootStyle={page.rootStyle}
+  data={page.data}
+  translations={translations[locale]}
+/>
+\`\`\`
+
+Keys may be flat or nested: nav.home finds both a "nav.home" entry and home inside nav. A key the language does not define changes nothing, so a partly translated site shows its authored text rather than gaps. Leaving translations out renders the page exactly as authored.
+
+A layer bound to a data source still shows its data. Inside a placed component, a layer whose text, image or link was changed for that placement stops following the component's key for that field.
+
+Keys accept letters, digits, dots, dashes, underscores and colons. Anything else is discarded when the page is saved.
+
+## Previewing languages in the studio
+
+Pass every language to the studio and a language switch appears in the toolbar. Choosing a language shows keyed layers as they read in it; Original shows the authored page. Under each key the Translation group lists the languages that have no string for it.
+
+\`\`\`tsx
+<PagieraStudio
+  page={page}
+  pages={pages}
+  library={library}
+  adapters={{
+    ...client.adapters,
+    saveTranslation: (locale, key, value) => saveString(locale, key, value),
+  }}
+  translations={translations}
+/>
+\`\`\`
+
+saveTranslation is optional. With it, text typed on the canvas while a language is selected is sent to your function for that language and key, and the canvas shows it immediately. Without it the language preview is read-only: switch back to Original to edit the authored text.
+
+Translations are your data. Decide who may change them in your own saveTranslation, and keep the strings wherever your application already keeps them.`,
+  },
+  {
     slug: "changelog",
     title: "Changelog",
     group: "Reference" as const,
@@ -491,6 +548,9 @@ These entries describe work in the current source tree, not a published npm rele
 - Placed components can replace an image source, its alt text and a link destination per instance, in addition to text. The Content tab lists them under Component content.
 - The Assets panel shows each component as a card with a live preview. Clicking a card opens the component and dragging it places a copy; variants appear as chips only when there is more than one, and the site header and footer are labelled.
 - Create component keeps the breakpoint overrides of a full-width layer, so a responsive section stays responsive after it becomes a component.
+- Added translation keys. Text, image source, alt text, link and placeholder can each name a key; RenderedPage takes the current language's strings through a translations prop, and the studio previews every language passed to it. See [translations](/docs/translations).
+- Added Appears → On parent hover under Effects → Hover. The layer is hidden until its parent is hovered or focused, fades in when it appears, and is drawn on the canvas only while it is selected — so dropdowns and preview cards no longer lie open over the page or its component.
+- Fixed entrance animations, layer toggles, draggable layers, request forms and custom page JavaScript not running after a client-side navigation. They ran on a full page load only, because a script inserted while moving between pages is never executed by the browser; the renderer now runs them itself in that case.
 
 ### Agent tooling
 
