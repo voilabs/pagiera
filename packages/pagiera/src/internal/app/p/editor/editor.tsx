@@ -3823,7 +3823,13 @@ export default function Editor({
         const resolvedStyle = styleFor(el, frame.bp);
         const isActiveFrame = frame.bp === breakpoint;
         const previewVisible = previewVisibility[el.id];
-        const hovering = isActiveFrame && hoveredEffectIds.has(el.id) ? el.hover : undefined;
+        // A Repeat draws the same layer once per row, so "this layer is
+        // hovered" has to mean this drawing of it. Keyed by id alone, pointing
+        // at one menu item opened the dropdown of every row at once.
+        const hovering = isActiveFrame && hoveredEffectIds.has(`${keyPrefix}${el.id}`) ? el.hover : undefined;
+        // The first drawing of a repeated layer: no row index other than 0
+        // anywhere above it.
+        const firstDrawing = keyPrefix === "" || /^[^:]*:(0:)*$/.test(keyPrefix);
         const pressing = isActiveFrame && pressedEffectId === el.id ? el.press : undefined;
         // The cached style is shared, so a preview or an effect copies before
         // it changes anything.
@@ -3833,7 +3839,9 @@ export default function Editor({
         // A layer that only appears while its parent is hovered stays off the
         // canvas like any hidden one — otherwise every dropdown would lie open
         // over the page — but it is drawn while it is being worked on.
-        if (style.hidden && !(el.hover?.hidden === false && selectionPathIds.has(el.id))) return null;
+        // Inside a Repeat only the first row's copy is shown: seven identical
+        // cards stacked across the page is not a better view of one of them.
+        if (style.hidden && !(el.hover?.hidden === false && firstDrawing && selectionPathIds.has(el.id))) return null;
         // A still canvas has no scroll position, so an element that appears
         // after one would sit pinned over whatever it is meant to replace —
         // usually the page's real header. It is drawn while it is being worked
@@ -3949,11 +3957,17 @@ export default function Editor({
                       el.type === "Request" ? canvasData[el.sourceId ?? ""]?.[0] : row,
                       keyPrefix,
                   ));
+        // The drawings this pointer reaches: this one, and the children that
+        // react to their parent. A Repeat's children are drawn once per row and
+        // the Repeat is the parent of all of them.
+        const childPrefixes = el.type === "Repeat"
+            ? rowsFor(el, canvasData, true).map((_row, index) => `${keyPrefix}${index}:`)
+            : [keyPrefix];
         const hoverEffectIds = [
-            ...(el.hover && el.hoverTrigger !== "parent" ? [el.id] : []),
+            ...(el.hover && el.hoverTrigger !== "parent" ? [`${keyPrefix}${el.id}`] : []),
             ...children
                 .filter((child) => child.hover && child.hoverTrigger === "parent")
-                .map((child) => child.id),
+                .flatMap((child) => childPrefixes.map((prefix) => `${prefix}${child.id}`)),
         ];
 
         return (

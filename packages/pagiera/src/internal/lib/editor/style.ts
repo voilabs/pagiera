@@ -37,6 +37,11 @@ export function resolveStyle(
     }
     if (element.childrenSlot) style = { ...style, widthMode: "fill", heightMode: "fill" };
     if (element.interactive?.kind === "marquee") style = { ...style, layout: "stack", direction: "row", overflow: "hidden" };
+    // A layer whose hover state is what reveals it is hidden at rest on every
+    // artboard. Read from the hover state rather than from a stored `hidden`,
+    // because that one is written per breakpoint: switched on while a narrower
+    // artboard was active, it left the layer lying open on all the others.
+    if (element.hover?.hidden === false && !style.hidden) style = { ...style, hidden: true };
     return style;
 }
 
