@@ -235,7 +235,7 @@ export function TemplatePreview({
                             type="button"
                             onClick={() => setDeviceId(item.id)}
                             title={`${item.name} · ${item.width}px`}
-                            className={`h-6 rounded-md px-2.5 text-[9px] font-medium transition-colors ${
+                            className={`h-6 rounded-md px-2.5 text-[10px] font-medium transition-colors ${
                                 item.id === device?.id
                                     ? "bg-ed-surface text-ed-text"
                                     : "text-ed-faint hover:text-ed-muted"

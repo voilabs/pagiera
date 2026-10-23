@@ -27,5 +27,6 @@ export * from "./panel";
 export * from "./rail";
 export * from "./shell";
 export * from "./settings-nav";
+export * from "./workspace-page";
 export * from "./toolbar";
 export * from "./tooltip";

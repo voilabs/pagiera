@@ -88,7 +88,7 @@ export function HistoryPanel({
     if (!listRevisions) {
         return (
             <div className="p-3">
-                <p className="rounded-[18px] bg-ed-subtle p-3 text-[9px] leading-relaxed text-ed-faint">
+                <p className="rounded-[18px] bg-ed-subtle p-3 text-[10px] leading-relaxed text-ed-faint">
                     History needs a <code>listRevisions</code> adapter from the host app.
                 </p>
             </div>
@@ -96,16 +96,12 @@ export function HistoryPanel({
     }
 
     return (
-        <div className="p-3">
-            <div className="mb-3 rounded-[18px] bg-ed-subtle p-3">
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ed-text">
-                    <IconHistory size={13} /> History
-                </p>
-                <p className="mt-1 text-[9px] leading-relaxed text-ed-faint">
-                    Every save keeps a version. Restoring brings it back as your draft —
-                    visitors see it only after you publish.
-                </p>
-            </div>
+        <div className="px-2 py-3">
+            {/* The panel header already names it; this only says how it works. */}
+            <p className="mb-3 px-2 text-[12px] leading-relaxed text-ed-muted">
+                Every save keeps a version. Restoring brings it back as your draft —
+                visitors see it only after you publish.
+            </p>
 
             {revisions === undefined && (
                 <div className="flex justify-center py-6">
@@ -119,22 +115,22 @@ export function HistoryPanel({
                 </p>
             )}
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-0.5">
                 {(revisions ?? []).map((revision) => {
                     const isCurrent = revision.version === currentVersion;
                     return (
                         <div
                             key={revision.id}
-                            className="flex items-center justify-between gap-2 rounded-2xl bg-ed-field px-2.5 py-2"
+                            className="group flex items-center justify-between gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-[var(--ed-nav-hover)]"
                         >
                             <span className="min-w-0">
-                                <span className="block text-[10px] font-medium text-ed-text">
+                                <span className="block text-[13px] font-medium text-ed-text">
                                     Version {revision.version}
                                     {isCurrent && (
-                                        <span className="ml-1.5 text-[9px] text-ed-faint">current</span>
+                                        <span className="ml-1.5 rounded-full bg-[var(--ed-accent-soft)] px-1.5 py-px text-[11px] font-medium text-ed-accent">Current</span>
                                     )}
                                 </span>
-                                <span className="block text-[9px] text-ed-faint">
+                                <span className="block text-[12px] text-ed-faint">
                                     {formatWhen(revision.createdAt)}
                                 </span>
                             </span>
@@ -142,7 +138,7 @@ export function HistoryPanel({
                                 type="button"
                                 disabled={isCurrent || busyId === revision.id || !restoreRevision}
                                 onClick={() => void restore(revision)}
-                                className="flex shrink-0 items-center gap-1 rounded-md bg-ed-subtle px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text disabled:opacity-30"
+                                className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium text-ed-muted opacity-0 shadow-[inset_0_0_0_1px_var(--ed-border-strong)] transition-opacity hover:text-ed-text focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-0"
                             >
                                 {busyId === revision.id ? (
                                     <IconLoader2 size={10} className="animate-spin" />
@@ -157,7 +153,7 @@ export function HistoryPanel({
             </div>
 
             {error && (
-                <p className="mt-3 rounded-lg bg-red-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-red-300">
+                <p className="mt-3 rounded-lg bg-red-500/10 px-2.5 py-2 text-[10px] leading-relaxed text-red-700">
                     {error}
                 </p>
             )}

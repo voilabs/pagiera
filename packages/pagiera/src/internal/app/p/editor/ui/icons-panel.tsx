@@ -61,11 +61,11 @@ export function IconsPanel({ search, onInsert }: {
                     const svg = iconSvg(data, name);
                     return <button key={`${pack}:${name}`} type="button" title={`${current.name} · ${name}`} aria-label={`Insert ${current.name} ${name}`} onClick={() => onInsert({ name: `${current.name} · ${name}`, svg })} className="group absolute flex flex-col items-center justify-center gap-1 rounded-lg text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-accent focus-visible:outline focus-visible:outline-ed-accent" style={{ top: Math.floor(absolute / COLUMNS) * ROW_HEIGHT, left: `${absolute % COLUMNS * 25}%`, width: "25%", height: ROW_HEIGHT - 4 }}>
                         <span aria-hidden className="block size-6" dangerouslySetInnerHTML={{ __html: svg }} />
-                        <span className="w-full truncate px-1 text-center text-[8px]">{name}</span>
+                        <span className="w-full truncate px-1 text-center text-[10px]">{name}</span>
                     </button>;
                 })}
             </div>
         </div>}
-        <p className="text-[9px] text-ed-faint">{current.name} · {current.license} · SVG / currentColor</p>
+        <p className="text-[10px] text-ed-faint">{current.name} · {current.license} · SVG / currentColor</p>
     </motion.div>;
 }

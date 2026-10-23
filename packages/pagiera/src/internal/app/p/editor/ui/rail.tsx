@@ -33,15 +33,14 @@ export function RailTab({
             aria-label={label}
             aria-pressed={active}
             className={cn(
-                "group relative flex size-7 shrink-0 items-center justify-center rounded-md transition-colors",
+                "group relative flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)]",
                 active
                     ? "bg-[var(--ed-accent-soft)] text-ed-accent"
-                    : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text",
+                    : "text-ed-muted hover:bg-[var(--ed-nav-hover)] hover:text-ed-text",
                 className,
             )}
             {...props}
         >
-            {active && !horizontal && <span className="absolute -left-2 h-5 w-0.5 rounded-r bg-ed-accent" />}
             {icon}
             <ChromeTooltip placement={horizontal ? "below" : "right"}>{label}</ChromeTooltip>
         </button>

@@ -14,7 +14,7 @@ export function AiComposer({ value, onChange, onSubmit, busy, blocked, onStop, e
     }, [value]);
     return <form className="shrink-0 px-3 pb-3 pt-2" onSubmit={event => { event.preventDefault(); onSubmit(); }}>
         {suggestions}
-        <div className="rounded-[20px] bg-ed-field p-3 shadow-[0_4px_18px_rgb(0_0_0/0.08)] ring-1 ring-inset ring-white/[0.06] transition-shadow focus-within:ring-ed-accent/50">
+        <div className="rounded-[20px] bg-ed-field p-3 shadow-[0_4px_18px_rgb(0_0_0/0.08)] ring-1 ring-inset ring-ed-border transition-shadow focus-within:ring-ed-accent/50">
             <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px] text-ed-muted">{context}</div>
             <textarea ref={input} aria-label="Message Luma" rows={3} value={value} disabled={busy}
                 onChange={event => onChange(event.target.value)}

@@ -21,16 +21,16 @@ export function AiMentionMenu({ breakpoints, layers, disabled, onBreakpoint, onL
         })}
     </section>;
     return <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reducedMotion ? 0 : 0.15 }}
-        aria-label="Mention targets" className="mb-2 overflow-hidden rounded-2xl bg-ed-menu shadow-[0_8px_28px_rgb(0_0_0/0.22)] ring-1 ring-white/[0.07]">
+        aria-label="Mention targets" className="mb-2 overflow-hidden rounded-2xl bg-ed-menu shadow-[0_8px_28px_rgb(0_0_0/0.22)] ring-1 ring-ed-border">
         <div className="flex items-center gap-2 px-3 py-2.5">
             <IconAt size={14} className="text-ed-accent" /><span className="flex-1 text-xs font-medium text-ed-text">Choose a target</span>
             <button type="button" aria-label="Close mention targets" onClick={onClose} className="rounded-md p-1 text-ed-faint hover:bg-ed-menu-hover hover:text-ed-text"><IconX size={13} /></button>
         </div>
-        <div className="custom-scrollbar max-h-64 overflow-y-auto overscroll-contain border-t border-white/[0.05] p-1">
+        <div className="custom-scrollbar max-h-64 overflow-y-auto overscroll-contain border-t border-ed-border p-1">
             {group("Breakpoints", breakpoints, true)}
             {group("Layers & components", layers, false)}
             {!breakpoints.length && !layers.length && <div className="px-3 py-6 text-center"><IconSearch size={20} className="mx-auto mb-2 text-ed-faint" /><p className="text-xs text-ed-muted">No matching targets</p><p className="mt-1 text-[10px] text-ed-faint">Try a layer or breakpoint name.</p></div>}
         </div>
-        <p className="border-t border-white/[0.05] px-3 py-2 text-[10px] text-ed-faint">Type after @ to filter targets</p>
+        <p className="border-t border-ed-border px-3 py-2 text-[10px] text-ed-faint">Type after @ to filter targets</p>
     </motion.div>;
 }

@@ -74,7 +74,9 @@ export function assertFetchableUrl(raw: string, allowPrivateHosts?: readonly str
         throw new DataSourceError("Only http and https URLs can be requested.");
     }
 
-    const host = url.hostname.toLowerCase();
+    // `localhost.` is the same host as `localhost`; strip the root dot so the
+    // lists below cannot be sidestepped with it.
+    const host = url.hostname.toLowerCase().replace(/\.+$/, "");
     const allowed = normalizeHosts(allowPrivateHosts);
     // An explicitly opened host skips the private-address rules entirely. The
     // protocol check above still applies, so this cannot open `file:` or
@@ -89,8 +91,11 @@ export function assertFetchableUrl(raw: string, allowPrivateHosts?: readonly str
 
     if (BLOCKED_HOSTS.has(host) || PRIVATE_IPV4.test(host)) refuse(`Requests to ${host} are not allowed.`);
     if (PRIVATE_SUFFIXES.some((suffix) => host.endsWith(suffix))) refuse(`Requests to ${host} are not allowed.`);
-    // Bracketed IPv6 literals: anything link-local or unique-local.
-    if (host.startsWith("[") && /^\[(fe80|fc|fd)/i.test(host)) refuse("Requests to private addresses are not allowed.");
+    // Bracketed IPv6 literals: link-local (fe80::/10) or unique-local (fc00::/7).
+    if (host.startsWith("[") && /^\[(fe[89ab]|fc|fd)/i.test(host)) refuse("Requests to private addresses are not allowed.");
+    // IPv4-mapped and unspecified IPv6 forms reach the IPv4 stack, so
+    // `[::ffff:127.0.0.1]` (which URL rewrites to `[::ffff:7f00:1]`) is loopback.
+    if (host === "[::]" || /^\[::ffff:/i.test(host)) refuse("Requests to private addresses are not allowed.");
 
     return url;
 }
@@ -182,19 +187,22 @@ export async function loadSource(
 ): Promise<SourceResult> {
     const request = buildRequest(source, context, allowPrivateHosts);
     let target = request.url;
+    let method = request.method;
+    let headers = request.headers;
+    let body = request.body;
 
     let response: Response | undefined;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
         response = await fetch(target, {
             // Redirects are followed by hand so each hop is validated too.
             redirect: "manual",
-            method: request.method,
-            headers: request.headers,
-            body: request.body,
+            method,
+            headers,
+            body,
             signal: AbortSignal.timeout(TIMEOUT_MS),
             // Only GET responses are cacheable; anything with side effects is
             // fetched fresh every time.
-            ...(revalidate === false || request.method !== "GET"
+            ...(revalidate === false || method !== "GET"
                 ? { cache: "no-store" as const }
                 : { next: { revalidate } }),
         });
@@ -203,7 +211,22 @@ export async function loadSource(
 
         const location = response.headers.get("location");
         if (!location) break;
-        target = assertFetchableUrl(new URL(location, target).toString(), allowPrivateHosts);
+        const next = assertFetchableUrl(new URL(location, target).toString(), allowPrivateHosts);
+        // Follow redirect semantics the way browsers do: 303, and 301/302 for
+        // POST, become a bodiless GET; other methods keep their method and body.
+        if (response.status === 303 || ((response.status === 301 || response.status === 302) && method === "POST")) {
+            method = "GET";
+            body = undefined;
+            headers = Object.fromEntries(Object.entries(headers).filter(([name]) => name.toLowerCase() !== "content-type"));
+        }
+        // Author headers often carry credentials under arbitrary names, so a
+        // hop to another origin keeps only the content-negotiation defaults.
+        if (next.origin !== new URL(target).origin) {
+            headers = Object.fromEntries(
+                Object.entries(headers).filter(([name]) => /^(accept|content-type)$/i.test(name)),
+            );
+        }
+        target = next;
         response = undefined;
     }
 

@@ -30,8 +30,13 @@ export function PageScript({ name, code, page }: { name: string; code: string; p
     useEffect(() => {
         const host = window as unknown as { __pgRan?: RanFor };
         const ran = (host.__pgRan ??= {});
-        if (ran[name] === page) return;
-        ran[name] = page;
+        // The note only marks the run the HTML parser already did for this
+        // mount. Consuming it means a later mount of the same page — leaving
+        // and coming back — runs the script again for its fresh nodes.
+        if (ran[name] === page) {
+            delete ran[name];
+            return;
+        }
         try {
             new Function(code)();
         } catch (error) {

@@ -20,11 +20,11 @@ function Section({
     children: React.ReactNode;
 }) {
     return (
-        <section className="border-b border-white/[0.07] py-3 last:border-b-0">
+        <section className="border-b border-ed-border py-3 last:border-b-0">
             <div className="mb-1 flex h-7 items-center justify-between px-2">
                 <h3 className="text-[11px] font-semibold text-ed-text">{title}</h3>
                 {onAdd && (
-                    <button type="button" onClick={onAdd} aria-label={`Add ${title.toLowerCase()}`} className="flex size-6 items-center justify-center rounded-lg text-ed-muted transition-colors hover:bg-white/[0.07] hover:text-ed-text">
+                    <button type="button" onClick={onAdd} aria-label={`Add ${title.toLowerCase()}`} className="flex size-6 items-center justify-center rounded-lg text-ed-muted transition-colors hover:bg-[var(--ed-nav-hover)] hover:text-ed-text">
                         <IconPlus size={13} />
                     </button>
                 )}
@@ -96,7 +96,7 @@ function ComponentCard({
     };
 
     return (
-        <div className={`overflow-hidden rounded-xl border bg-ed-subtle transition-colors ${active ? "border-ed-accent" : "border-white/[0.07] hover:border-white/[0.16]"}`}>
+        <div className={`overflow-hidden rounded-xl border bg-ed-subtle transition-colors ${active ? "border-ed-accent" : "border-ed-border hover:border-ed-border"}`}>
             <button
                 type="button"
                 draggable
@@ -113,11 +113,11 @@ function ComponentCard({
                 <span className="flex items-center gap-2 px-2.5 py-2">
                     {master.code ? <IconCode size={13} className="shrink-0 text-ed-muted" /> : master.isLayout ? <IconFrame size={13} className="shrink-0 text-ed-accent" /> : <IconComponents size={13} className="shrink-0 text-ed-accent" />}
                     <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-ed-text">{asset.name}</span>
-                    {role && <span className="rounded-full bg-ed-accent/15 px-1.5 py-0.5 text-[8px] font-semibold text-ed-accent">{role}</span>}
+                    {role && <span className="rounded-full bg-ed-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-ed-accent">{role}</span>}
                 </span>
             </button>
             {asset.variants.length > 1 && (
-                <div className="flex flex-wrap gap-1 border-t border-white/[0.07] px-2 py-1.5">
+                <div className="flex flex-wrap gap-1 border-t border-ed-border px-2 py-1.5">
                     {asset.variants.map((variant) => (
                         <button
                             key={variant.id}
@@ -125,7 +125,7 @@ function ComponentCard({
                             draggable
                             onDragStart={drag(variant)}
                             onClick={() => onOpen(variant)}
-                            className={`rounded-md px-1.5 py-0.5 text-[9px] transition-colors ${activeMasterId === variant.id ? "bg-ed-accent/20 text-ed-text" : "bg-white/[0.05] text-ed-muted hover:text-ed-text"}`}
+                            className={`rounded-md px-1.5 py-0.5 text-[10px] transition-colors ${activeMasterId === variant.id ? "bg-ed-accent/20 text-ed-text" : "bg-[var(--ed-nav-field)] text-ed-muted hover:text-ed-text"}`}
                         >
                             {variant.variant ?? "Default"}
                         </button>

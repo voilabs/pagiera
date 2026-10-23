@@ -28,6 +28,33 @@ export type DropPlan = {
 
 const SELECTOR = "[data-canvas-element]";
 
+/**
+ * Where layers are, as the drop resolver sees them.
+ *
+ * Live by default. A drag in progress passes the snapshot it took when it
+ * started, so siblings sliding aside to make room never feed back into the
+ * decision about where that room should be.
+ */
+export type DropGeometry = {
+    rect: (node: HTMLElement) => DOMRect;
+    hit: (clientX: number, clientY: number, excluded: Set<string>) => HTMLElement | undefined;
+    /** The dragged layer's box, from the copy that was actually pressed. */
+    draggedRect?: () => DOMRect | undefined;
+};
+
+const LIVE: DropGeometry = {
+    rect: (node) => node.getBoundingClientRect(),
+    hit: (clientX, clientY, excluded) => {
+        for (const node of document.elementsFromPoint(clientX, clientY)) {
+            const candidate = node.closest(SELECTOR) as HTMLElement | null;
+            const id = idOf(candidate);
+            if (!candidate || !id || excluded.has(id)) continue;
+            return candidate;
+        }
+        return undefined;
+    },
+};
+
 /** How near a sibling's boundary a drop has to be to count as reordering. */
 
 function idOf(node: Element | null | undefined): string | undefined {
@@ -58,10 +85,11 @@ function edgeBand(size: number) {
 const FALLBACK_SLOT = 44;
 
 /** The dragged element's rendered size, so the slot matches what will land. */
-function draggedBox(draggedId: string) {
+function draggedBox(draggedId: string, geometry: DropGeometry) {
     if (typeof document === "undefined") return undefined;
-    const node = document.querySelector(`[data-canvas-element="${CSS.escape(draggedId)}"]`);
-    return node?.getBoundingClientRect();
+    if (geometry.draggedRect) return geometry.draggedRect();
+    const node = document.querySelector<HTMLElement>(`[data-canvas-page] [data-canvas-element="${CSS.escape(draggedId)}"]`);
+    return node ? geometry.rect(node) : undefined;
 }
 
 /**
@@ -97,26 +125,64 @@ export function resolveDrop(
      * for the plain drag to always mean "reorder".
      */
     freePlacement = false,
+    geometry: DropGeometry = LIVE,
+    /**
+     * The container the layer is being dragged out of, as drawn on the
+     * artboard the drag started on.
+     *
+     * While the pointer is still inside it, the layer stays in it: reordering
+     * among its own siblings is what a drag inside a container means, and a
+     * nested layer that leapt to its grandparent whenever the pointer came
+     * near an edge was what made moving anything inside a hero feel like a
+     * fight. Leaving the container's box is how to take the layer elsewhere.
+     */
+    home?: HTMLElement | null,
+): DropPlan | undefined {
+    const plan = resolveRaw(clientX, clientY, draggedId, elements, byId, breakpoint, cascade, fallbackRoot, accepts, rootLayout, freePlacement, geometry);
+    const homeId = idOf(home);
+    if (!home || !homeId || !home.isConnected) return plan;
+    const box = geometry.rect(home);
+    const inside = clientX >= box.left && clientX <= box.right && clientY >= box.top && clientY <= box.bottom;
+    if (!inside) return plan;
+    // Somewhere inside home already — home itself or a container in it.
+    for (let id = plan?.parentId; id; id = byId.get(id)?.parentId) {
+        if (id === homeId) return plan;
+    }
+    if (!accepts(homeId)) return plan;
+    const excluded = subtreeIds(elements, draggedId);
+    return {
+        parentId: homeId,
+        ...orderWithin(homeId, home, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement, geometry),
+    };
+}
+
+function resolveRaw(
+    clientX: number,
+    clientY: number,
+    draggedId: string,
+    elements: CanvasElement[],
+    byId: Map<string, CanvasElement>,
+    breakpoint: Breakpoint,
+    cascade: Cascade,
+    fallbackRoot: HTMLElement | null,
+    accepts: (parentId: string | undefined) => boolean,
+    rootLayout: "stack" | "absolute",
+    freePlacement: boolean,
+    geometry: DropGeometry,
 ): DropPlan | undefined {
     if (typeof document === "undefined") return undefined;
     const excluded = subtreeIds(elements, draggedId);
 
     // Topmost rendered element under the pointer that is not being dragged.
-    let hit: HTMLElement | undefined;
-    for (const node of document.elementsFromPoint(clientX, clientY)) {
-        const candidate = node.closest(SELECTOR) as HTMLElement | null;
-        const id = idOf(candidate);
-        if (!id || excluded.has(id)) continue;
-        hit = candidate ?? undefined;
-        break;
-    }
+    const hit = geometry.hit(clientX, clientY, excluded);
+    const dragged = draggedBox(draggedId, geometry);
 
     if (!hit) {
         // Empty canvas: the page root is a real destination.
         return accepts(undefined)
             ? {
                   parentId: undefined,
-                  ...orderWithin(undefined, fallbackRoot, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
+                  ...orderWithin(undefined, fallbackRoot, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement, geometry),
               }
             : undefined;
     }
@@ -131,7 +197,7 @@ export function resolveDrop(
         if (!element) break;
 
         const parentEl = node.parentElement?.closest(SELECTOR) as HTMLElement | null;
-        const rect = node.getBoundingClientRect();
+        const rect = geometry.rect(node);
         const parentStyle = element.parentId
             ? resolveStyle(byId.get(element.parentId) ?? element, breakpoint, cascade)
             : undefined;
@@ -144,19 +210,50 @@ export function resolveDrop(
 
         // Over a leaf, or hugging a container's edge, the intent is to sit
         // beside this element rather than inside it.
-        const beside = !isContainer(element.type) || nearEdge;
+        //
+        // A layer also never goes inside a box it would not fit in. Dragging a
+        // whole section past a logo strip means "put it next to the strip",
+        // not "make it the strip's sixth logo" — the nesting is what made
+        // carrying big things across a page feel like it went anywhere. An
+        // empty container is the exception: it is drawn as a drop zone and is
+        // there to be filled.
+        const hasChildren = elements.some((child) => child.parentId === id && !excluded.has(child.id));
+        const tooBig = Boolean(
+            dragged &&
+                hasChildren &&
+                (dragged.width > rect.width + 1 || dragged.height > rect.height + 1),
+        );
+        const beside = !isContainer(element.type) || nearEdge || tooBig;
 
         if (!beside && accepts(id)) {
             return {
                 parentId: id,
-                ...orderWithin(id, node, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
+                ...orderWithin(id, node, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement, geometry),
             };
         }
         if (beside && accepts(element.parentId)) {
+            // Right at the edge of the parent too, the pointer is between the
+            // parent and *its* neighbour — the seam between two sections —
+            // even when a leaf inside happens to reach that edge. Hand the
+            // decision up a level so that seam stays reachable.
+            const parent = element.parentId ? byId.get(element.parentId) : undefined;
+            if (parentEl && parent && accepts(parent.parentId)) {
+                const outer = parent.parentId ? byId.get(parent.parentId) : undefined;
+                const outerVertical = ((outer ? resolveStyle(outer, breakpoint, cascade).direction : undefined) ?? "column") === "column";
+                const box = geometry.rect(parentEl);
+                const at = outerVertical ? clientY : clientX;
+                const from = outerVertical ? box.top : box.left;
+                const to = outerVertical ? box.bottom : box.right;
+                const seam = Math.min(16, edgeBand(outerVertical ? box.height : box.width));
+                if (at - from < seam || to - at < seam) {
+                    node = parentEl;
+                    continue;
+                }
+            }
             const scope = parentEl ?? artboardOf(node);
             return {
                 parentId: element.parentId,
-                ...orderWithin(element.parentId, scope, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
+                ...orderWithin(element.parentId, scope, clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement, geometry),
             };
         }
 
@@ -166,7 +263,7 @@ export function resolveDrop(
     return accepts(undefined)
         ? {
               parentId: undefined,
-              ...orderWithin(undefined, artboardOf(hit), clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement),
+              ...orderWithin(undefined, artboardOf(hit), clientX, clientY, excluded, elements, byId, breakpoint, cascade, draggedId, rootLayout, freePlacement, geometry),
           }
         : undefined;
 }
@@ -203,12 +300,13 @@ function orderWithin(
     draggedId?: string,
     rootLayout: "stack" | "absolute" = "absolute",
     freePlacement = false,
+    geometry: DropGeometry = LIVE,
 ): { beforeId?: string; indicator?: DropPlan["indicator"]; free?: DropPlan["free"]; slot?: DropPlan["slot"] } {
     if (!scope) return {};
     const parent = parentId ? byId.get(parentId) : undefined;
     const parentStyle = parent ? resolveStyle(parent, breakpoint, cascade) : undefined;
 
-    const box = scope.getBoundingClientRect();
+    const box = geometry.rect(scope);
     const dropped = { x: clientX - box.left, y: clientY - box.top };
 
     /*
@@ -223,13 +321,16 @@ function orderWithin(
 
     const vertical = (parentStyle?.direction ?? "column") === "column";
 
+    // Only what the stack actually places counts. A background image pinned
+    // across a whole section is a child too, but it is not in the order, and
+    // treating its edges as slots offered "first child" for the entire hero.
     const siblings = childrenOf(elements, parentId)
-        .filter((child) => !excluded.has(child.id))
+        .filter((child) => !excluded.has(child.id) && resolveStyle(child, breakpoint, cascade).position !== "absolute")
         .map((child) => ({
             id: child.id,
-            rect: (scope.querySelector(`${SELECTOR.slice(0, -1)}="${CSS.escape(child.id)}"]`) as HTMLElement | null)
-                ?.getBoundingClientRect(),
+            node: scope.querySelector<HTMLElement>(`${SELECTOR.slice(0, -1)}="${CSS.escape(child.id)}"]`),
         }))
+        .map(({ id, node }) => ({ id, rect: node ? geometry.rect(node) : undefined }))
         .filter((entry): entry is { id: string; rect: DOMRect } => Boolean(entry.rect));
 
     // An empty stack container is a slot in its own right: dropping into it
@@ -237,8 +338,8 @@ function orderWithin(
     if (siblings.length === 0) {
         // An empty stacked page takes the element as its first child.
         if (!parent) return {};
-        const dragged = draggedId ? draggedBox(draggedId) : undefined;
-        const inner = scope.getBoundingClientRect();
+        const dragged = draggedId ? draggedBox(draggedId, geometry) : undefined;
+        const inner = geometry.rect(scope);
         return {
             slot: {
                 x: inner.left + 4,
@@ -280,7 +381,7 @@ function orderWithin(
         ? (vertical ? rect.top : rect.left)
         : (vertical ? rect.bottom : rect.right);
 
-    const dragged = draggedId ? draggedBox(draggedId) : undefined;
+    const dragged = draggedId ? draggedBox(draggedId, geometry) : undefined;
     const thickness = vertical
         ? Math.max(6, Math.min(dragged?.height ?? FALLBACK_SLOT, 160))
         : Math.max(6, Math.min(dragged?.width ?? FALLBACK_SLOT, 160));

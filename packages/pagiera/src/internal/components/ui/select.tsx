@@ -15,7 +15,7 @@ function SelectTrigger({ className, children, ...props }: React.ComponentProps<t
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
- "group flex h-8 w-full min-w-36 items-center justify-between gap-2.5 rounded-lg bg-ed-field px-3 text-xs font-medium text-ed-text outline-none transition-colors hover:bg-ed-field-hover focus:border-ed-accent data-[placeholder]:text-ed-muted disabled:cursor-not-allowed disabled:opacity-50",
+ "group flex h-8 w-full min-w-36 items-center justify-between gap-2.5 rounded-[9px] bg-ed-surface px-3 text-[12px] font-medium text-ed-text outline-none transition-shadow shadow-[inset_0_0_0_1px_var(--ed-border-strong)] hover:shadow-[inset_0_0_0_1px_rgb(24_24_27/0.24)] focus-visible:shadow-[inset_0_0_0_1px_var(--ed-accent),0_0_0_3px_var(--ed-accent-soft)] data-[placeholder]:text-ed-muted disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}

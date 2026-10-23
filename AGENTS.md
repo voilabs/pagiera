@@ -28,3 +28,35 @@ internal link locales with `localizedHref`, and update matching `*-tr.ts`
 content alongside English. Do not translate executable examples, API identifiers,
 stable slugs or user-authored external templates. Run `node scripts/check-i18n.cjs`
 to check dataset coverage, code-example parity and locale routing helpers.
+
+## Codex + Claude development loop
+
+`packages/pagiera` is developed with a split-role loop:
+
+- **Codex (`gpt-6-sol`, limited/low reasoning, read-only sandbox) is the
+  tester and reviewer.** It runs the checks below, reads the code and reports
+  bugs, type errors, regressions and missing pieces as a numbered list with
+  `file:line`, a concrete failure scenario and a suggested fix. Codex does not
+  edit files.
+- **Claude is the only writer.** It applies fixes for Codex's findings, keeps
+  the change minimal and in the surrounding code style, then hands back to
+  Codex for another pass. The loop ends when Codex reports no actionable
+  findings.
+
+Checks Codex runs on every pass:
+
+```sh
+bun run package:check          # tsc --noEmit for packages/pagiera
+node scripts/check-docs.cjs
+node scripts/check-i18n.cjs
+```
+
+Rules for both agents:
+
+- Do not touch `packages/pagiera/AGENTS.md`; it ships to package consumers.
+- Never call the live Pagiera save API without re-reading the page and keeping
+  site masters; a page save replaces site components.
+- Findings without a reproducible scenario are reported as "unverified" and
+  are not fixed blindly.
+- User-visible changes still follow the documentation and EN/TR parity rules
+  above.

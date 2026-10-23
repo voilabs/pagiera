@@ -1,6 +1,5 @@
 "use client";
 import { AiSettings } from "./ui/ai-settings";
-import { WorkspaceTabs, useWorkspaceTabs, type WorkspaceTab } from "./ui/workspace-tabs";
 
 import {
     IconArrowBackUp,
@@ -27,6 +26,8 @@ import {
     IconSearch,
     IconSettings,
     IconSparkles,
+    IconLayoutBoardSplit,
+    IconHistory,
     IconTrash,
     IconUnlink,
     IconRefresh,
@@ -67,6 +68,7 @@ import {
     SettingsNavigation,
     SettingsWorkspace,
     TemplatesNavigation,
+    WorkspacePage,
     PanelAction,
     PanelHeader,
     PanelSearch,
@@ -100,6 +102,7 @@ import {
     splitBand,
     styleToCss,
 } from "@/lib/editor/style";
+import { loopAmount, loopAnimation, stateTransition } from "@/lib/editor/motion";
 import {
     absolutePosition,
     childrenOf,
@@ -156,6 +159,7 @@ import {
     SiteTransfer,
 } from "./parts";
 import { type DropPlan, resolveDrop } from "./drop-target";
+import { DragSession, type FlowInfo } from "./drag-session";
 import { useCanvasView } from "./use-canvas-view";
 import { useEditorDocument } from "./use-editor";
 import { AiPanel, type AiDesignGenerator, type AiFocus } from "./ai-panel";
@@ -163,8 +167,6 @@ import { HistoryPanel } from "./history-panel";
 import { LumaMark } from "./brand";
 import { VariablesPanel } from "./variables-panel";
 import { TemplatesPanel } from "./templates-panel";
-import { WorkspaceMenu } from "./ui/workspace-menu";
-import { InsertMenu } from "./ui/insert-menu";
 import { SHADER_PRESETS, shaderDocument } from "@/lib/editor/shaders";
 import { normalizeInteractive, interactiveDocument, restoreInteractiveElement } from "@/lib/editor/interactive";
 import { MarqueePreview } from "./ui/marquee-preview";
@@ -242,7 +244,7 @@ function ComponentAssetCards({
                 <section key={asset.id} className="overflow-hidden rounded-[18px] bg-ed-subtle">
                     <button type="button" onClick={() => onOpen(asset.variants[0])} className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-ed-field">
                         <span className="flex size-9 items-center justify-center rounded-xl bg-ed-field text-ed-accent"><IconComponents size={16} /></span>
-                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-ed-text">{asset.name}</span><span className="block text-[9px] text-ed-faint">{asset.variants.length} variant{asset.variants.length === 1 ? "" : "s"} · shared across pages</span></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-ed-text">{asset.name}</span><span className="block text-[10px] text-ed-faint">{asset.variants.length} variant{asset.variants.length === 1 ? "" : "s"} · shared across pages</span></span>
                         <IconChevronRight size={14} className="text-ed-faint" />
                     </button>
                     <div className="grid grid-cols-2 gap-1.5 border-t border-ed-border p-2">
@@ -256,9 +258,9 @@ function ComponentAssetCards({
                                 className={`group min-w-0 cursor-grab rounded-xl border p-1.5 text-left active:cursor-grabbing ${activeMasterId === variant.id ? "border-ed-accent bg-[var(--ed-accent-soft)]" : "border-transparent bg-ed-field hover:border-ed-border"}`}
                             >
                                 <span className="mb-1.5 flex h-12 items-center justify-center overflow-hidden rounded-xl" style={{ background: variant.base.gradient || variant.base.bg || "var(--ed-surface)" }}>
-                                    <span className="rounded-md bg-black/35 px-2 py-1 font-mono text-[8px] text-white/80">{Math.round(variant.base.w)}×{Math.round(variant.base.h)}</span>
+                                    <span className="rounded-md bg-ed-field px-2 py-1 font-mono text-[10px] text-ed-muted">{Math.round(variant.base.w)}×{Math.round(variant.base.h)}</span>
                                 </span>
-                                <span className="block truncate px-1 text-[9px] font-semibold text-ed-text">{variant.variant ?? "Default"}</span>
+                                <span className="block truncate px-1 text-[10px] font-semibold text-ed-text">{variant.variant ?? "Default"}</span>
                             </button>
                         ))}
                     </div>
@@ -385,6 +387,8 @@ type DragInfo = {
     startY: number;
     initialX: number;
     initialY: number;
+    /** Canvas zoom at the press, so travel survives a zoom mid-drag. */
+    scale: number;
 };
 
 type ResizeInfo = {
@@ -399,6 +403,8 @@ type ResizeInfo = {
     initialH: number;
     /** Set for text, so a corner drag can scale the type with the box. */
     initialFontSize?: number;
+    /** Axes that were filling at the press; resizing one detaches it. */
+    filled: { x: boolean; y: boolean };
 };
 
 type PadSide = "padT" | "padR" | "padB" | "padL";
@@ -453,6 +459,7 @@ export default function Editor({
         setDataSources,
         beginTransaction,
         endTransaction,
+        cancelTransaction,
         undo,
         redo,
         canUndo,
@@ -598,7 +605,7 @@ export default function Editor({
         breakpointDefs.find((item) => item.id === breakpoint) ?? breakpointDefs[0];
     const frameWidthForBreakpoint = selectedBreakpoint.width;
 
-    const frames = useMemo<Array<{ bp: Breakpoint; width: number; masterId?: string }>>(
+    const allFrames = useMemo<Array<{ bp: Breakpoint; width: number; masterId?: string }>>(
         () => componentMode
             ? activeComponentVariants.flatMap((variant) => {
                   const hasContent = componentHasContent(elements, variant);
@@ -630,6 +637,35 @@ export default function Editor({
             : breakpointDefs.map((item) => ({ bp: item.id, width: item.canvasWidth ?? item.width })),
         [activeComponentVariants, breakpointDefs, cascade.baseId, componentMode, componentPreviewSizes, elements],
     );
+    /*
+     * One breakpoint at a time, unless asked for all of them.
+     *
+     * Three artboards side by side shrank each to a thumbnail at any useful
+     * zoom; the dock's device buttons now switch the one artboard on screen,
+     * and its "all breakpoints" toggle brings the row back for comparing.
+     * Grouped per master so a component's variants all stay on screen.
+     */
+    const [showAllBreakpoints, setShowAllBreakpoints] = useState(false);
+    useEffect(() => {
+        try { setShowAllBreakpoints(localStorage.getItem("pagiera:all-breakpoints") === "1"); } catch { /* Optional preference. */ }
+    }, []);
+    const toggleAllBreakpoints = () => setShowAllBreakpoints((current) => {
+        try { localStorage.setItem("pagiera:all-breakpoints", current ? "0" : "1"); } catch { /* Optional preference. */ }
+        return !current;
+    });
+    const frames = useMemo(() => {
+        if (showAllBreakpoints) return allFrames;
+        const groups = new Map<string, typeof allFrames>();
+        for (const frame of allFrames) {
+            const key = frame.masterId ?? "";
+            groups.set(key, [...(groups.get(key) ?? []), frame]);
+        }
+        return [...groups.values()].flatMap((group) => {
+            if (group.length < 2) return group;
+            const current = group.find((frame) => frame.bp === breakpoint);
+            return current ? [current] : [group[0]];
+        });
+    }, [allFrames, breakpoint, showAllBreakpoints]);
     // Only a full-width component has more than one artboard. Any other is
     // drawn at the base breakpoint alone, so leaving a narrower one selected
     // would send every edit into an override nothing on screen shows.
@@ -721,10 +757,13 @@ export default function Editor({
                 left?: unknown;
                 right?: unknown;
             } | null;
-            if (routed) {
-                setLeftTab(tabForDocumentMode(routed, componentMode));
-            } else if (queried) {
-                setLeftTab(tabForDocumentMode(queried, componentMode));
+            const requested = routed ?? queried;
+            if (requested) {
+                // Same rule as Back: a page-level destination opens the page,
+                // it is not remapped to the component's layers.
+                const pageLevel = !["Layers", "Components", "Insert"].includes(requested);
+                if (componentMode && pageLevel) leaveComponentRef.current();
+                setLeftTab(pageLevel ? requested : tabForDocumentMode(requested, componentMode));
             } else if (isEditorTab(stored?.left, LEFT_EDITOR_TABS)) {
                 setLeftTab(tabForDocumentMode(stored.left, componentMode));
             }
@@ -736,7 +775,15 @@ export default function Editor({
         }
     }, [initialPanel]);
 
+    // Entering a component keeps component-level panels; a page-level one
+    // that is already open (a deep link, a restored tab) wins instead and the
+    // editor goes back to the page, rather than being remapped to Layers.
     useEffect(() => {
+        if (!componentMode) return;
+        if (!["Layers", "Components", "Insert"].includes(leftTabRef.current)) {
+            leaveComponentRef.current();
+            return;
+        }
         setLeftTab((current) => tabForDocumentMode(current, componentMode));
     }, [componentMode]);
 
@@ -763,12 +810,23 @@ export default function Editor({
             const routed = leftTabFromPath(window.location.pathname);
             const queried = leftTabFromValue(new URLSearchParams(window.location.search).get("tab"));
             const restored = routed ?? queried;
+            // The browser has already moved; the editor follows as soon as
+            // the drag or resize in hand is let go.
+            if (restored && gesturingRef.current) {
+                pendingHistoryRef.current = true;
+                return;
+            }
             if (restored) {
-                const next = tabForDocumentMode(restored, componentMode);
+                // A page-level destination leaves the component rather than
+                // being remapped to its layers, so Back lands where it says.
+                const pageLevel = !["Layers", "Components", "Insert"].includes(restored);
+                if (componentMode && pageLevel) leaveComponentRef.current();
+                const next = pageLevel ? restored : tabForDocumentMode(restored, componentMode);
                 setLeftTab(next);
                 setIsLeftCollapsed(next === "Templates");
             }
         };
+        restoreHistoryRef.current = restoreTabFromHistory;
         window.addEventListener("popstate", restoreTabFromHistory);
         return () => window.removeEventListener("popstate", restoreTabFromHistory);
     }, [componentMode]);
@@ -1044,6 +1102,24 @@ export default function Editor({
         return null;
     };
 
+    /**
+     * Whether a point is clearly off every artboard.
+     *
+     * Parking takes a layer out of the page, so it needs a pointer that has
+     * plainly left the artboards, not one that slipped a few pixels past an
+     * edge — an artboard flush against the side of the canvas made that the
+     * most common way to lose a layer by accident.
+     */
+    const PARK_MARGIN = 32;
+    const offArtboards = (x: number, y: number, ignoreId: string) => {
+        if (artboardAt(x, y, ignoreId)) return false;
+        for (const artboard of document.querySelectorAll<HTMLElement>("[data-artboard]")) {
+            const box = artboard.getBoundingClientRect();
+            if (x >= box.left - PARK_MARGIN && x <= box.right + PARK_MARGIN && y >= box.top - PARK_MARGIN && y <= box.bottom + PARK_MARGIN) return false;
+        }
+        return true;
+    };
+
     const beginParkedDrag = (
         // A mouse press on the frame or a pointer press on its name: both carry
         // the coordinates the drag starts from, which is all this needs.
@@ -1086,11 +1162,15 @@ export default function Editor({
             const y = Math.round((upEvent.clientY - rect.top) / scale - 16);
             if (bp !== breakpoint) setBreakpoint(bp);
             setElements((els) =>
-                reparent(els, parked.id, undefined, bp, undefined, cascade).map((el) =>
-                    el.id === parked.id
-                        ? { ...el, parked: undefined, base: { ...el.base, position: "absolute", x, y } }
-                        : el,
-                ),
+                reparent(els, parked.id, undefined, bp, undefined, cascade).map((el) => {
+                    if (el.id !== parked.id) return el;
+                    // The base keeps it in place on every artboard, and the one
+                    // it was dropped on gets the same values so an override
+                    // `reparent` just wrote there cannot put it elsewhere.
+                    const patch = { position: "absolute" as const, x, y };
+                    const placed = applyStyle({ ...el, parked: undefined }, cascade.baseId, patch, cascade);
+                    return bp === cascade.baseId ? placed : applyStyle(placed, bp, patch, cascade);
+                }),
             );
         };
         window.addEventListener("pointermove", move);
@@ -1366,23 +1446,24 @@ export default function Editor({
      * layer on every artboard sixty times a second to move one of them. The
      * node is right there; moving it is one assignment.
      */
-    const ghostRef = useRef<{ node: HTMLElement; dx: number; dy: number } | null>(null);
-    const setGhostOffset = useCallback((dx: number, dy: number) => {
-        const current = ghostRef.current;
-        if (!current) return;
-        current.dx = dx;
-        current.dy = dy;
-        current.node.style.transform = `translate(${dx}px, ${dy}px)`;
-        current.node.style.opacity = "0.6";
-        current.node.style.pointerEvents = "none";
-    }, []);
-    const clearGhost = useCallback(() => {
-        const current = ghostRef.current;
-        if (!current) return;
-        current.node.style.transform = "";
-        current.node.style.opacity = "";
-        current.node.style.pointerEvents = "";
-        ghostRef.current = null;
+    const dragSessionRef = useRef<DragSession | null>(null);
+    // Read by the keyboard handler, which is not re-bound on every change.
+    const componentModeRef = useRef(false);
+    const selectedCountRef = useRef(0);
+    const leaveComponentRef = useRef<() => void>(() => {});
+    const workspaceOpenRef = useRef(false);
+    const leftTabRef = useRef<LeftEditorTab>("Layers");
+    const gesturingRef = useRef(false);
+    const pendingHistoryRef = useRef(false);
+    const restoreHistoryRef = useRef<() => void>(() => {});
+    const lastPointerRef = useRef<MouseEvent | null>(null);
+    /** What a press selects if it turns out to be a click, not a drag. */
+    const clickSelectRef = useRef<string | null>(null);
+    // Leaving the editor mid-drag must not leave the whole app grabbing.
+    useEffect(() => () => {
+        dragSessionRef.current?.finish(false);
+        dragSessionRef.current = null;
+        delete document.documentElement.dataset.pgDragging;
     }, []);
     /** Distances to the nearest neighbours, drawn while something is dragged. */
     /**
@@ -1415,8 +1496,13 @@ export default function Editor({
         (measures: Measure[]) => gestureRef.current?.set({ measures }),
         [],
     );
+    /** The plan as of the latest move, readable before the layer re-renders. */
+    const latestPlanRef = useRef<DropPlan | null>(null);
     const setDropPlan = useCallback(
-        (dropPlan: DropPlan | null) => gestureRef.current?.set({ dropPlan }),
+        (dropPlan: DropPlan | null) => {
+            latestPlanRef.current = dropPlan;
+            gestureRef.current?.set({ dropPlan });
+        },
         [],
     );
     const setRadiusPreview = useCallback(
@@ -2315,17 +2401,25 @@ export default function Editor({
             });
             if (movable.length === 0) return;
 
-            setElements((els) =>
-                els.map((el) => {
+            setElements((els) => {
+                let changed = false;
+                const next = els.map((el) => {
                     if (!movable.includes(el.id)) return el;
                     const bp = styleBreakpoint(el);
                     const style = resolveStyle(el, bp, cascade);
-                    const nudged = { x: style.x + dx, y: style.y + dy };
+                    // Same rule as dragging: a filled axis has no position.
+                    const nudged = {
+                        ...(style.widthMode === "fill" || !dx ? {} : { x: style.x + dx }),
+                        ...(style.heightMode === "fill" || !dy ? {} : { y: style.y + dy }),
+                    };
+                    if (Object.keys(nudged).length === 0) return el;
+                    changed = true;
                     return parkedSubtree.has(el.id)
                         ? applyStyle(el, cascade.baseId, nudged, cascade)
                         : applyStyleIsolated(el, bp, nudged, breakpointDefs.map((definition) => definition.id), cascade);
-                }),
-            );
+                });
+                return changed ? next : els;
+            });
         },
         [breakpointDefs, byId, cascade, contextFor, parkedSubtree, selectedIds, setElements, styleBreakpoint],
     );
@@ -2511,8 +2605,12 @@ export default function Editor({
     );
 
     /** What the rail lists, in the order the work tends to happen. */
+    // One rail in both modes. Editing a component used to swap it for a
+    // shorter one with no way back but a dedicated button; now every
+    // destination stays put and the page-level ones simply leave the
+    // component (see openLeftPanel).
     const railPrimary: LeftEditorTab[] = componentMode
-        ? ["Layers", "Components", "Insert"]
+        ? ["Layers", "Components", "Insert", "Pages", "Templates", "Assets"]
         : ["Layers", "Pages", "Insert", "Templates", "Assets"];
     const railSecondary: LeftEditorTab[] = ["Data", "History"];
 
@@ -2525,6 +2623,29 @@ export default function Editor({
     );
     const layersAllCollapsed = collapsibleLayerIds.length > 0
         && collapsibleLayerIds.every((id) => collapsedLayerIds.has(id));
+
+    /**
+     * How a container lays out its children, for the drag preview: which
+     * axis they run along and whether sliding them along it is honest.
+     * Nothing for a freely placed container - there is no order to open.
+     */
+    const flowOf = useCallback(
+        (parentId: string | undefined, bp: Breakpoint): FlowInfo | null => {
+            const parent = parentId ? byId.get(parentId) : undefined;
+            const style = parent ? resolveStyle(parent, bp, cascade) : undefined;
+            if ((style?.layout ?? rootStyle.layout) !== "stack") return null;
+            return {
+                // Pinned children sit outside the order and must not slide.
+                childIds: childrenOf(visibleEditorElements, parentId)
+                    .filter((child) => resolveStyle(child, bp, cascade).position !== "absolute")
+                    .map((child) => child.id),
+                vertical: (style?.direction ?? "column") === "column",
+                linear: !style?.wrap && parent?.type !== "Grid",
+                gap: style?.gap ?? rootStyle.gap ?? 0,
+            };
+        },
+        [byId, cascade, rootStyle.gap, rootStyle.layout, visibleEditorElements],
+    );
 
     const gesturing = dragInfo !== null || resizeInfo !== null || paddingInfo !== null || seamInfo !== null;
 
@@ -2622,14 +2743,33 @@ export default function Editor({
 
             if (dragInfo) {
                 const moving = byId.get(dragInfo.id);
-                if (!moving) return;
+                const session = dragSessionRef.current;
+                if (!moving || !session) return;
 
-                const dx = (event.clientX - dragInfo.startX) / scale;
-                const dy = (event.clientY - dragInfo.startY) / scale;
+                // A press is not a drag until the pointer means it. Without
+                // this a click that wobbled a pixel reordered the page.
+                if (!session.active) {
+                    if (!session.passedThreshold(event.clientX, event.clientY)) return;
+                    lastPointerRef.current = event;
+                    session.activate(viewportRef.current, scale);
+                    // Only a drag that can reorder lifts the layer out of its
+                    // row; elsewhere the drop leaves the order alone.
+                    session.setOrigin(
+                        dragInfo.mode === "reflow" && dragInfo.breakpoint === cascade.baseId
+                            ? flowOf(moving.parentId, gestureBreakpoint)
+                            : null,
+                    );
+                }
+                session.rescale(scale);
+
+                // The canvas may have scrolled under a still pointer - auto
+                // scroll does exactly that - so the layer follows the content.
+                const { x: dx, y: dy } = session.canvasDelta(event.clientX, event.clientY, scale, dragInfo.scale);
 
                 // Off the canvas there is nothing to drop onto, and showing an
                 // indicator there promises a destination that does not exist.
                 if (!overCanvas(event.clientX, event.clientY)) {
+                    session.preview(null, null);
                     setDropPlan(null);
                     setDropTargetId(undefined);
                     setMeasures([]);
@@ -2653,24 +2793,39 @@ export default function Editor({
                     // Hold ⌘/Ctrl to put it where the pointer is rather than
                     // in the order — the escape hatch a stack otherwise has no
                     // room for.
-                    event.metaKey || event.ctrlKey,
+                    dragInfo.mode === "reflow" && (event.metaKey || event.ctrlKey),
+                    session,
+                    session.home(),
                 );
-                setDropPlan(plan ?? null);
                 setDropTargetId(plan ? plan.parentId ?? null : undefined);
 
                 if (dragInfo.mode === "reflow") {
-                    // Position is owned by the parent's layout, so only show a
-                    // ghost offset while the pointer looks for a new home.
-                    setGhostOffset(dx, dy);
-                    // The distances to what surrounds it, read off the ghost.
-                    // These used to appear only when the drag was about to
-                    // place freely, which on a stacked page is almost never —
-                    // so a whole page of dragging showed no measurements at all.
-                    setMeasures(measureGaps(dragInfo.id, moving.parentId));
+                    // Position is owned by the parent's layout: the layer is
+                    // lifted and follows the pointer, and the layout it would
+                    // land in opens up to show exactly where.
+                    const offset = session.offsetFor(event.clientX, event.clientY);
+                    session.follow(offset.x, offset.y);
+                    // Off every artboard, letting go parks the layer beside
+                    // them (see the drop). The preview has to say the same
+                    // thing the drop will do: the hole closes and no slot is
+                    // offered, rather than promising a place it will not take.
+                    const parking = !componentMode && !moving.parked && offArtboards(event.clientX, event.clientY, dragInfo.id);
+                    const reorders = dragInfo.breakpoint === cascade.baseId && Boolean(plan) && !parking;
+                    const slot = session.preview(
+                        reorders ? plan ?? null : null,
+                        reorders && !plan?.free ? flowOf(plan?.parentId, gestureBreakpoint) : null,
+                    );
+                    // Order lives on the base breakpoint; elsewhere a drop
+                    // changes nothing, so nothing is offered either.
+                    setDropPlan(reorders && plan ? { ...plan, slot: slot ?? plan.slot } : null);
+                    setDropTargetId(reorders && plan ? plan.parentId ?? null : undefined);
+                    // A reorder is about the slot, not about pixels: the
+                    // distances only help once the layer is being placed.
+                    setMeasures(reorders && plan?.free ? measureGaps(dragInfo.id, moving.parentId) : []);
                     // Dragged clear of every boundary, it is about to become a
                     // freely placed element — so it aligns and measures like
                     // one already, instead of the drop being a surprise.
-                    if (plan?.free) {
+                    if (reorders && plan?.free) {
                         const style = resolveStyle(moving, gestureBreakpoint, cascade);
                         const parent = moving.parentId ? byId.get(moving.parentId) : undefined;
                         const parentStyle = parent ? resolveStyle(parent, gestureBreakpoint, cascade) : undefined;
@@ -2695,16 +2850,20 @@ export default function Editor({
                             ? absolutePosition(byId, parent, gestureBreakpoint, cascade)
                             : { x: 0, y: 0 };
                         setGuides({ origin, lines: snapped.guides });
-                        setMeasures(measureGaps(dragInfo.id, moving.parentId));
                     } else {
-                        // No alignment guides when there is nothing to align
-                        // to — but the distances stay: they are about where the
-                        // layer is, not about what it is snapping to.
                         setGuides({ origin: { x: 0, y: 0 }, lines: [] });
                     }
                     return;
                 }
 
+                // A freely placed layer moves within its own parent and stays
+                // freely placed. Carrying it past a container used to drop it
+                // inside, where a stack took over its position — it jumped
+                // into someone else's row. Holding ⌘/Ctrl is how to put it in
+                // another container on purpose.
+                const nesting = (event.metaKey || event.ctrlKey) && dragInfo.breakpoint === cascade.baseId;
+                setDropPlan(nesting ? plan ?? null : null);
+                setDropTargetId(nesting && plan ? plan.parentId ?? null : undefined);
                 const style = resolveStyle(moving, gestureBreakpoint, cascade);
                 const proposed = {
                     x: dragInfo.initialX + dx,
@@ -2740,13 +2899,22 @@ export default function Editor({
                     lines: snapped.guides,
                 });
 
-                setElements((els) =>
-                    els.map((el) =>
-                        el.id === dragInfo.id
-                            ? applyStyleIsolated(el, gestureBreakpoint, { x: snapped.x, y: snapped.y }, breakpointDefs.map((definition) => definition.id), cascade)
-                            : el,
-                    ),
-                );
+                // A filled axis spans its parent and has no position to move;
+                // only the other axis follows, and a box filled both ways
+                // does not move at all — nor leaves an empty undo step.
+                const movePatch: Partial<ElementStyle> = {
+                    ...(style.widthMode === "fill" || snapped.x === style.x ? {} : { x: snapped.x }),
+                    ...(style.heightMode === "fill" || snapped.y === style.y ? {} : { y: snapped.y }),
+                };
+                if (Object.keys(movePatch).length > 0) {
+                    setElements((els) =>
+                        els.map((el) =>
+                            el.id === dragInfo.id
+                                ? applyStyleIsolated(el, gestureBreakpoint, movePatch, breakpointDefs.map((definition) => definition.id), cascade)
+                                : el,
+                        ),
+                    );
+                }
                 return;
             }
 
@@ -2843,6 +3011,12 @@ export default function Editor({
             // Edge handles keep the old behaviour — that is how you set a
             // measure without touching the size.
             const patch: Partial<ElementStyle> = { x, y, w, h };
+            // A filled axis being resized becomes a plain box at the edge it
+            // was spanning from. Any centre or end constraint was inert while
+            // it filled; left in place it would throw the box somewhere else
+            // the moment it stopped filling.
+            if (resizeInfo.filled.x && (handle.includes("e") || handle.includes("w"))) patch.constraintX = "start";
+            if (resizeInfo.filled.y && (handle.includes("n") || handle.includes("s"))) patch.constraintY = "start";
             // A component master is the editing surface itself. Resizing from
             // its west/north edge changes that surface's size, not its offset
             // inside another canvas; allowing x/y to move here made the child
@@ -2899,8 +3073,34 @@ export default function Editor({
         };
 
         const handleMouseUp = (event: MouseEvent) => {
-            const dropPlan = gestureRef.current?.get().dropPlan ?? null;
+            // The release point is the last word: a move still waiting for
+            // its frame, or a scroll since the last one, is settled first.
+            // A quick flick can cross the threshold and let go before its
+            // first frame; that is still a drag, not a click.
+            const pressed = dragSessionRef.current;
+            if (dragInfo && pressed && (pressed.active || pressed.passedThreshold(event.clientX, event.clientY))) {
+                if (moveFrame) window.cancelAnimationFrame(moveFrame);
+                moveFrame = 0;
+                applyMove(event);
+            }
+            const dropPlan = latestPlanRef.current;
             neighbourCache.current = null;
+            const session = dragSessionRef.current;
+            dragSessionRef.current = null;
+            // Pressed and released without ever becoming a drag: a click.
+            if (dragInfo && !session?.active) {
+                // Pressed inside the selection over another layer and let go
+                // without moving: that was a click on the layer on top.
+                if (clickSelectRef.current) setSelectedIds([clickSelectRef.current]);
+                clickSelectRef.current = null;
+                setDragInfo(null);
+                setPressedEffectId(null);
+                setDropPlan(null);
+                setDropTargetId(undefined);
+                setMeasures([]);
+                endTransaction();
+                return;
+            }
             if (dragInfo) {
                 const moving = byId.get(dragInfo.id);
                 const currentParent = moving?.parentId;
@@ -2914,6 +3114,10 @@ export default function Editor({
                  * out of the page entirely. Neither was ever what was meant.
                  */
                 if (!overCanvas(event.clientX, event.clientY)) {
+                    session?.finish(false);
+                    if (dragInfo.mode === "free") cancelTransaction();
+                    else endTransaction();
+                    setGuides({ origin: { x: 0, y: 0 }, lines: [] });
                     setDragInfo(null);
                     setPressedEffectId(null);
                     setResizeInfo(null);
@@ -2938,7 +3142,7 @@ export default function Editor({
                 const travelled =
                     Math.abs(event.clientX - dragInfo.startX) + Math.abs(event.clientY - dragInfo.startY) > 3;
                 const overArtboard = travelled
-                    ? artboardAt(event.clientX, event.clientY, dragInfo.id)
+                    ? !offArtboards(event.clientX, event.clientY, dragInfo.id)
                     : true;
                 if (!componentMode && !overArtboard && parkAnchorRef.current && moving && !moving.parked) {
                     const dragged = resolveStyle(moving, dragInfo.breakpoint, cascade);
@@ -2957,6 +3161,8 @@ export default function Editor({
                                 : el,
                         ),
                     );
+                    session?.finish(false);
+                    endTransaction();
                     setDragInfo(null);
                     setPressedEffectId(null);
                     setDropPlan(null);
@@ -3013,13 +3219,22 @@ export default function Editor({
                     dragInfo.mode === "reflow" &&
                     dragInfo.breakpoint === cascade.baseId &&
                     dropPlan &&
-                    (dropPlan.parentId !== currentParent || dropPlan.beforeId)
+                    (dropPlan.parentId !== currentParent || dropPlan.beforeId || dropPlan.indicator)
                 ) {
-                    doReparent(dragInfo.id, dropPlan.parentId, dropPlan.beforeId);
+                    // "After the last one" is a real place too. Only a drop
+                    // that leaves the order exactly as it was is skipped, so
+                    // it does not land in the history as a change.
+                    const order = childrenOf(elements, currentParent).map((child) => child.id);
+                    const without = order.filter((id) => id !== dragInfo.id);
+                    const at = dropPlan.beforeId ? without.indexOf(dropPlan.beforeId) : without.length;
+                    const next = [...without.slice(0, at === -1 ? without.length : at), dragInfo.id, ...without.slice(at === -1 ? without.length : at)];
+                    const unchanged = dropPlan.parentId === currentParent && next.join() === order.join();
+                    if (!unchanged) doReparent(dragInfo.id, dropPlan.parentId, dropPlan.beforeId);
                 } else if (
                     dragInfo.mode === "free" &&
                     dragInfo.breakpoint === cascade.baseId &&
-                    dropPlan
+                    dropPlan &&
+                    (event.metaKey || event.ctrlKey)
                 ) {
                     /*
                      * A freely placed element dropped onto a container.
@@ -3040,6 +3255,9 @@ export default function Editor({
                     // refusing it is why dropping a hand-placed layer back among
                     // its own siblings did nothing at all.
                     if (!landsInFlow && dropPlan.parentId === currentParent) {
+                        session?.finish(false);
+                        endTransaction();
+                        setGuides({ origin: { x: 0, y: 0 }, lines: [] });
                         setDragInfo(null);
                         setPressedEffectId(null);
                         setResizeInfo(null);
@@ -3074,7 +3292,7 @@ export default function Editor({
             setResizeInfo(null);
             setPaddingInfo(null);
             setSeamInfo(null);
-            clearGhost();
+            session?.finish(true);
             setDropTargetId(undefined);
             setDropPlan(null);
             setGuides({ origin: { x: 0, y: 0 }, lines: [] });
@@ -3084,9 +3302,33 @@ export default function Editor({
         };
 
         let pendingMove: MouseEvent | null = null;
+        let lastMove: MouseEvent | null = lastPointerRef.current;
         let moveFrame = 0;
+        let scrollFrame = 0;
+
+        /*
+         * Near the canvas's edge the canvas scrolls under the pointer, so a
+         * section can be carried past the bottom of the screen without
+         * letting go of it. Each scrolled frame re-runs the gesture, because
+         * the place under a still pointer has changed.
+         */
+        const autoScroll = () => {
+            scrollFrame = 0;
+            const viewport = viewportRef.current;
+            if (!dragInfo || !dragSessionRef.current?.active || !lastMove || !viewport) return;
+            const speed = dragSessionRef.current.autoScroll(viewport, lastMove.clientX, lastMove.clientY);
+            if (!speed.x && !speed.y) return;
+            const before = { left: viewport.scrollLeft, top: viewport.scrollTop };
+            viewport.scrollBy(speed.x, speed.y);
+            if (viewport.scrollLeft !== before.left || viewport.scrollTop !== before.top) applyMove(lastMove);
+            scrollFrame = window.requestAnimationFrame(autoScroll);
+        };
+
         const handleMouseMove = (event: MouseEvent) => {
             pendingMove = event;
+            lastMove = event;
+            lastPointerRef.current = event;
+            if (!scrollFrame && dragInfo) scrollFrame = window.requestAnimationFrame(autoScroll);
             if (moveFrame) return;
             moveFrame = window.requestAnimationFrame(() => {
                 moveFrame = 0;
@@ -3096,18 +3338,59 @@ export default function Editor({
             });
         };
 
+        // Escape puts everything back the way it was before the press.
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // Undo mid-gesture would pull the document out from under the
+            // transaction the gesture is writing into; finish or cancel first.
+            if ((event.metaKey || event.ctrlKey) && ["z", "y"].includes(event.key.toLowerCase())) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const session = dragSessionRef.current;
+            dragSessionRef.current = null;
+            session?.finish(false);
+            cancelTransaction();
+            setDragInfo(null);
+            setPressedEffectId(null);
+            setResizeInfo(null);
+            setPaddingInfo(null);
+            setSeamInfo(null);
+            setDropTargetId(undefined);
+            setDropPlan(null);
+            setGuides({ origin: { x: 0, y: 0 }, lines: [] });
+            setMeasures([]);
+        };
+
         window.addEventListener("mousemove", handleMouseMove);
         window.addEventListener("mouseup", handleMouseUp);
+        window.addEventListener("keydown", handleKeyDown, true);
+        const viewportNode = viewportRef.current;
+        const handleScroll = () => {
+            if (dragInfo && dragSessionRef.current?.active && lastMove) applyMove(lastMove);
+        };
+        viewportNode?.addEventListener("scroll", handleScroll, { passive: true });
+        // The effect restarts whenever the document changes under a drag;
+        // a pointer parked at the edge must keep scrolling through that.
+        if (dragInfo && dragSessionRef.current?.active && lastMove) scrollFrame = window.requestAnimationFrame(autoScroll);
         return () => {
             if (moveFrame) window.cancelAnimationFrame(moveFrame);
+            if (scrollFrame) window.cancelAnimationFrame(scrollFrame);
             window.removeEventListener("mousemove", handleMouseMove);
             window.removeEventListener("mouseup", handleMouseUp);
+            window.removeEventListener("keydown", handleKeyDown, true);
+            viewportNode?.removeEventListener("scroll", handleScroll);
         };
     }, [
         breakpoint,
         breakpointDefs,
         byId,
         cascade,
+        cancelTransaction,
+        flowOf,
         acceptsDrop,
         canvasHeight,
         doReparent,
@@ -3126,13 +3409,54 @@ export default function Editor({
         visibleEditorElements,
     ]);
 
+    /**
+     * What a press at a rendered node acts on: the layer itself, or the
+     * placed component it belongs to — the same mapping the canvas uses when
+     * the press lands directly — with that layer's node on the same artboard.
+     */
+    const pressTarget = (node: Element, page: HTMLElement | null) => {
+        const layer = node.closest<HTMLElement>("[data-canvas-element]");
+        const raw = layer?.dataset.canvasElement ? byId.get(layer.dataset.canvasElement) : undefined;
+        if (!layer || !raw || !page?.contains(layer)) return undefined;
+        const element = componentInstanceFor(raw) ?? raw;
+        const own = element.id === raw.id
+            ? layer
+            : layer.closest<HTMLElement>(`[data-canvas-element="${CSS.escape(element.id)}"]`) ?? layer;
+        return { element, node: own };
+    };
+
     const handleElementMouseDown = (
         event: React.MouseEvent,
         el: CanvasElement,
         bp: Breakpoint = breakpoint,
+        /** The rendered layer that took the press, when it is not the event's own target. */
+        pressedNode: HTMLElement = event.currentTarget as HTMLElement,
     ) => {
         // Space-drag and middle-drag pan the canvas instead of moving elements.
         if (tryBeginPan(event)) return;
+        // A press on a layer inside a placed component acts on the component;
+        // the copy that is lifted and measured has to be the component's own,
+        // not the child's, or the preview shows one thing and the drop moves
+        // another.
+        if (pressedNode.dataset.canvasElement !== el.id) {
+            pressedNode = pressedNode.closest<HTMLElement>(`[data-canvas-element="${CSS.escape(el.id)}"]`) ?? pressedNode;
+        }
+        // A locked layer is not there for the pointer: the press goes to the
+        // first unlocked layer drawn beneath it, the way locking works in
+        // every design tool — not to its parent, which is what bubbling would
+        // pick. It stays selectable from the Layers panel to be unlocked.
+        if (el.locked && !effectsPreview) {
+            event.stopPropagation();
+            const page = pressedNode.closest<HTMLElement>("[data-canvas-page]");
+            for (const node of document.elementsFromPoint(event.clientX, event.clientY)) {
+                const target = pressTarget(node, page);
+                if (!target || target.element.locked || target.element.id === el.id) continue;
+                handleElementMouseDown(event, target.element, bp, target.node);
+                return;
+            }
+            setSelectedIds([]);
+            return;
+        }
         event.stopPropagation();
         // Editing in a frame switches the toolbar to that frame's breakpoint,
         // so the inspector and the drag write to the same layer.
@@ -3150,6 +3474,50 @@ export default function Editor({
             }
             return;
         }
+        clickSelectRef.current = null;
+        const page = pressedNode.closest<HTMLElement>("[data-canvas-page]");
+
+        /*
+         * Alt-click reaches the layer underneath.
+         *
+         * A background image under a full-bleed container, a card under its
+         * overlay: the top layer takes every click, so the one beneath could
+         * only be found in the Layers panel. Each Alt-click steps one layer
+         * further down the stack under the pointer, and wraps around.
+         */
+        if (event.altKey && page) {
+            const stack: string[] = [];
+            for (const node of document.elementsFromPoint(event.clientX, event.clientY)) {
+                const target = pressTarget(node, page);
+                if (!target || target.element.locked || stack.includes(target.element.id)) continue;
+                stack.push(target.element.id);
+            }
+            const at = selectedIds.length === 1 ? stack.indexOf(selectedIds[0]) : -1;
+            setSelectedIds([stack[(at + 1) % Math.max(1, stack.length)] ?? el.id]);
+            setEditingId(null);
+            return;
+        }
+
+        /*
+         * Pressing inside the selection drags the selection.
+         *
+         * The same rule as Figma's: once a layer is selected — from the
+         * Layers panel, or with Alt-click — it can be moved from anywhere in
+         * its box, even where another layer covers it. A press that never
+         * becomes a drag is still a click on what is on top.
+         */
+        const held = selectedIds.length === 1 && !event.shiftKey && !event.metaKey ? byId.get(selectedIds[0]) : undefined;
+        if (held && held.id !== el.id && !held.locked && editingId !== held.id && !held.parked && !subtreeIds(elements, held.id).has(el.id)) {
+            const heldNode = page?.querySelector<HTMLElement>(`[data-canvas-element="${CSS.escape(held.id)}"]`);
+            const box = heldNode?.getBoundingClientRect();
+            if (heldNode && box && event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom) {
+                if (editingId) setEditingId(null);
+                clickSelectRef.current = el.id;
+                startDrag(event, held, bp, heldNode);
+                return;
+            }
+        }
+
         select(el.id, event.shiftKey || event.metaKey);
         if (editingId !== el.id) setEditingId(null);
         if (el.locked || editingId === el.id) return;
@@ -3163,20 +3531,19 @@ export default function Editor({
             return;
         }
 
+        startDrag(event, el, bp, pressedNode);
+    };
+
+    const startDrag = (event: React.MouseEvent, el: CanvasElement, bp: Breakpoint, pressed: HTMLElement) => {
         const style = resolveStyle(el, bp, cascade);
         beginTransaction();
-        // The rendered copy on the artboard being edited is the one that
-        // follows the pointer.
-        const ghostNode = document.querySelector<HTMLElement>(
-            `[data-canvas-page] [data-canvas-element="${CSS.escape(el.id)}"]`,
-        );
-        ghostRef.current = ghostNode ? { node: ghostNode, dx: 0, dy: 0 } : null;
+        dragSessionRef.current = new DragSession(el.id, event.clientX, event.clientY, pressed);
         setDragInfo({
             id: el.id,
             breakpoint: bp,
             // Either the container places its children freely, or this element
             // has been lifted out of the flow on its own.
-            mode: contextFor(el).parentLayout === "absolute"
+            mode: contextFor(el, bp).parentLayout === "absolute"
                 || resolveStyle(el, bp, cascade).position === "absolute"
                 ? "free"
                 : "reflow",
@@ -3184,6 +3551,7 @@ export default function Editor({
             startY: event.clientY,
             initialX: style.x,
             initialY: style.y,
+            scale,
         });
     };
 
@@ -3264,11 +3632,14 @@ export default function Editor({
             handle,
             startX: event.clientX,
             startY: event.clientY,
-            initialX: style.x,
-            initialY: style.y,
+            // A filled axis is drawn from 0 whatever x or y it still stores,
+            // so resizing it starts from where it is, not from a stale offset.
+            initialX: style.widthMode === "fill" ? 0 : style.x,
+            initialY: style.heightMode === "fill" ? 0 : style.y,
             initialW: startWidth,
             initialH: startHeight,
             initialFontSize: isTextual(el.type) ? style.fontSize : undefined,
+            filled: { x: style.widthMode === "fill", y: style.heightMode === "fill" },
         });
     };
 
@@ -3325,7 +3696,7 @@ export default function Editor({
         // Deliberately narrow: two getBoundingClientRect calls force a layout,
         // and running them after every render made the whole canvas pay for it.
         // Only these change where the artboards sit inside the stage.
-    }, [scale, canvasHeight, breakpointDefs, componentMode, frames.length]);
+    }, [scale, canvasHeight, breakpointDefs, componentMode, frames.length, breakpoint, showAllBreakpoints]);
 
     /**
      * Draw a frame on the empty canvas.
@@ -3457,16 +3828,81 @@ export default function Editor({
 
     /* ------------------------------------------------------------- dropping */
 
-    const handleDrop = (event: React.DragEvent, parentId: string | null) => {
+    /**
+     * Where something dragged in from a panel would land.
+     *
+     * The same resolver the canvas drag uses, so a block from the Insert
+     * panel shows the same insertion line and lands at the same place a
+     * layer moved on the canvas would — between the two siblings under the
+     * pointer, not tacked onto the end of whichever container was nearest.
+     */
+    const resolveIncoming = (event: React.DragEvent) => {
+        // A layer dragged out of the Layers panel names itself on the root,
+        // because a drag's data cannot be read until it is dropped — and
+        // without its id the resolver would offer its own insides.
+        const movingId = document.documentElement.dataset.pgMoving || undefined;
+        return resolveDrop(
+            event.clientX,
+            event.clientY,
+            movingId ?? "__pagiera-incoming__",
+            visibleEditorElements,
+            byId,
+            breakpoint,
+            cascade,
+            canvasRef.current,
+            acceptsDrop,
+            rootStyle.layout,
+            false,
+        );
+    };
+    const previewLibraryDrop = (event: React.DragEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = event.dataTransfer.types.includes(MOVE_MIME) ? "move" : "copy";
+        const plan = resolveIncoming(event);
+        // A hairline between siblings reads better than a guessed slot for
+        // something whose size is not known until it exists.
+        setDropPlan(plan ? { ...plan, slot: plan.indicator ? undefined : plan.slot } : null);
+        setDropTargetId(plan ? plan.parentId ?? null : undefined);
+    };
+    useEffect(() => {
+        const clear = () => {
+            delete document.documentElement.dataset.pgMoving;
+            setDropPlan(null);
+            setDropTargetId(undefined);
+        };
+        window.addEventListener("dragend", clear);
+        return () => {
+            window.removeEventListener("dragend", clear);
+            delete document.documentElement.dataset.pgMoving;
+        };
+    }, [setDropPlan]);
+
+    const handleDrop = (event: React.DragEvent, fallbackParentId: string | null) => {
         event.preventDefault();
         event.stopPropagation();
         setDropTargetId(undefined);
         setDropPlan(null);
+        // Resolved again where it was let go, so the drop is exactly what the
+        // last frame of the preview promised, however long it was held.
+        const planned = resolveIncoming(event);
+        delete document.documentElement.dataset.pgMoving;
+        const parentId = planned ? planned.parentId ?? null : fallbackParentId;
+        const beforeId = planned?.beforeId;
+        // Free placement is measured against the planned parent, not whatever
+        // leaf happened to receive the event.
+        const pointAt = (fallback: HTMLElement) => {
+            if (planned?.free) return { x: planned.free.x / scale, y: planned.free.y / scale };
+            const rect = fallback.getBoundingClientRect();
+            return { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
+        };
+        const ordered = (next: CanvasElement[], id: string) =>
+            beforeId ? reparent(next, id, parentId ?? undefined, breakpoint, beforeId, cascade) : next;
 
         // An existing layer dragged out of the Layers panel.
         const movedId = event.dataTransfer.getData(MOVE_MIME);
         if (movedId) {
-            doReparent(movedId, parentId ?? undefined);
+            doReparent(movedId, parentId ?? undefined, beforeId);
             setSelectedIds([movedId]);
             return;
         }
@@ -3488,7 +3924,7 @@ export default function Editor({
                 endTransaction();
                 return;
             }
-            const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+            const point = pointAt(event.currentTarget as HTMLElement);
             const style = resolveStyle(master, cascade.baseId, cascade);
             // `w` and `h` remain as editing-canvas fallbacks even when an
             // asset hugs its contents. Using those stale values here made a
@@ -3498,12 +3934,12 @@ export default function Editor({
             // the instance from its real contents.
             const grabWidth = style.widthMode === "fixed" ? style.w : 0;
             const grabHeight = style.heightMode === "fixed" ? style.h : 0;
-            const x = Math.max(0, (event.clientX - rect.left) / scale - grabWidth / 2);
-            const y = Math.max(0, (event.clientY - rect.top) / scale - grabHeight / 2);
+            const x = Math.max(0, point.x - grabWidth / 2);
+            const y = Math.max(0, point.y - grabHeight / 2);
             const clone = cloneSubtree(elements, master.id, { x: x - style.x, y: y - style.y });
             if (!clone) return;
             const copies = clone.elements.map((element) => element.id === clone.rootId ? { ...element, parentId: parentId ?? undefined, componentRole: "instance" as const, componentId: master.componentId, variant: master.variant, z: nextZ(elements, parentId ?? undefined) } : { ...element, componentRole: undefined });
-            setElements((current) => [...current, ...copies]);
+            setElements((current) => ordered([...current, ...copies], clone.rootId));
             setSelectedIds([clone.rootId]);
             return;
         }
@@ -3511,11 +3947,7 @@ export default function Editor({
         const type = event.dataTransfer.getData(DRAG_MIME) as ElementType;
         if (!type) return;
 
-        // The drop target's rect is already scaled by the zoom transform, so
-        // dividing brings the pointer back into canvas coordinates.
-        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-        const x = (event.clientX - rect.left) / scale;
-        const y = (event.clientY - rect.top) / scale;
+        const { x, y } = pointAt(event.currentTarget as HTMLElement);
 
         const element = createElement(type, {
             x: 0,
@@ -3531,7 +3963,7 @@ export default function Editor({
         }
         if (componentParent?.componentRole === "master") element.componentSourceId = element.id;
 
-        setElements((els) => [...els, element]);
+        setElements((els) => ordered([...els, element], element.id));
         setSelectedIds([element.id]);
     };
 
@@ -3545,15 +3977,29 @@ export default function Editor({
                 (target.isContentEditable ||
                     ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
+            const mod = event.metaKey || event.ctrlKey;
+            // A Settings or Templates page is open: the canvas behind it is
+            // hidden, so nothing may reach it from the keyboard — no delete,
+            // duplicate, nudge or undo landing on a document out of sight.
+            // Saving still works.
+            if (workspaceOpenRef.current) {
+                if (mod && event.key.toLowerCase() === "s") {
+                    event.preventDefault();
+                    saveNow();
+                }
+                return;
+            }
+
             if (event.key === "Escape") {
                 if (editingId) setEditingId(null);
+                // Nothing left to deselect inside a component: Escape is the
+                // way back to the page — unless a field or a dialog owns it.
+                else if (componentModeRef.current && selectedCountRef.current === 0 && !typing && !event.defaultPrevented) leaveComponentRef.current();
                 else setSelectedIds([]);
                 setCanvasTool("select");
                 setContextMenu(null);
                 return;
             }
-
-            const mod = event.metaKey || event.ctrlKey;
 
             // The canvas tools, where every other editor puts them.
             if (!typing && !mod && !event.altKey && !event.shiftKey) {
@@ -3914,8 +4360,11 @@ export default function Editor({
             css.bottom = undefined;
             css.left = undefined;
         }
-        if (el.hover || el.press) css.transition = "transform .42s cubic-bezier(.16,1,.3,1), scale .42s cubic-bezier(.16,1,.3,1), rotate .42s cubic-bezier(.16,1,.3,1), background-color .32s ease, color .32s ease, border-color .32s ease, box-shadow .42s cubic-bezier(.16,1,.3,1), opacity .32s ease, filter .42s ease";
-        if (el.loop) css.animation = `pg-loop-${el.loop.type} ${el.loop.duration}ms ease-in-out infinite`;
+        if (el.hover || el.press) css.transition = stateTransition(el.transition).value;
+        if (el.loop) {
+            css.animation = loopAnimation(el.loop);
+            (css as Record<string, unknown>)["--pg-la"] = loopAmount(el.loop);
+        }
         css.cursor = el.locked ? "default" : isEditing ? "text" : "move";
         // The handles sit outside the box, where the next section's background
         // would paint straight over them. While something is selected it comes
@@ -3989,6 +4438,7 @@ export default function Editor({
                 onMouseUp={() => effectsPreview && setPressedEffectId((id) => id === el.id ? null : id)}
                 onMouseLeave={() => { setHoveredEffectIds((current) => { if (!hoverEffectIds.some((id) => current.has(id))) return current; const next = new Set(current); for (const id of hoverEffectIds) next.delete(id); return next; }); setPressedEffectId((id) => id === el.id ? null : id); }}
                 onDoubleClick={(event) => {
+                    if (interactionElement.locked) return;
                     event.stopPropagation();
                     if (el.layoutRole === "layout") {
                         const master = componentMasters.find(candidate => candidate.isLayout && (candidate.componentId ?? candidate.id) === rootStyle.pageLayoutId);
@@ -4005,6 +4455,7 @@ export default function Editor({
                 }}
                 onContextMenu={(event) => {
                     event.preventDefault();
+                    if (interactionElement.locked) return;
                     event.stopPropagation();
                     if (!selectedIds.includes(interactionElement.id)) setSelectedIds([interactionElement.id]);
                     setContextMenu({
@@ -4013,22 +4464,8 @@ export default function Editor({
                         elementId: interactionElement.id,
                     });
                 }}
-                onDragOver={
-                    container
-                        ? (event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              event.dataTransfer.dropEffect = "copy";
-                              setDropTargetId(el.id);
-                          }
-                        : undefined
-                }
-                onDragLeave={
-                    container
-                        ? () => setDropTargetId((c) => (c === el.id ? undefined : c))
-                        : undefined
-                }
-                onDrop={container ? (event) => handleDrop(event, el.id) : undefined}
+                onDragOver={previewLibraryDrop}
+                onDrop={(event) => handleDrop(event, container ? el.id : el.parentId ?? null)}
             >
                 {isEditing ? (
                     <textarea
@@ -4050,7 +4487,7 @@ export default function Editor({
                         }}
                     />
                 ) : (
-                    el.childrenSlot && componentMode ? <span className="pointer-events-none p-5 text-[12px] text-[#a17aff]">Children · Page content appears here</span> : <ElementBody element={el} entranceSplit={style.entranceSplit} effectsPreview={effectsPreview} />
+                    el.childrenSlot && componentMode ? <span className="pointer-events-none p-5 text-[12px] text-[#7c3aed]">Children · Page content appears here</span> : <ElementBody element={el} entranceSplit={style.entranceSplit} effectsPreview={effectsPreview} />
                 )}
 
                 {el.interactive?.kind === "marquee" ? (
@@ -4248,7 +4685,9 @@ export default function Editor({
                                         ? IconDatabase
                                         : tab === "Settings"
                                             ? IconSettings
-                                            : IconFile;
+                                            : tab === "History"
+                                                ? IconHistory
+                                                : IconFile;
     /** Puts the sidebar back on the document lists, address bar included. */
     /*
      * "AI" survives as a route so an /ai link still lands on Luma, but there is
@@ -4272,7 +4711,68 @@ export default function Editor({
         setLeftTab("Layers");
         setIsLeftCollapsed(true);
     };
+    /** Back from a component to the page it was opened from. */
+    const leaveComponentMode = () => {
+        // A drag or resize in progress still writes into the component's
+        // transaction; switching documents under it would let a later
+        // Escape restore the component over the page.
+        if (gesturingRef.current) return;
+        setRootStyle({ documentMode: "page" });
+        // Components is a component-mode panel; on the page it is Assets.
+        setLeftTab((current) => (current === "Components" ? "Assets" : current));
+        setSelectedIds([]);
+        setEditingId(null);
+    };
+    // A component whose last master was deleted has nothing left to edit;
+    // stay on it and the breadcrumb names a component that no longer exists.
+    useEffect(() => {
+        if (componentMode && componentMasters.length === 0) leaveComponentRef.current();
+    }, [componentMode, componentMasters.length]);
+    // Hiding the canvas behind a workspace page resets its scroll, so the
+    // view is kept by hand and put back when the page closes.
+    const workspaceOpen = leftTab === "Settings" || leftTab === "Templates";
+    const savedScrollRef = useRef<{ left: number; top: number } | null>(null);
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        // Remembered while the canvas is on screen; by the time a page hides
+        // it, the scroll has already been reset.
+        const remember = () => {
+            if (viewport.clientWidth > 0) savedScrollRef.current = { left: viewport.scrollLeft, top: viewport.scrollTop };
+        };
+        remember();
+        viewport.addEventListener("scroll", remember, { passive: true });
+        return () => viewport.removeEventListener("scroll", remember);
+    }, []);
+    useLayoutEffect(() => {
+        const viewport = viewportRef.current;
+        const saved = savedScrollRef.current;
+        if (workspaceOpen || !viewport || !saved) return;
+        viewport.scrollLeft = saved.left;
+        viewport.scrollTop = saved.top;
+    }, [workspaceOpen]);
+    useEffect(() => {
+        if (gesturing || !pendingHistoryRef.current) return;
+        pendingHistoryRef.current = false;
+        restoreHistoryRef.current();
+    }, [gesturing]);
+    componentModeRef.current = componentMode;
+    gesturingRef.current = gesturing;
+    leftTabRef.current = leftTab;
+    workspaceOpenRef.current = leftTab === "Settings" || leftTab === "Templates";
+    selectedCountRef.current = selectedIds.length;
+    leaveComponentRef.current = leaveComponentMode;
     const openLeftPanel = (tab: LeftEditorTab) => {
+        // Nothing navigates out from under a drag or a resize.
+        if (gesturingRef.current) return;
+        // The view is taken now, while the canvas is still on screen.
+        const viewport = viewportRef.current;
+        if ((tab === "Settings" || tab === "Templates") && viewport && viewport.clientWidth > 0) {
+            savedScrollRef.current = { left: viewport.scrollLeft, top: viewport.scrollTop };
+        }
+        // Anything that is about pages, not about the component on screen,
+        // takes you back to the page — no separate "Back to pages" step.
+        if (componentMode && !["Layers", "Components", "Insert"].includes(tab)) leaveComponentMode();
         const href = (adapters?.editorHref ?? defaultEditorHref)(page.id, panelSlug(tab));
         const url = new URL(href, window.location.href);
         const current = new URL(window.location.href);
@@ -4289,7 +4789,7 @@ export default function Editor({
             <RailTab
                 key={tab}
                 label={tab === "AI" ? "Luma" : tab}
-                icon={<Icon size={15} stroke={1.65} />}
+                icon={<Icon size={18} stroke={1.6} />}
                 active={leftTab === tab && (tab === "Templates" || !isLeftCollapsed)}
                 horizontal={horizontal}
                 onClick={() => openLeftPanel(tab)}
@@ -4310,7 +4810,7 @@ export default function Editor({
                 key={tab}
                 onClick={() => openLeftPanel(tab)}
                 aria-pressed={active}
-                className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-left text-[12.5px] transition-colors ${active
+                className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-left text-[12px] transition-colors ${active
                     ? "bg-[var(--ed-nav-active)] font-medium text-[var(--ed-nav-text)]"
                     : "font-normal text-[var(--ed-nav-muted)] hover:bg-[var(--ed-nav-hover)] hover:text-[var(--ed-nav-text)]"
                 }`}
@@ -4322,117 +4822,38 @@ export default function Editor({
     };
     const ActiveLeftIcon = iconForRailTab(leftTab);
     /** Whether a panel has taken the sidebar over from the document lists. */
-    const panelOpen = leftTab === "Settings" || leftTab === "Templates" || !isLeftCollapsed;
+    const panelOpen = !isLeftCollapsed;
 
 
+    // Where you are, and nothing else: the rail already lists every panel,
+    // so the corner carries the mark and the page being edited.
     const toolbarLeft = (
-        <>
-        <WorkspaceMenu
-            label={leftTab === "Settings" ? "Settings" : leftTab === "Templates" ? "Templates" : componentMode ? "Components" : "Canvas"}
-            mark={<PagieraMark size={17} className="shrink-0 rounded-[4px]" />}
-            items={([...railPrimary, ...railSecondary, ...(!componentMode ? ["Settings" as LeftEditorTab] : [])])
-                .filter((tab, index, all) => tab !== "Insert" && all.indexOf(tab) === index)
-                .map(tab => {
-                    const Icon = iconForRailTab(tab);
-                    return {
-                        id: tab, label: tab === "AI" ? "Luma" : tab,
-                        icon: <Icon size={14} stroke={1.7} />,
-                        group: ["Layers", "Pages", "Insert", "Assets", "Components"].includes(tab) ? "Design" : "Workspace",
-                        active: tab === leftTab,
-                    };
-                })}
-            onSelect={id => openLeftPanel(id as LeftEditorTab)}
-        />
-        <InsertMenu onInsert={insertElement} onInteractive={kind => {
-            const interactive = normalizeInteractive({ kind })!;
-            interactive.items = [];
-            const base = createElement("Frame", { x: 32, y: 32, z: 0 }).base;
-            insertElement("Frame", {
-                name: kind === "carousel" ? "Carousel" : "Marquee",
-                interactive, code: interactiveDocument(interactive), codeLanguage: "tsx",
-                base: { ...base, widthMode: "fill", heightMode: "fixed", w: 480, h: kind === "carousel" ? 320 : 140, padT: 0, padR: 0, padB: 0, padL: 0, borderW: 0, radius: 12, overflow: "hidden" },
-            });
-        }} onShader={id => {
-            const preset = SHADER_PRESETS.find(item => item.id === id);
-            const base = createElement("Frame", { x: 32, y: 32, z: 0 }).base;
-            insertElement("Frame", {
-                name: `Shader · ${preset?.name ?? id}`,
-                code: shaderDocument(id), codeLanguage: "tsx",
-                shader: { preset: id, colors: [...(preset ?? SHADER_PRESETS[0]).colors], speed: 1, scale: 1 },
-                base: { ...base, widthMode: "fill", heightMode: "fixed", w: 480, h: 320, padT: 0, padR: 0, padB: 0, padL: 0, borderW: 0, radius: 0, overflow: "hidden" },
-            });
-        }} />
-        </>
+        <div className="flex min-w-0 items-center gap-2.5 pl-1">
+            <PagieraMark size={22} className="shrink-0 rounded-md" />
+            {componentMode ? (
+                // Where you are and the way back are the same line: the page
+                // name is the way home, the component is where you are.
+                <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+                    <button
+                        type="button"
+                        onClick={() => { leaveComponentMode(); openLeftPanel("Layers"); }}
+                        className="truncate rounded-md px-1 font-medium text-ed-muted transition-colors hover:bg-[var(--ed-nav-hover)] hover:text-ed-text"
+                        title="Back to the page (Esc)"
+                    >
+                        {page.name}
+                    </button>
+                    <span className="text-ed-faint">/</span>
+                    <span className="truncate font-semibold text-ed-text">{activeComponentMaster?.name || "Component"}</span>
+                </nav>
+            ) : (
+                <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ed-text">{page.name}</span>
+            )}
+        </div>
     );
 
-    const workspaceStorageKey = "pagiera:workspace-tabs:" + (adapters?.editorHref ?? defaultEditorHref)(page.id, "layers").replace(page.id, ":page");
-    const workspaceComponent = leftTab === "Components" && componentMode ? activeComponentMaster : undefined;
-    const workspaceKey = [page.id, leftTab, leftTab === "Settings" ? settingsSection : "", workspaceComponent?.id ?? ""].join(":");
-    const workspace = useWorkspaceTabs(workspaceStorageKey, {
-        key: workspaceKey, pageId: page.id, panel: leftTab,
-        section: leftTab === "Settings" ? settingsSection : undefined,
-        componentId: workspaceComponent?.id,
-        label: workspaceComponent ? workspaceComponent.name || "Component" : leftTab === "Layers" ? page.name : leftTab === "Settings" ? (settingsSection === "ai" ? "AI settings" : settingsSection === "general" ? "Settings" : settingsSection === "variables" ? "Variables" : "Import & export") : leftTab,
-    }, tabsRestored && leftTab !== "Variables" && leftTab !== "AI");
 
-    // A page navigation can remount the editor. Restore its exact destination
-    // after the adapter has loaded the document, not before it finishes.
-    useEffect(() => {
-        if (!tabsRestored) return;
-        try {
-            const pending = JSON.parse(sessionStorage.getItem(workspaceStorageKey + ":pending") ?? "null") as WorkspaceTab | null;
-            if (!pending || pending.pageId !== page.id) return;
-            sessionStorage.removeItem(workspaceStorageKey + ":pending");
-            if (!isEditorTab(pending.panel, LEFT_EDITOR_TABS)) return;
-            setLeftTab(pending.panel);
-            setIsLeftCollapsed(false);
-            if (pending.section && ["general", "variables", "transfer", "ai"].includes(pending.section)) setSettingsSection(pending.section);
-            if (pending.componentId && componentMasters.some(master => master.id === pending.componentId)) {
-                setRootStyle({ documentMode: "component" });
-                setActiveComponentMasterId(pending.componentId);
-                setSelectedIds([pending.componentId]);
-            } else if (pending.panel !== "Components" && componentMode) {
-                setRootStyle({ documentMode: "page" });
-            }
-        } catch { /* Invalid or unavailable session storage cannot block navigation. */ }
-    }, [page.id, tabsRestored, workspaceStorageKey]);
-
-    const openWorkspaceTab = (tab: WorkspaceTab) => {
-        if (!isEditorTab(tab.panel, LEFT_EDITOR_TABS)) return;
-        if (tab.pageId !== page.id) {
-            if (!pages.some(entry => entry.id === tab.pageId)) { workspace.close(tab.key); return; }
-            try { sessionStorage.setItem(workspaceStorageKey + ":pending", JSON.stringify(tab)); } catch { /* Fall back to the page's default panel. */ }
-            void navigateEditorPage(tab.pageId);
-            return;
-        }
-        if (tab.componentId) {
-            if (!componentMasters.some(master => master.id === tab.componentId)) { workspace.close(tab.key); return; }
-            setRootStyle({ documentMode: "component", maxWidth: Math.max(rootStyle.maxWidth, 760) });
-            setActiveComponentMasterId(tab.componentId);
-            setSelectedIds([tab.componentId]);
-            setBreakpoint("desktop");
-        } else if (componentMode) {
-            setRootStyle({ documentMode: "page" });
-            setSelectedIds([]);
-            setEditingId(null);
-        }
-        if (tab.section) setSettingsSection(tab.section);
-        openLeftPanel(tab.panel);
-    };
-    const documentTabs = <WorkspaceTabs tabs={workspace.tabs} activeKey={workspaceKey} onOpen={openWorkspaceTab} onClose={tab => {
-        if (tab.key === workspaceKey) {
-            const index = workspace.tabs.findIndex(item => item.key === tab.key);
-            const next = workspace.tabs[index - 1] ?? workspace.tabs[index + 1];
-            if (!next) return;
-            openWorkspaceTab(next);
-        }
-        workspace.close(tab.key);
-    }} />;
-
-    const toolbarCenter = (
+    const toolbarDock = (
         <>
-            {documentTabs}
-            <span className="mx-1 h-4 w-px shrink-0 bg-white/10" />
             {leftTab !== "Templates" && !componentMode && (
                 // What a drag on the empty canvas does. Selecting and
                 // drawing both start the same way — press and pull — so
@@ -4456,7 +4877,7 @@ export default function Editor({
                 </SegmentedBar>
             )}
             {leftTab === "Templates" ? (
-                <div className="flex items-center gap-2 px-3 text-[10px] font-semibold text-ed-text"><IconTemplate size={13} className="text-ed-accent" /><span>Template marketplace</span><span className="rounded-md bg-ed-field px-2 py-0.5 text-[8px] font-medium text-ed-faint">Discover</span></div>
+                <div className="flex items-center gap-2 px-3 text-[10px] font-semibold text-ed-text"><IconTemplate size={13} className="text-ed-accent" /><span>Template marketplace</span><span className="rounded-md bg-ed-field px-2 py-0.5 text-[10px] font-medium text-ed-faint">Discover</span></div>
             ) : <>
                 {/* Which artboard the edits land on. Every breakpoint is
                     on the canvas at once, so this selects rather than
@@ -4477,18 +4898,20 @@ export default function Editor({
                                         label={`${definition.name} · ${definition.width}px`}
                                         active={active}
                                         onClick={() => setBreakpoint(definition.id)}
-                                        className={`h-8 w-9 ${active ? "bg-transparent text-ed-accent" : ""}`}
                                     >
                                         <DeviceIcon size={15} stroke={1.7} />
-                                        {/* The artboard you are editing, underlined the
-                                            way a chosen tab is. */}
-                                        {active && <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-ed-accent" />}
                                     </ToolButton>
                                 );
                             })}
+                            <ToolButton
+                                label={showAllBreakpoints ? "Show only this breakpoint" : "Show every breakpoint side by side"}
+                                active={showAllBreakpoints}
+                                onClick={toggleAllBreakpoints}
+                            >
+                                <IconLayoutBoardSplit size={15} stroke={1.7} />
+                            </ToolButton>
                         </ToolGroup>
-                        <Readout>{selectedBreakpoint.width} PX</Readout>
-                        <ToolDivider />
+                                <ToolDivider />
                     </>
                 )}
                 {!componentMode && (
@@ -4503,24 +4926,25 @@ export default function Editor({
                 <button
                     type="button"
                     aria-label={effectsPreview ? "Stop interaction preview" : "Preview interactions"}
+                    title={effectsPreview ? "Stop interaction preview" : "Preview hover, press and actions"}
                     aria-pressed={effectsPreview}
                     onClick={() => { setEffectsPreview((value) => !value); setHoveredEffectIds(new Set()); setPressedEffectId(null); setPreviewVisibility({}); }}
-                    className={`group/preview relative flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium transition-colors ${effectsPreview ? "border-ed-accent bg-[var(--ed-accent-soft)] text-ed-accent" : "border-ed-border text-ed-muted hover:bg-ed-field hover:text-ed-text"}`}
+                    className={`group/preview relative flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors ${effectsPreview ? "bg-[var(--ed-accent-soft)] text-[var(--ed-accent-hover)] shadow-[inset_0_0_0_1px_rgb(124_92_255/0.45)]" : "text-ed-muted hover:bg-[var(--ed-nav-hover)] hover:text-ed-text"}`}
                 >
                     <IconPlayerPlay size={13} stroke={1.7} />
                     <span>Preview</span>
-                    <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[100] w-max translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/preview:translate-y-0 group-hover/preview:opacity-100 group-focus-visible/preview:translate-y-0 group-focus-visible/preview:opacity-100">{effectsPreview ? "Stop interaction preview" : "Preview hover, press and actions"}</span>
+                    <span role="tooltip" className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-[100] w-max -translate-x-1/2 -translate-y-1 rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all group-hover/preview:translate-y-0 group-hover/preview:opacity-100 group-focus-visible/preview:translate-y-0 group-focus-visible/preview:opacity-100">{effectsPreview ? "Stop interaction preview" : "Preview hover, press and actions"}</span>
                 </button>
                 <ToolButton
                     tone="solid"
-                    tooltip="below"
+                    tooltip="above"
                     label={stickyPreview ? "Disable sticky preview" : "Preview sticky positioning"}
                     active={stickyPreview}
                     onClick={() => setStickyPreview((value) => !value)}
                 >
                     {stickyPreview ? <IconPinFilled size={13} stroke={1.7} /> : <IconPin size={13} stroke={1.7} />}
                 </ToolButton>
-            <div className="mx-0.5 h-4 w-px bg-ed-border" />
+            <ToolDivider />
             <div className="flex items-center gap-1 text-[10px] font-medium text-ed-muted">
                 {componentMode && <><Select value={activeComponentMaster?.id} onValueChange={(id) => { setActiveComponentMasterId(id); setSelectedIds([id]); }}><SelectTrigger aria-label="Variant"><SelectValue placeholder="Select variant" /></SelectTrigger><SelectContent>{activeComponentVariants.map((master) => <SelectItem key={master.id} value={master.id}>{master.variant ?? "Default"}</SelectItem>)}</SelectContent></Select><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} title="Add variant" className="flex size-6 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-30"><IconPlus size={12} /></button></>}
                 {localeCodes.length > 0 && (
@@ -4533,31 +4957,48 @@ export default function Editor({
                     </Select>
                 )}
                 <ToolGroup>
-                    <ToolButton size="sm" label="Zoom out (Ctrl -)" onClick={() => stepZoom(-1)}>
+                    <ToolButton label="Zoom out (Ctrl -)" onClick={() => stepZoom(-1)}>
                         <IconMinus size={12} />
                     </ToolButton>
                     <ToolButton
-                        size="sm"
                         label="Reset zoom (Ctrl 0)"
                         onClick={() => zoomTo(100)}
-                        className="w-9 select-none text-[10px] tabular-nums"
+                        className="w-12 select-none text-[11px] font-medium tabular-nums"
                     >
                         {zoom}%
                     </ToolButton>
-                    <ToolButton size="sm" label="Zoom in (Ctrl +)" onClick={() => stepZoom(1)}>
+                    <ToolButton label="Zoom in (Ctrl +)" onClick={() => stepZoom(1)}>
                         <IconPlus size={12} />
                     </ToolButton>
                 </ToolGroup>
             </div>
 
-            <ToolGroup className="border-l border-ed-border pl-1">
-                <ToolButton size="sm" label="Undo (Ctrl Z)" onClick={undo} disabled={!canUndo}>
+            <ToolDivider />
+            <ToolGroup>
+                <ToolButton label="Undo (Ctrl Z)" onClick={undo} disabled={!canUndo}>
                     <IconArrowBackUp size={14} />
                 </ToolButton>
-                <ToolButton size="sm" label="Redo (Ctrl Shift Z)" onClick={redo} disabled={!canRedo}>
+                <ToolButton label="Redo (Ctrl Shift Z)" onClick={redo} disabled={!canRedo}>
                     <IconArrowForwardUp size={14} />
                 </ToolButton>
             </ToolGroup>
+            {adapters?.generate && (
+                <>
+                    <ToolDivider />
+                    {/* Luma lives at the end of the dock rather than in a
+                        bubble of its own that sat on top of the tools. */}
+                    <button
+                        type="button"
+                        aria-label="Ask Luma"
+                        title="Ask Luma"
+                        onClick={() => setRightSection("Luma")}
+                        className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold text-ed-text transition-colors hover:bg-[var(--ed-nav-hover)] [&>svg]:text-ed-accent"
+                    >
+                        <IconSparkles size={14} stroke={1.8} />
+                        <span>Luma</span>
+                    </button>
+                </>
+            )}
             </>}
         </>
     );
@@ -4565,30 +5006,19 @@ export default function Editor({
     const toolbarRight = (
         <>
             {leftTab === "Templates" ? <>
-                <span className="hidden text-[9px] text-ed-faint lg:block">Curated responsive starting points</span>
+                <span className="hidden text-[10px] text-ed-faint lg:block">Curated responsive starting points</span>
                 <ChromeButton onClick={() => openLeftPanel("Layers")}>Back to canvas</ChromeButton>
             </> : <>
             <span className="hidden lg:block"><SaveIndicator status={saveStatus} error={saveError} /></span>
             <div className="mx-0.5 hidden h-4 w-px bg-ed-border lg:block" />
-            {componentMode ? (
-                <ChromeButton
-                    onClick={() => {
-                        setRootStyle({ documentMode: "page" });
-                        setSelectedIds([]);
-                        setEditingId(null);
-                        openLeftPanel("Layers");
-                    }}
-                >
-                    Back to pages
-                </ChromeButton>
-            ) : <>
+            {componentMode ? null : <>
             <div className="relative flex items-stretch">
                 <button
                     type="button"
                     onClick={publish}
                     disabled={isPending || isDirty}
                     title={isDirty ? "Waiting for the draft to save…" : undefined}
-                    className={`h-8 select-none bg-ed-accent px-4 text-[11px] font-semibold text-white transition-colors hover:bg-[var(--ed-accent-hover)] disabled:opacity-50 ${page.publishedAt ? "rounded-l-lg" : "rounded-lg"}`}
+                    className={`h-8 select-none bg-ed-primary px-4 text-[12px] font-semibold text-[var(--ed-primary-text)] transition-colors hover:bg-[var(--ed-primary-hover)] disabled:opacity-50 ${page.publishedAt ? "rounded-l-full pl-5" : "rounded-full px-5"}`}
                 >
                     {isPending ? "Working…" : page.publishedAt ? "Republish" : "Publish"}
                 </button>
@@ -4601,7 +5031,7 @@ export default function Editor({
                             aria-haspopup="menu"
                             aria-expanded={publishMenuOpen}
                             onClick={() => setPublishMenuOpen((current) => !current)}
-                            className="flex h-8 items-center rounded-r-lg bg-ed-accent px-1.5 text-white transition-colors hover:bg-[var(--ed-accent-hover)]"
+                            className="flex h-8 items-center rounded-r-full bg-ed-primary pl-1.5 pr-2.5 text-[var(--ed-primary-text)] transition-colors hover:bg-[var(--ed-primary-hover)]"
                         >
                             <IconChevronDown size={14} />
                         </button>
@@ -4639,12 +5069,13 @@ export default function Editor({
 
     const rail = (
         <>
-                {railPrimary.map((tab) => renderRailTab(tab))}
-                <span className="my-1 h-px w-5 bg-[var(--ed-nav-border)]" />
+                {/* Adding comes first, the way every builder puts it. */}
+                {[...railPrimary.filter((tab) => tab === "Insert"), ...railPrimary.filter((tab) => tab !== "Insert")].map((tab) => renderRailTab(tab))}
+                <span className="my-1 h-px w-6 bg-[var(--ed-nav-border)]" />
                 {railSecondary.map((tab) => renderRailTab(tab))}
                 {!componentMode && (
                     <>
-                        <span className="mt-auto h-px w-5 bg-[var(--ed-nav-border)]" />
+                        <span className="mt-auto" />
                         {renderRailTab("Settings")}
                     </>
                 )}
@@ -4653,30 +5084,11 @@ export default function Editor({
 
     const panel = (
         <>
-                {leftTab !== "Settings" && leftTab !== "Templates" && <div className="flex h-11 shrink-0 items-stretch gap-5 border-b border-white/[0.06] px-3">
-                    {(componentMode
-                        ? (["Layers", "Components", "Insert"] as LeftEditorTab[])
-                        : (["Pages", "Layers", "Assets"] as LeftEditorTab[])
-                    ).map((tab) => (
-                        <button
-                            key={tab}
-                            type="button"
-                            onClick={() => openLeftPanel(tab)}
-                            aria-pressed={leftTab === tab}
-                            className={`relative flex items-center justify-center text-[12px] font-medium transition-colors ${leftTab === tab
-                                ? "text-[var(--ed-nav-text)]"
-                                : "text-[var(--ed-nav-muted)] hover:text-[var(--ed-nav-text)]"
-                            }`}
-                        >
-                            {tab}
-                            {leftTab === tab && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#a17aff]" />}
-                        </button>
-                    ))}
-                </div>}
-                {(leftTab === "Settings" || leftTab === "Templates") && <PanelHeader title={leftTab} />}
+                {/* The rail says where you are; the panel names it once. */}
+                <PanelHeader className="h-12 border-b border-ed-border px-4 [&>span:first-child]:text-[13px]" title={leftTab === "AI" ? "Luma" : leftTab} />
                 {leftTab === "Layers" && (
-                    <div className="flex h-9 shrink-0 items-center justify-between px-3">
-                        <span className="text-[11px] font-medium text-ed-muted">Document</span>
+                    <div className="flex h-9 shrink-0 items-center justify-between pl-4 pr-3">
+                        <span className="text-[12px] font-medium text-ed-muted">Document</span>
                         <div className="flex items-center gap-0.5">
                             <PanelAction
                                 label={layersAllCollapsed ? "Expand every layer" : "Collapse every layer"}
@@ -4766,7 +5178,9 @@ export default function Editor({
                             componentMode={componentMode}
                             // The component canvas has masters instead of
                             // artboards, so the widths are a page-only grouping.
-                            breakpointGroups={componentMode ? [] : breakpointDefs.map((item) => ({
+                            // Only the artboards on screen: a breakpoint that is
+                            // not drawn has no layers to point at.
+                            breakpointGroups={componentMode ? [] : breakpointDefs.filter((item) => showAllBreakpoints || item.id === breakpoint).map((item) => ({
                                 id: item.id,
                                 name: item.name,
                                 hint: rangeChip(item.id),
@@ -4887,11 +5301,7 @@ export default function Editor({
                                     setElements={setElements}
                                 />
                             ) : leftTab === "Components" ? (
-                                <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Asset canvas</p><p className="mt-1 text-[9px] text-ed-faint">One asset, multiple variants—similar to its own breakpoint set.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Assets"); }} className="rounded-md bg-ed-field px-2.5 py-1.5 text-[9px] text-ed-muted hover:text-ed-text">Back to page</button></div>{activeComponentMaster && <div className="mb-3 space-y-2 rounded-[18px] bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Asset</span><input value={activeComponentMaster.name ?? ""} placeholder="Asset name" onChange={(event) => patchProps(activeComponentMaster.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[9px] text-ed-faint"><span className="w-16">Variant</span><input value={activeComponentMaster.variant ?? "Default"} onChange={(event) => patchProps(activeComponentMaster.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} /><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant to {activeComponentMaster?.name ?? "asset"}</button></div>
-                            ) : leftTab === "Settings" ? (
-                                <SettingsNavigation active={settingsSection} onChange={setSettingsSection} />
-                            ) : leftTab === "Templates" ? (
-                                <TemplatesNavigation categories={templateCategories} active={templateCategory} onChange={setTemplateCategory} />
+                                <div className="p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold text-ed-text">Asset canvas</p><p className="mt-1 text-[10px] text-ed-faint">One asset, multiple variants—similar to its own breakpoint set.</p></div><button type="button" onClick={() => { setRootStyle({ ...rootStyle, documentMode: "page" }); setLeftTab("Assets"); }} className="rounded-md bg-ed-field px-2.5 py-1.5 text-[10px] text-ed-muted hover:text-ed-text">Back to page</button></div>{activeComponentMaster && <div className="mb-3 space-y-2 rounded-[18px] bg-ed-subtle p-2.5"><label className="flex items-center gap-2 text-[10px] text-ed-faint"><span className="w-16">Asset</span><input value={activeComponentMaster.name ?? ""} placeholder="Asset name" onChange={(event) => patchProps(activeComponentMaster.id, { name: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label><label className="flex items-center gap-2 text-[10px] text-ed-faint"><span className="w-16">Variant</span><input value={activeComponentMaster.variant ?? "Default"} onChange={(event) => patchProps(activeComponentMaster.id, { variant: event.target.value })} className="h-8 min-w-0 flex-1 rounded-xl bg-ed-field px-2.5 text-[10px] text-ed-text outline-none focus:ring-1 focus:ring-ed-accent" /></label></div>}<ComponentAssetCards assets={componentAssets} activeMasterId={activeComponentMaster?.id} onOpen={(master) => { setActiveComponentMasterId(master.id); setSelectedIds([master.id]); }} /><button type="button" onClick={createComponentVariant} disabled={!activeComponentMaster} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-ed-accent px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-30"><IconPlus size={12} /> Add variant to {activeComponentMaster?.name ?? "asset"}</button></div>
                             ) : (
                                 <PagesPanel
                                     pages={pages}
@@ -4926,10 +5336,24 @@ export default function Editor({
         </>
     );
 
-    const canvas = (
-        <>
-                    {leftTab === "Templates" && (
-                        <div className="custom-scrollbar absolute inset-0 z-50 overflow-y-auto bg-ed-surface">
+    /*
+     * Settings and Templates are pages of their own, not sheets over the
+     * canvas: the shell sets the canvas, the panels and the dock aside while
+     * one is open.
+     */
+    const workspacePage = leftTab === "Settings" ? (
+        <SettingsWorkspace section={settingsSection} onSection={setSettingsSection}>
+                            {settingsSection === "ai" && <AiSettings mcp={adapters?.mcp} available={Boolean(adapters?.generate)} enterToSend={enterToSend} onEnterToSend={updateEnterToSend} />}
+                            {settingsSection === "general" && <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} layoutOptions={componentAssets.map((asset) => ({ label: asset.name, value: asset.id }))} />}
+                            {settingsSection === "variables" && <VariablesPanel rootStyle={rootStyle} selectedElement={selectedElement} setRootStyle={setRootStyle} setElements={setElements} />}
+                            {settingsSection === "transfer" && <SiteTransfer
+                                exportUrl={adapters?.exportTemplateUrl}
+                                onImport={adapters?.importTemplate ? importSiteBundle : undefined}
+                                busy={isPending || Boolean(pageSwitchTarget)}
+                            />}
+        </SettingsWorkspace>
+    ) : leftTab === "Templates" ? (
+        <WorkspacePage nav={<TemplatesNavigation categories={templateCategories} active={templateCategory} onChange={setTemplateCategory} />} className="max-w-[1180px] px-8 py-8">
                             <TemplatesPanel
                                 category={templateCategory}
                                 onCategoryChange={setTemplateCategory}
@@ -4956,25 +5380,16 @@ export default function Editor({
                                     else adapters?.refresh?.();
                                 }}
                             />
-                        </div>
-                    )}
-                    {leftTab === "Settings" && (
-                        <SettingsWorkspace section={settingsSection}>
-                            {settingsSection === "ai" && <AiSettings mcp={adapters?.mcp} available={Boolean(adapters?.generate)} enterToSend={enterToSend} onEnterToSend={updateEnterToSend} />}
-                            {settingsSection === "general" && <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} layoutOptions={componentAssets.map((asset) => ({ label: asset.name, value: asset.id }))} />}
-                            {settingsSection === "variables" && <VariablesPanel rootStyle={rootStyle} selectedElement={selectedElement} setRootStyle={setRootStyle} setElements={setElements} />}
-                            {settingsSection === "transfer" && <SiteTransfer
-                                exportUrl={adapters?.exportTemplateUrl}
-                                onImport={adapters?.importTemplate ? importSiteBundle : undefined}
-                                busy={isPending || Boolean(pageSwitchTarget)}
-                            />}
-                        </SettingsWorkspace>
-                    )}
+        </WorkspacePage>
+    ) : undefined;
+
+    const canvas = (
+        <>
                     {/* biome-ignore lint/a11y/noStaticElementInteractions: pan surface; Ctrl +/-/0 cover the same ground from the keyboard */}
                     <div
                         ref={viewportRef}
-                        inert={leftTab === "Settings" || leftTab === "Templates"}
-                        aria-hidden={leftTab === "Settings" || leftTab === "Templates" ? true : undefined}
+                        inert={workspacePage ? true : undefined}
+                        aria-hidden={workspacePage ? true : undefined}
                         className="canvas-scrollbar absolute inset-0 overflow-auto overscroll-none"
                         style={{ cursor: isPanning ? "grabbing" : spaceHeld ? "grab" : canvasTool === "frame" ? "crosshair" : undefined }}
                         onMouseDown={(event) => {
@@ -5202,7 +5617,7 @@ export default function Editor({
                                                 {isBaseFrame && (
                                                     <span
                                                         title="Desktop is the main artboard: what you change here is what the narrower ones inherit."
-                                                        className="rounded-md bg-ed-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[.06em] text-ed-accent"
+                                                        className="rounded-md bg-ed-accent/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[.06em] text-ed-accent"
                                                     >
                                                         Main
                                                     </span>
@@ -5212,7 +5627,7 @@ export default function Editor({
                                                         type="button"
                                                         onClick={(event) => { event.stopPropagation(); removeBreakpoint(frame.bp); }}
                                                         title="Remove breakpoint"
-                                                        className="flex size-5 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-red-500/15 hover:text-red-400"
+                                                        className="flex size-5 items-center justify-center rounded-md bg-ed-field text-ed-muted hover:bg-red-500/15 hover:text-red-600"
                                                     >
                                                         <IconTrash size={11} />
                                                     </button>
@@ -5247,7 +5662,9 @@ export default function Editor({
                                                     // The main artboard is the
                                                     // fixed point parked layers
                                                     // are measured against.
-                                                    if (!componentMode && frame.bp === cascade.baseId) parkAnchorRef.current = node;
+                                                    // With one breakpoint on screen the base artboard may
+                                                    // not be drawn; the visible one anchors instead.
+                                                    if (!componentMode && (frame.bp === cascade.baseId || !frames.some((item) => item.bp === cascade.baseId))) parkAnchorRef.current = node;
                                                 }}
                                                 data-canvas-page
                                                 // Marks the artboard's own area,
@@ -5289,11 +5706,7 @@ export default function Editor({
                                                         minHeight: frameCanvasHeight,
                                                         background: componentMode ? "transparent" : rootStyle.bg,
                                                     }}
-                                                    onDragOver={(event) => {
-                                                        event.preventDefault();
-                                                        event.dataTransfer.dropEffect = "copy";
-                                                        setDropTargetId(null);
-                                                    }}
+                                                    onDragOver={previewLibraryDrop}
                                                     onDrop={(event) => { if (frameMaster) setActiveComponentMasterId(frameMaster.id); handleDrop(event, componentMode ? frame.masterId ?? null : null); }}
                                                     onMouseDown={(event) => {
                                                         if (event.target === event.currentTarget)
@@ -5368,22 +5781,6 @@ export default function Editor({
                         </AnimatePresence>
                     </div>
 
-                    {adapters?.generate && (
-                        <>
-                            <button
-                                type="button"
-                                aria-label="Ask Luma"
-                                title="Ask Luma"
-                                onClick={() => {
-                                    setRightSection("Luma");
-                                }}
-                                className="absolute bottom-6 right-6 z-30 flex size-11 items-center justify-center rounded-full bg-ed-accent text-white shadow-[0_8px_24px_rgb(0_0_0/0.45)] transition-colors hover:bg-[var(--ed-accent-hover)]"
-                            >
-                                <IconSparkles size={19} stroke={1.7} />
-                            </button>
-
-                        </>
-                    )}
         </>
     );
 
@@ -5393,7 +5790,7 @@ export default function Editor({
                             it is where you go when you do not yet know what to
                             select — and Style appears once there is something
                             for it to be about. */}
-                        <div className="mx-4 flex h-12 shrink-0 items-stretch gap-6 border-b border-white/[0.06]">
+                        <div className="mx-4 flex h-12 shrink-0 items-stretch gap-6 border-b border-ed-border">
                             {(["Luma", "Style"] as const)
                                 .filter((section) => section === "Luma" ? Boolean(adapters?.generate) : hasElementSelection)
                                 .map((section) => (
@@ -5462,11 +5859,11 @@ export default function Editor({
                                         {!componentMode && rootStyle.layout === "absolute" && selectedElement.parentId && <button type="button" onClick={() => doReparent(selectedElement.id, undefined)} className="h-8 flex-1 rounded-lg bg-ed-field px-2.5 text-[10px] font-medium text-ed-muted hover:border-ed-accent/50 hover:bg-ed-field hover:text-ed-text">Detach to canvas</button>}
                                         {selectedElement.componentRole === "master" && (
                                             <>
-                                                <span className="rounded-md bg-ed-accent/15 px-2 py-1 text-[9px] font-semibold uppercase text-ed-accent">
+                                                <span className="rounded-md bg-ed-accent/15 px-2 py-1 text-[10px] font-semibold uppercase text-ed-accent">
                                                     Master · {selectedElement.variant}
                                                 </span>
-                                                <button type="button" onClick={createComponentInstance} className="rounded-lg bg-ed-field px-2 py-1.5 text-[9px] text-ed-text hover:bg-ed-field-hover">Instance</button>
-                                                <button type="button" onClick={createComponentVariant} className="rounded-lg bg-ed-field px-2 py-1.5 text-[9px] text-ed-text hover:bg-ed-field-hover">+ Variant</button>
+                                                <button type="button" onClick={createComponentInstance} className="rounded-lg bg-ed-field px-2 py-1.5 text-[10px] text-ed-text hover:bg-ed-field-hover">Instance</button>
+                                                <button type="button" onClick={createComponentVariant} className="rounded-lg bg-ed-field px-2 py-1.5 text-[10px] text-ed-text hover:bg-ed-field-hover">+ Variant</button>
                                             </>
                                         )}
                                         {selectedElement.componentRole === "instance" && (
@@ -5537,17 +5934,17 @@ export default function Editor({
     const overlays = (
         <>
             {codeComposerOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md" onMouseDown={() => setCodeComposerOpen(false)}>
-                    <div className="flex h-[min(760px,88vh)] w-[min(1040px,94vw)] flex-col overflow-hidden rounded-2xl bg-ed-surface shadow-[0_24px_64px_rgb(0_0_0/0.55)]" onMouseDown={(event) => event.stopPropagation()}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgb(24_24_27/0.28)] backdrop-blur-[2px] p-6 backdrop-blur-md" onMouseDown={() => setCodeComposerOpen(false)}>
+                    <div className="flex h-[min(760px,88vh)] w-[min(1040px,94vw)] flex-col overflow-hidden rounded-2xl bg-ed-surface shadow-[var(--ed-menu-shadow)]" onMouseDown={(event) => event.stopPropagation()}>
                         <div className="flex h-14 shrink-0 items-center justify-between border-b border-ed-border px-4">
                             <div>
                                 <p className="text-xs font-semibold text-ed-text">New code component</p>
-                                <p className="mt-0.5 text-[9px] text-ed-faint">React components compile on the server and run in an isolated sandbox.</p>
+                                <p className="mt-0.5 text-[10px] text-ed-faint">React components compile on the server and run in an isolated sandbox.</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="flex rounded-lg bg-ed-subtle p-0.5">
                                     {(["tsx", "html"] as const).map((language) => (
-                                        <button key={language} type="button" onClick={() => { setCodeComponentLanguage(language); setCodeComponentSource(language === "tsx" ? DEFAULT_TSX_COMPONENT : DEFAULT_HTML_COMPONENT); setCodeComponentPreview(""); setCodeComponentError(""); }} className={`h-7 rounded-md px-3 text-[9px] font-semibold uppercase transition-colors ${codeComponentLanguage === language ? "bg-ed-field text-ed-text shadow-sm" : "text-ed-faint hover:text-ed-muted"}`}>{language}</button>
+                                        <button key={language} type="button" onClick={() => { setCodeComponentLanguage(language); setCodeComponentSource(language === "tsx" ? DEFAULT_TSX_COMPONENT : DEFAULT_HTML_COMPONENT); setCodeComponentPreview(""); setCodeComponentError(""); }} className={`h-7 rounded-md px-3 text-[10px] font-semibold uppercase transition-colors ${codeComponentLanguage === language ? "bg-ed-field text-ed-text shadow-sm" : "text-ed-faint hover:text-ed-muted"}`}>{language}</button>
                                     ))}
                                 </div>
                                 <button type="button" aria-label="Close code composer" onClick={() => setCodeComposerOpen(false)} className="flex size-8 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field hover:text-ed-text"><IconX size={15} /></button>
@@ -5555,29 +5952,29 @@ export default function Editor({
                         </div>
                         <div className="grid min-h-0 flex-1 grid-cols-[1.1fr_.9fr]">
                             <div className="flex min-h-0 flex-col gap-3 border-r border-ed-border p-4">
-                                <label className="text-[9px] font-semibold tracking-wide text-ed-faint uppercase">Component name<input value={codeComponentName} onChange={(event) => setCodeComponentName(event.target.value)} className="mt-1.5 h-9 w-full rounded-[14px] bg-ed-subtle px-3 text-[11px] text-ed-text outline-none focus:border-ed-accent" /></label>
-                                <label className="flex min-h-0 flex-1 flex-col text-[9px] font-semibold tracking-wide text-ed-faint uppercase">
+                                <label className="text-[10px] font-semibold tracking-wide text-ed-faint uppercase">Component name<input value={codeComponentName} onChange={(event) => setCodeComponentName(event.target.value)} className="mt-1.5 h-9 w-full rounded-[14px] bg-ed-subtle px-3 text-[11px] text-ed-text outline-none focus-visible:shadow-[var(--ed-accent-glow)]" /></label>
+                                <label className="flex min-h-0 flex-1 flex-col text-[10px] font-semibold tracking-wide text-ed-faint uppercase">
                                     {codeComponentLanguage === "tsx" ? "Component.tsx" : "Document.html"}
-                                    <textarea value={codeComponentSource} onChange={(event) => { setCodeComponentSource(event.target.value); setCodeComponentPreview(""); }} spellCheck={false} className="mt-1.5 min-h-0 flex-1 resize-none rounded-2xl bg-[#0d0e12] p-4 font-mono text-[11px] leading-[1.7] text-zinc-300 outline-none focus:border-ed-accent" />
+                                    <textarea value={codeComponentSource} onChange={(event) => { setCodeComponentSource(event.target.value); setCodeComponentPreview(""); }} spellCheck={false} className="mt-1.5 min-h-0 flex-1 resize-none rounded-2xl bg-[#0d0e12] p-4 font-mono text-[11px] leading-[1.7] text-zinc-300 outline-none focus-visible:shadow-[var(--ed-accent-glow)]" />
                                 </label>
-                                {codeComponentError && <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 font-mono text-[9px] leading-relaxed text-red-300">{codeComponentError}</p>}
+                                {codeComponentError && <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 font-mono text-[10px] leading-relaxed text-red-700">{codeComponentError}</p>}
                             </div>
                             <div className="flex min-h-0 flex-col bg-ed-canvas p-4">
                                 <div className="mb-2 flex items-center justify-between">
-                                    <span className="text-[9px] font-semibold tracking-wide text-ed-faint uppercase">Preview</span>
-                                    <button type="button" onClick={() => void compileCodeComponent()} disabled={!codeComponentSource.trim() || codeComponentCompiling} className="h-7 rounded-xl bg-ed-surface px-3 text-[9px] font-semibold text-ed-muted transition-colors hover:border-ed-accent/40 hover:text-ed-text disabled:opacity-40">{codeComponentCompiling ? "Compiling…" : "Run preview"}</button>
+                                    <span className="text-[10px] font-semibold tracking-wide text-ed-faint uppercase">Preview</span>
+                                    <button type="button" onClick={() => void compileCodeComponent()} disabled={!codeComponentSource.trim() || codeComponentCompiling} className="h-7 rounded-xl bg-ed-surface px-3 text-[10px] font-semibold text-ed-muted transition-colors hover:border-ed-accent/40 hover:text-ed-text disabled:opacity-40">{codeComponentCompiling ? "Compiling…" : "Run preview"}</button>
                                 </div>
                                 {codeComponentPreview ? (
                                     <iframe title="Code component preview" srcDoc={codeComponentPreview} sandbox={codeComponentLanguage === "tsx" ? "allow-scripts" : ""} className="min-h-0 flex-1 rounded-2xl bg-white" />
                                 ) : (
                                     <div className="grid min-h-0 flex-1 place-items-center rounded-xl border border-dashed border-ed-border bg-ed-surface/50 text-center">
-                                        <div><IconCode size={20} className="mx-auto mb-2 text-ed-faint" /><p className="text-[10px] font-medium text-ed-muted">Run the component to preview it</p><p className="mt-1 text-[9px] text-ed-faint">TSX executes without same-origin access.</p></div>
+                                        <div><IconCode size={20} className="mx-auto mb-2 text-ed-faint" /><p className="text-[10px] font-medium text-ed-muted">Run the component to preview it</p><p className="mt-1 text-[10px] text-ed-faint">TSX executes without same-origin access.</p></div>
                                     </div>
                                 )}
                             </div>
                         </div>
                         <div className="flex h-14 shrink-0 items-center justify-between border-t border-ed-border px-4">
-                            <span className="text-[9px] text-ed-faint">React · TypeScript · isolated iframe</span>
+                            <span className="text-[10px] text-ed-faint">React · TypeScript · isolated iframe</span>
                             <div className="flex gap-2"><button type="button" onClick={() => setCodeComposerOpen(false)} className="rounded-lg px-3 py-2 text-[10px] text-ed-muted hover:bg-ed-field">Cancel</button><button type="button" onClick={() => void createCodeComponent()} disabled={!codeComponentSource.trim() || codeComponentCompiling} className="rounded-lg bg-ed-accent px-4 py-2 text-[10px] font-semibold text-white disabled:opacity-30">{codeComponentCompiling ? "Compiling…" : "Create component"}</button></div>
                         </div>
                     </div>
@@ -5587,7 +5984,7 @@ export default function Editor({
             {!componentMode && (
                 <div
                     aria-hidden={!breakpointPanel}
-                    className={`fixed left-1/2 top-16 z-[80] w-[420px] origin-top rounded-[18px] bg-ed-surface p-4 shadow-[0_24px_64px_rgb(0_0_0/0.55)] transition-[opacity,transform] duration-200 ease-[cubic-bezier(.22,1,.36,1)] ${breakpointPanel ? "-translate-x-1/2 translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-x-1/2 -translate-y-2 scale-95 opacity-0"}`}
+                    className={`fixed left-1/2 top-16 z-[80] w-[420px] origin-top rounded-[18px] bg-ed-surface p-4 shadow-[var(--ed-menu-shadow)] transition-[opacity,transform] duration-200 ease-[cubic-bezier(.22,1,.36,1)] ${breakpointPanel ? "-translate-x-1/2 translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-x-1/2 -translate-y-2 scale-95 opacity-0"}`}
                 >
                     <div className="mb-4 flex items-start justify-between">
                         <div>
@@ -5605,7 +6002,7 @@ export default function Editor({
                                     value={item.name}
                                     onChange={(event) => renameBreakpoint(item.id, event.target.value)}
                                     onBlur={() => commitBreakpointName(item.id)}
-                                    className="min-w-0 rounded-xl bg-ed-field px-2.5 py-2 text-xs text-ed-text outline-none focus:border-ed-accent"
+                                    className="min-w-0 rounded-xl bg-ed-field px-2.5 py-2 text-xs text-ed-text outline-none focus-visible:shadow-[var(--ed-accent-glow)]"
                                 />
                                 <div className="flex items-center gap-0.5">
                                     {item.id === cascade.baseId && (
@@ -5614,15 +6011,15 @@ export default function Editor({
                                     <button type="button" disabled={index === 0} title="Move left" onClick={() => { const next = [...breakpointDefs]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; updateBreakpoints(next); }} className="rounded p-1 text-ed-faint hover:bg-ed-field disabled:opacity-20"><IconChevronLeft size={13} /></button>
                                     <button type="button" disabled={index === breakpointDefs.length - 1} title="Move right" onClick={() => { const next = [...breakpointDefs]; [next[index], next[index + 1]] = [next[index + 1], next[index]]; updateBreakpoints(next); }} className="rounded p-1 text-ed-faint hover:bg-ed-field disabled:opacity-20"><IconChevronRight size={13} /></button>
                                     {isRequiredBreakpoint(item.id) ? (
-                                        <span title="Desktop, tablet and mobile are always kept" className="px-1 text-[9px] font-medium uppercase tracking-[.08em] text-ed-faint">Fixed</span>
+                                        <span title="Desktop, tablet and mobile are always kept" className="px-1 text-[10px] font-medium uppercase tracking-[.08em] text-ed-faint">Fixed</span>
                                     ) : item.id !== cascade.baseId && breakpointDefs.length > 1 && (
-                                        <button type="button" title="Delete" onClick={() => removeBreakpoint(item.id)} className="rounded p-1 text-ed-faint hover:bg-red-500/10 hover:text-red-400"><IconTrash size={13} /></button>
+                                        <button type="button" title="Delete" onClick={() => removeBreakpoint(item.id)} className="rounded p-1 text-ed-faint hover:bg-red-500/10 hover:text-red-600"><IconTrash size={13} /></button>
                                     )}
                                 </div>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <label className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-semibold uppercase tracking-[.1em] text-ed-faint">Governs from</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[.1em] text-ed-faint">Governs from</span>
                                     <span className="flex items-center rounded-xl bg-ed-field px-2 py-1.5 text-xs text-ed-muted">
                                         <input
                                             aria-label={`${item.name} governs from`}
@@ -5636,7 +6033,7 @@ export default function Editor({
                                     </span>
                                 </label>
                                 <label className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-semibold uppercase tracking-[.1em] text-ed-faint">Canvas</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[.1em] text-ed-faint">Canvas</span>
                                     <span className="flex items-center rounded-xl bg-ed-field px-2 py-1.5 text-xs text-ed-muted">
                                         <input
                                             aria-label={`${item.name} canvas width`}
@@ -5659,7 +6056,7 @@ export default function Editor({
                         actually ask is "which window gets which artboard", and
                         a column of numbers never answers it at a glance. */}
                     <div className="mt-4">
-                        <div className="mb-1.5 flex items-center justify-between text-[9px] font-semibold uppercase tracking-[.1em] text-ed-faint">
+                        <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[.1em] text-ed-faint">
                             <span>Window width</span>
                             <span className="font-mono tracking-normal">0 – {Math.max(...breakpointDefs.map((item) => item.width)) + 400}px</span>
                         </div>
@@ -5678,7 +6075,7 @@ export default function Editor({
                                             onClick={() => setBreakpoint(item.id)}
                                             title={`${item.name} · ${rangeLabel(item.id)}`}
                                             style={{ flexGrow: share, flexBasis: 0 }}
-                                            className={`flex min-w-0 items-center justify-center gap-1 border-r border-ed-border/70 px-1 text-[9px] transition-colors last:border-r-0 ${item.id === breakpoint ? "bg-[var(--ed-accent-soft)] text-ed-accent" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
+                                            className={`flex min-w-0 items-center justify-center gap-1 border-r border-ed-border/70 px-1 text-[10px] transition-colors last:border-r-0 ${item.id === breakpoint ? "bg-[var(--ed-accent-soft)] text-ed-accent" : "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
                                         >
                                             <span className="truncate">{item.name}</span>
                                             {item.id === cascade.baseId && <span className="shrink-0 font-semibold">·</span>}
@@ -5869,7 +6266,7 @@ export default function Editor({
     return (
         <EditorShell
             toolbarLeft={toolbarLeft}
-            toolbarCenter={toolbarCenter}
+            dock={leftTab === "Templates" || leftTab === "Settings" ? undefined : toolbarDock}
             toolbarRight={toolbarRight}
             rail={rail}
             panel={panel}
@@ -5879,7 +6276,8 @@ export default function Editor({
                 if (event.target === event.currentTarget) setSelectedIds([]);
             }}
             inspector={inspector}
-            inspectorVisible={leftTab !== "Settings" && leftTab !== "Templates"}
+            inspectorVisible={!workspacePage}
+            page={workspacePage}
             overlays={overlays}
         />
     );

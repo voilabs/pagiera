@@ -305,6 +305,10 @@ export function styleToCss(
         boxShadow: style.shadow || undefined,
         transform:
             [
+                style.rotateX || style.rotateY ? "perspective(1000px)" : "",
+                style.translateX || style.translateY ? `translate(${style.translateX ?? 0}px, ${style.translateY ?? 0}px)` : "",
+                style.rotateX ? `rotateX(${style.rotateX}deg)` : "",
+                style.rotateY ? `rotateY(${style.rotateY}deg)` : "",
                 style.rotate ? `rotate(${style.rotate}deg)` : "",
                 style.scale === 100 ? "" : `scale(${style.scale / 100})`,
             ]
@@ -376,11 +380,23 @@ export function styleToCss(
         css.top = style.y;
         css.width = style.widthMode === "fixed" ? style.w : "max-content";
         css.height = style.heightMode === "fixed" ? style.h : "max-content";
-        if (style.widthMode === "fill") css.width = "100%";
-        if (style.heightMode === "fill") css.height = "100%";
+        // Filling a freely placed box means spanning its parent edge to edge.
+        // It used to be `width: 100%` from wherever the box had been dropped,
+        // so a background image nudged a few pixels right overhung the right
+        // edge by that much and never sat flush. Pinned to both edges, the
+        // box is exactly the parent's size whatever its stored x and y say.
+        const fillsX = style.widthMode === "fill";
+        const fillsY = style.heightMode === "fill";
+        // The explicit 100% stays alongside the insets: an iframe or image
+        // drawn as the box itself keeps its intrinsic size under `auto` and
+        // would not stretch between the two edges.
+        if (fillsX) { css.left = 0; css.right = 0; css.width = "100%"; }
+        if (fillsY) { css.top = 0; css.bottom = 0; css.height = "100%"; }
 
         const transforms: string[] = [];
-        if (style.constraintX === "center") {
+        if (fillsX) {
+            // Spanning leaves nothing for a horizontal constraint to decide.
+        } else if (style.constraintX === "center") {
             css.left = `calc(50% + ${style.x}px)`;
             transforms.push("translateX(-50%)");
         } else if (style.constraintX === "end") {
@@ -392,7 +408,9 @@ export function styleToCss(
             css.width = "auto";
         }
 
-        if (style.constraintY === "center") {
+        if (fillsY) {
+            // Likewise vertically.
+        } else if (style.constraintY === "center") {
             css.top = `calc(50% + ${style.y}px)`;
             transforms.push("translateY(-50%)");
         } else if (style.constraintY === "end") {

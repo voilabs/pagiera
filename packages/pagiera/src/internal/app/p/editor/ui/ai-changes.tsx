@@ -21,15 +21,15 @@ export function AiChanges({ plans, elements, rootStyle }: { plans: AiDesignPlan[
                     for (const [field, after] of Object.entries(value)) rows.push({ label: `${key === "style" ? "" : key.replace("Style", "") + " · "}${labels[field] ?? field}`, before: (before as unknown as Record<string, unknown> | undefined)?.[field], after });
                 } else rows.push({ label: labels[key] ?? key, before: (element as unknown as Record<string, unknown> | undefined)?.[key], after: value });
             }
-            return <section key={`${planIndex}-${index}`} className="overflow-hidden rounded-xl bg-ed-field ring-1 ring-white/5">
-                <div className="border-b border-white/5 px-3 py-2"><h3 className="break-words text-xs font-medium text-ed-text">{title}</h3><p className="mt-1 text-[10px] text-ed-muted">{plan.targetBreakpoint ?? "Base style · inherited where not overridden"}</p>
+            return <section key={`${planIndex}-${index}`} className="overflow-hidden rounded-xl bg-ed-field ring-1 ring-ed-border">
+                <div className="border-b border-ed-border px-3 py-2"><h3 className="break-words text-xs font-medium text-ed-text">{title}</h3><p className="mt-1 text-[10px] text-ed-muted">{plan.targetBreakpoint ?? "Base style · inherited where not overridden"}</p>
                     {operation.kind === "add" && <p className="mt-1 break-words text-[10px] text-ed-muted">Inside: {elements.find(item => item.id === operation.parentId)?.name ?? operation.parentId ?? "Page"}</p>}
                 </div>
                 <div className="space-y-3 p-3">{rows.map((row, rowIndex) => <div key={rowIndex}>
                     <p className="mb-1 text-[10px] font-medium text-ed-muted">{row.label}</p>
-                    {operation.kind !== "add" && <div className="whitespace-pre-wrap break-words rounded-md bg-red-500/5 px-2 py-1 text-[11px] text-ed-muted"><span className="mr-1 text-red-300">−</span>{display(row.before)}</div>}
-                    <div className="mt-1 whitespace-pre-wrap break-words rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] text-ed-text"><span className="mr-1 text-emerald-300">+</span>{display(row.after)}</div>
-                </div>)}{operation.kind === "remove" && <p className="text-xs text-red-300">This element and its children will be removed.</p>}</div>
+                    {operation.kind !== "add" && <div className="whitespace-pre-wrap break-words rounded-md bg-red-500/5 px-2 py-1 text-[11px] text-ed-muted"><span className="mr-1 text-red-700">−</span>{display(row.before)}</div>}
+                    <div className="mt-1 whitespace-pre-wrap break-words rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] text-ed-text"><span className="mr-1 text-emerald-700">+</span>{display(row.after)}</div>
+                </div>)}{operation.kind === "remove" && <p className="text-xs text-red-700">This element and its children will be removed.</p>}</div>
             </section>;
         }))}
     </div>;

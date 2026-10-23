@@ -46,7 +46,7 @@ export function SelectShell<T extends string>({
             <SelectTrigger
                 id={id}
                 aria-label={ariaLabel}
-                className={`min-w-0 border-transparent bg-ed-field px-2.5 hover:bg-ed-field-hover focus:border-ed-accent ${className || "flex-1"}`}
+                className={`min-w-0 px-2.5 ${className || "flex-1"}`}
             >
                 <SelectValue />
             </SelectTrigger>

@@ -203,13 +203,13 @@ function RunReport({ turn }: { turn: Turn }) {
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
             >
                 <span className={`flex size-7 shrink-0 items-center justify-center rounded-xl ${
-                    running ? "bg-ed-accent-soft text-ed-accent" : failed ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"
+                    running ? "bg-ed-accent-soft text-ed-accent" : failed ? "bg-red-500/10 text-red-700" : "bg-emerald-500/10 text-emerald-700"
                 }`}>
                     {running ? <IconLoader2 size={13} className="animate-spin" /> : failed ? <IconX size={13} /> : <IconCheck size={13} />}
                 </span>
                 <span className="min-w-0 flex-1">
                     <span className="block text-[11px] font-semibold text-ed-text">{headline}</span>
-                    <span className="mt-0.5 block truncate text-[9px] text-ed-faint">
+                    <span className="mt-0.5 block truncate text-[10px] text-ed-faint">
                         {turn.applied > 0 ? `${turn.applied} changes prepared` : "Reading the brief"}
                     </span>
                 </span>
@@ -222,14 +222,14 @@ function RunReport({ turn }: { turn: Turn }) {
                         <div className="space-y-1">
                             <span className="block text-[10px] font-medium text-ed-text">Art direction</span>
                             {turn.direction.map((fact) => (
-                                <span key={fact} className="block font-mono text-[9px] leading-snug text-ed-faint">{fact}</span>
+                                <span key={fact} className="block font-mono text-[10px] leading-snug text-ed-faint">{fact}</span>
                             ))}
                         </div>
                     )}
                     {turn.sections.map((section) => (
                         <div key={section.id} className="flex items-start gap-2.5">
                             <span className={`mt-0.5 flex size-4 shrink-0 items-center justify-center ${
-                                section.status === "running" ? "text-ed-accent" : section.status === "failed" ? "text-red-400" : "text-emerald-400"
+                                section.status === "running" ? "text-ed-accent" : section.status === "failed" ? "text-red-700" : "text-emerald-700"
                             }`}>
                                 {section.status === "running"
                                     ? <IconLoader2 size={9} className="animate-spin" />
@@ -242,7 +242,7 @@ function RunReport({ turn }: { turn: Turn }) {
                                 {section.facts && section.facts.length > 0 && (
                                     <span className="mt-0.5 block">
                                         {section.facts.map((fact) => (
-                                            <span key={fact} className="block font-mono text-[9px] leading-snug text-ed-faint">{fact}</span>
+                                            <span key={fact} className="block font-mono text-[10px] leading-snug text-ed-faint">{fact}</span>
                                         ))}
                                     </span>
                                 )}
@@ -546,9 +546,9 @@ export function AiPanel({
                                     <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-ed-subtle text-ed-muted group-hover:bg-ed-field group-hover:text-ed-accent"><IconMessage size={14} /></span>
                                     <span className="min-w-0 flex-1">
                                         <span className="block truncate text-xs font-medium text-ed-text">{chat.title}</span>
-                                        <span className="mt-0.5 block truncate text-[9px] text-ed-faint">{last?.reply ?? last?.prompt ?? "No messages yet"}</span>
+                                        <span className="mt-0.5 block truncate text-[10px] text-ed-faint">{last?.reply ?? last?.prompt ?? "No messages yet"}</span>
                                     </span>
-                                    <span className="text-[8px] text-ed-faint">{new Date(chat.updatedAt).toISOString().slice(5, 10)}</span>
+                                    <span className="text-[10px] text-ed-faint">{new Date(chat.updatedAt).toISOString().slice(5, 10)}</span>
                                 </button>;
                             })}
                         </div>
@@ -564,7 +564,7 @@ export function AiPanel({
                 </span>
                 <div className="flex items-center gap-1">
                     <button type="button" onClick={createChat} disabled={busy || pendingPlans.length > 0} aria-label="New chat" className="flex size-7 items-center justify-center rounded-lg text-ed-muted hover:bg-ed-field disabled:opacity-40"><IconPlus size={14} /></button>
-                    <button type="button" onClick={deleteChat} title="Delete chat" className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ed-faint hover:bg-red-500/10 hover:text-red-400"><IconTrash size={13} /></button>
+                    <button type="button" onClick={deleteChat} title="Delete chat" className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ed-faint hover:bg-red-500/10 hover:text-red-600"><IconTrash size={13} /></button>
                 </div>
             </div>
 
@@ -582,7 +582,7 @@ export function AiPanel({
                         <div className="flex justify-end">
                             <div className="max-w-[92%] break-words rounded-2xl rounded-br-md bg-ed-field px-3.5 py-3 text-xs leading-relaxed text-ed-text">
                                 <p className="whitespace-pre-wrap">{turn.prompt}</p>
-                                {turn.scope && <span className="mt-1 block text-[9px] text-ed-faint">↳ {turn.scope}</span>}
+                                {turn.scope && <span className="mt-1 block text-[10px] text-ed-faint">↳ {turn.scope}</span>}
                             </div>
                         </div>
 
@@ -590,21 +590,21 @@ export function AiPanel({
 
                         {(turn.reply || turn.error || turn.status === "stopped") && (
                             <div className="flex items-start gap-2.5">
-                                <span className={`flex size-7 shrink-0 items-center justify-center rounded-xl ${turn.error ? "bg-red-500/10 text-red-300" : "bg-ed-field text-ed-muted"}`}>
+                                <span className={`flex size-7 shrink-0 items-center justify-center rounded-xl ${turn.error ? "bg-red-500/10 text-red-700" : "bg-ed-field text-ed-muted"}`}>
                                     {turn.error ? <IconX size={13} /> : <PagieraMark size={16} className="rounded-md" />}
                                 </span>
                                 <div className="min-w-0 flex-1 space-y-3 break-words py-1 text-xs leading-relaxed text-ed-text">
                                     {turn.summary && turn.summary.length > 0 && (
                                         <div className="space-y-1">
                                             {turn.summary.map((step) => (
-                                                <div key={step} className="flex gap-1.5 text-[9px] text-ed-muted">
-                                                    <IconCheck size={10} className="mt-0.5 shrink-0 text-emerald-400" />
+                                                <div key={step} className="flex gap-1.5 text-[10px] text-ed-muted">
+                                                    <IconCheck size={10} className="mt-0.5 shrink-0 text-emerald-700" />
                                                     <span>{step}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
-                                    <p className={turn.error ? "text-red-300" : undefined}>
+                                    <p className={turn.error ? "text-red-700" : undefined}>
                                         {turn.error
                                             ?? turn.reply
                                             ?? `Stopped${turn.applied > 0 ? ` after ${turn.applied} element${turn.applied === 1 ? "" : "s"}` : ""}.`}
@@ -621,7 +621,7 @@ export function AiPanel({
                 <b>{pendingPlans.reduce((count, plan) => count + plan.operations.length, 0)} changes ready</b>
                 <p className="my-2 text-ed-muted">Review these edits before applying. Nothing has changed yet.</p>
                 <AiChanges plans={pendingPlans} elements={elements} rootStyle={rootStyle} />
-                {planError && <p role="alert" className="my-2 text-red-400">{planError}</p>}
+                {planError && <p role="alert" className="my-2 text-red-700">{planError}</p>}
                 <div className="flex gap-2"><button type="button" onClick={() => {
                     if (pendingSnapshot.current !== JSON.stringify({ elements, rootStyle })) { setPlanError("The document changed since generation. Discard this plan and generate again."); return; }
                     for (const plan of pendingPlans) onApply(plan);

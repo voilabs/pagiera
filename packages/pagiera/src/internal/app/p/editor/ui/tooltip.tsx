@@ -15,7 +15,7 @@ export function ChromeTooltip({
     className,
     children,
 }: {
-    placement?: "below" | "right";
+    placement?: "below" | "right" | "above";
     className?: string;
     children: React.ReactNode;
 }) {
@@ -26,7 +26,9 @@ export function ChromeTooltip({
                 "pointer-events-none absolute z-[100] w-max whitespace-nowrap rounded-md bg-[var(--ed-tooltip)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--ed-tooltip-text)] opacity-0 shadow-lg transition-all duration-150 group-hover:opacity-100 group-focus-visible:opacity-100",
                 placement === "below"
                     ? "left-1/2 top-[calc(100%+9px)] -translate-x-1/2 translate-y-1 group-hover:translate-y-0 group-focus-visible:translate-y-0"
-                    : "left-[calc(100%+10px)] group-hover:translate-x-0.5",
+                    : placement === "above"
+                      ? "bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 -translate-y-1 group-hover:translate-y-0 group-focus-visible:translate-y-0"
+                      : "left-[calc(100%+10px)] group-hover:translate-x-0.5",
                 className,
             )}
         >

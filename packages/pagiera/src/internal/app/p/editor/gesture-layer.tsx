@@ -89,7 +89,7 @@ export const GestureLayer = forwardRef<GestureLayerHandle, {
                     in screen coordinates, which already account for canvas zoom. */}
                 {dropPlan?.slot && (
                     <div
-                        className="pointer-events-none fixed z-[95] rounded-md border-2 border-dashed border-ed-accent bg-[var(--ed-accent-soft)]"
+                        className="pointer-events-none fixed z-[95] rounded-[6px] border-[1.5px] border-dashed border-ed-accent bg-[var(--ed-accent-soft)] transition-[left,top,width,height] duration-150 ease-out motion-reduce:transition-none"
                         style={{
                             left: dropPlan.slot.x,
                             top: dropPlan.slot.y,
@@ -117,8 +117,8 @@ export const GestureLayer = forwardRef<GestureLayerHandle, {
                     <>
                         {!selectedElement.parked && (
                             <span
-                                className="pointer-events-none fixed z-[70] whitespace-nowrap text-[11px] font-medium leading-none text-ed-accent"
-                                style={{ left: selectionBox.left, top: selectionBox.top - 16 }}
+                                className="pointer-events-none fixed z-[70] max-w-[220px] truncate whitespace-nowrap rounded-[5px] bg-ed-accent px-1.5 py-[3px] text-[10px] font-semibold leading-none text-white shadow-[0_2px_8px_rgb(0_0_0/0.35)]"
+                                style={{ left: selectionBox.left - 1, top: selectionBox.top - 20 }}
                             >
                                 {displayName(selectedElement)}
                             </span>
@@ -237,7 +237,7 @@ export const GestureLayer = forwardRef<GestureLayerHandle, {
                                 ? { right: 0, top: -3, width: 1, height: 7 }
                                 : { left: -3, bottom: 0, width: 7, height: 1 }}
                         />
-                        <span className="absolute whitespace-nowrap rounded bg-ed-accent px-1 py-px text-[9px] font-medium tabular-nums leading-none text-white">
+                        <span className="absolute whitespace-nowrap rounded bg-ed-accent px-1 py-px text-[10px] font-medium tabular-nums leading-none text-white">
                             {measure.label}
                         </span>
                     </div>

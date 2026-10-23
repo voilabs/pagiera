@@ -197,24 +197,19 @@ export function TemplatesPanel({
     };
 
     return (
-        <div className="min-h-full bg-ed-canvas">
-            <div className="sticky top-0 z-10 bg-ed-canvas/95 backdrop-blur-xl">
-                <div className="mx-auto max-w-[1480px] px-6 py-5 lg:px-10">
-                <div className="flex flex-wrap items-start justify-between gap-5">
-                    <div className="flex min-w-0 items-center gap-3.5">
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-ed-accent-soft text-ed-accent"><IconTemplate size={18} /></span>
-                        <div className="min-w-0"><p className="mb-2 text-[10px] uppercase tracking-[.18em] text-ed-faint">Your next starting point</p><h2 className="text-2xl font-semibold tracking-tight text-ed-text">Templates</h2><p className="mt-2 text-xs text-ed-muted">Explore complete sites. Make every detail yours.</p></div>
-                    </div>
-                    {exportUrl && (
-                        <a
-                            href={exportUrl("my-template")}
-                            download
-                            title="Download this site as a template bundle"
-                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text"
-                        >
-                            <IconDownload size={13} /> Export
-                        </a>
-                    )}
+        <div className="min-h-full">
+            {/* One calm header: what this is, and the three things you can do
+                to the catalog. The category list lives in the page's own
+                navigation, so there is no second picker here. */}
+            <header className="flex flex-wrap items-start justify-between gap-6">
+                <div className="min-w-0">
+                    <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ed-text">{category === "All" ? "Templates" : category}</h1>
+                    <p className="mt-1.5 text-[13px] text-ed-muted">Complete sites to start from. Preview one, then make every detail yours.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => void refresh(true)} disabled={status === "loading"} className="flex size-9 shrink-0 items-center justify-center rounded-full text-ed-muted transition-colors hover:bg-[var(--ed-nav-hover)] hover:text-ed-text disabled:opacity-40" title="Refresh template catalog" aria-label="Refresh template catalog">
+                        <IconRefresh size={15} className={status === "loading" ? "animate-spin" : ""} />
+                    </button>
                     {onImport && (
                         <>
                             <input
@@ -234,59 +229,59 @@ export function TemplatesPanel({
                                 onClick={() => fileRef.current?.click()}
                                 disabled={busyImport || busy}
                                 title="Replace this site with a template bundle from a file"
-                                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-ed-field px-3.5 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40"
+                                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ed-surface px-4 text-[12px] font-medium text-ed-text shadow-[0_0_0_1px_var(--ed-border)] transition-colors hover:bg-ed-field disabled:opacity-40"
                             >
-                                <IconUpload size={13} /> {busyImport ? "Importing…" : "Import"}
+                                <IconUpload size={14} /> {busyImport ? "Importing…" : "Import"}
                             </button>
                         </>
                     )}
-                    <button type="button" onClick={() => void refresh(true)} disabled={status === "loading"} className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text disabled:opacity-40" title="Refresh template catalog">
-                        <IconRefresh size={14} className={status === "loading" ? "animate-spin" : ""} />
-                    </button>
+                    {exportUrl && (
+                        <a
+                            href={exportUrl("my-template")}
+                            download
+                            title="Download this site as a template bundle"
+                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ed-surface px-4 text-[12px] font-medium text-ed-text shadow-[0_0_0_1px_var(--ed-border)] transition-colors hover:bg-ed-field disabled:opacity-40"
+                        >
+                            <IconDownload size={14} /> Export
+                        </a>
+                    )}
                 </div>
+            </header>
 
-                <div className="mt-5 flex max-w-[720px] gap-2.5">
-                    <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-lg bg-ed-field px-4 transition-colors focus-within:ring-1 focus-within:ring-ed-accent">
-                        <IconSearch size={13} className="shrink-0 text-ed-faint" />
-                        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search templates, styles and categories…" className="min-w-0 flex-1 bg-transparent text-[11px] text-ed-text outline-none placeholder:text-ed-faint" />
-                    </div>
-                    <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger aria-label="Template category" className="h-10 min-w-0 w-[150px] rounded-lg px-4 text-[10px]"><SelectValue /></SelectTrigger>
-                        <SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-                    </Select>
-                </div>
-
-                <div className="mt-3 flex max-w-[720px] items-center justify-between px-1 text-[9px] text-ed-faint"><span>{visible.length} templates available</span><span className="flex items-center gap-1.5"><i className={`size-1.5 rounded-full ${status === "local" || status === "network" ? "bg-emerald-400" : status === "loading" ? "animate-pulse bg-ed-accent" : "bg-amber-400"}`} />{status === "local" ? "Local templates" : status === "network" ? (registryUrl.includes("/api/pagiera/templates/") ? "Package catalog" : registryUrl.includes("raw.githubusercontent.com") ? "GitHub catalog" : "Custom catalog") : status === "cache" ? "Cached catalog" : status === "loading" ? "Refreshing" : "Offline catalog"}</span></div>
-                </div>
+            <div className="mt-6 flex h-10 items-center gap-2.5 rounded-full bg-ed-surface px-4 shadow-[0_0_0_1px_var(--ed-border)] transition-shadow focus-within:shadow-[var(--ed-accent-glow)]">
+                <IconSearch size={15} className="shrink-0 text-ed-faint" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search templates" aria-label="Search templates" className="min-w-0 flex-1 bg-transparent text-[13px] text-ed-text outline-none placeholder:text-ed-faint focus-visible:shadow-none" />
             </div>
 
-            <div className="mx-auto max-w-[1480px] px-6 py-7 lg:px-10">
-                {error && <div className="mb-5 rounded-2xl bg-amber-400/8 px-4 py-3 text-[10px] leading-relaxed text-amber-200">{error}</div>}
+            <div className="mt-3 flex items-center justify-between px-1 text-[12px] text-ed-faint"><span>{visible.length} {visible.length === 1 ? "template" : "templates"}</span><span className="flex items-center gap-1.5"><i className={`size-1.5 rounded-full ${status === "local" || status === "network" ? "bg-emerald-500" : status === "loading" ? "animate-pulse bg-ed-accent" : "bg-amber-500"}`} />{status === "local" ? "Local templates" : status === "network" ? (registryUrl.includes("/api/pagiera/templates/") ? "Package catalog" : registryUrl.includes("raw.githubusercontent.com") ? "GitHub catalog" : "Custom catalog") : status === "cache" ? "Cached catalog" : status === "loading" ? "Refreshing" : "Offline catalog"}</span></div>
+
+            <div className="pt-6">
+                {error && <div className="mb-5 rounded-xl bg-amber-500/10 px-4 py-3 text-[12px] leading-relaxed text-amber-700">{error}</div>}
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
                     {visible.map((template, index) => (
-                        <motion.article key={template.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.035, 0.16), duration: 0.28 }} className="group overflow-hidden rounded-3xl bg-ed-subtle p-2 transition-colors hover:bg-ed-field">
-                            <div className="relative aspect-[16/10] overflow-hidden rounded-lg" style={{ background: template.preview.background, color: template.preview.foreground }}>
-                                <div className="absolute inset-0 opacity-75" style={{ background: `radial-gradient(circle at 90% 0%, ${template.preview.accent}66, transparent 55%)` }} /><span className="relative block px-6 pt-6 font-mono text-[8px] font-bold tracking-[.14em]" style={{ color: template.preview.accent }}>{template.preview.eyebrow}</span><p className="relative mt-12 max-w-[88%] px-6 text-[28px] font-semibold leading-[.92] tracking-[-.05em]">{template.preview.headline}</p>
+                        <motion.article key={template.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.035, 0.16), duration: 0.28 }} className="group overflow-hidden rounded-2xl bg-ed-surface shadow-[0_0_0_1px_var(--ed-border)] transition-shadow duration-200 hover:shadow-[var(--ed-panel-shadow)]">
+                            <div className="relative aspect-[16/10] overflow-hidden" style={{ background: template.preview.background, color: template.preview.foreground }}>
+                                <div className="absolute inset-0 opacity-75" style={{ background: `radial-gradient(circle at 90% 0%, ${template.preview.accent}66, transparent 55%)` }} /><span className="relative block px-6 pt-6 font-mono text-[10px] font-bold tracking-[.14em]" style={{ color: template.preview.accent }}>{template.preview.eyebrow}</span><p className="relative mt-12 max-w-[88%] px-6 text-[28px] font-semibold leading-[.92] tracking-[-.05em]">{template.preview.headline}</p>
                                 {template.thumbnail && <img src={templateThumbnailUrl(template, registryUrl)} alt={`${template.name} template preview`} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" onError={(event) => { event.currentTarget.hidden = true; }} />}
-                                {template.featured && <span className="absolute right-3 top-3 rounded-md bg-black/60 px-2.5 py-1 text-[8px] font-semibold text-white backdrop-blur">Featured</span>}
+                                {template.featured && <span className="absolute right-3 top-3 rounded-md bg-ed-surface/95 px-2.5 py-1 text-[10px] font-semibold text-ed-text shadow-[var(--ed-panel-shadow)]">Featured</span>}
                             </div>
-                            <div className="p-3 pb-2">
-                                <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><h3 className="truncate text-[13px] font-semibold tracking-[-.015em] text-ed-text">{template.name}</h3><p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-[1.55] text-ed-muted">{template.description}</p></div><button type="button" disabled={busy || Boolean(installing)} onClick={() => { setError(""); setInstallError(""); setPendingTemplate(template); }} className="flex size-9 shrink-0 select-none items-center justify-center rounded-lg bg-ed-surface text-ed-text transition-colors hover:bg-ed-accent hover:text-white disabled:cursor-wait disabled:opacity-45" aria-label={`Review and install ${template.name}`}><IconArrowUpRight size={14} /></button></div>
-                                <div className="mt-3 flex items-center gap-2 text-[9px] text-ed-faint"><span>{template.category}</span><i className="size-0.5 rounded-full bg-ed-faint" /><span>{template.pages.length} pages</span><i className="size-0.5 rounded-full bg-ed-faint" /><span>v{template.version}</span></div>
+                            <div className="p-4">
+                                <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><h3 className="truncate text-[14px] font-semibold tracking-[-.015em] text-ed-text">{template.name}</h3><p className="mt-1 line-clamp-2 min-h-9 text-[12px] leading-[1.5] text-ed-muted">{template.description}</p></div><button type="button" disabled={busy || Boolean(installing)} onClick={() => { setError(""); setInstallError(""); setPendingTemplate(template); }} className="flex size-9 shrink-0 select-none items-center justify-center rounded-full bg-ed-field text-ed-text transition-colors hover:bg-ed-primary hover:text-[var(--ed-primary-text)] disabled:cursor-wait disabled:opacity-45" aria-label={`Review and install ${template.name}`}><IconArrowUpRight size={14} /></button></div>
+                                <div className="mt-3 flex items-center gap-2 text-[12px] text-ed-faint"><span>{template.category}</span><i className="size-0.5 rounded-full bg-ed-faint" /><span>{template.pages.length} pages</span><i className="size-0.5 rounded-full bg-ed-faint" /><span>v{template.version}</span></div>
                             </div>
                         </motion.article>
                     ))}
                 </div>
 
-                {visible.length === 0 && <div className="rounded-3xl bg-ed-subtle px-5 py-20 text-center"><IconTemplate size={22} className="mx-auto text-ed-faint" /><p className="mt-3 text-[11px] font-medium text-ed-muted">No templates match this search.</p></div>}
+                {visible.length === 0 && <div className="rounded-2xl px-5 py-20 text-center shadow-[0_0_0_1px_var(--ed-border)]"><IconTemplate size={22} className="mx-auto text-ed-faint" /><p className="mt-3 text-[13px] font-medium text-ed-muted">No templates match this search.</p></div>}
             </div>
 
             {portalContainer && createPortal(
                 <AnimatePresence>
                     {pendingTemplate && (
                         <motion.div
-                            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+                            className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgb(24_24_27/0.28)] backdrop-blur-[2px] p-4 backdrop-blur-sm"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -302,7 +297,7 @@ export function TemplatesPanel({
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 6, scale: 0.98 }}
                                 transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                                className="flex max-h-[min(880px,94vh)] w-full max-w-[1180px] flex-col rounded-2xl bg-ed-surface p-2 text-ed-text shadow-[0_24px_64px_rgb(0_0_0/0.55)]"
+                                className="flex max-h-[min(880px,94vh)] w-full max-w-[1180px] flex-col rounded-2xl bg-ed-surface p-2 text-ed-text shadow-[var(--ed-menu-shadow)]"
                             >
                                 <div className="flex shrink-0 items-center gap-3 px-4 py-3.5">
                                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ed-field text-ed-accent"><IconTemplate size={17} /></span>
@@ -330,22 +325,22 @@ export function TemplatesPanel({
                                                         const active = index === activeIndex;
                                                         return <div key={step.id} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${active ? "bg-ed-field-hover" : ""}`}>
                                                             <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${complete ? "bg-ed-accent text-white" : active ? "bg-ed-accent-soft text-ed-accent" : "bg-ed-field text-ed-faint"}`}>
-                                                                {complete ? <IconCheck size={13} /> : active ? <span className="size-2 animate-pulse rounded-full bg-current" /> : <span className="text-[9px] font-semibold">{index + 1}</span>}
+                                                                {complete ? <IconCheck size={13} /> : active ? <span className="size-2 animate-pulse rounded-full bg-current" /> : <span className="text-[10px] font-semibold">{index + 1}</span>}
                                                             </span>
-                                                            <span className="min-w-0 flex-1"><span className={`block text-[10px] font-semibold ${active || complete ? "text-ed-text" : "text-ed-faint"}`}>{step.label}</span><span className="mt-0.5 block truncate text-[9px] text-ed-faint">{step.detail}</span></span>
-                                                            {active && <span className="text-[9px] font-medium text-ed-accent">Working…</span>}
+                                                            <span className="min-w-0 flex-1"><span className={`block text-[10px] font-semibold ${active || complete ? "text-ed-text" : "text-ed-faint"}`}>{step.label}</span><span className="mt-0.5 block truncate text-[10px] text-ed-faint">{step.detail}</span></span>
+                                                            {active && <span className="text-[10px] font-medium text-ed-accent">Working…</span>}
                                                         </div>;
                                                     })}
                                                 </div>
                                                 <div className="mt-3 h-1 overflow-hidden rounded-full bg-ed-field"><motion.div className="h-full rounded-full bg-ed-accent" animate={{ width: `${((INSTALL_STEPS.findIndex((item) => item.id === installStage) + 1) / INSTALL_STEPS.length) * 100}%` }} transition={{ type: "spring", stiffness: 220, damping: 28 }} /></div>
-                                                <p className="mt-3 text-center text-[9px] text-ed-faint">Keep this window open while the project is replaced.</p>
+                                                <p className="mt-3 text-center text-[10px] text-ed-faint">Keep this window open while the project is replaced.</p>
                                             </motion.div>
                                         ) : (
                                             <motion.div key="confirm" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
                                                 <div className="mb-3 flex items-center gap-3 rounded-2xl bg-ed-subtle px-3.5 py-3">
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-[10px] font-semibold text-ed-text">Site font</p>
-                                                        <p className="mt-0.5 text-[9px] leading-relaxed text-ed-faint">
+                                                        <p className="mt-0.5 text-[10px] leading-relaxed text-ed-faint">
                                                             {pendingTemplate.font?.url
                                                                 ? `${pendingTemplate.font.title} is bundled with the template and downloads automatically.`
                                                                 : pendingTemplate.font && !providerFonts.some((font) => font.title.toLowerCase() === pendingTemplate.font?.title.toLowerCase() || font.family === pendingTemplate.font?.family)
@@ -360,7 +355,7 @@ export function TemplatesPanel({
                                                 </div>
 
                                                 <div className="flex items-start gap-3 rounded-xl bg-amber-400/[.07] px-3.5 py-3">
-                                                    <IconAlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                                                    <IconAlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-700" />
                                                     <p className="text-[10px] leading-relaxed text-ed-muted"><strong className="font-semibold text-ed-text">This replaces the current site.</strong> Existing pages and revision history will be removed after installation succeeds.</p>
                                                 </div>
 
@@ -368,7 +363,7 @@ export function TemplatesPanel({
                                                     {pendingTemplate.pages.slice(0, 6).map((page) => <span key={page} className="flex h-8 min-w-0 items-center gap-2 rounded-lg px-2.5 text-[10px] text-ed-text"><IconCheck size={12} className="shrink-0 text-ed-accent" /><span className="truncate">{page}</span></span>)}
                                                 </div>
 
-                                                {installError && <div className="mt-2 rounded-xl bg-red-400/8 px-3 py-2.5 text-[9px] leading-relaxed text-red-200">{installError}</div>}
+                                                {installError && <div className="mt-2 rounded-xl bg-red-400/8 px-3 py-2.5 text-[10px] leading-relaxed text-red-700">{installError}</div>}
 
                                                 <div className="mt-4 flex justify-end gap-2 pt-1">
                                                     <button type="button" onClick={() => setPendingTemplate(undefined)} className="h-9 select-none rounded-xl px-4 text-[10px] font-medium text-ed-muted transition-colors hover:bg-ed-field-hover hover:text-ed-text">Cancel</button>

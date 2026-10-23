@@ -32,16 +32,16 @@ const TOOL_SIZES = {
 
 const TOOL_TONES: Record<ToolTone, { rest: string; on: string }> = {
     ghost: {
-        rest: "text-ed-muted hover:bg-ed-field hover:text-ed-text",
-        on: "bg-[var(--ed-accent-soft)] text-ed-accent",
+        rest: "text-ed-muted hover:bg-[var(--ed-nav-hover)] hover:text-ed-text",
+        on: "bg-[var(--ed-accent-soft)] text-[var(--ed-accent-hover)]",
     },
     segment: {
         rest: "text-ed-muted hover:text-ed-text",
-        on: "bg-ed-surface text-ed-text shadow-sm",
+        on: "bg-ed-surface text-ed-text shadow-[0_0_0_1px_var(--ed-border),0_1px_2px_rgb(24_24_27/0.08)]",
     },
     solid: {
-        rest: "text-ed-muted hover:bg-ed-field-hover hover:text-ed-text",
-        on: "bg-ed-accent text-white",
+        rest: "text-ed-muted hover:bg-[var(--ed-nav-hover)] hover:text-ed-text",
+        on: "bg-[var(--ed-accent-soft)] text-ed-accent",
     },
 };
 
@@ -67,7 +67,7 @@ export function ToolButton({
     tone?: ToolTone;
     size?: keyof typeof TOOL_SIZES;
     /** Where the hover label appears, if at all. */
-    tooltip?: "below" | "right";
+    tooltip?: "below" | "right" | "above";
 } & Omit<React.ComponentProps<"button">, "aria-label" | "title">) {
     const tones = TOOL_TONES[tone];
     return (
@@ -77,7 +77,7 @@ export function ToolButton({
             aria-label={label}
             aria-pressed={active}
             className={cn(
-                "group relative flex shrink-0 items-center justify-center rounded-md transition-colors",
+                "group relative flex shrink-0 items-center justify-center rounded-lg transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)]",
                 "disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-ed-muted",
                 TOOL_SIZES[size],
                 active ? tones.on : tones.rest,
@@ -97,7 +97,7 @@ export function ChromeButton({ className, ...props }: React.ComponentProps<"butt
         <button
             type="button"
             className={cn(
-                "h-7 shrink-0 select-none rounded-lg bg-ed-field px-3 text-[10px] font-semibold text-ed-text transition-colors hover:bg-ed-field-hover disabled:cursor-not-allowed disabled:opacity-50",
+                "h-8 shrink-0 select-none rounded-lg bg-[var(--ed-nav-field)] px-3.5 text-[11px] font-semibold text-ed-text shadow-[inset_0_0_0_1px_var(--ed-border)] transition-colors hover:bg-[var(--ed-nav-hover)] focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)] disabled:cursor-not-allowed disabled:opacity-50",
                 className,
             )}
             {...props}

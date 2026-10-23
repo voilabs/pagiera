@@ -21,7 +21,10 @@ import {
     type CanvasElement,
     DEFAULT_BREAKPOINTS,
     DEFAULT_ROOT_STYLE,
+    DEFAULT_STATE_TRANSITION,
     ELEMENT_TYPES,
+    type LoopMotion,
+    type StateTransition,
     type ElementStyle,
     type ElementType,
     type RootStyle,
@@ -499,6 +502,10 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
             base.blendMode,
         ),
         scale: scalePercent(raw.scale, base.scale),
+        translateX: num(raw.translateX, base.translateX, -2000, 2000),
+        translateY: num(raw.translateY, base.translateY, -2000, 2000),
+        rotateX: num(raw.rotateX, base.rotateX, -180, 180),
+        rotateY: num(raw.rotateY, base.rotateY, -180, 180),
         aspectRatio: /^\d{1,3}\/\d{1,3}$/.test(String(raw.aspectRatio ?? ""))
             ? String(raw.aspectRatio)
             : raw.aspectRatio === undefined
@@ -507,23 +514,33 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
 
         entrance: oneOf(
             raw.entrance,
-            ["none", "fade", "up", "down", "left", "right", "zoom"] as const,
+            ["none", "fade", "up", "down", "left", "right", "zoom", "blur", "pop", "reveal", "custom"] as const,
             base.entrance,
         ),
-        entranceSplit: oneOf(raw.entranceSplit, ["none", "words", "letters"] as const, base.entranceSplit),
+        entranceSplit: oneOf(raw.entranceSplit, ["none", "words", "letters", "children"] as const, base.entranceSplit),
         entranceStagger: num(raw.entranceStagger, base.entranceStagger, 0, 2000),
+        entranceX: num(raw.entranceX, base.entranceX, -2000, 2000),
+        entranceY: num(raw.entranceY, base.entranceY, -2000, 2000),
+        entranceScale: num(raw.entranceScale, base.entranceScale, 0, 400),
+        entranceRotate: num(raw.entranceRotate, base.entranceRotate, -360, 360),
+        entranceBlur: num(raw.entranceBlur, base.entranceBlur, 0, 100),
+        entranceOpacity: num(raw.entranceOpacity, base.entranceOpacity, 0, 100),
+        entranceReplay: raw.entranceReplay === undefined ? base.entranceReplay : raw.entranceReplay === true,
+        entranceOffset: num(raw.entranceOffset, base.entranceOffset, 0, 60),
         scrollEffect: oneOf(
             raw.scrollEffect,
-            ["none", "fade", "rise", "parallax", "zoom", "blur"] as const,
+            ["none", "fade", "rise", "parallax", "zoom", "blur", "slide-left", "slide-right", "rotate", "shrink"] as const,
             base.scrollEffect,
         ),
         scrollAmount: num(raw.scrollAmount, base.scrollAmount, 0, 400),
+        scrollRange: oneOf(raw.scrollRange, ["auto", "enter", "cover", "contain", "exit"] as const, base.scrollRange),
         entranceDuration: num(raw.entranceDuration, base.entranceDuration, 50, 5000),
         entranceDelay: num(raw.entranceDelay, base.entranceDelay, 0, 5000),
         entranceCurve: oneOf(raw.entranceCurve, ["ease", "spring"], base.entranceCurve),
         entranceBezier: cssValue(raw.entranceBezier, base.entranceBezier),
         springStiffness: num(raw.springStiffness, base.springStiffness, 1, 1000),
         springDamping: num(raw.springDamping, base.springDamping, 1, 100),
+        springMass: num(raw.springMass, base.springMass, 0.1, 10),
         cursor: oneOf(raw.cursor, ["auto", "default", "pointer", "text", "grab", "zoom-in", "none"], base.cursor),
 
         hidden: raw.hidden === true,
@@ -531,6 +548,35 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
 }
 
 /** Keeps only the keys the caller actually set, so the cascade stays intact. */
+/** Optional keys stay absent when unset, so old documents round-trip unchanged. */
+function parseLoop(value: unknown): LoopMotion | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const raw = value as Record<string, unknown>;
+    const loop: LoopMotion = {
+        type: oneOf(raw.type, ["pulse", "float", "sway", "spin", "bounce", "wiggle", "breathe"] as const, "pulse"),
+        duration: num(raw.duration, 1600, 100, 20000),
+    };
+    if (raw.amount !== undefined) loop.amount = num(raw.amount, 100, 0, 400);
+    if (raw.delay !== undefined) loop.delay = num(raw.delay, 0, 0, 10000);
+    if (raw.direction !== undefined) loop.direction = oneOf(raw.direction, ["normal", "reverse", "alternate"] as const, "normal");
+    if (raw.ease !== undefined) loop.ease = oneOf(raw.ease, ["smooth", "linear"] as const, "smooth");
+    return loop;
+}
+
+function parseStateTransition(value: unknown): StateTransition | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const raw = value as Record<string, unknown>;
+    const base = DEFAULT_STATE_TRANSITION;
+    return {
+        curve: oneOf(raw.curve, ["ease", "spring"] as const, base.curve),
+        duration: num(raw.duration, base.duration, 0, 5000),
+        bezier: cssValue(raw.bezier, base.bezier),
+        stiffness: num(raw.stiffness, base.stiffness, 1, 1000),
+        damping: num(raw.damping, base.damping, 1, 100),
+        mass: num(raw.mass, base.mass, 0.1, 10),
+    };
+}
+
 function parsePartialStyle(
     input: unknown,
     base: ElementStyle,
@@ -742,13 +788,8 @@ export function parseElements(
             overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
             hover: Object.keys(hover).length > 0 ? hover : undefined,
             press: Object.keys(press).length > 0 ? press : undefined,
-            loop:
-                el.loop && typeof el.loop === "object"
-                    ? {
-                          type: oneOf((el.loop as Record<string, unknown>).type, ["pulse", "float", "spin"], "pulse"),
-                          duration: num((el.loop as Record<string, unknown>).duration, 1600, 100, 20000),
-                      }
-                    : undefined,
+            transition: parseStateTransition(el.transition),
+            loop: parseLoop(el.loop),
             draggable: el.draggable === true ? true : undefined,
         });
     }

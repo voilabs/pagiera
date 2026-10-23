@@ -156,7 +156,7 @@ export function DataSourceModal({
                 aria-label="Close dialog"
                 tabIndex={-1}
                 onClick={onClose}
-                className="absolute inset-0 cursor-default bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 cursor-default bg-[rgb(24_24_27/0.28)] backdrop-blur-[2px] backdrop-blur-sm"
             />
 
             <motion.div
@@ -350,7 +350,7 @@ export function DataSourceModal({
                                 initial={{ opacity: 0, x: 6 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0 }}
-                                className="flex items-center gap-1.5 text-[11px] text-red-400"
+                                className="flex items-center gap-1.5 text-[11px] text-red-700"
                             >
                                 <IconAlertTriangle size={13} />
                                 {error}
@@ -424,7 +424,7 @@ function PairTable({
                         type="button"
                         aria-label="Remove row"
                         onClick={() => onChange(pairs.filter((_, i) => i !== index))}
-                        className="shrink-0 rounded-md p-2 text-ed-faint transition-colors hover:bg-ed-field hover:text-red-400"
+                        className="shrink-0 rounded-md p-2 text-ed-faint transition-colors hover:bg-ed-field hover:text-red-600"
                     >
                         <IconTrash size={13} />
                     </button>
@@ -473,9 +473,9 @@ function FailureView({ failure }: { failure: Failure }) {
     return (
         <div className="space-y-3">
             <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5">
-                <IconAlertTriangle size={14} className="mt-0.5 shrink-0 text-red-400" />
+                <IconAlertTriangle size={14} className="mt-0.5 shrink-0 text-red-700" />
                 <div className="min-w-0 space-y-1">
-                    <p className="text-[11px] font-semibold text-red-300">
+                    <p className="text-[11px] font-semibold text-red-700">
                         Request failed{failure.status ? ` · ${failure.status}` : ""}
                     </p>
                     <p className="break-words text-[11px] leading-relaxed text-ed-muted">{failure.message}</p>

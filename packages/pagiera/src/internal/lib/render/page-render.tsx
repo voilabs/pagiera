@@ -188,7 +188,11 @@ function RenderedNode({
         (element.type === "List" && element.listStyle !== "none"
             ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}`
             : "") +
-        (style.entrance === "none" || style.scrollEffect !== "none" ? "" : " pg-anim");
+        (style.entrance === "none" || style.scrollEffect !== "none"
+            ? ""
+            : style.entranceSplit === "none"
+              ? " pg-anim"
+              : " pg-anim pg-split");
 
     // Repeat iterates a list. Request renders once and provides the source's
     // first object as the binding context for its entire subtree.
@@ -244,6 +248,14 @@ function RenderedNode({
     // A fixed element may wait for the page to scroll before it shows; the
     // threshold and the edge it slides in from travel as attributes so one
     // static script and one static rule serve every such element.
+    // What the entrance script needs to know per element: whether it plays
+    // again on every visit, and how far into the viewport it waits.
+    const entranceAttrs = style.entrance !== "none" && style.scrollEffect === "none"
+        ? {
+              "data-pg-replay": style.entranceReplay ? "" : undefined,
+              "data-pg-offset": style.entranceOffset !== 8 ? String(style.entranceOffset) : undefined,
+          }
+        : undefined;
     const pinAfter = style.position === "fixed" && style.pinAfter > 0
         ? { "data-pg-pin-after": style.pinAfter, "data-pg-pin-side": style.pinSide }
         : undefined;
@@ -419,7 +431,7 @@ function RenderedNode({
                     // accepting the prop.
                     suppressHydrationWarning: style.entrance !== "none" || undefined,
                     id: classFor(element.id),
-                    ...pinAfter,
+                    ...pinAfter, ...entranceAttrs,
                     "data-pg-drag": element.draggable ? "true" : undefined,
                     "data-pg-action": element.interaction?.action,
                     "data-pg-target": element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined,
@@ -452,7 +464,7 @@ function RenderedNode({
         id: classFor(element.id),
         htmlFor: tag === "label" && element.labelFor ? classFor(element.labelFor) : undefined,
         type: tag === "button" ? (element.buttonType ?? "button") : undefined,
-        ...pinAfter,
+        ...pinAfter, ...entranceAttrs,
         "data-pg-drag": element.draggable ? "true" : undefined,
         "data-pg-action": element.interaction?.action,
         "data-pg-target": element.interaction && !["navigate", "scroll-to"].includes(element.interaction.action) ? classFor(element.interaction.value) : undefined,
@@ -539,6 +551,8 @@ function isContainerType(type: CanvasElement["type"]) {
  * watches anyway.
  */
 export function splitTextParts(content: string, split: EntranceSplit) {
+    // `children` staggers the element's children, not its own text.
+    if (split !== "words" && split !== "letters") return content;
     const chunks = content.split(/(\s+)/);
     let index = 0;
     return chunks.map((chunk, at) => {

@@ -100,7 +100,7 @@ export function DataPanel({
                                 onClick={() =>
                                     onChange((prev) => prev.filter((s) => s.id !== source.id))
                                 }
-                                className="shrink-0 rounded-md p-1.5 text-ed-faint opacity-0 transition-all hover:bg-ed-field hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
+                                className="shrink-0 rounded-md p-1.5 text-ed-faint opacity-0 transition-all hover:bg-ed-field hover:text-red-600 focus:opacity-100 group-hover:opacity-100"
                             >
                                 <IconTrash size={13} />
                             </button>

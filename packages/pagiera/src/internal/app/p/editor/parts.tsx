@@ -1,4 +1,5 @@
 "use client";
+import { ElementSketch } from "./ui/element-sketch";
 import { TextEffectsContent } from "@/lib/render/text-effects";
 
 import {
@@ -139,8 +140,11 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
             );
         }
         return (
-            <span className="pointer-events-none flex h-full w-full items-center justify-center text-ed-muted">
-                <IconPhoto size={28} stroke={1.5} />
+            // An image with nothing in it yet has no background of its own
+            // any more, so the canvas outlines where it is. Editor-only: the
+            // published page draws nothing for an empty image.
+            <span className="pointer-events-none flex h-full w-full items-center justify-center rounded-[inherit] bg-[rgb(24_24_27/0.035)] text-ed-faint shadow-[inset_0_0_0_1px_rgb(24_24_27/0.12)]">
+                <IconPhoto size={26} stroke={1.4} />
             </span>
         );
     }
@@ -150,7 +154,7 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
             <span className="pointer-events-none flex h-full w-full flex-col items-center justify-center gap-1 text-ed-muted">
                 <IconPlayerPlay size={28} stroke={1.5} />
                 {element.src && (
-                    <span className="max-w-full truncate px-2 text-[9px]">
+                    <span className="max-w-full truncate px-2 text-[10px]">
                         {element.src}
                     </span>
                 )}
@@ -161,11 +165,11 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
     if (element.type === "Icon") return <span className="pointer-events-none block size-full"><IconGlyph element={element} /></span>;
 
     if (element.type === "Spacer") {
-        return <span className="pointer-events-none flex size-full items-center justify-center text-[9px] tracking-wide text-ed-faint opacity-0 transition-opacity group-hover/canvas:opacity-100">Spacer</span>;
+        return <span className="pointer-events-none flex size-full items-center justify-center text-[10px] tracking-wide text-ed-faint opacity-0 transition-opacity group-hover/canvas:opacity-100">Spacer</span>;
     }
 
     if (element.type === "Embed") {
-        return <span className="pointer-events-none flex size-full flex-col items-center justify-center gap-1 text-ed-muted"><IconFrame size={26} stroke={1.5} />{element.src && <span className="max-w-full truncate px-2 text-[9px]">{element.src}</span>}</span>;
+        return <span className="pointer-events-none flex size-full flex-col items-center justify-center gap-1 text-ed-muted"><IconFrame size={26} stroke={1.5} />{element.src && <span className="max-w-full truncate px-2 text-[10px]">{element.src}</span>}</span>;
     }
 
     if (element.type === "ListItem") {
@@ -404,13 +408,13 @@ export function ElementsPanel({
     }
 
     return (
-        <div className="flex flex-col gap-4 p-2.5">
+        <div className="flex flex-col gap-5 px-3 pb-4 pt-1">
             {groups.map((group) => (
-                <div key={group.title}>
-                    <h3 className="px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-ed-faint">
+                <section key={group.title}>
+                    <h3 className="px-0.5 pb-2 text-[12px] font-semibold text-ed-text">
                         {group.title}
                     </h3>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2">
                         {group.types.map((type) => {
                             const Icon = TYPE_ICONS[type];
                             return (
@@ -423,19 +427,20 @@ export function ElementsPanel({
                                         event.dataTransfer.effectAllowed = "copy";
                                     }}
                                     onClick={() => onInsert(type)}
-                                    className="group flex min-h-[78px] cursor-grab flex-col items-center justify-center gap-1.5 rounded-[14px] bg-ed-subtle/45 px-1.5 py-2.5 transition-all duration-150 hover:-translate-y-px hover:border-ed-accent/40 hover:bg-ed-field hover:shadow-md active:cursor-grabbing"
+                                    title={`Add ${type} — click, or drag onto the page`}
+                                    className="group flex cursor-grab flex-col gap-1.5 rounded-xl p-1.5 text-left transition-colors hover:bg-[var(--ed-nav-hover)] focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)] active:cursor-grabbing"
                                 >
-                                    <span className="pointer-events-none flex size-7 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors group-hover:bg-ed-accent/15 group-hover:text-ed-accent">
-                                        <Icon size={15} stroke={1.55} />
+                                    <span className="pointer-events-none flex h-[64px] w-full items-center justify-center rounded-lg bg-ed-field transition-shadow group-hover:shadow-[0_0_0_1px_var(--ed-border-strong)]">
+                                        <ElementSketch type={type} fallback={<Icon size={18} stroke={1.5} className="text-ed-muted" />} />
                                     </span>
-                                    <span className="pointer-events-none max-w-full truncate text-[9px] font-medium text-ed-muted group-hover:text-ed-text">
-                                        {type}
+                                    <span className="pointer-events-none truncate px-0.5 text-[12px] font-medium text-ed-text">
+                                        {type === "ListItem" ? "List item" : type === "FileInput" ? "File upload" : type}
                                     </span>
                                 </button>
                             );
                         })}
                     </div>
-                </div>
+                </section>
             ))}
         </div>
     );
@@ -658,6 +663,7 @@ export function LayersPanel({
         >
             {list}
             {portalTarget && createPortal(
+                <div className="pg-scope" style={{ display: "contents" }}>
                 <div
                     className="pg-editor pointer-events-none fixed inset-0 z-[1000]"
                     data-ed-theme={document.querySelector<HTMLElement>(".pg-editor")?.dataset.edTheme ?? "dark"}
@@ -701,12 +707,13 @@ export function LayersPanel({
                                             onClick={() => { onToggleLocked(element.id); close(); }}
                                         />
                                         <MenuSeparator />
-                                        <MenuItem icon={<IconTrash size={14} className="text-red-400/80" />} label="Delete" shortcut="Del" destructive onClick={() => { onDelete(element.id); close(); }} />
+                                        <MenuItem icon={<IconTrash size={14} className="text-red-700" />} label="Delete" shortcut="Del" destructive onClick={() => { onDelete(element.id); close(); }} />
                                     </Menu>
                                 </motion.div>
                             );
                         })()}
                     </AnimatePresence>
+                </div>
                 </div>,
                 portalTarget,
             )}
@@ -736,8 +743,8 @@ function BreakpointRow({
 }) {
     return (
         <div
-            className={`group/bp flex h-8 w-full items-center gap-1 rounded-md pl-1 pr-2 transition-colors ${
-                active ? "bg-ed-field text-ed-text" : "text-ed-muted hover:bg-ed-field-hover"
+            className={`group/bp mx-2 flex h-8 items-center gap-1 rounded-lg pl-1.5 pr-2 transition-colors ${
+                active ? "bg-[var(--ed-nav-active)] text-ed-text" : "text-ed-muted hover:bg-[var(--ed-nav-hover)]"
             }`}
         >
             <button
@@ -754,10 +761,10 @@ function BreakpointRow({
                 className="flex min-w-0 flex-1 items-center gap-2 text-left"
             >
                 <IconFrame size={13} className={`shrink-0 ${active ? "text-ed-accent" : "text-ed-faint"}`} />
-                <span className={`min-w-0 flex-1 truncate text-[11.5px] ${active ? "font-medium" : ""}`}>
+                <span className={`min-w-0 flex-1 truncate text-[11px] ${active ? "font-medium" : ""}`}>
                     {group.name}
                 </span>
-                <span className="shrink-0 text-[9.5px] font-medium uppercase tracking-[.04em] text-ed-faint">
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[.04em] text-ed-faint">
                     {group.isBase ? "Main" : group.hint}
                 </span>
             </button>
@@ -812,11 +819,13 @@ function LayerRow({
         // a middle zone for nesting, matching the canvas tree structure.
         // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop surface
         <div
-            className={`group relative mx-1 flex h-[30px] items-center gap-1.5 rounded-[6px] pr-2 text-[12px] transition-colors ${dropPlacement === "inside"
+            className={`group relative mx-2 flex h-[30px] items-center gap-1.5 rounded-lg pr-2 text-[12px] transition-colors ${dropPlacement === "inside"
                     ? "bg-[var(--ed-accent-soft)] text-ed-text ring-1 ring-inset ring-ed-accent/40"
                     : isSelected
-                        ? "bg-ed-accent text-white"
-                        : "text-ed-muted hover:bg-ed-field hover:text-ed-text"
+                        // A selected row is tinted, not flooded: a full accent
+                        // bar shouted over the tree it is meant to sit in.
+                        ? "bg-[var(--ed-accent-soft)] text-ed-text shadow-[inset_0_0_0_1px_rgb(124_92_255/0.35)]"
+                        : "text-ed-muted hover:bg-[var(--ed-nav-hover)] hover:text-ed-text"
                 }`}
             style={{ paddingLeft: 7 + depth * 13 }}
             onContextMenu={onContextMenu}
@@ -893,7 +902,7 @@ function LayerRow({
                         event.stopPropagation();
                         onToggleCollapsed(event.altKey);
                     }}
-                    className={`flex size-4 shrink-0 items-center justify-center rounded transition-colors ${isSelected ? "text-white/70 hover:bg-white/15 hover:text-white" : "text-ed-faint hover:bg-ed-field-hover hover:text-ed-text"}`}
+                    className={`flex size-4 shrink-0 items-center justify-center rounded transition-colors ${isSelected ? "text-ed-muted hover:bg-[var(--ed-nav-hover)] hover:text-ed-text" : "text-ed-faint hover:bg-[var(--ed-nav-hover)] hover:text-ed-text"}`}
                 >
                     <IconChevronRight size={12} className={`transition-transform ${collapsed ? "" : "rotate-90"}`} />
                 </button>
@@ -908,8 +917,12 @@ function LayerRow({
                 onDragStart={(event) => {
                     event.dataTransfer.setData(MOVE_MIME, element.id);
                     event.dataTransfer.effectAllowed = "move";
+                    document.documentElement.dataset.pgMoving = element.id;
                 }}
-                onDragEnd={() => onDropTargetChange(null)}
+                onDragEnd={() => {
+                    delete document.documentElement.dataset.pgMoving;
+                    onDropTargetChange(null);
+                }}
                 onClick={(event) => onSelect(element.id, event.shiftKey || event.metaKey)}
                 onDoubleClick={(event) => {
                     if (!isComponentInstance || !onOpenComponent) return;
@@ -920,7 +933,7 @@ function LayerRow({
                 aria-pressed={isSelected}
                 className="flex min-w-0 flex-1 cursor-grab items-center gap-2 text-left active:cursor-grabbing"
             >
-                <Icon size={12} stroke={1.55} className={isSelected ? "text-white/85" : isComponentInstance ? "text-ed-accent" : "text-ed-faint"} />
+                <Icon size={12} stroke={1.55} className={isSelected ? "text-[var(--ed-accent-hover)]" : isComponentInstance ? "text-ed-accent" : "text-ed-faint"} />
                 <span
                     className={`flex-1 truncate ${style.hidden ? "text-ed-faint line-through" : ""}`}
                 >
@@ -928,14 +941,14 @@ function LayerRow({
                 </span>
                 {Number.isFinite(style.zIndex) && style.zIndex !== 0 && (
                     <span
-                        className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[8px] ${isSelected ? "bg-white/15 text-white" : "bg-[var(--ed-accent-soft)] text-ed-accent"}`}
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] ${isSelected ? "bg-ed-accent/25 text-[var(--ed-accent-hover)]" : "bg-[var(--ed-accent-soft)] text-ed-accent"}`}
                         title={`z-index: ${style.zIndex}`}
                     >
                         z{style.zIndex}
                     </span>
                 )}
                 {isComponentInstance && (
-                    <span className="shrink-0 rounded-md bg-[var(--ed-accent-soft)] px-2 py-0.5 text-[8px] font-semibold text-ed-accent">
+                    <span className="shrink-0 rounded-md bg-[var(--ed-accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-ed-accent">
                         {element.variant ?? "Component"}
                     </span>
                 )}
@@ -1028,12 +1041,12 @@ export function PagesPanel({
 
     return (
         <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-between px-3.5 pb-2 pt-3">
-                <span className="text-[9px] font-semibold uppercase tracking-[.12em] text-ed-faint">
-                    Pages
+            <div className="flex items-center justify-between pb-1.5 pl-4 pr-3 pt-2">
+                <span className="text-[12px] font-medium text-ed-muted">
+                    All pages
                 </span>
                 <span className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] text-ed-faint">{pages.length}</span>
+                    <span className="font-mono text-[10px] text-ed-faint">{pages.length}</span>
                     <button
                         type="button"
                         aria-label="New page"
@@ -1055,7 +1068,7 @@ export function PagesPanel({
             </div>
 
             {error && (
-                <p className="mx-2.5 mb-1 rounded-lg bg-red-500/10 px-3 py-2 text-[10px] leading-relaxed text-red-400">
+                <p className="mx-2.5 mb-1 rounded-lg bg-red-500/10 px-3 py-2 text-[10px] leading-relaxed text-red-700">
                     {error}
                 </p>
             )}
@@ -1149,9 +1162,9 @@ export function PagesPanel({
                                     cancelOpen();
                                     if (!busy && !isHome) setMode({ kind: "edit", id: page.id, slug: page.slug });
                                 }}
-                                className={`group relative flex items-center rounded-lg transition-colors ${isCurrent
-                                    ? "bg-ed-field-hover text-ed-text before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-r before:bg-ed-accent"
-                                    : isNavigating ? "bg-ed-field" : "hover:bg-ed-subtle"
+                                className={`group relative mx-2 flex items-center rounded-lg transition-colors ${isCurrent
+                                    ? "bg-[var(--ed-accent-soft)] text-ed-text shadow-[inset_0_0_0_1px_rgb(37_99_235/0.25)]"
+                                    : isNavigating ? "bg-[var(--ed-nav-active)]" : "hover:bg-[var(--ed-nav-hover)]"
                                     }`}
                             >
                                 <button
@@ -1160,10 +1173,10 @@ export function PagesPanel({
                                     disabled={busy || isCurrent}
                                     className="flex h-9 min-w-0 flex-1 items-center gap-2.5 px-3 text-left disabled:pointer-events-none"
                                 >
-                                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isCurrent ? "bg-ed-accent-soft text-ed-accent" : "text-ed-muted"}`}>
+                                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isCurrent ? "text-ed-accent" : "text-ed-muted"}`}>
                                         {isHome ? <IconHome size={13} stroke={1.6} /> : <IconFile size={13} stroke={1.6} />}
                                     </span>
-                                    <span className={`min-w-0 flex-1 truncate font-mono text-[11px] ${isCurrent ? "font-semibold text-ed-text" : "text-ed-muted"}`}>
+                                    <span className={`min-w-0 flex-1 truncate text-[13px] ${isCurrent ? "font-medium text-ed-text" : "text-ed-muted"}`}>
                                         {isHome ? "/" : `/${page.slug}`}
                                     </span>
                                     {page.published && <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" title="Published" />}
@@ -1182,7 +1195,7 @@ export function PagesPanel({
                                     moved every page below the one being acted on.
                                     Hidden until the row is hovered or focused, so a
                                     long list still reads as names and URLs. */}
-                                <span className={`flex shrink-0 items-center pr-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${isCurrent ? "[&_a]:text-white/70 [&_button]:text-white/70" : ""}`}>
+                                <span className={`flex shrink-0 items-center pr-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${isCurrent ? "[&_a]:text-ed-muted [&_button]:text-ed-muted" : ""}`}>
                                     <RowAction
                                         label={`Duplicate ${page.name}`}
                                         onClick={() => onDuplicate(page.id, `${page.name} copy`)}
@@ -1236,7 +1249,7 @@ function RowAction({
             aria-label={label}
             title={label}
             onClick={onClick}
-            className={`flex size-6 items-center justify-center rounded-md text-ed-faint transition-colors ${danger ? "hover:bg-red-500/10 hover:text-red-400" : "hover:bg-ed-field hover:text-ed-text"}`}
+            className={`flex size-6 items-center justify-center rounded-md text-ed-faint transition-colors ${danger ? "hover:bg-red-500/10 hover:text-red-600" : "hover:bg-ed-field hover:text-ed-text"}`}
         >
             {children}
         </button>
@@ -1336,7 +1349,7 @@ export function ContextMenu({
             />
             <MenuSeparator />
             <MenuItem
-                icon={<IconTrash size={14} className="text-red-400/80" />}
+                icon={<IconTrash size={14} className="text-red-700" />}
                 label="Delete"
                 shortcut="Del"
                 destructive
@@ -1386,50 +1399,64 @@ export function PaddingHandles({
 }) {
     if (style.layout !== "stack") return null;
 
-    // Below a couple of screen pixels the band is unhittable, so give it a
-    // floor and let it overhang the (tiny) padding it represents.
-    const grab = Math.max(6, 10 / scale);
+    /*
+     * The band shows the inset; only its grip changes it.
+     *
+     * The whole band used to be the handle, and on a section with generous
+     * padding that was most of the section — pressing anywhere near its edge
+     * to move it dragged the padding instead, which read as the section
+     * refusing to be picked up. The band is now see-through to the pointer
+     * and a small grip in its middle does the resizing, the way Figma and
+     * Canva split the two.
+     */
+    const unit = 1 / scale;
 
     return (
         <>
             {PAD_SIDES.map(({ side, cursor }) => {
                 const value = style[side];
                 const vertical = side === "padT" || side === "padB";
-                const thickness = Math.max(value, grab);
-                const box: React.CSSProperties = {
+                const thickness = Math.max(value, 6 * unit);
+                const band: React.CSSProperties = {
                     position: "absolute",
                     zIndex: 55,
+                    pointerEvents: "none",
                     background:
-                        active === side || value > 0
-                            ? "color-mix(in srgb, var(--ed-accent) 16%, transparent)"
-                            : "transparent",
+                        active === side
+                            ? "color-mix(in srgb, var(--ed-accent) 22%, transparent)"
+                            : value > 0
+                              ? "color-mix(in srgb, var(--ed-accent) 10%, transparent)"
+                              : "transparent",
                     ...(vertical
                         ? { left: 0, right: 0, height: thickness, [side === "padT" ? "top" : "bottom"]: 0 }
                         : { top: 0, bottom: 0, width: thickness, [side === "padL" ? "left" : "right"]: 0 }),
                 };
                 return (
-                    <button
-                        type="button"
-                        key={side}
-                        aria-label={`Drag ${side} padding`}
-                        title={`${side.slice(3)} padding · ${value}px`}
-                        onMouseDown={(event) => onMouseDown(event, side, element)}
-                        className={`${cursor} border-0 p-0 hover:bg-ed-accent/25`}
-                        style={box}
-                    >
-                        {active === side && (
+                    <div key={side} style={band} className="group/pad" data-pg-chrome="">
+                        <button
+                            type="button"
+                            aria-label={`Drag ${side} padding`}
+                            title={`${side.slice(3)} padding · ${value}px`}
+                            onMouseDown={(event) => onMouseDown(event, side, element)}
+                            className={`${cursor} pointer-events-auto absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center border-0 bg-transparent p-0`}
+                            style={vertical
+                                ? { width: 28 * unit, height: Math.max(10 * unit, Math.min(thickness, 16 * unit)) }
+                                : { height: 28 * unit, width: Math.max(10 * unit, Math.min(thickness, 16 * unit)) }}
+                        >
                             <span
-                                className="pointer-events-none absolute rounded bg-ed-accent px-1 text-[9px] font-semibold text-white"
-                                style={
-                                    vertical
-                                        ? { left: "50%", top: "50%", transform: "translate(-50%,-50%)" }
-                                        : { top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
-                                }
-                            >
-                                {value}
-                            </span>
-                        )}
-                    </button>
+                                className="block rounded-full bg-ed-accent shadow-[0_0_0_1px_rgb(255_255_255/0.9)] transition-transform group-hover/pad:scale-110"
+                                style={vertical ? { width: 16 * unit, height: 3 * unit } : { width: 3 * unit, height: 16 * unit }}
+                            />
+                            {active === side && (
+                                <span
+                                    className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-ed-accent font-semibold tabular-nums text-white"
+                                    style={{ fontSize: 10 * unit, padding: `${1 * unit}px ${4 * unit}px` }}
+                                >
+                                    {value}
+                                </span>
+                            )}
+                        </button>
+                    </div>
                 );
             })}
         </>
@@ -1467,7 +1494,7 @@ export function SectionSeam({
 
     return (
         <div
-            className="group/seam pointer-events-none absolute inset-x-0 z-[70] flex items-center justify-center"
+            data-pg-chrome="" className="group/seam pointer-events-none absolute inset-x-0 z-[70] flex items-center justify-center"
             style={{ top: "100%", height }}
         >
             <div
@@ -1563,7 +1590,7 @@ export function SiteTransfer({
                             <IconDownload size={13} /> Export
                         </a>
                     </div>
-                    <p className="text-[9px] leading-relaxed text-ed-faint">
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
                         Saves every page as a bundle in the same format the template catalog serves.
                     </p>
                 </>
@@ -1585,7 +1612,7 @@ export function SiteTransfer({
                     />
                     {confirming ? (
                         <div className="flex flex-col gap-2 rounded-xl bg-amber-400/[.07] px-3 py-2.5">
-                            <p className="text-[9px] leading-relaxed text-ed-muted">
+                            <p className="text-[10px] leading-relaxed text-ed-muted">
                                 <strong className="font-semibold text-ed-text">This replaces the whole site.</strong>{" "}
                                 Every page and its revision history is removed once the import succeeds.
                             </p>
@@ -1620,7 +1647,7 @@ export function SiteTransfer({
             )}
 
             {error && (
-                <p className="rounded-lg bg-red-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-red-300">{error}</p>
+                <p className="rounded-lg bg-red-500/10 px-2.5 py-2 text-[10px] leading-relaxed text-red-700">{error}</p>
             )}
         </div>
     );

@@ -202,6 +202,19 @@ Klavye gezinmesini, etiketleri, zorunlu alanları, geçersiz girdiyi, yinelenen 
 
 Düzenleyici; giriş, döngü ve kaydırma efektlerinin yanında üzerine gelme ve basma stillerini destekler. Okunabilir, durağan bir tasarımla başlayın, her seferinde bir efekt ekleyin ve ardından önizlemede doğrulayın. Süreyi ve hız eğrisini bilinçli kullanın; temel içeriğin uzun bir animasyona bağlı olmasından kaçının.
 
+## Animasyon
+
+Tüm hareket ayarları inspector'daki Efektler sekmesindedir ve düz CSS'e derlenir; böylece yayımlanan sayfa bir animasyon kütüphanesi olmadan hareket eder ve JavaScript olmadan da okunabilir kalır.
+
+- **Giriş.** Hazır efektler (belirme, yükselme, düşme, kayma, yakınlaşma, bulanıklık, pop, perde açılması) ya da başlangıç opaklığını, X/Y hareketini, ölçeği, dönüşü ve bulanıklığı birleştiren Özel. Kelime kelime, harf harf ya da bir kapsayıcının doğrudan alt öğelerini sırayla getiren **Children one by one** ile gelebilir. **Plays** bir kez mi yoksa katman her görünüme girdiğinde mi oynayacağını, **Trigger offset** başlamadan önce ekranda ne kadar yukarı çıkması gerektiğini belirler.
+- **Eğriler.** Ease, hazır ayarlı bir cubic-bezier düzenleyicisi kullanır. Spring gerçek sertlik, sönümleme ve kütle kullanır: yay simüle edilir ve cubic yedekli bir CSS linear() eğrisi olarak yayımlanır; böylece hedefi aşıp yerine oturabilir. Bir yayın süresi fiziğinden gelir ve eğri grafiğinin altında gösterilir.
+- **Üzerine gelme ve basma.** Renk, opaklık ve ölçeğin yanında üzerine gelme katmanı kaldırabilir, taşıyabilir, döndürebilir, 3B eğebilir ve bulanıklaştırabilir; basma aşağı itebilir. **State transition** her iki durum için varsayılan ease'i kendi eğriniz ya da yayınızla değiştirir.
+- **Kaydırma.** Belirme, yükselme, paralaks, yakınlaşma, bulanıklık, kayma, dönme ve küçülme efektleri katmanın görünüm alanındaki ilerlemesine bağlıdır. **Runs** aralığı seçer: girerken, tüm geçiş boyunca, tamamen görünürken ya da çıkarken (efekti tersine oynatır).
+- **Döngü.** Nabız, süzülme, salınma, dönme, zıplama, kıpırdama ve nefes; miktar, gecikme, yön (ileri, geri, yoyo) ve yumuşak ya da sabit hız ile. Girişi olan bir katmandaki döngü giriş bittikten sonra başlar.
+- **Önizleme.** Play, seçili katmanın girişini yayımlanan sayfayla aynı keyframe ve zamanlamayla canvas'ta çalıştırır; All sayfadaki her girişi oynatır. Preview interactions üzerine gelme, basma ve durum geçişlerini test eder.
+
+Azaltılmış hareket isteyen ziyaretçiler katmanları giriş, kaydırma efekti ve döngü olmadan, son halleriyle görür.
+
 ## Tıklama eylemleri
 
 Yerel tıklama etkileşimleri navigate, scroll-to, toggle-layer, show-layer ve hide-layer içerir. Hedefi bilinçli belirleyin ve katmanları çoğalttıktan veya sildikten sonra hâlâ var olduğunu doğrulayın. Mümkün olduğunda sıradan gezinme için gerçek bir bağlantı kullanın.
@@ -446,6 +459,30 @@ Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacınd
 
 ### Stüdyo ve görüntüleme
 
+- Animasyon modülü derinleştirildi. Girişlere bulanıklık, pop, perde açılması ve tamamen özel başlangıç durumları, **Children one by one** sıralaması, her ziyarette yeniden oynatma ve tetikleme payı eklendi. Yaylar artık sertlik, sönümleme ve kütleden simüle ediliyor ve yaklaşık bir cubic eğri yerine CSS linear() eğrisi olarak yayımlanıyor. Üzerine gelme ve basma; kaldırma, taşıma, döndürme, 3B eğme ve bulanıklaştırma yapabiliyor, durum geçişi düzenlenebiliyor. Kaydırma efektlerine kayma, dönme ve küçülme ile çıkarken tersine oynatma dahil aralık seçimi eklendi. Döngülere salınma, zıplama, kıpırdama ve nefes; miktar, gecikme, yön ve hız ayarlarıyla eklendi. Play ve All girişleri canvas'ta yayımlanan zamanlamayla yeniden oynatır.
+- Bir döngünün öğenin kendi girişi ya da kaydırma efekti tarafından kalıcı olarak iptal edilmesi düzeltildi; döngü artık giriş bitince devam ediyor. Giriş ve kaydırma efektlerinin bittikten sonra katmanı tam opaklığa zorlaması düzeltildi. Son çare görünürleştirme artık yalnızca ekrandakileri gösteriyor; böylece sayfanın aşağısındaki girişler oraya ulaşıldığında yine oynuyor.
+- Canvas sürükle-bırak yeniden yazıldı. Basılı tutma ancak imleç birkaç piksel hareket edince sürüklemeye dönüşür; böylece tıklama artık katmanları yanlışlıkla yeniden sıralamaz. Sürüklenen katman kalkar ve imleci izler, kardeşleri katman boyutunda bir yuva açmak için kayar ve bıraktığı boşluk kapanır. Bırakıldığında katman yerine süzülür. Escape sürüklemeyi iptal edip her şeyi eski haline getirir; imleç kenara yaklaşınca canvas kayar.
+- Bir katman artık boş olmadığı sürece kendinden küçük bir kabın içine yerleştirilmez ve bir alt öğe bölümün kenarına değse bile iki bölüm arasındaki geçişe ulaşılabilir. Bölüm arka planları gibi sabitlenmiş (absolute) alt öğeler ekleme noktası seçilirken yok sayılır.
+- Bir katmanı tüm artboard'ların dışına sürüklemek artık yuva göstermez; bu, katmanı artboard'ların yanına park eden bırakma davranışıyla uyumludur.
+- Insert veya Layers panelinden sürüklenen bloklar aynı ekleme çizgisini gösterir ve kabın sonuna değil, imlecin altındaki kardeşlerin arasına yerleşir.
+- Seçili bir kabın padding değeri her kenarın ortasındaki küçük tutamaçla değiştirilir. Gölgeli padding bandı artık imleci yakalamadığından bir bölüm her yerinden tutulabilir.
+- Yayınlanan sayfalar artık kaydırma çubuğu için yer ayırmaz. Pencereye sığan bir sayfada kaydırma çubuğu ve sağ kenarda boş bir şerit görünmez; böylece tam genişlikteki arka planlar canvas'taki gibi kenara ulaşır. Kaydırılan bir sayfa ile kaydırılmayan bir sayfa arasında geçerken düzen, kaydırma çubuğu genişliği kadar kayabilir.
+- Serbest konumlu (absolute) bir katmanda Fill, artık katmanın kayıtlı konumundan başlamak yerine o eksende ebeveyni iki kenara sabitlenerek baştan sona kaplar. Fill yapılmış bir arka plan görseli taşındıktan sonra bile her kenara tam oturur; doldurulan eksende x veya y değeri ve yatay ya da dikey kısıt yok sayılır. Böyle bir katman sürüklendiğinde veya ok tuşlarıyla kaydırıldığında yalnızca doldurulmayan eksende hareket eder, inspector'daki doldurulan eksenin X veya Y alanı devre dışıdır; doldurulan eksen yeniden boyutlandırılınca, kapladığı kenara sabitlenmiş sabit bir boyuta döner.
+- Sürüklenen katman, sonraki bölümler dahil artboard'daki her şeyin üzerinde çizilir; böylece başka bir bölümün üzerine taşınan arka plan görseli artık o bölümün metinlerinin altında kalmaz.
+- Kendi kabı içinde sürüklenen bir katman, imleç kabın kutusundan çıkana kadar o kapta kalır; böylece iç içe katmanları yeniden sıralamak artık kenara yaklaşınca üst seviyeye sıçramaz.
+- Serbest konumlu (absolute) katmanlar artık kendi ebeveynleri içinde hareket eder ve serbest konumlu kalır. Birini başka bir kabın içine koymak için bırakırken Ctrl (macOS'ta ⌘) basılı tutun.
+- Seçili bir katman, üzerini başka bir katman kaplasa bile kutusunun herhangi bir yerinden sürüklenebilir. Hareket etmeden basıp bırakmak yine üstteki katmanı seçer. Alt+tıklama imlecin altındaki bir sonraki katmanı seçer ve yığın içinde döner.
+- Kilitli katmanlar artık canvas'ta seçilemez veya sürüklenemez; üzerlerine basmak altlarındaki ilk kilitsiz katmana gider. Kilitli katmanlar Layers panelinden seçilebilir kalır.
+- Bir katman yalnızca tüm artboard'ların en az 32 px dışında bırakılırsa artboard'ların yanına park edilir; kenarın hemen ötesine kayan bir bırakma sayfada kalır.
+- Yeni Frame, Section, Image ve Embed katmanları artık varsayılan bir arka plan rengiyle gelmez; arkalarındaki her şey görünür. Kaynağı olmayan bir Image yalnızca canvas'ta çerçeveyle gösterilir, yayınlanan sayfa onun için hiçbir şey çizmez. Mevcut katmanlar sahip oldukları renkleri korur.
+- Canvas aynı anda tek bir breakpoint artboard'u gösterir; dock'taki cihaz düğmeleri onu değiştirir, yeni bir dock düğmesi ise tüm breakpoint'leri yeniden yan yana gösterir. Layers ağacı yalnızca ekrandaki breakpoint'leri listeler. Seçim tarayıcıda hatırlanır.
+- Inspector alanları ince kenarlı beyaz alanlardır; değerler 12 px ve sola hizalıdır, odakta mavi kenar ve yumuşak bir hale görünür; seçim kutuları ve metin alanları da aynı görünümdedir.
+- Tam stüdyo stil dosyası artık host uygulamayı değiştirmez. \`pagiera/full.css\` içindeki her kural düzenleyicinin kendi \`.pg-scope\` öğesiyle sınırlıdır ve tema değişkenleri \`:root\` yerine orada tanımlanır; böylece içe aktarıldığında host uygulamanın renklerini, köşe yuvarlamalarını, başlıklarını veya düğmelerini ezmez. \`dark:\` varyantı host'un \`.dark\` sınıfına değil, düzenleyicinin kendi \`.pg-dark\` sınıfına bağlıdır.
+- Settings ve Templates artık ikon şeridinin yanında tam sayfalar; her birinin solda kendi bölüm listesi var. Biri açıkken canvas, paneller, inspector ve dock kenara alınır; sayfa artık çalışan bir canvas'ın üzerine çizilmez. Templates sayfasında yenileme, içe aktarma ve dışa aktarma içeren tek bir başlık, bir arama alanı ve beyaz şablon kartları var; kategoriler yalnızca sayfanın kendi listesindedir.
+- Bir bileşeni düzenlemek artık Back to pages düğmesi gerektirmez. İkon şeridi tüm hedefleri korur; sayfa düzeyindeki bir hedefi (Pages, Templates, Assets, Data, History, Settings) açmak sayfaya döndürür. Üst çubuk, sayfa adı geri götüren bir yol gösterir; hiçbir şey seçili değilken Escape de geri döndürür ve bileşenin son ana öğesi silinince editör kendiliğinden sayfaya döner.
+- Insert paneli her öğeyi gri bir kutudaki ikon yerine, eklediği şeyin küçük bir çizimiyle (bir çerçeve, üst üste satırlar, ızgara, başlık çubukları, hap şeklinde düğme, form alanları) iki sütunda gösterir.
+- Editör arayüzü sakin, açık renkli bir çalışma alanı olarak yeniden tasarlandı: sıcak kırık beyaz bir çerçeve, paneller ve inspector için beyaz yüzen kartlar, ince kenarlıklar, ana yayınlama eylemi için mürekkep siyahı, seçim ve odak için mavi. Soldaki ikon şeridi artık Insert, Layers, Pages, Templates, Assets, Data, History ve Settings panellerini açar; her panelin başında adı yazar. Canvas araçları (seç veya çiz, breakpoint, sütun ızgarası, etkileşim önizlemesi, zoom, geri al ve yinele, Luma) üst çubuktan canvas'ın altında yüzen bir dock'a taşındı. Üst çubuk Pagiera işaretini ve düzenlenen sayfayı ya da bileşeni gösterir; ikon şeridi aynı yerlere gittiği için çalışma alanı menüsü, hızlı ekleme düğmesi ve açık belge sekmeleri kaldırıldı.
+- Editördeki küçük etiketler artık tek bir dört basamaklı ölçeği izler (10, 11, 12 ve 13 px). Önceden 8–9,5 px çizilen etiketler 10 px'e çıkarıldı, küsuratlı boyutlar en yakın basamağa yuvarlandı. İletişim kutuları ve panellerdeki daha büyük başlıklar değişmedi.
 - İtalik metin stili ve uzun metni üç noktayla kesen Max lines ayarı eklendi. İkisi de Typography altındadır ve breakpoint'e göre değişebilir.
 - Köşeler için ayrı yuvarlama değerleri eklendi. Border and shadow → Corners seçeneği Separate yapılana kadar köşeler Corner radius değerini izler.
 - Kırpılan bir görselin hangi bölümünün görünür kalacağını belirleyen Focus ayarı eklendi.
@@ -729,6 +766,8 @@ PostgreSQL, Redis ve OpenRouter kimlik bilgileri asla \`NEXT_PUBLIC_\` önekini 
 ## Düzenleyicide stiller görünmüyor
 
 \`pagiera/full.css\` dosyasını kendi stil dosyanızdan önce içe aktarın. CSS \`@import\` kuralları normal stil kurallarından önce gelmelidir. Kök stil dosyasını değiştirdikten sonra geliştirme sunucusunu yeniden başlatın.
+
+Stil dosyası düzenleyiciyle sınırlıdır. \`pagiera/full.css\` içindeki her kural yalnızca stüdyonun kendini içine çizdiği \`.pg-scope\` öğesinin içinde uygulanır; tema değişkenleri (\`--radius\`, \`--primary\`, renk ölçeği) \`:root\` yerine orada tanımlanır. Kendi tasarım sistemi olan bir uygulamaya içe aktarıldığında, düzenleyicinin dışında ve çevresinde o uygulamanın renkleri, köşe yuvarlamaları, başlıkları ve düğmeleri değişmeden kalır.
 
 ## getEditorBootstrap bir işlev değil
 

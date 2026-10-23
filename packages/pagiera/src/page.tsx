@@ -80,6 +80,10 @@ async function submitBackgroundForm(element: PagieraElement, form: HTMLFormEleme
     }
 }
 
+function shownDisplay(style: Record<string, unknown>, type: string) {
+    return type === "Grid" || type === "Repeat" ? "grid" : style.layout === "stack" || ["Frame", "Stack", "Section", "Container", "Form", "Request", "Button"].includes(type) ? "flex" : "block";
+}
+
 function declarationMap(style: Record<string, unknown>, type: string) {
     const widthMode = style.widthMode;
     const heightMode = style.heightMode;
@@ -87,7 +91,7 @@ function declarationMap(style: Record<string, unknown>, type: string) {
     const direction = style.direction;
     const rules: Record<string, string | number | undefined> = {
         boxSizing: "border-box",
-        display: style.hidden ? "none" : type === "Grid" || type === "Repeat" ? "grid" : layout === "stack" || ["Frame", "Stack", "Section", "Container", "Form", "Request", "Button"].includes(type) ? "flex" : "block",
+        display: style.hidden ? "none" : shownDisplay(style, type),
         flexDirection: direction === "row" ? "row" : "column",
         flexWrap: style.wrap ? "wrap" : undefined,
         flexGrow: widthMode === "fill" && direction === "row" ? 1 : undefined,
@@ -142,19 +146,25 @@ function fillOf(bg: unknown, bgOpacity: unknown) {
     return `color-mix(in srgb, ${colour} ${alpha}%, transparent)`;
 }
 
-function declarations(style: Record<string, unknown>, type: string) {
-    return serializeDeclarations(declarationMap(style, type));
-}
-
-function interactionDeclarations(resting: Record<string, unknown>, patch: Record<string, unknown>, type: string) {
+function interactionDeclarationMap(resting: Record<string, unknown>, patch: Record<string, unknown>, type: string) {
     const before = declarationMap(resting, type);
     const after = declarationMap({ ...resting, ...patch }, type);
-    return serializeDeclarations(Object.fromEntries(Object.entries(after).filter(([property, value]) => value !== before[property])));
+    const delta: Record<string, string | number | undefined> = {};
+    for (const property of new Set([...Object.keys(before), ...Object.keys(after)])) {
+        if (after[property] === before[property]) continue;
+        // A state that returns a property to its default omits it.
+        delta[property] = after[property] === undefined || after[property] === "" ? "unset" : after[property];
+    }
+    return delta;
 }
 
 function pageTransitionCss(document: PagieraDocument) {
     const kind = document.rootStyle.pageTransition ?? "smooth";
-    if (kind === "none") return "html{scrollbar-gutter:stable}";
+    // No reserved scrollbar gutter: a page that fits the window shows no
+    // scrollbar, so reserving its width left an empty strip down the right
+    // edge that a full-bleed background never reached — the published page
+    // stopped matching the canvas, which has no such strip.
+    if (kind === "none") return "";
     const duration = Math.max(120, Math.min(1200, document.rootStyle.pageTransitionDuration ?? 380));
     const leaveDuration = Math.max(90, Math.round(duration * 0.48));
     const frames = kind === "fade"
@@ -164,7 +174,6 @@ function pageTransitionCss(document: PagieraDocument) {
           : { leave: "to{opacity:0;transform:translateY(-6px);filter:blur(3px)}", enter: "from{opacity:0;transform:translateY(10px);filter:blur(5px)}to{opacity:1;transform:none;filter:blur(0)}" };
     return `
 @view-transition{navigation:auto}
-html{scrollbar-gutter:stable}
 ::view-transition-old(root),::view-transition-new(root){mix-blend-mode:normal;animation-fill-mode:both}
 ::view-transition-old(root){animation:pg-page-leave ${leaveDuration}ms cubic-bezier(.4,0,1,1) both}
 ::view-transition-new(root){animation:pg-page-enter ${duration}ms cubic-bezier(.16,1,.3,1) both}
@@ -175,25 +184,50 @@ html{scrollbar-gutter:stable}
 }
 
 function stylesheet(document: PagieraDocument) {
-    const parts: string[] = [pageTransitionCss(document), ".pg-node{box-sizing:border-box}.pg-node:is(input,textarea,button){font:inherit}.pg-node:is(input,textarea){outline:none}.pg-node:is(textarea){resize:none}.pg-form-status:empty{display:none}.pg-form-status{font-size:12px;line-height:1.4}.pg-node[data-pg-state=success] .pg-form-status{color:#22c55e}.pg-node[data-pg-state=error] .pg-form-status{color:#ef4444}.pg-svg-glyph>svg{display:block;width:100%;height:100%}.pg-node[role=radiogroup]{display:flex;flex-direction:column;gap:8px}.pg-choice{display:flex;align-items:center;gap:8px;cursor:pointer}.pg-choice input{accent-color:currentColor;margin:0}.pg-node:is(input[type=checkbox],input[type=radio]){accent-color:currentColor}.pg-node:is(ul,ol){list-style:none}.pg-list{counter-reset:pg-list}.pg-list>li{position:relative}.pg-list-bullet>li::before{content:'\\2022';position:absolute;left:-1em;opacity:.65}.pg-list-number>li::before{counter-increment:pg-list;content:counter(pg-list) '.';position:absolute;left:-1.6em;opacity:.65;font-variant-numeric:tabular-nums}.pg-node hr{border:0;width:100%;height:100%}.pg-node iframe{display:block;width:100%;height:100%;border:0}"];
+    const parts: string[] = [pageTransitionCss(document), ".pg-node{box-sizing:border-box}.pg-node:where(input,textarea,button){font:inherit}.pg-node:is(input,textarea){outline:none}.pg-node:is(textarea){resize:none}.pg-form-status:empty{display:none}.pg-form-status{font-size:12px;line-height:1.4}.pg-node[data-pg-state=success] .pg-form-status{color:#22c55e}.pg-node[data-pg-state=error] .pg-form-status{color:#ef4444}.pg-svg-glyph>svg{display:block;width:100%;height:100%}.pg-node[role=radiogroup]{display:flex;flex-direction:column;gap:8px}.pg-choice{display:flex;align-items:center;gap:8px;cursor:pointer}.pg-choice input{accent-color:currentColor;margin:0}.pg-node:is(input[type=checkbox],input[type=radio]){accent-color:currentColor}.pg-node:is(ul,ol){list-style:none}.pg-list{counter-reset:pg-list}.pg-list>li{position:relative}.pg-list-bullet>li::before{content:'\\2022';position:absolute;left:-1em;opacity:.65}.pg-list-number>li::before{counter-increment:pg-list;content:counter(pg-list) '.';position:absolute;left:-1.6em;opacity:.65;font-variant-numeric:tabular-nums}.pg-node hr{border:0;width:100%;height:100%}.pg-node iframe{display:block;width:100%;height:100%;border:0}"];
     for (const font of document.rootStyle.customFonts ?? []) parts.push(`@font-face{font-family:"${font.name.replace(/["'{};]/g, "")}";src:url("${font.url.replace(/["'()\\]/g, "")}");font-weight:${font.weight};font-style:${font.style};font-display:swap}`);
+    // An override rule omits what it returns to default, so every property an
+    // earlier rule for the same selector set is tracked and reset explicitly.
+    const emitted = new Map<string, Set<string>>();
+    const emit = (selector: string, rules: Record<string, string | number | undefined>) => {
+        const seen = emitted.get(selector) ?? new Set<string>();
+        const out = { ...rules };
+        for (const property of seen) if (out[property] === undefined || out[property] === "") out[property] = "unset";
+        for (const [property, value] of Object.entries(out)) if (value !== undefined && value !== "") seen.add(property);
+        emitted.set(selector, seen);
+        return `${selector}{${serializeDeclarations(out)}}`;
+    };
+    // A state rule at a breakpoint must also restate, at this breakpoint's
+    // resting values, anything a wider state rule changed — otherwise the
+    // desktop hover value wins over the breakpoint's own.
+    const state = (selector: string, resting: Record<string, unknown>, patch: Record<string, unknown>, type: string) => {
+        const delta = interactionDeclarationMap(resting, patch, type);
+        const after = declarationMap({ ...resting, ...patch }, type);
+        for (const property of emitted.get(selector) ?? []) if (!(property in delta)) delta[property] = after[property] ?? "unset";
+        return emit(selector, delta);
+    };
     for (const element of document.elements) {
         const selector = `.${safeClass(element.id)}`;
-        parts.push(`${selector}{${declarations(element.base, element.type)}}`);
-        if (element.hover && Object.keys(element.hover).length) parts.push(`${selector}:hover{${interactionDeclarations(element.base, element.hover, element.type)}}`);
-        if (element.press && Object.keys(element.press).length) parts.push(`${selector}:active{${interactionDeclarations(element.base, element.press, element.type)}}`);
+        parts.push(emit(selector, declarationMap(element.base, element.type)));
+        if (element.hover && Object.keys(element.hover).length) parts.push(state(`${selector}:hover`, element.base, element.hover, element.type));
+        if (element.press && Object.keys(element.press).length) parts.push(state(`${selector}:active`, element.base, element.press, element.type));
         if (element.hover || element.press) parts.push(`${selector}{transition:transform .42s cubic-bezier(.16,1,.3,1),background-color .3s ease,color .3s ease,border-color .3s ease,box-shadow .42s cubic-bezier(.16,1,.3,1),opacity .3s ease}`);
     }
-    for (const breakpoint of document.rootStyle.breakpoints.filter((item) => item.id !== "desktop").sort((a, b) => b.width - a.width)) {
+    // Widest first, and each narrower breakpoint inherits every wider override
+    // (desktop → tablet → mobile) rather than jumping straight from desktop.
+    const breakpoints = document.rootStyle.breakpoints.filter((item) => item.id !== "desktop").sort((a, b) => b.width - a.width);
+    const inherited = new Map<string, Record<string, unknown>>(document.elements.map((element) => [element.id, { ...element.base }]));
+    for (const breakpoint of breakpoints) {
         const rules = document.elements.flatMap((element) => {
             const override = element.overrides?.[breakpoint.id];
             if (!override) return [];
-            const resting = { ...element.base, ...override };
+            const resting = { ...inherited.get(element.id), ...override };
+            inherited.set(element.id, resting);
             const selector = `.${safeClass(element.id)}`;
             return [
-                `${selector}{${declarations(resting, element.type)}}`,
-                element.hover && Object.keys(element.hover).length ? `${selector}:hover{${interactionDeclarations(resting, element.hover, element.type)}}` : "",
-                element.press && Object.keys(element.press).length ? `${selector}:active{${interactionDeclarations(resting, element.press, element.type)}}` : "",
+                emit(selector, declarationMap(resting, element.type)),
+                element.hover && Object.keys(element.hover).length ? state(`${selector}:hover`, resting, element.hover, element.type) : "",
+                element.press && Object.keys(element.press).length ? state(`${selector}:active`, resting, element.press, element.type) : "",
             ].filter(Boolean);
         }).join("");
         if (rules) parts.push(`@media(max-width:${breakpoint.width}px){${rules}}`);
@@ -269,21 +303,26 @@ export function PagieraPage({ document, className, interactive = true, onElement
 
     const render = (element: PagieraElement): ReactNode => {
         const explicit = visibility[element.id];
-        const hidden = explicit === undefined ? element.base.hidden === true : !explicit;
         const interaction = element.interaction;
         const runInteraction = interactive && interaction ? () => {
             if (interaction.action === "navigate") interaction.target === "_blank" ? window.open(interaction.value, "_blank", "noopener,noreferrer") : window.location.assign(interaction.value);
             else if (interaction.action === "scroll-to") window.document.getElementById(safeClass(interaction.value))?.scrollIntoView({ behavior: "smooth" });
             else setVisibility((current) => {
                 const target = document.elements.find((candidate) => candidate.id === interaction.value);
-                const currentVisible = current[interaction.value] ?? target?.base.hidden !== true;
+                // Without an explicit toggle yet, what is on screen depends on
+                // the breakpoint, so read it rather than the base style.
+                const node = window.document.getElementById(safeClass(interaction.value));
+                const currentVisible = current[interaction.value] ?? (node ? getComputedStyle(node).display !== "none" : target?.base.hidden !== true);
                 return { ...current, [interaction.value]: interaction.action === "show-layer" ? true : interaction.action === "hide-layer" ? false : !currentVisible };
             });
         } : undefined;
         const onClick = onElementSelect || runInteraction ? (event: { stopPropagation(): void }) => { if (onElementSelect) { event.stopPropagation(); onElementSelect(element.id); } if (runInteraction) runInteraction(); } : undefined;
-        const style: CSSProperties = hidden ? { display: "none" } : {};
+        // Authored visibility is left to the stylesheet so breakpoint overrides
+        // apply; only a show/hide interaction pins display inline, and showing
+        // has to name a display because the resting rule says `none`.
+        const style: CSSProperties = explicit === undefined ? {} : explicit ? { display: shownDisplay(element.base, element.type) } : { display: "none" };
         const body = <><ElementContent element={element} />{(children.get(element.id) ?? []).map(render)}{element.type === "Form" && <span className="pg-form-status" data-pg-form-status aria-live="polite" />}</>;
-        const props = withCustom(element, { id: safeClass(element.id), "data-pagiera-id": element.id, className: `pg-node ${safeClass(element.id)}${element.type === "List" && element.listStyle !== "none" ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}` : ""}`, style, onClick, "aria-hidden": hidden || undefined });
+        const props = withCustom(element, { id: safeClass(element.id), "data-pagiera-id": element.id, className: `pg-node ${safeClass(element.id)}${element.type === "List" && element.listStyle !== "none" ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}` : ""}`, style, onClick, "aria-hidden": explicit === false || undefined });
         if (element.type === "Divider") return createElement("hr", props);
         if (element.type === "Embed") return element.src ? createElement("iframe", { ...props, src: element.src, title: element.name ?? "Embedded content", loading: "lazy", sandbox: "allow-scripts allow-same-origin allow-popups allow-forms", referrerPolicy: "no-referrer-when-downgrade" }) : null;
         if (element.type === "Input") return createElement("input", { ...props, ...constraints(element), type: element.inputType ?? "text", readOnly: element.readOnly, defaultValue: element.defaultValue, placeholder: element.placeholder });

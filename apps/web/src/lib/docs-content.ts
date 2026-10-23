@@ -264,6 +264,8 @@ Open \`/api/pagiera/health\` and address the first failing dependency. Verify en
 
 Import \`pagiera/full.css\` before your own stylesheet. CSS \`@import\` rules must appear before ordinary style rules. Restart the dev server after changing the root stylesheet.
 
+The stylesheet is confined to the editor. Every rule in \`pagiera/full.css\` applies only inside the \`.pg-scope\` element the studio renders itself into, and its theme variables (\`--radius\`, \`--primary\`, the colour scale) are defined there rather than on \`:root\`. Importing it into an app with its own design system leaves that app's colours, radii, headings and buttons unchanged, outside and around the editor.
+
 ## getEditorBootstrap is not a function
 
 Your application and generated lockfile may be resolving different package versions. Inspect the installed \`pagiera\` version, reinstall dependencies and restart Next.js.

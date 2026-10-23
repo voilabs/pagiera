@@ -44,12 +44,15 @@ type HistoryState = {
      * Without it every mousemove would land in the undo stack.
      */
     txBase: EditorDocument | null;
+    /** The redo stack as it stood when the transaction began. */
+    txFuture?: EditorDocument[];
 };
 
 type Action =
     | { type: "set"; updater: Updater; transient?: boolean }
     | { type: "beginTx" }
     | { type: "endTx" }
+    | { type: "cancelTx" }
     | { type: "undo" }
     | { type: "redo" }
     | { type: "reset"; document: EditorDocument };
@@ -83,7 +86,7 @@ function reducer(state: HistoryState, action: Action): HistoryState {
             };
         }
         case "beginTx":
-            return state.txBase ? state : { ...state, txBase: state.present };
+            return state.txBase ? state : { ...state, txBase: state.present, txFuture: state.future };
         case "endTx": {
             if (!state.txBase) return state;
             if (state.txBase === state.present) return { ...state, txBase: null };
@@ -94,6 +97,12 @@ function reducer(state: HistoryState, action: Action): HistoryState {
                 txBase: null,
             };
         }
+        case "cancelTx":
+            // A gesture abandoned with Escape: everything it wrote is dropped
+            // and nothing reaches the undo stack.
+            return state.txBase
+                ? { ...state, present: state.txBase, future: state.txFuture ?? state.future, txBase: null, txFuture: undefined }
+                : state;
         case "undo": {
             const previous = state.past.at(-1);
             if (!previous) return state;
@@ -292,6 +301,7 @@ export function useEditorDocument({
         setRootStyle,
         beginTransaction: useCallback(() => dispatch({ type: "beginTx" }), []),
         endTransaction: useCallback(() => dispatch({ type: "endTx" }), []),
+        cancelTransaction: useCallback(() => dispatch({ type: "cancelTx" }), []),
         undo: useCallback(() => dispatch({ type: "undo" }), []),
         redo: useCallback(() => dispatch({ type: "redo" }), []),
         canUndo: state.past.length > 0,

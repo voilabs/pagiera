@@ -137,7 +137,24 @@ export function useCanvasView(contentWidth: number) {
     useEffect(() => {
         const viewport = viewportRef.current;
         if (!viewport) return;
+        let hidden = false;
+        let lastSize: { width: number; height: number } | null = null;
         const refit = () => {
+            // Hidden behind a Settings or Templates page the viewport measures
+            // zero; fitting to that would throw away the zoom and the view,
+            // and coming back is the same canvas, not a resized one.
+            if (viewport.clientWidth === 0 || viewport.clientHeight === 0) {
+                hidden = true;
+                return;
+            }
+            const size = { width: viewport.clientWidth, height: viewport.clientHeight };
+            const unchanged = lastSize !== null && lastSize.width === size.width && lastSize.height === size.height;
+            const returning = hidden;
+            hidden = false;
+            // Back from hidden at the size it left: the same canvas, keep the
+            // view. A new size, or no fit yet at all, still fits.
+            if (returning && unchanged) return;
+            lastSize = size;
             if (!autoFitRef.current) return;
             fitNow(contentWidth);
             recenter();
@@ -207,7 +224,13 @@ export function useCanvasView(contentWidth: number) {
             return (
                 !!node &&
                 (node.isContentEditable ||
-                    ["INPUT", "TEXTAREA", "SELECT"].includes(node.tagName))
+                    ["INPUT", "TEXTAREA", "SELECT"].includes(node.tagName) ||
+                    // Space presses a focused button; it must not become a
+                    // pan, least of all on a page with no canvas showing.
+                    // Only when it was reached from the keyboard: a toolbar
+                    // button clicked a moment ago keeps focus, and holding
+                    // Space to pan after that is exactly what people do.
+                    Boolean(node.closest?.("button, a[href], summary, [role='button'], [role='tab'], [role='menuitem'], [role='option']") && node.matches?.(":focus-visible")))
             );
         };
 

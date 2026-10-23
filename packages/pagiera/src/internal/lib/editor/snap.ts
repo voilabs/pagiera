@@ -48,11 +48,13 @@ export function snapPosition(
 
     const targets: Box[] = [
         { x: 0, y: 0, w: frame.w, h: frame.h },
+        // A filled sibling is where it is drawn — across the whole frame on
+        // that axis — not where its stored numbers say.
         ...siblings.map(({ style }) => ({
-            x: style.x,
-            y: style.y,
-            w: style.w,
-            h: style.h,
+            x: style.widthMode === "fill" ? 0 : style.x,
+            y: style.heightMode === "fill" ? 0 : style.y,
+            w: style.widthMode === "fill" ? frame.w : style.w,
+            h: style.heightMode === "fill" ? frame.h : style.h,
         })),
     ];
 

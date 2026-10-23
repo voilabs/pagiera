@@ -54,7 +54,7 @@ export function TextArea({
                 id={id}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="min-h-[88px] resize-y rounded-lg bg-ed-field p-2.5 text-[12px] leading-relaxed text-ed-text outline-none transition-colors hover:bg-ed-field-hover focus:bg-ed-surface focus:ring-1 focus:ring-inset focus:ring-[var(--ed-accent)]/60"
+                className="pg-field min-h-[88px] resize-y rounded-[9px] bg-ed-surface p-2.5 text-[13px] leading-relaxed text-ed-text outline-none transition-shadow shadow-[inset_0_0_0_1px_var(--ed-border-strong)] hover:shadow-[inset_0_0_0_1px_rgb(24_24_27/0.24)] focus:shadow-[inset_0_0_0_1px_var(--ed-accent),0_0_0_3px_var(--ed-accent-soft)]"
             />
         </div>
     );
@@ -95,10 +95,10 @@ export function CodeInput({
                 spellCheck={false}
                 placeholder={placeholder}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full resize-y rounded-xl bg-ed-field px-3 py-2.5 font-mono text-[10px] leading-[1.6] text-ed-text outline-none ring-ed-accent focus:ring-1"
+                className="pg-field w-full resize-y rounded-[9px] bg-ed-surface px-3 py-2.5 font-mono text-[11px] leading-[1.6] text-ed-text outline-none transition-shadow shadow-[inset_0_0_0_1px_var(--ed-border-strong)] hover:shadow-[inset_0_0_0_1px_rgb(24_24_27/0.24)] focus:shadow-[inset_0_0_0_1px_var(--ed-accent),0_0_0_3px_var(--ed-accent-soft)]"
                 style={{ whiteSpace: "pre", overflowWrap: "normal", overflowX: "auto" }}
             />
-            {hint && <p className="text-[9px] leading-relaxed text-ed-faint">{hint}</p>}
+            {hint && <p className="text-[10px] leading-relaxed text-ed-faint">{hint}</p>}
         </div>
     );
 }

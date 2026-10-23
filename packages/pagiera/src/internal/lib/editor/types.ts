@@ -233,7 +233,18 @@ export type FontStyle = "normal" | "italic";
 export type ObjectPosition = "center" | "top" | "bottom" | "left" | "right";
 export type ObjectFit = "cover" | "contain" | "fill" | "none";
 export type Overflow = "visible" | "hidden" | "auto" | "scroll";
-export type Entrance = "none" | "fade" | "up" | "down" | "left" | "right" | "zoom";
+export type Entrance =
+    | "none"
+    | "fade"
+    | "up"
+    | "down"
+    | "left"
+    | "right"
+    | "zoom"
+    | "blur"
+    | "pop"
+    | "reveal"
+    | "custom";
 export type MotionCurve = "ease" | "spring";
 export type CursorStyle = "auto" | "default" | "pointer" | "text" | "grab" | "zoom-in" | "none";
 /**
@@ -386,6 +397,15 @@ export type ElementStyle = {
     blendMode: BlendMode;
     /** Percent; 100 leaves the element alone. */
     scale: number;
+    /**
+     * Visual offset in px, applied as a transform so the layout around the
+     * element does not move. This is what a hover "lift" changes.
+     */
+    translateX: number;
+    translateY: number;
+    /** 3D tilt in degrees, seen through a fixed perspective. */
+    rotateX: number;
+    rotateY: number;
     /** A CSS ratio such as "16/9", or "" to leave height to the layout. */
     aspectRatio: string;
 
@@ -402,6 +422,21 @@ export type ElementStyle = {
     /** Milliseconds between one split unit and the next. */
     entranceStagger: number;
     /**
+     * Where a `custom` entrance starts from. Every preset is a fixed set of
+     * these; custom exposes them so an arrival can combine movement, scale,
+     * rotation and blur. Scale and opacity are percentages.
+     */
+    entranceX: number;
+    entranceY: number;
+    entranceScale: number;
+    entranceRotate: number;
+    entranceBlur: number;
+    entranceOpacity: number;
+    /** Plays again every time the element comes back into view. */
+    entranceReplay: boolean;
+    /** How far into the viewport, as % of its height, the element must be before it plays. */
+    entranceOffset: number;
+    /**
      * An effect driven by scroll position rather than by arrival: it runs
      * forwards as the element crosses the viewport and backwards as it leaves,
      * so it is tied to where the page is, not to when it was first seen.
@@ -409,6 +444,8 @@ export type ElementStyle = {
     scrollEffect: ScrollEffect;
     /** How far the scroll effect travels: px for movement, % for the rest. */
     scrollAmount: number;
+    /** Which part of the element's pass across the viewport drives the effect. */
+    scrollRange: ScrollRange;
     /** Milliseconds. */
     entranceDuration: number;
     entranceDelay: number;
@@ -416,6 +453,7 @@ export type ElementStyle = {
     entranceBezier: string;
     springStiffness: number;
     springDamping: number;
+    springMass: number;
     cursor: CursorStyle;
 
     /** Hidden at this breakpoint. */
@@ -494,18 +532,32 @@ export const STYLE_KEYS = [
     "backdropBlur",
     "blendMode",
     "scale",
+    "translateX",
+    "translateY",
+    "rotateX",
+    "rotateY",
     "aspectRatio",
     "entrance",
     "entranceSplit",
     "entranceStagger",
+    "entranceX",
+    "entranceY",
+    "entranceScale",
+    "entranceRotate",
+    "entranceBlur",
+    "entranceOpacity",
+    "entranceReplay",
+    "entranceOffset",
     "scrollEffect",
     "scrollAmount",
+    "scrollRange",
     "entranceDuration",
     "entranceDelay",
     "entranceCurve",
     "entranceBezier",
     "springStiffness",
     "springDamping",
+    "springMass",
     "cursor",
     "hidden",
 ] as const satisfies ReadonlyArray<keyof ElementStyle>;
@@ -693,7 +745,9 @@ export type CanvasElement = {
     hoverTrigger?: "self" | "parent";
     /** Applied while the pointer is pressed. */
     press?: Partial<ElementStyle>;
-    loop?: { type: "pulse" | "float" | "spin"; duration: number };
+    /** How hover and press states animate in and out; absent uses the default ease. */
+    transition?: StateTransition;
+    loop?: LoopMotion;
     draggable?: boolean;
 };
 
@@ -776,19 +830,33 @@ export const BASE_STYLE: ElementStyle = {
     backdropBlur: 0,
     blendMode: "normal",
     scale: 100,
+    translateX: 0,
+    translateY: 0,
+    rotateX: 0,
+    rotateY: 0,
     aspectRatio: "",
 
     entrance: "none",
     entranceSplit: "none",
     entranceStagger: 60,
+    entranceX: 0,
+    entranceY: 40,
+    entranceScale: 100,
+    entranceRotate: 0,
+    entranceBlur: 0,
+    entranceOpacity: 0,
+    entranceReplay: false,
+    entranceOffset: 8,
     scrollEffect: "none",
     scrollAmount: 40,
+    scrollRange: "auto",
     entranceDuration: 600,
     entranceDelay: 0,
     entranceCurve: "ease",
     entranceBezier: "0.44, 0, 0.56, 1",
     springStiffness: 300,
     springDamping: 30,
+    springMass: 1,
     cursor: "auto",
 
     hidden: false,
@@ -812,7 +880,7 @@ export const ELEMENT_DEFAULTS: Record<
             layout: "absolute",
             direction: "column",
             overflow: "hidden",
-            bg: "#ffffff",
+            bg: "transparent",
             borderW: 1,
             borderC: "#e4e4e7",
             radius: 12,
@@ -851,7 +919,7 @@ export const ELEMENT_DEFAULTS: Record<
             padL: 48,
             justify: "start",
             align: "stretch",
-            bg: "#ffffff",
+            bg: "transparent",
         },
     },
     Container: {
@@ -914,7 +982,7 @@ export const ELEMENT_DEFAULTS: Record<
         props: { content: "Text block content" },
     },
     Image: {
-        style: { w: 400, h: 260, widthMode: "fill", bg: "#e4e4e7", radius: 12 },
+        style: { w: 400, h: 260, widthMode: "fill", radius: 12 },
         props: { src: "", alt: "", objectFit: "cover" },
     },
     Button: {
@@ -1091,7 +1159,7 @@ export const ELEMENT_DEFAULTS: Record<
         },
     },
     Embed: {
-        style: { w: 640, h: 400, widthMode: "fill", bg: "#f4f4f5", radius: 12 },
+        style: { w: 640, h: 400, widthMode: "fill", radius: 12 },
         props: { src: "" },
     },
     Fieldset: {
@@ -1406,14 +1474,26 @@ export const ASPECT_RATIOS: Array<{ label: string; value: string }> = [
     { label: "Portrait 3:4", value: "3/4" },
 ];
 
-export type EntranceSplit = "none" | "words" | "letters";
+/** `children` runs the entrance on each direct child in turn instead of on the element. */
+export type EntranceSplit = "none" | "words" | "letters" | "children";
 export const ENTRANCE_SPLITS: Array<{ label: string; value: EntranceSplit }> = [
     { label: "All at once", value: "none" },
     { label: "Word by word", value: "words" },
     { label: "Letter by letter", value: "letters" },
+    { label: "Children one by one", value: "children" },
 ];
 
-export type ScrollEffect = "none" | "fade" | "rise" | "parallax" | "zoom" | "blur";
+export type ScrollEffect =
+    | "none"
+    | "fade"
+    | "rise"
+    | "parallax"
+    | "zoom"
+    | "blur"
+    | "slide-left"
+    | "slide-right"
+    | "rotate"
+    | "shrink";
 export const SCROLL_EFFECTS: Array<{ label: string; value: ScrollEffect }> = [
     { label: "None", value: "none" },
     { label: "Fade in", value: "fade" },
@@ -1421,7 +1501,70 @@ export const SCROLL_EFFECTS: Array<{ label: string; value: ScrollEffect }> = [
     { label: "Parallax", value: "parallax" },
     { label: "Zoom", value: "zoom" },
     { label: "Blur in", value: "blur" },
+    { label: "Slide from left", value: "slide-left" },
+    { label: "Slide from right", value: "slide-right" },
+    { label: "Rotate in", value: "rotate" },
+    { label: "Shrink away", value: "shrink" },
 ];
+
+/**
+ * `auto` picks the range the effect was designed for: parallax across the
+ * whole pass, shrink while leaving, the rest while arriving. `exit` plays the
+ * effect backwards as the element leaves the top of the screen.
+ */
+export type ScrollRange = "auto" | "enter" | "cover" | "contain" | "exit";
+export const SCROLL_RANGES: Array<{ label: string; value: ScrollRange }> = [
+    { label: "Automatic", value: "auto" },
+    { label: "While entering", value: "enter" },
+    { label: "Whole pass", value: "cover" },
+    { label: "While fully visible", value: "contain" },
+    { label: "While leaving", value: "exit" },
+];
+
+/** How an element moves between its resting, hover and press states. */
+export type StateTransition = {
+    curve: MotionCurve;
+    /** Milliseconds; ignored by a spring, whose physics decide its length. */
+    duration: number;
+    bezier: string;
+    stiffness: number;
+    damping: number;
+    mass: number;
+};
+export const DEFAULT_STATE_TRANSITION: StateTransition = {
+    curve: "spring",
+    duration: 420,
+    bezier: "0.16, 1, 0.3, 1",
+    stiffness: 400,
+    damping: 30,
+    mass: 1,
+};
+
+export type LoopType = "pulse" | "float" | "sway" | "spin" | "bounce" | "wiggle" | "breathe";
+export const LOOP_TYPES: Array<{ label: string; value: LoopType }> = [
+    { label: "Pulse", value: "pulse" },
+    { label: "Float", value: "float" },
+    { label: "Sway", value: "sway" },
+    { label: "Spin", value: "spin" },
+    { label: "Bounce", value: "bounce" },
+    { label: "Wiggle", value: "wiggle" },
+    { label: "Breathe", value: "breathe" },
+];
+
+/** Motion that repeats for as long as the element is on the page. */
+export type LoopMotion = {
+    type: LoopType;
+    /** Milliseconds for one cycle. */
+    duration: number;
+    /** Strength as a percentage of the motion's natural size. */
+    amount?: number;
+    /** Milliseconds before the first cycle. */
+    delay?: number;
+    /** `alternate` plays every other cycle backwards (yoyo). */
+    direction?: "normal" | "reverse" | "alternate";
+    /** `linear` keeps a constant speed; spin defaults to it, the rest to smooth. */
+    ease?: "smooth" | "linear";
+};
 
 export const ENTRANCES: Array<{ label: string; value: Entrance }> = [
     { label: "None", value: "none" },
@@ -1431,6 +1574,10 @@ export const ENTRANCES: Array<{ label: string; value: Entrance }> = [
     { label: "Slide from left", value: "left" },
     { label: "Slide from right", value: "right" },
     { label: "Zoom in", value: "zoom" },
+    { label: "Blur in", value: "blur" },
+    { label: "Pop", value: "pop" },
+    { label: "Reveal (wipe up)", value: "reveal" },
+    { label: "Custom", value: "custom" },
 ];
 
 export const DRAG_MIME = "application/pagiera-element-type";

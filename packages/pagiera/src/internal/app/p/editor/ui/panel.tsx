@@ -20,7 +20,7 @@ export function PanelHeader({
 }) {
     return (
         <div className={cn("flex h-10 shrink-0 items-center justify-between gap-2 px-3", className)}>
-            <span className="min-w-0 truncate text-[12.5px] font-semibold tracking-[-.01em] text-[var(--ed-nav-text)]">
+            <span className="min-w-0 truncate text-[12px] font-semibold tracking-[-.01em] text-[var(--ed-nav-text)]">
                 {title}
             </span>
             {actions && <span className="flex shrink-0 items-center gap-1">{actions}</span>}
@@ -63,12 +63,12 @@ export function PanelSearch({
     icon: React.ReactNode;
 } & React.ComponentProps<"input">) {
     return (
-        <div className={cn("px-2.5 py-2", className)}>
-            <div className="flex h-[30px] items-center gap-2 rounded-[7px] bg-white/[0.055] px-2.5 ring-1 ring-inset ring-white/[0.055] transition-colors focus-within:ring-ed-accent">
+        <div className={cn("px-3 pb-2 pt-1", className)}>
+            <div className="pg-field flex h-8 items-center gap-2 rounded-[9px] bg-ed-surface px-2.5 shadow-[inset_0_0_0_1px_var(--ed-border-strong)] transition-shadow focus-within:shadow-[inset_0_0_0_1px_var(--ed-accent),0_0_0_3px_var(--ed-accent-soft)]">
                 <span className="shrink-0 text-[var(--ed-nav-faint)]">{icon}</span>
                 <input
                     type="text"
-                    className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--ed-nav-text)] outline-none placeholder:text-[var(--ed-nav-muted)]"
+                    className="min-w-0 flex-1 bg-transparent text-[13px] text-[var(--ed-nav-text)] outline-none placeholder:text-ed-faint"
                     {...props}
                 />
             </div>

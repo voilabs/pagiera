@@ -16,6 +16,18 @@ import {
 } from "@/lib/editor/cascade";
 import { childrenOf } from "@/lib/editor/tree";
 import {
+    type AnimationLayer,
+    animationDeclarations,
+    entranceFrom,
+    entranceTiming,
+    entranceTo,
+    frameToCss,
+    LOOP_KEYFRAMES,
+    loopAmount,
+    loopLayer,
+    stateTransition,
+} from "@/lib/editor/motion";
+import {
     type Breakpoint,
     type CanvasElement,
     type RootStyle,
@@ -64,7 +76,8 @@ export const DEFAULT_PAGE_FONT = "ui-sans-serif, system-ui, sans-serif";
 
 function pageTransitionCss(rootStyle: RootStyle) {
     const kind = rootStyle.pageTransition ?? "smooth";
-    if (kind === "none") return "html{scrollbar-gutter:stable}";
+    // No reserved gutter: it left an empty strip beside full-bleed backgrounds.
+    if (kind === "none") return "";
 
     const duration = Math.max(120, Math.min(1200, rootStyle.pageTransitionDuration ?? 380));
     const leaveDuration = Math.max(90, Math.round(duration * 0.48));
@@ -85,7 +98,6 @@ function pageTransitionCss(rootStyle: RootStyle) {
 
     return `
 @view-transition{navigation:auto}
-html{scrollbar-gutter:stable}
 ::view-transition-old(root),::view-transition-new(root){mix-blend-mode:normal;animation-fill-mode:both}
 ::view-transition-old(root){animation:pg-page-leave ${leaveDuration}ms cubic-bezier(.4,0,1,1) both}
 ::view-transition-new(root){animation:pg-page-enter ${duration}ms cubic-bezier(.16,1,.3,1) both}
@@ -115,7 +127,7 @@ function rulesFor(
     breakpoint: Breakpoint,
     rootStyle: RootStyle,
     cascade: Cascade,
-): Array<[suffix: string, declarations: string]> {
+): Array<[suffix: string, declarations: CSSProperties]> {
     const parent = element.parentId ? byId.get(element.parentId) : undefined;
     const parentStyle = parent ? resolveStyle(parent, breakpoint, cascade) : undefined;
     const style = resolveStyle(element, breakpoint, cascade);
@@ -132,14 +144,35 @@ function rulesFor(
     if (style.hidden) css.display = "none";
 
     if (!isBand(element.type, style, rootStyle) || style.hidden) {
-        return [["", declarationsToCss(css)]];
+        return [["", css]];
     }
 
     const { shell, inner } = splitBand(css, rootStyle.maxWidth);
     return [
-        ["", declarationsToCss(shell)],
-        [">.pg-inner", declarationsToCss(inner)],
+        ["", shell],
+        [">.pg-inner", inner],
     ];
+}
+
+/**
+ * `styleToCss` leaves a property out when it holds its default (no padding, no
+ * blur, full opacity), which is right for a lone rule but not for one that
+ * overrides another: an omitted declaration lets the overridden value through.
+ * Anything the other rule sets and this one omits is reset with `unset`.
+ */
+function withResets(css: CSSProperties, overridden: Iterable<string>): CSSProperties {
+    const out = { ...css } as Record<string, unknown>;
+    for (const property of overridden) {
+        const value = out[property];
+        if (value === undefined || value === null || value === "") out[property] = "unset";
+    }
+    return out as CSSProperties;
+}
+
+function setProperties(css: CSSProperties) {
+    return Object.entries(css)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([property]) => property);
 }
 
 /**
@@ -155,6 +188,7 @@ function interactionDeclarations(
     rootStyle: RootStyle,
     cascade: Cascade,
     patch: NonNullable<CanvasElement["hover"]>,
+    carried: Set<string> = new Set(),
 ) {
     const parent = element.parentId ? byId.get(element.parentId) : undefined;
     const parentStyle = parent ? resolveStyle(parent, breakpoint, cascade) : undefined;
@@ -167,17 +201,30 @@ function interactionDeclarations(
     const restingCss = styleToCss(resting, context, element);
     const activeCss = styleToCss({ ...resting, ...patch }, context, element);
     const delta: CSSProperties = {};
-    for (const property of Object.keys(activeCss) as Array<keyof CSSProperties>) {
+    const properties = new Set([...Object.keys(activeCss), ...setProperties(restingCss)]) as Set<keyof CSSProperties>;
+    for (const property of properties) {
         if (activeCss[property] !== restingCss[property]) {
             // CSSProperties is a heterogeneous map; this assignment is safe
             // because both values come from the same property key.
-            (delta as Record<string, unknown>)[property as string] = activeCss[property];
+            // A state that returns a property to its default omits it, so
+            // the resting value has to be reset explicitly.
+            const active = activeCss[property];
+            (delta as Record<string, unknown>)[property as string] =
+                active === undefined || active === null || active === "" ? "unset" : active;
         }
     }
     // A hidden layer has no box at all, so "show it" is not among the
     // differences above — the resting rule is what hides it. Revealing one is
     // giving it back the display its own layout asks for.
     if (resting.hidden && patch.hidden === false) delta.display = activeCss.display;
+    // A wider breakpoint's state rule still matches here, so whatever it set
+    // has to be restated at this breakpoint's own active value.
+    for (const property of carried) {
+        if (property in delta) continue;
+        const active = (activeCss as Record<string, unknown>)[property];
+        (delta as Record<string, unknown>)[property] = active === undefined || active === null || active === "" ? "unset" : active;
+    }
+    for (const property of setProperties(delta)) carried.add(property);
     return declarationsToCss(delta);
 }
 
@@ -200,31 +247,25 @@ function hoverSelector(element: CanvasElement, byId: Map<string, CanvasElement>)
 }
 
 /**
- * Entrance keyframes animate `translate`/`scale` rather than `transform`, so
- * they compose with an element's own rotation or scale instead of clobbering
- * it. Emitted once, only when some element actually uses an entrance.
+ * The shared half of every entrance; each element adds its own keyframes.
+ *
+ * Entrance keyframes animate `translate`/`scale`/`rotate` rather than
+ * `transform`, so they compose with an element's own rotation or scale
+ * instead of clobbering it, and they give only a start: the end is the
+ * element's own style, which is also what it rests at once revealed. Nothing
+ * forces it to full opacity afterwards, so a 60% layer stays at 60%.
  */
-const ENTRANCE_KEYFRAMES = `
-@keyframes pg-fade{from{opacity:0}to{opacity:1}}
-@keyframes pg-up{from{opacity:0;translate:0 28px}to{opacity:1;translate:none}}
-@keyframes pg-down{from{opacity:0;translate:0 -28px}to{opacity:1;translate:none}}
-@keyframes pg-left{from{opacity:0;translate:-32px 0}to{opacity:1;translate:none}}
-@keyframes pg-right{from{opacity:0;translate:32px 0}to{opacity:1;translate:none}}
-@keyframes pg-zoom{from{opacity:0;scale:.94}to{opacity:1;scale:none}}
-/* The hidden start state is applied only once the script is running, so a
-   visitor without JavaScript still sees every element. */
-.pg-ready .pg-anim{opacity:0}
-/* Revealed elements are visible as a resting value, not only as the end of a
-   keyframe: if animations are disabled or never get to run, the content still
-   shows rather than staying at zero opacity. */
-.pg-ready .pg-anim.pg-in{opacity:1}
-/* A split entrance animates the pieces, so the pieces carry the hidden state.
-   Each piece is inline-block because translate and scale do nothing to an
-   inline box. */
+const ENTRANCE_CSS = `
 .pg-part{display:inline-block;white-space:pre-wrap}
-.pg-ready .pg-anim .pg-part{opacity:0}
-.pg-ready .pg-anim.pg-in .pg-part{opacity:1}
-@media (prefers-reduced-motion:reduce){.pg-ready .pg-anim,.pg-ready .pg-anim .pg-part{opacity:1;animation:none!important}}
+/* The hidden start state is applied only once the script is running, so a
+   visitor without JavaScript still sees every element. A split entrance hides
+   the pieces it animates instead of the element that holds them. Each piece
+   is inline-block because translate and scale do nothing to an inline box. */
+@media (prefers-reduced-motion:no-preference){
+.pg-ready .pg-anim:not(.pg-in):not(.pg-split){opacity:0}
+.pg-ready .pg-anim:not(.pg-in) .pg-part{opacity:0}
+}
+@media (prefers-reduced-motion:reduce){.pg-ready .pg-anim,.pg-ready .pg-anim .pg-part{animation:none!important}}
 `.trim();
 
 /**
@@ -238,12 +279,24 @@ const ENTRANCE_KEYFRAMES = `
  * feature it does not have.
  */
 const SCROLL_KEYFRAMES = `
-@keyframes pg-s-fade{from{opacity:0}to{opacity:1}}
-@keyframes pg-s-rise{from{opacity:0;translate:0 var(--pg-amt,40px)}to{opacity:1;translate:none}}
+@keyframes pg-s-fade{from{opacity:0}}
+@keyframes pg-s-rise{from{opacity:0;translate:0 var(--pg-amt,40px)}}
 @keyframes pg-s-parallax{from{translate:0 var(--pg-amt,40px)}to{translate:0 calc(var(--pg-amt,40px) * -1)}}
-@keyframes pg-s-zoom{from{opacity:0;scale:var(--pg-scale,.9)}to{opacity:1;scale:1}}
-@keyframes pg-s-blur{from{opacity:0;filter:blur(var(--pg-blur,10px))}to{opacity:1;filter:blur(0)}}
+@keyframes pg-s-zoom{from{opacity:0;scale:var(--pg-scale,.9)}}
+@keyframes pg-s-blur{from{opacity:0;filter:blur(var(--pg-blur,10px))}}
+@keyframes pg-s-slide-left{from{opacity:0;translate:calc(var(--pg-amt,40px) * -1) 0}}
+@keyframes pg-s-slide-right{from{opacity:0;translate:var(--pg-amt,40px) 0}}
+@keyframes pg-s-rotate{from{opacity:0;rotate:var(--pg-rot,-12deg);scale:.96}}
+@keyframes pg-s-shrink{to{opacity:.35;scale:var(--pg-scale,.9)}}
 `.trim();
+
+/** Where on its pass across the viewport each scroll range runs. */
+const SCROLL_RANGE_CSS = {
+    enter: "entry 0% cover 40%",
+    cover: "cover 0% cover 100%",
+    contain: "contain 0% contain 100%",
+    exit: "exit 0% exit 100%",
+} as const;
 
 /**
  * A fixed element that appears after a scroll position waits just past the
@@ -284,6 +337,7 @@ export const ENTRANCE_SCRIPT = `
   if(!nodes.length)return;
   var reveal=function(n){n.classList.add('pg-in');};
   var all=function(){for(var i=0;i<nodes.length;i++)reveal(nodes[i]);};
+  var onScreen=function(n){var r=n.getBoundingClientRect();return r.top<innerHeight&&r.bottom>0;};
 
   if(!('IntersectionObserver' in window)||!window.matchMedia||matchMedia('(prefers-reduced-motion:reduce)').matches){
     all();return;
@@ -292,21 +346,54 @@ export const ENTRANCE_SCRIPT = `
 
   // Anything already in view animates straight away rather than waiting for
   // the observer's first delivery.
-  var pending=[];
+  // Revealed two frames later, so the hidden start state is painted first:
+  // after a client-side navigation the new nodes are inserted and scanned in
+  // one frame, and a class added before the first paint has nothing to
+  // transition from — the content simply popped in.
+  var pending=[],visible=[];
   for(var i=0;i<nodes.length;i++){
-    var r=nodes[i].getBoundingClientRect();
-    if(r.top<innerHeight&&r.bottom>0)reveal(nodes[i]);else pending.push(nodes[i]);
+    if(onScreen(nodes[i]))visible.push(nodes[i]);else pending.push(nodes[i]);
   }
 
-  var io=new IntersectionObserver(function(entries){
+  // One observer per trigger offset: how far into the viewport an element
+  // has to come before it plays is the observer's root margin.
+  var observers={};
+  var watch=function(n){
+    var offset=n.getAttribute('data-pg-offset')||'8';
+    var io=observers[offset]||(observers[offset]=new IntersectionObserver(function(entries,self){
+      for(var j=0;j<entries.length;j++){
+        if(!entries[j].isIntersecting)continue;
+        reveal(entries[j].target);
+        if(!entries[j].target.hasAttribute('data-pg-replay'))self.unobserve(entries[j].target);
+      }
+    },{threshold:0.15,rootMargin:'0px 0px -'+offset+'% 0px'}));
+    io.observe(n);
+  };
+  // A replaying entrance is reset once it has left the screen completely, so
+  // it is hidden again by the time it scrolls back in.
+  var away=new IntersectionObserver(function(entries){
     for(var j=0;j<entries.length;j++){
-      if(entries[j].isIntersecting){reveal(entries[j].target);io.unobserve(entries[j].target);}
+      if(!entries[j].isIntersecting)entries[j].target.classList.remove('pg-in');
     }
-  },{threshold:0.15,rootMargin:'0px 0px -8% 0px'});
-  for(var k=0;k<pending.length;k++)io.observe(pending[k]);
+  },{threshold:0});
 
-  // Last resort: never leave content invisible because a callback did not run.
-  setTimeout(all,3000);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    for(var v=0;v<visible.length;v++){
+      reveal(visible[v]);
+      if(visible[v].hasAttribute('data-pg-replay')){watch(visible[v]);away.observe(visible[v]);}
+    }
+  });});
+  for(var k=0;k<pending.length;k++){
+    watch(pending[k]);
+    if(pending[k].hasAttribute('data-pg-replay'))away.observe(pending[k]);
+  }
+
+  // Last resort: never leave content invisible because a callback did not
+  // run. Only what is on screen by then — revealing everything would spend
+  // the entrances further down before anyone scrolled to them.
+  setTimeout(function(){
+    for(var n=0;n<nodes.length;n++)if(onScreen(nodes[n]))reveal(nodes[n]);
+  },3000);
 })();
 `.trim();
 
@@ -449,10 +536,28 @@ export function stylesheetFor(
             ".pg-link{text-decoration:none;color:inherit}",
     );
 
+    // Every property a rule for an element sets, keyed by element and suffix,
+    // so a breakpoint rule can reset what the others set and it does not.
+    const setByRule = new Map<string, Set<string>>();
+    const record = (id: string, suffix: string, css: CSSProperties) => {
+        const key = `${id} ${suffix}`;
+        const set = setByRule.get(key) ?? new Set<string>();
+        for (const property of setProperties(css)) set.add(property);
+        setByRule.set(key, set);
+    };
+    for (const plan of mediaPlan(cascade)) {
+        for (const el of elements) {
+            for (const [suffix, css] of rulesFor(el, byId, plan.id, rootStyle, cascade)) record(el.id, suffix, css);
+        }
+    }
+
     for (const element of elements) {
         parts.push(fieldAppearanceCss(`.${classFor(element.id)}`, element.fieldAppearance, element.type === 'Select'));
         const emitted = rulesFor(element, byId, baseId, rootStyle, cascade)
-            .map(([suffix, decl]) => `.${classFor(element.id)}${suffix}{${decl}}`)
+            .map(([suffix, css]) => {
+                record(element.id, suffix, css);
+                return `.${classFor(element.id)}${suffix}{${declarationsToCss(css)}}`;
+            })
             .join("");
         parts.push(emitted);
         if (element.layoutRole === "layout" && !element.parentId) {
@@ -474,7 +579,8 @@ export function stylesheetFor(
         const rules = affected
             .flatMap((el) =>
                 rulesFor(el, byId, breakpoint, rootStyle, cascade).map(
-                    ([suffix, decl]) => `.${classFor(el.id)}${suffix}{${decl}}`,
+                    ([suffix, css]) =>
+                        `.${classFor(el.id)}${suffix}{${declarationsToCss(withResets(css, setByRule.get(`${el.id} ${suffix}`) ?? []))}}`,
                 ),
             )
             .join("");
@@ -483,30 +589,68 @@ export function stylesheetFor(
 
     if (elements.some((element) => { const pinned = resolveStyle(element, baseId, cascade); return pinned.position === "fixed" && pinned.pinAfter > 0; })) parts.push(PIN_AFTER_CSS);
 
+    // Loops come before entrances and scroll effects: those rules restate the
+    // loop alongside their own animation, and a later rule of the same
+    // specificity has to be the one that wins.
+    const loops = elements.filter((element) => element.loop);
+    if (loops.length) {
+        parts.push(`${LOOP_KEYFRAMES}@media(prefers-reduced-motion:reduce){.pg-node{animation:none!important}}`);
+        for (const element of loops) {
+            const loop = element.loop!;
+            parts.push(`.${classFor(element.id)}{--pg-la:${loopAmount(loop)};${animationDeclarations([loopLayer(loop)])}}`);
+        }
+    }
+
     if (hasEntrances(elements, cascade)) {
-        parts.push(ENTRANCE_KEYFRAMES);
+        parts.push(ENTRANCE_CSS);
+        const calm: string[] = [];
         for (const element of elements) {
             const style = resolveStyle(element, baseId, cascade);
             if (style.entrance === "none" || style.scrollEffect !== "none") continue;
-            const easing =
-                style.entranceCurve === "spring"
-                    ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)`
-                    : `cubic-bezier(${style.entranceBezier})`;
-            // Split runs the same animation on each piece, offset by its index,
-            // so one delay expression covers a word, a letter, or the whole
-            // element without a rule per piece.
-            const delay =
-                style.entranceSplit === "none"
-                    ? `${style.entranceDelay}ms`
-                    : `calc(${style.entranceDelay}ms + var(--i, 0) * ${style.entranceStagger}ms)`;
-            const target =
-                style.entranceSplit === "none"
-                    ? `.pg-ready .${classFor(element.id)}.pg-in`
-                    : `.pg-ready .${classFor(element.id)}.pg-in .pg-part`;
-            parts.push(
-                `${target}{animation:pg-${style.entrance} ${style.entranceDuration}ms ${easing} ${delay} both}`,
-            );
+            const cls = classFor(element.id);
+            const from = entranceFrom(style);
+            const to = entranceTo(from);
+            parts.push(`@keyframes pg-e-${cls}{from{${frameToCss(from)}}${Object.keys(to).length ? `to{${frameToCss(to)}}` : ""}}`);
+            const timing = entranceTiming(style);
+            // `backwards` holds the start through the delay and then lets go,
+            // so once it has played the element is back on its own style and
+            // hover, press and loops are free to change it.
+            const entrance = (delay: number | string): AnimationLayer => ({
+                name: `pg-e-${cls}`,
+                duration: timing.duration,
+                easing: timing.easing,
+                fallback: timing.fallback,
+                delay,
+                iterations: 1,
+                direction: "normal",
+                fill: "backwards",
+            });
+            // A loop starts where the entrance ends, so the two never fight
+            // over the same property.
+            const withLoop = (target: CanvasElement, delay: number) =>
+                target.loop ? [loopLayer(target.loop, delay + timing.duration)] : [];
+            if (style.entranceSplit === "children") {
+                // Each direct child gets the parent's entrance, one stagger
+                // step after the previous one.
+                childrenOf(elements, element.id).forEach((child, index) => {
+                    const delay = style.entranceDelay + index * style.entranceStagger;
+                    const childCls = classFor(child.id);
+                    parts.push(
+                        `@media (prefers-reduced-motion:no-preference){.pg-ready .${cls}.pg-anim:not(.pg-in) .${childCls}{opacity:0}}` +
+                            `.pg-ready .${cls}.pg-in .${childCls}{${animationDeclarations([entrance(delay), ...withLoop(child, delay)])}}`,
+                    );
+                    calm.push(`.pg-ready .${cls} .${childCls}`);
+                });
+            } else if (style.entranceSplit === "none") {
+                parts.push(`.pg-ready .${cls}.pg-in{${animationDeclarations([entrance(style.entranceDelay), ...withLoop(element, style.entranceDelay)])}}`);
+            } else {
+                // Split runs the same animation on each piece, offset by its
+                // index, so one delay expression covers a word or a letter
+                // without a rule per piece.
+                parts.push(`.pg-ready .${cls}.pg-in .pg-part{${animationDeclarations([entrance(`calc(${style.entranceDelay}ms + var(--i, 0) * ${style.entranceStagger}ms)`)])}}`);
+            }
         }
+        if (calm.length) parts.push(`@media (prefers-reduced-motion:reduce){${calm.join(",")}{animation:none!important}}`);
     }
 
     if (hasScrollEffects(elements, cascade)) {
@@ -515,26 +659,51 @@ export function stylesheetFor(
         const scrollSelectors: string[] = [];
         for (const element of elements) {
             const style = resolveStyle(element, baseId, cascade);
-            if (style.scrollEffect === "none") continue;
-            // Distance means different things per effect: pixels for the two
-            // that move, a proportion for the two that do not.
+            const effect = style.scrollEffect;
+            if (effect === "none") continue;
+            // Distance means different things per effect: pixels for the ones
+            // that move, a proportion for the ones that do not.
             const vars =
-                style.scrollEffect === "rise" || style.scrollEffect === "parallax"
+                effect === "rise" || effect === "parallax" || effect === "slide-left" || effect === "slide-right"
                     ? `--pg-amt:${style.scrollAmount}px;`
-                    : style.scrollEffect === "zoom"
+                    : effect === "zoom" || effect === "shrink"
                       ? `--pg-scale:${(1 - Math.min(90, style.scrollAmount) / 100).toFixed(3)};`
-                      : style.scrollEffect === "blur"
+                      : effect === "blur"
                         ? `--pg-blur:${(style.scrollAmount / 4).toFixed(2)}px;`
-                        : "";
+                        : effect === "rotate"
+                          ? `--pg-rot:${(-style.scrollAmount * 0.45).toFixed(1)}deg;`
+                          : "";
             // Parallax is a background motion that should read across the whole
-            // pass; the rest resolve while the element is arriving.
+            // pass and shrinking is about leaving; the rest resolve while the
+            // element is arriving.
             const range =
-                style.scrollEffect === "parallax"
-                    ? "cover 0% cover 100%"
-                    : "entry 0% cover 40%";
+                style.scrollRange !== "auto"
+                    ? style.scrollRange
+                    : effect === "parallax"
+                      ? "cover"
+                      : effect === "shrink"
+                        ? "exit"
+                        : "enter";
+            // An arrival effect over the leaving range runs backwards: the
+            // element finishes as itself and comes apart on its way out.
+            const reverse = range === "exit" && effect !== "shrink" && effect !== "parallax";
+            const layers: AnimationLayer[] = [{
+                name: `pg-s-${effect}`,
+                duration: 1,
+                easing: "linear",
+                delay: 0,
+                iterations: 1,
+                direction: reverse ? "reverse" : "normal",
+                fill: "both",
+                timeline: "view()",
+                range: SCROLL_RANGE_CSS[range],
+            }];
+            if (element.loop) layers.push(loopLayer(element.loop));
             scrollSelectors.push(`.${classFor(element.id)}`);
+            // `animation-duration:auto` is what a scroll timeline expects; the
+            // 1ms placeholder above only keeps the longhand lists aligned.
             scrollRules.push(
-                `.${classFor(element.id)}{${vars}animation:pg-s-${style.scrollEffect} linear both;animation-timeline:view();animation-range:${range}}`,
+                `.${classFor(element.id)}{${vars}${animationDeclarations(layers).replace(/animation-duration:1ms/, "animation-duration:auto")}}`,
             );
         }
         // Motion tied to scrolling is exactly what a reduced-motion setting is
@@ -547,17 +716,23 @@ export function stylesheetFor(
         );
     }
 
+    // Properties each hover/press selector has set so far, widest rule first.
+    const stateCarry = new Map<string, Set<string>>();
+    const carry = (selector: string) => {
+        const set = stateCarry.get(selector) ?? new Set<string>();
+        stateCarry.set(selector, set);
+        return set;
+    };
     for (const element of elements) {
-        if (element.hover || element.press) parts.push(`.${classFor(element.id)}{transition:transform .42s cubic-bezier(.16,1,.3,1),scale .42s cubic-bezier(.16,1,.3,1),rotate .42s cubic-bezier(.16,1,.3,1),translate .42s cubic-bezier(.16,1,.3,1),background-color .32s ease,color .32s ease,border-color .32s ease,box-shadow .42s cubic-bezier(.16,1,.3,1),opacity .32s ease,filter .42s ease;will-change:transform}`);
-        if (element.hover && Object.keys(element.hover).length) parts.push(`${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.hover)}}`);
+        if (element.hover || element.press) {
+            const transition = stateTransition(element.transition);
+            parts.push(`.${classFor(element.id)}{transition:${transition.fallback};${transition.value !== transition.fallback ? `transition:${transition.value};` : ""}will-change:transform}`);
+        }
+        if (element.hover && Object.keys(element.hover).length) parts.push(`${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.hover, carry(hoverSelector(element, byId)))}}`);
         // Coming out of `display:none` there is no previous frame to animate
         // from, so a revealed layer would simply pop in. This gives it one.
         if (revealsOnHover(element)) parts.push(`@starting-style{${hoverSelector(element, byId)}{opacity:0;translate:0 8px}}@media (prefers-reduced-motion:reduce){.${classFor(element.id)}{transition:none}}`);
-        if (element.press && Object.keys(element.press).length) parts.push(`.${classFor(element.id)}:active{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.press)}}`);
-        if (element.loop) {
-            const name = element.loop.type;
-            parts.push(`.${classFor(element.id)}{animation:pg-loop-${name} ${element.loop.duration}ms ease-in-out infinite}`);
-        }
+        if (element.press && Object.keys(element.press).length) parts.push(`.${classFor(element.id)}:active{${interactionDeclarations(element, byId, baseId, rootStyle, cascade, element.press, carry(`.${classFor(element.id)}:active`))}}`);
     }
 
     // A constraint or rotation can itself be responsive. Recompute the small
@@ -571,16 +746,15 @@ export function stylesheetFor(
             const selector = `.${classFor(element.id)}`;
             return [
                 element.hover && Object.keys(element.hover).length
-                    ? `${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.hover)}}`
+                    ? `${hoverSelector(element, byId)}{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.hover, carry(hoverSelector(element, byId)))}}`
                     : "",
                 element.press && Object.keys(element.press).length
-                    ? `${selector}:active{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.press)}}`
+                    ? `${selector}:active{${interactionDeclarations(element, byId, plan.id, rootStyle, cascade, element.press, carry(`${selector}:active`))}}`
                     : "",
             ].filter(Boolean);
         }).join("");
         if (rules) parts.push(`@media ${plan.query}{${rules}}`);
     }
-    if (elements.some((element) => element.loop)) parts.push(`@keyframes pg-loop-pulse{0%,100%{scale:1}50%{scale:1.06}}@keyframes pg-loop-float{0%,100%{translate:0 0}50%{translate:0 -12px}}@keyframes pg-loop-spin{to{rotate:360deg}}@media(prefers-reduced-motion:reduce){.pg-node{animation:none!important}}`);
 
     // Last, so an author's rule wins against the generated one at equal
     // specificity without having to reach for `!important`.

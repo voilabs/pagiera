@@ -118,17 +118,19 @@ export function absolutePosition(
     breakpoint: Breakpoint,
     cascade: Cascade = DEFAULT_CASCADE,
 ) {
+    // A filled axis is drawn from its parent's edge, whatever offset it
+    // still stores.
     const own = resolveStyle(element, breakpoint, cascade);
-    let x = own.x;
-    let y = own.y;
+    let x = own.widthMode === "fill" ? 0 : own.x;
+    let y = own.heightMode === "fill" ? 0 : own.y;
     let parent = element.parentId ? byId.get(element.parentId) : undefined;
     const guard = new Set<string>([element.id]);
 
     while (parent && !guard.has(parent.id)) {
         guard.add(parent.id);
         const style = resolveStyle(parent, breakpoint, cascade);
-        x += style.x;
-        y += style.y;
+        x += style.widthMode === "fill" ? 0 : style.x;
+        y += style.heightMode === "fill" ? 0 : style.y;
         parent = parent.parentId ? byId.get(parent.parentId) : undefined;
     }
     return { x, y };

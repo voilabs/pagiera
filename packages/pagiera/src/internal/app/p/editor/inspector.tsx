@@ -26,6 +26,8 @@ import { usePagieraFonts } from "pagiera/provider";
 import { ICON_CATALOG } from "@/lib/editor/icon";
 import { hasOverride, resolveStyle } from "@/lib/editor/style";
 import { displayName } from "@/lib/editor/tree";
+import { type Spring, springCurve } from "@/lib/editor/motion";
+import { playAllEntrances, playEntrance } from "./motion-preview";
 import { lookupTranslation, type Translations } from "@/lib/render/translate";
 import {
     type Align,
@@ -62,6 +64,10 @@ import {
     type PositionMode,
     type RootStyle,
     SCROLL_EFFECTS,
+    SCROLL_RANGES,
+    DEFAULT_STATE_TRANSITION,
+    LOOP_TYPES,
+    type LoopMotion,
     SHADOW_PRESETS,
     type StyleKey,
     type TextAlign,
@@ -213,12 +219,12 @@ function ImageUpload({
                 />
             </label>
             {inlined && (
-                <div className="flex items-center justify-between rounded-lg bg-ed-subtle px-2.5 py-2 text-[9px] text-ed-faint">
+                <div className="flex items-center justify-between rounded-lg bg-ed-subtle px-2.5 py-2 text-[10px] text-ed-faint">
                     <span>Stored inside the page JSON</span>
-                    <button type="button" onClick={() => onChange("")} className="text-ed-muted hover:text-red-400">Remove</button>
+                    <button type="button" onClick={() => onChange("")} className="text-ed-muted hover:text-red-600">Remove</button>
                 </div>
             )}
-            {error && <p className="rounded-lg bg-red-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-red-300">{error}</p>}
+            {error && <p className="rounded-lg bg-red-500/10 px-2.5 py-2 text-[10px] leading-relaxed text-red-700">{error}</p>}
         </div>
     );
 }
@@ -229,7 +235,7 @@ const ROW = "flex items-center gap-1.5";
 const CELL =
     "min-w-0 flex-1 rounded-lg bg-ed-field px-2 py-1.5 text-[10px] text-ed-text outline-none transition-colors hover:bg-ed-field-hover focus:bg-ed-surface focus:ring-1 focus:ring-inset focus:ring-[var(--ed-accent)]/60";
 const REMOVE =
-    "flex size-6 shrink-0 items-center justify-center rounded-md text-ed-faint transition-colors hover:bg-ed-field hover:text-red-400";
+    "flex size-6 shrink-0 items-center justify-center rounded-md text-ed-faint transition-colors hover:bg-ed-field hover:text-red-600";
 const ADD =
     "flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-ed-border py-1.5 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text";
 
@@ -280,7 +286,7 @@ function OptionsEditor({
             >
                 <IconPlus size={12} /> Add option
             </button>
-            <p className="text-[9px] leading-relaxed text-ed-faint">
+            <p className="text-[10px] leading-relaxed text-ed-faint">
                 The label is what a visitor reads; the value is what the form submits.
             </p>
         </div>
@@ -342,7 +348,7 @@ function AttributesEditor({
                                 <IconX size={12} />
                             </button>
                         </div>
-                        {problem && <p className="pl-1 text-[9px] text-red-400">{problem}</p>}
+                        {problem && <p className="pl-1 text-[10px] text-red-700">{problem}</p>}
                     </div>
                 );
             })}
@@ -493,7 +499,9 @@ function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                                 compact
                                 label="X"
                                 suffix="px"
-                                value={style.x}
+                                // A filled width spans the parent; there is no x to set.
+                                disabled={style.widthMode === "fill"}
+                                value={style.widthMode === "fill" ? 0 : style.x}
                                 onChange={(x) => onStyle({ x })}
                                 onCommitStart={onCommitStart}
                                 onCommitEnd={onCommitEnd}
@@ -505,7 +513,8 @@ function SizeGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                                 compact
                                 label="Y"
                                 suffix="px"
-                                value={style.y}
+                                disabled={style.heightMode === "fill"}
+                                value={style.heightMode === "fill" ? 0 : style.y}
                                 onChange={(y) => onStyle({ y })}
                                 onCommitStart={onCommitStart}
                                 onCommitEnd={onCommitEnd}
@@ -908,7 +917,7 @@ function SpacingGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
     return (
         <Group title="Spacing">
             <div className="relative rounded-lg border border-dashed border-ed-border bg-ed-subtle p-1.5">
-                <span className="absolute left-2 top-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-ed-faint">Margin</span>
+                <span className="absolute left-2 top-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-ed-faint">Margin</span>
 
                 <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center justify-items-center gap-x-1 gap-y-0.5 pt-3">
                     <span />
@@ -928,7 +937,7 @@ function SpacingGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                     {/* The padding box sits inside the margin box, the way the
                         two actually nest on the page. */}
                     <div className="relative w-full rounded-lg bg-ed-surface p-1.5">
-                        <span className="absolute left-2 top-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-ed-faint">Padding</span>
+                        <span className="absolute left-2 top-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-ed-faint">Padding</span>
                         <button
                             type="button"
                             aria-label={uniformPadding ? "Set each padding side on its own" : "Set every padding side together"}
@@ -1052,7 +1061,7 @@ function FillGroup({
                 />,
             )}
             {style.opacity < 100 && style.backdropBlur > 0 && (
-                <p className="rounded-lg bg-amber-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-amber-400">
+                <p className="rounded-lg bg-amber-500/10 px-2.5 py-2 text-[10px] leading-relaxed text-amber-700">
                     Opacity fades the whole element, including the glass blur behind
                     it. For a frosted panel leave Opacity at 100% and lower Fill
                     opacity instead.
@@ -1073,7 +1082,7 @@ function FillGroup({
                     <button
                         type="button"
                         onClick={() => onStyle({ gradient: "" })}
-                        className="h-5 flex-1 rounded text-[9px] text-ed-muted hover:text-ed-text"
+                        className="h-5 flex-1 rounded text-[10px] text-ed-muted hover:text-ed-text"
                     >
                         None
                     </button>
@@ -1520,7 +1529,7 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                             : "Scrolls with the page until it reaches this edge, then holds until its container leaves."}
                     </p>
                     {stickyWarning && (
-                        <p className="text-[10px] leading-relaxed text-amber-300">{stickyWarning}</p>
+                        <p className="text-[10px] leading-relaxed text-amber-700">{stickyWarning}</p>
                     )}
                 </>
             )}
@@ -1613,6 +1622,10 @@ function CompositionGroup({ ctx, ov }: { ctx: Ctx; ov: Wrap }) {
                         onCommitEnd={onCommitEnd}
                     />,
                 )}
+                {ov(["translateX"], <SliderInput label="Offset X" min={-400} max={400} suffix="px" value={style.translateX} onChange={(translateX) => onStyle({ translateX })} onCommitStart={onCommitStart} onCommitEnd={onCommitEnd} />)}
+                {ov(["translateY"], <SliderInput label="Offset Y" min={-400} max={400} suffix="px" value={style.translateY} onChange={(translateY) => onStyle({ translateY })} onCommitStart={onCommitStart} onCommitEnd={onCommitEnd} />)}
+                {ov(["rotateX"], <SliderInput label="Tilt X" min={-80} max={80} suffix="°" value={style.rotateX} onChange={(rotateX) => onStyle({ rotateX })} onCommitStart={onCommitStart} onCommitEnd={onCommitEnd} />)}
+                {ov(["rotateY"], <SliderInput label="Tilt Y" min={-80} max={80} suffix="°" value={style.rotateY} onChange={(rotateY) => onStyle({ rotateY })} onCommitStart={onCommitStart} onCommitEnd={onCommitEnd} />)}
                 {ov(
                     ["blendMode"],
                     <SelectInput
@@ -2312,7 +2325,7 @@ function IconGroup({
                         colour in the SVG stays exactly as written.
                     </p>
                     {draft.trim() && !element.svg && (
-                        <p className="rounded-lg bg-amber-500/10 px-2.5 py-2 text-[9px] leading-relaxed text-amber-400">
+                        <p className="rounded-lg bg-amber-500/10 px-2.5 py-2 text-[10px] leading-relaxed text-amber-700">
                             This is not being drawn: an icon has to be a single complete
                             &lt;svg&gt;…&lt;/svg&gt; element.
                         </p>
@@ -2425,7 +2438,7 @@ function BezierEditor({ value, onChange }: { value: string; onChange: (value: st
         window.addEventListener("pointermove", move);
         window.addEventListener("pointerup", up, { once: true });
     };
-    return <div className="rounded-xl bg-white/5 p-2"><svg viewBox="0 0 160 100" className="h-36 w-full touch-none overflow-visible"><path d="M20 84H140M20 16V84" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="1"/><line x1="20" y1="84" x2={px(points[0])} y2={py(points[1])} stroke="#52525b"/><line x1="140" y1="16" x2={px(points[2])} y2={py(points[3])} stroke="#52525b"/><path d={`M20 84 C${px(points[0])} ${py(points[1])}, ${px(points[2])} ${py(points[3])}, 140 16`} fill="none" stroke="#a1a1aa" strokeWidth="2.2"/><circle cx="20" cy="84" r="4" fill="#fff"/><circle cx="140" cy="16" r="4" fill="#fff"/><circle cx={px(points[0])} cy={py(points[1])} r="6" fill="#4f8cff" stroke="white" strokeWidth="2" className="cursor-grab active:cursor-grabbing" onPointerDown={(event) => begin(event, 0)}/><circle cx={px(points[2])} cy={py(points[3])} r="6" fill="#4f8cff" stroke="white" strokeWidth="2" className="cursor-grab active:cursor-grabbing" onPointerDown={(event) => begin(event, 1)}/></svg><div className="grid grid-cols-4 gap-1">{points.map((number, index) => <label key={index} className="rounded-md bg-black/20 px-1.5 py-1 text-center font-mono text-[9px] text-zinc-400"><span className="mr-1 text-zinc-600">{["X1", "Y1", "X2", "Y2"][index]}</span>{number}</label>)}</div></div>;
+    return <div className="rounded-xl bg-[var(--ed-nav-field)] p-2"><svg viewBox="0 0 160 100" className="h-36 w-full touch-none overflow-visible"><path d="M20 84H140M20 16V84" fill="none" stroke="var(--ed-border-strong)" strokeWidth="1"/><line x1="20" y1="84" x2={px(points[0])} y2={py(points[1])} stroke="var(--ed-text-faint)"/><line x1="140" y1="16" x2={px(points[2])} y2={py(points[3])} stroke="var(--ed-text-faint)"/><path d={`M20 84 C${px(points[0])} ${py(points[1])}, ${px(points[2])} ${py(points[3])}, 140 16`} fill="none" stroke="var(--ed-text)" strokeWidth="2.2"/><circle cx="20" cy="84" r="4" fill="var(--ed-surface)" stroke="var(--ed-text)" strokeWidth="1.5"/><circle cx="140" cy="16" r="4" fill="var(--ed-surface)" stroke="var(--ed-text)" strokeWidth="1.5"/><circle cx={px(points[0])} cy={py(points[1])} r="6" fill="var(--ed-accent)" stroke="var(--ed-surface)" strokeWidth="2" className="cursor-grab active:cursor-grabbing" onPointerDown={(event) => begin(event, 0)}/><circle cx={px(points[2])} cy={py(points[3])} r="6" fill="var(--ed-accent)" stroke="var(--ed-surface)" strokeWidth="2" className="cursor-grab active:cursor-grabbing" onPointerDown={(event) => begin(event, 1)}/></svg><div className="grid grid-cols-4 gap-1">{points.map((number, index) => <label key={index} className="rounded-md bg-ed-field px-1.5 py-1 text-center font-mono text-[10px] text-ed-text"><span className="mr-1 text-ed-faint">{["X1", "Y1", "X2", "Y2"][index]}</span>{number}</label>)}</div></div>;
 }
 
 /**
@@ -2480,6 +2493,7 @@ function InteractTab(ctx: Ctx) {
             {['Text', 'Heading', 'Button', 'Quote', 'ListItem', 'Label'].includes(ctx.element.type) && <TextEffectsGroup {...ctx} />}
             <HoverGroup {...ctx} />
             <PressGroup {...ctx} />
+            {(ctx.element.hover || ctx.element.press) && <TransitionGroup {...ctx} />}
             <ScrollGroup {...ctx} />
             <EntranceGroup {...ctx} />
             <LoopGroup {...ctx} />
@@ -2742,6 +2756,21 @@ function HoverGroup({ element, style, onProps, onStyle }: Ctx) {
                     onChange={(scale) => setHover({ scale })}
                 />
             )}
+            <SliderInput
+                label="Lift"
+                min={-40}
+                max={40}
+                suffix="px"
+                value={-(hover.translateY ?? style.translateY)}
+                onChange={(lift) => setHover({ translateY: -lift })}
+            />
+            <More label="Motion">
+                <SliderInput label="Move X" min={-80} max={80} suffix="px" value={hover.translateX ?? style.translateX} onChange={(translateX) => setHover({ translateX })} />
+                <SliderInput label="Rotate" min={-180} max={180} suffix="°" value={hover.rotate ?? style.rotate} onChange={(rotate) => setHover({ rotate })} />
+                <SliderInput label="Tilt X" min={-45} max={45} suffix="°" value={hover.rotateX ?? style.rotateX} onChange={(rotateX) => setHover({ rotateX })} />
+                <SliderInput label="Tilt Y" min={-45} max={45} suffix="°" value={hover.rotateY ?? style.rotateY} onChange={(rotateY) => setHover({ rotateY })} />
+                <SliderInput label="Blur" min={0} max={40} suffix="px" value={hover.blur ?? style.blur} onChange={(blur) => setHover({ blur })} />
+            </More>
             <More>
                 <ColorInput label="Border" value={hover.borderC ?? style.borderC} onChange={(borderC) => setHover({ borderC })} />
                 <SelectInput
@@ -2778,7 +2807,7 @@ function PressGroup({ element, style, onProps }: Ctx) {
                     <button
                         type="button"
                         onClick={() => onProps({ press: undefined })}
-                        className="text-[10px] text-ed-muted transition-colors hover:text-red-400"
+                        className="text-[10px] text-ed-muted transition-colors hover:text-red-600"
                     >
                         Clear
                     </button>
@@ -2807,6 +2836,14 @@ function PressGroup({ element, style, onProps }: Ctx) {
                         suffix="%"
                         value={press.scale ?? 96}
                         onChange={(scale) => onProps({ press: { ...press, scale } })}
+                    />
+                    <SliderInput
+                        label="Push down"
+                        min={-20}
+                        max={20}
+                        suffix="px"
+                        value={press.translateY ?? style.translateY}
+                        onChange={(translateY) => onProps({ press: { ...press, translateY } })}
                     />
                     <SliderInput
                         label="Layer opacity"
@@ -2841,7 +2878,7 @@ function PressGroup({ element, style, onProps }: Ctx) {
 function ScrollGroup(ctx: Ctx) {
     const { style, onStyle } = ctx;
     const ov = makeOverridable(ctx);
-    const moves = style.scrollEffect === "rise" || style.scrollEffect === "parallax";
+    const moves = ["rise", "parallax", "slide-left", "slide-right"].includes(style.scrollEffect);
 
     return (
         <Group title="Scroll" defaultOpen={false}>
@@ -2867,9 +2904,18 @@ function ScrollGroup(ctx: Ctx) {
                             onChange={(scrollAmount) => onStyle({ scrollAmount })}
                         />,
                     )}
+                    {ov(
+                        ["scrollRange"],
+                        <SelectInput
+                            label="Runs"
+                            value={style.scrollRange}
+                            options={SCROLL_RANGES}
+                            onChange={(scrollRange) => onStyle({ scrollRange })}
+                        />,
+                    )}
                     <p className="text-[10px] leading-relaxed text-ed-faint">
                         {style.entrance === "none"
-                            ? "Runs as the layer crosses the viewport, and rewinds when you scroll back. Open Preview to see it."
+                            ? "Follows the layer across the viewport and rewinds when you scroll back. While leaving plays it in reverse as the layer goes off the top. Open Preview to see it."
                             : "Scroll replaces the entrance on this layer — it is tied to the scrollbar, not to arriving."}
                     </p>
                 </>
@@ -2878,54 +2924,106 @@ function ScrollGroup(ctx: Ctx) {
     );
 }
 
+type CurveValue = { curve: "ease" | "spring"; bezier: string; stiffness: number; damping: number; mass: number };
+
+const SPRING_PRESETS: Array<{ label: string; value: string; spring?: Spring }> = [
+    { label: "Custom", value: "custom" },
+    { label: "Smooth", value: "smooth", spring: { stiffness: 200, damping: 26, mass: 1 } },
+    { label: "Snappy", value: "snappy", spring: { stiffness: 500, damping: 34, mass: 1 } },
+    { label: "Bouncy", value: "bouncy", spring: { stiffness: 320, damping: 12, mass: 1 } },
+    { label: "Gentle", value: "gentle", spring: { stiffness: 120, damping: 18, mass: 1 } },
+    { label: "Heavy", value: "heavy", spring: { stiffness: 180, damping: 26, mass: 3 } },
+];
+
+/** The spring as it will run: time across, progress up, with the overshoot visible. */
+function SpringGraph({ spring }: { spring: Spring }) {
+    const curve = springCurve(spring);
+    const peak = Math.max(1.05, ...curve.points);
+    const y = (value: number) => 44 - (value / peak) * 38;
+    const path = curve.points.map((value, index) => `${((index / (curve.points.length - 1)) * 100).toFixed(2)},${y(value).toFixed(2)}`).join(" ");
+    return (
+        <div className="flex flex-col gap-1">
+            <svg viewBox="0 0 100 48" preserveAspectRatio="none" className="h-12 w-full rounded-md bg-ed-field">
+                <line x1="0" x2="100" y1={y(1)} y2={y(1)} stroke="currentColor" strokeOpacity="0.15" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+                <polyline points={path} fill="none" stroke="var(--ed-accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            </svg>
+            <p className="text-[10px] text-ed-faint">Settles in {curve.duration}ms — a spring's length comes from its physics.</p>
+        </div>
+    );
+}
+
+/** Ease or spring, shared by entrances and state transitions. */
+function CurveFields({ value, onChange }: { value: CurveValue; onChange: (patch: Partial<CurveValue>) => void }) {
+    const spring = { stiffness: value.stiffness, damping: value.damping, mass: value.mass };
+    const preset = SPRING_PRESETS.find(
+        (option) => option.spring && option.spring.stiffness === spring.stiffness && option.spring.damping === spring.damping && option.spring.mass === spring.mass,
+    )?.value ?? "custom";
+    return (
+        <>
+            <Segmented
+                label="Shape"
+                value={value.curve}
+                options={[
+                    { label: "Ease", value: "ease" as const },
+                    { label: "Spring", value: "spring" as const },
+                ]}
+                onChange={(curve) => onChange({ curve })}
+            />
+            {value.curve === "ease" ? (
+                <>
+                    <BezierEditor value={value.bezier} onChange={(bezier) => onChange({ bezier })} />
+                    <SelectInput
+                        label="Preset"
+                        value="custom"
+                        options={[
+                            { label: "Custom", value: "custom" },
+                            { label: "Ease", value: "0.25, 0.1, 0.25, 1" },
+                            { label: "Ease in", value: "0.42, 0, 1, 1" },
+                            { label: "Ease out", value: "0, 0, 0.58, 1" },
+                            { label: "Ease in out", value: "0.42, 0, 0.58, 1" },
+                            { label: "Out expo", value: "0.16, 1, 0.3, 1" },
+                            { label: "In out quart", value: "0.76, 0, 0.24, 1" },
+                            { label: "Snappy", value: "0.2, 0.8, 0.2, 1" },
+                            { label: "Overshoot", value: "0.34, 1.56, 0.64, 1" },
+                        ]}
+                        onChange={(bezier) => bezier !== "custom" && onChange({ bezier })}
+                    />
+                </>
+            ) : (
+                <>
+                    <SelectInput
+                        label="Preset"
+                        value={preset}
+                        options={SPRING_PRESETS.map(({ label, value }) => ({ label, value }))}
+                        onChange={(next) => {
+                            const chosen = SPRING_PRESETS.find((option) => option.value === next)?.spring;
+                            if (chosen) onChange(chosen);
+                        }}
+                    />
+                    <SliderInput label="Stiffness" min={1} max={1000} value={value.stiffness} onChange={(stiffness) => onChange({ stiffness })} />
+                    <SliderInput label="Damping" min={1} max={100} value={value.damping} onChange={(damping) => onChange({ damping })} />
+                    <SliderInput label="Mass" min={0.1} max={10} step={0.1} value={value.mass} onChange={(mass) => onChange({ mass })} />
+                    <SpringGraph spring={spring} />
+                </>
+            )}
+        </>
+    );
+}
+
 /**
- * The animation played once as the element scrolls into view.
+ * The animation played as the element scrolls into view.
  *
  * The curve editor lives inside this group rather than behind the modal it
  * used to open: a modal that covers the panel hides the effect being tuned.
  */
 function EntranceGroup(ctx: Ctx) {
-    const { element, style, onStyle } = ctx;
+    const { element, elements, style, breakpoint, onStyle } = ctx;
     const ov = makeOverridable(ctx);
-
-    const preview = () => {
-        const nodes = Array.from(
-            document.querySelectorAll<HTMLElement>(`[data-canvas-element="${element.id}"]`),
-        );
-        const from: Keyframe =
-            style.entrance === "zoom"
-                ? { opacity: 0, scale: 0.94 }
-                : style.entrance === "left"
-                  ? { opacity: 0, translate: "-32px 0" }
-                  : style.entrance === "right"
-                    ? { opacity: 0, translate: "32px 0" }
-                    : style.entrance === "down"
-                      ? { opacity: 0, translate: "0 -28px" }
-                      : style.entrance === "fade"
-                        ? { opacity: 0 }
-                        : { opacity: 0, translate: "0 28px" };
-        const easing =
-            style.entranceCurve === "spring"
-                ? `cubic-bezier(.16,${1 + Math.max(0, 45 - style.springDamping) / 100},${Math.max(0.12, Math.min(0.52, 120 / style.springStiffness))},1)`
-                : `cubic-bezier(${style.entranceBezier})`;
-        const to: Keyframe = { opacity: 1, translate: "none", scale: 1 };
-        for (const node of nodes) {
-            // A split entrance belongs to the pieces, so preview the pieces:
-            // the canvas renders the same spans the published page will.
-            const parts = Array.from(node.querySelectorAll<HTMLElement>(".pg-part"));
-            const targets = style.entranceSplit !== "none" && parts.length ? parts : [node];
-            targets.forEach((target, index) => {
-                target.animate([from, to], {
-                    duration: style.entranceDuration,
-                    delay:
-                        style.entranceDelay +
-                        (targets.length > 1 ? index * style.entranceStagger : 0),
-                    easing,
-                    fill: "both",
-                });
-            });
-        }
-    };
+    const hasChildren = elements.some((candidate) => candidate.parentId === element.id);
+    const splits = ENTRANCE_SPLITS.filter((option) =>
+        option.value === "children" ? hasChildren || style.entranceSplit === "children" : option.value === "none" || isTextual(element.type) || style.entranceSplit === option.value,
+    );
+    const button = "flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text";
 
     return (
         <Group
@@ -2933,13 +3031,19 @@ function EntranceGroup(ctx: Ctx) {
             defaultOpen={false}
             action={
                 style.entrance !== "none" ? (
-                    <button
-                        type="button"
-                        onClick={preview}
-                        className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] text-ed-muted transition-colors hover:bg-ed-field hover:text-ed-text"
-                    >
-                        <IconPlayerPlay size={11} /> Play
-                    </button>
+                    <span className="flex items-center">
+                        <button type="button" onClick={() => playEntrance(element, style, elements)} className={button}>
+                            <IconPlayerPlay size={11} /> Play
+                        </button>
+                        <button
+                            type="button"
+                            title="Play every entrance on this page"
+                            onClick={() => playAllEntrances(elements, (candidate) => resolveStyle(candidate, breakpoint))}
+                            className={button}
+                        >
+                            All
+                        </button>
+                    </span>
                 ) : null
             }
         >
@@ -2954,15 +3058,26 @@ function EntranceGroup(ctx: Ctx) {
             )}
             {style.entrance !== "none" && (
                 <>
-                    {ov(
-                        ["entranceSplit"],
-                        <SelectInput
-                            label="Arrive"
-                            value={style.entranceSplit}
-                            options={ENTRANCE_SPLITS}
-                            onChange={(entranceSplit) => onStyle({ entranceSplit })}
-                        />,
+                    {style.entrance === "custom" && (
+                        <>
+                            {ov(["entranceOpacity"], <SliderInput label="Start opacity" min={0} max={100} suffix="%" value={style.entranceOpacity} onChange={(entranceOpacity) => onStyle({ entranceOpacity })} />)}
+                            {ov(["entranceX"], <SliderInput label="Move X" min={-400} max={400} suffix="px" value={style.entranceX} onChange={(entranceX) => onStyle({ entranceX })} />)}
+                            {ov(["entranceY"], <SliderInput label="Move Y" min={-400} max={400} suffix="px" value={style.entranceY} onChange={(entranceY) => onStyle({ entranceY })} />)}
+                            {ov(["entranceScale"], <SliderInput label="Scale" min={0} max={200} suffix="%" value={style.entranceScale} onChange={(entranceScale) => onStyle({ entranceScale })} />)}
+                            {ov(["entranceRotate"], <SliderInput label="Rotate" min={-180} max={180} suffix="°" value={style.entranceRotate} onChange={(entranceRotate) => onStyle({ entranceRotate })} />)}
+                            {ov(["entranceBlur"], <SliderInput label="Blur" min={0} max={40} suffix="px" value={style.entranceBlur} onChange={(entranceBlur) => onStyle({ entranceBlur })} />)}
+                        </>
                     )}
+                    {splits.length > 1 &&
+                        ov(
+                            ["entranceSplit"],
+                            <SelectInput
+                                label="Arrive"
+                                value={style.entranceSplit}
+                                options={splits}
+                                onChange={(entranceSplit) => onStyle({ entranceSplit })}
+                            />,
+                        )}
                     {style.entranceSplit !== "none" &&
                         ov(
                             ["entranceStagger"],
@@ -2975,17 +3090,18 @@ function EntranceGroup(ctx: Ctx) {
                                 onChange={(entranceStagger) => onStyle({ entranceStagger })}
                             />,
                         )}
-                    {ov(
-                        ["entranceDuration"],
-                        <SliderInput
-                            label="Duration"
-                            min={50}
-                            max={5000}
-                            suffix="ms"
-                            value={style.entranceDuration}
-                            onChange={(entranceDuration) => onStyle({ entranceDuration })}
-                        />,
-                    )}
+                    {style.entranceCurve === "ease" &&
+                        ov(
+                            ["entranceDuration"],
+                            <SliderInput
+                                label="Duration"
+                                min={50}
+                                max={5000}
+                                suffix="ms"
+                                value={style.entranceDuration}
+                                onChange={(entranceDuration) => onStyle({ entranceDuration })}
+                            />,
+                        )}
                     {ov(
                         ["entranceDelay"],
                         <SliderInput
@@ -2997,62 +3113,97 @@ function EntranceGroup(ctx: Ctx) {
                             onChange={(entranceDelay) => onStyle({ entranceDelay })}
                         />,
                     )}
+                    {ov(
+                        ["entranceReplay"],
+                        <Segmented
+                            label="Plays"
+                            value={style.entranceReplay ? "always" : "once"}
+                            options={[
+                                { label: "Once", value: "once" as const },
+                                { label: "Every time", value: "always" as const },
+                            ]}
+                            onChange={(value) => onStyle({ entranceReplay: value === "always" })}
+                        />,
+                    )}
+                    {ov(
+                        ["entranceOffset"],
+                        <SliderInput
+                            label="Trigger offset"
+                            min={0}
+                            max={60}
+                            suffix="%"
+                            value={style.entranceOffset}
+                            onChange={(entranceOffset) => onStyle({ entranceOffset })}
+                        />,
+                    )}
                     <p className="text-[10px] leading-relaxed text-ed-faint">
-                        The canvas shows the finished state — use Play, or Preview, to
-                        watch it run.
+                        Trigger offset is how far up from the bottom of the screen the layer has to come before it plays. The canvas shows the finished state — use Play, or Preview, to watch it run.
                     </p>
 
                     <More label="Curve">
-                        <Segmented
-                            label="Shape"
-                            value={style.entranceCurve}
-                            options={[
-                                { label: "Ease", value: "ease" as const },
-                                { label: "Spring", value: "spring" as const },
-                            ]}
-                            onChange={(entranceCurve) => onStyle({ entranceCurve })}
+                        <CurveFields
+                            value={{ curve: style.entranceCurve, bezier: style.entranceBezier, stiffness: style.springStiffness, damping: style.springDamping, mass: style.springMass }}
+                            onChange={(patch) =>
+                                onStyle({
+                                    ...(patch.curve !== undefined ? { entranceCurve: patch.curve } : {}),
+                                    ...(patch.bezier !== undefined ? { entranceBezier: patch.bezier } : {}),
+                                    ...(patch.stiffness !== undefined ? { springStiffness: patch.stiffness } : {}),
+                                    ...(patch.damping !== undefined ? { springDamping: patch.damping } : {}),
+                                    ...(patch.mass !== undefined ? { springMass: patch.mass } : {}),
+                                })
+                            }
                         />
-                        {style.entranceCurve === "ease" ? (
-                            <>
-                                <BezierEditor
-                                    value={style.entranceBezier}
-                                    onChange={(entranceBezier) => onStyle({ entranceBezier })}
-                                />
-                                <SelectInput
-                                    label="Preset"
-                                    value="custom"
-                                    options={[
-                                        { label: "Custom", value: "custom" },
-                                        { label: "Ease", value: "0.25, 0.1, 0.25, 1" },
-                                        { label: "Ease in", value: "0.42, 0, 1, 1" },
-                                        { label: "Ease out", value: "0, 0, 0.58, 1" },
-                                        { label: "Ease in out", value: "0.42, 0, 0.58, 1" },
-                                        { label: "Snappy", value: "0.2, 0.8, 0.2, 1" },
-                                        { label: "Overshoot", value: "0.34, 1.56, 0.64, 1" },
-                                    ]}
-                                    onChange={(preset) => preset !== "custom" && onStyle({ entranceBezier: preset })}
-                                />
-                            </>
-                        ) : (
-                            <>
-                                <SliderInput
-                                    label="Stiffness"
-                                    min={1}
-                                    max={1000}
-                                    value={style.springStiffness}
-                                    onChange={(springStiffness) => onStyle({ springStiffness })}
-                                />
-                                <SliderInput
-                                    label="Damping"
-                                    min={1}
-                                    max={100}
-                                    value={style.springDamping}
-                                    onChange={(springDamping) => onStyle({ springDamping })}
-                                />
-                            </>
-                        )}
                     </More>
                 </>
+            )}
+        </Group>
+    );
+}
+
+/** How hover and press move in and out, instead of one fixed ease for every layer. */
+function TransitionGroup({ element, onProps }: Ctx) {
+    const transition = element.transition;
+    return (
+        <Group
+            title="State transition"
+            defaultOpen={false}
+            action={
+                transition ? (
+                    <button
+                        type="button"
+                        onClick={() => onProps({ transition: undefined })}
+                        className="text-[10px] text-ed-muted transition-colors hover:text-ed-text"
+                    >
+                        Reset
+                    </button>
+                ) : null
+            }
+        >
+            {transition ? (
+                <>
+                    <CurveFields value={transition} onChange={(patch) => onProps({ transition: { ...transition, ...patch } })} />
+                    {transition.curve === "ease" && (
+                        <SliderInput
+                            label="Duration"
+                            min={0}
+                            max={2000}
+                            suffix="ms"
+                            value={transition.duration}
+                            onChange={(duration) => onProps({ transition: { ...transition, duration } })}
+                        />
+                    )}
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        The spring drives scale, movement, rotation and shadow; colours and opacity ease alongside it. Turn on Preview interactions to feel it.
+                    </p>
+                </>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => onProps({ transition: { ...DEFAULT_STATE_TRANSITION } })}
+                    className="rounded-lg border border-dashed border-ed-border py-2 text-[10px] font-medium text-ed-muted transition-colors hover:border-ed-accent/60 hover:text-ed-text"
+                >
+                    Customize the hover / press motion
+                </button>
             )}
         </Group>
     );
@@ -3061,6 +3212,7 @@ function EntranceGroup(ctx: Ctx) {
 /** Motion that runs forever, rather than once on arrival. */
 function LoopGroup({ element, onProps }: Ctx) {
     const loop = element.loop;
+    const set = (patch: Partial<LoopMotion>) => loop && onProps({ loop: { ...loop, ...patch } });
 
     return (
         <Group
@@ -3071,7 +3223,7 @@ function LoopGroup({ element, onProps }: Ctx) {
                     <button
                         type="button"
                         onClick={() => onProps({ loop: undefined })}
-                        className="text-[10px] text-ed-muted transition-colors hover:text-red-400"
+                        className="text-[10px] text-ed-muted transition-colors hover:text-red-600"
                     >
                         Clear
                     </button>
@@ -3080,24 +3232,34 @@ function LoopGroup({ element, onProps }: Ctx) {
         >
             {loop ? (
                 <>
-                    <SelectInput
-                        label="Motion"
-                        value={loop.type}
+                    <SelectInput label="Motion" value={loop.type} options={LOOP_TYPES} onChange={(type) => set({ type })} />
+                    <SliderInput label="Duration" min={100} max={10000} suffix="ms" value={loop.duration} onChange={(duration) => set({ duration })} />
+                    {loop.type !== "spin" && (
+                        <SliderInput label="Amount" min={0} max={300} suffix="%" value={loop.amount ?? 100} onChange={(amount) => set({ amount })} />
+                    )}
+                    <SliderInput label="Delay" min={0} max={5000} suffix="ms" value={loop.delay ?? 0} onChange={(delay) => set({ delay })} />
+                    <Segmented
+                        label="Direction"
+                        value={loop.direction ?? "normal"}
                         options={[
-                            { label: "Pulse", value: "pulse" as const },
-                            { label: "Float", value: "float" as const },
-                            { label: "Spin", value: "spin" as const },
+                            { label: "Forward", value: "normal" as const },
+                            { label: "Reverse", value: "reverse" as const },
+                            { label: "Yoyo", value: "alternate" as const },
                         ]}
-                        onChange={(type) => onProps({ loop: { ...loop, type } })}
+                        onChange={(direction) => set({ direction })}
                     />
-                    <SliderInput
-                        label="Duration"
-                        min={100}
-                        max={10000}
-                        suffix="ms"
-                        value={loop.duration}
-                        onChange={(duration) => onProps({ loop: { ...loop, duration } })}
+                    <Segmented
+                        label="Speed"
+                        value={loop.ease ?? (loop.type === "spin" ? "linear" : "smooth")}
+                        options={[
+                            { label: "Smooth", value: "smooth" as const },
+                            { label: "Constant", value: "linear" as const },
+                        ]}
+                        onChange={(ease) => set({ ease })}
                     />
+                    <p className="text-[10px] leading-relaxed text-ed-faint">
+                        With an entrance, the loop starts once the entrance has finished. Visitors who ask for reduced motion see the layer still.
+                    </p>
                 </>
             ) : (
                 <button

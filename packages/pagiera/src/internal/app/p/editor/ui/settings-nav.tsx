@@ -1,38 +1,40 @@
-import { IconAdjustments, IconPalette, IconTransfer, IconTemplate } from "@tabler/icons-react";
+import { IconAdjustments, IconLayoutGrid, IconPalette, IconPlugConnected, IconTransfer } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+
+import { WorkspaceNavItem, WorkspaceNavTitle, WorkspacePage } from "./workspace-page";
 
 export type SettingsSection = "general" | "variables" | "transfer" | "ai";
 const sections = [
-    { id: "ai", label: "AI & connections", description: "Chat preferences and MCP servers", icon: IconAdjustments },
-    { id: "general", label: "General", description: "Canvas, typography, transitions and code", icon: IconAdjustments },
-    { id: "variables", label: "Design variables", description: "Reusable colours and numeric values", icon: IconPalette },
-    { id: "transfer", label: "Import & export", description: "Download or restore a site bundle", icon: IconTransfer },
+    { id: "general", label: "General", description: "Canvas, typography, page transitions and custom code.", icon: IconAdjustments },
+    { id: "variables", label: "Design variables", description: "Reusable colours and numbers every layer can point at.", icon: IconPalette },
+    { id: "ai", label: "AI & connections", description: "Luma's chat preferences and the MCP servers it can reach.", icon: IconPlugConnected },
+    { id: "transfer", label: "Import & export", description: "Download the whole site as a bundle, or restore one.", icon: IconTransfer },
 ] as const;
 
-const row = "flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs transition-colors ";
 export function SettingsNavigation({ active, onChange }: { active: SettingsSection; onChange: (section: SettingsSection) => void }) {
-    return <nav aria-label="Settings sections" className="space-y-1 p-3">
-        <p className="px-3 pb-3 pt-2 text-[10px] font-medium uppercase tracking-widest text-ed-faint">Workspace settings</p>
-        {sections.map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => onChange(id)} aria-current={active === id ? "page" : undefined} className={row + (active === id ? "bg-ed-field text-ed-text" : "text-ed-muted hover:bg-ed-field hover:text-ed-text")}><Icon size={16} className={active === id ? "text-ed-accent" : "text-ed-faint"} />{label}</button>)}
+    return <nav aria-label="Settings sections" className="space-y-0.5">
+        <WorkspaceNavTitle>Settings</WorkspaceNavTitle>
+        {sections.map(({ id, label, icon: Icon }) => <WorkspaceNavItem key={id} active={active === id} onClick={() => onChange(id)} icon={<Icon size={16} stroke={1.6} />} label={label} />)}
     </nav>;
 }
 
-export function SettingsWorkspace({ children, section = "general" }: { children: ReactNode; section?: SettingsSection }) {
-    const current = sections.find(item => item.id === section)!;
-    return <div className="custom-scrollbar absolute inset-0 z-50 overflow-y-auto bg-ed-canvas">
-        <div className="mx-auto w-full max-w-[960px] px-6 py-12 lg:px-12">
-            <p className="mb-3 text-[10px] font-medium uppercase tracking-[.18em] text-ed-faint">Settings / {current.label}</p>
-            <h1 className="text-2xl font-semibold tracking-tight text-ed-text">{current.label}</h1>
-            <p className="mb-8 mt-2 text-xs text-ed-muted">{current.description}.{section !== "ai" && " Changes are saved with this document."}</p>
-            <div key={section} className="overflow-hidden rounded-2xl bg-ed-surface p-5">{children}</div>
-        </div>
-    </div>;
+/** The Settings page: its sections on the left, the open one beside them. */
+export function SettingsWorkspace({ children, section = "general", onSection }: { children: ReactNode; section?: SettingsSection; onSection: (section: SettingsSection) => void }) {
+    const current = sections.find(item => item.id === section) ?? sections[0];
+    return <WorkspacePage
+        nav={<SettingsNavigation active={section} onChange={onSection} />}
+        title={current.label}
+        description={<>{current.description}{section !== "ai" && " Saved with this site."}</>}
+        className="max-w-[760px]"
+    >
+        <div key={section} className="rounded-2xl bg-ed-surface p-6 shadow-[0_0_0_1px_var(--ed-border)]">{children}</div>
+    </WorkspacePage>;
 }
 
 export function TemplatesNavigation({ categories, active, onChange }: { categories: string[]; active: string; onChange: (category: string) => void }) {
-    return <nav aria-label="Template categories" className="space-y-1 p-3">
-        <p className="px-3 pb-3 pt-2 text-[10px] font-medium uppercase tracking-widest text-ed-faint">Browse templates</p>
-        {categories.map(category => <button key={category} type="button" onClick={() => onChange(category)} aria-current={active === category ? "page" : undefined} className={row + (active === category ? "bg-ed-field text-ed-text" : "text-ed-muted hover:bg-ed-field hover:text-ed-text")}><IconTemplate size={16} className={active === category ? "text-ed-accent" : "text-ed-faint"} />{category === "All" ? "All templates" : category}</button>)}
-        <p className="px-3 pt-6 text-[11px] leading-relaxed text-ed-faint">Preview before installing. Installation replaces the site; export a backup first.</p>
+    return <nav aria-label="Template categories" className="space-y-0.5">
+        <WorkspaceNavTitle>Templates</WorkspaceNavTitle>
+        {categories.map(category => <WorkspaceNavItem key={category} active={active === category} onClick={() => onChange(category)} icon={<IconLayoutGrid size={16} stroke={1.6} />} label={category === "All" ? "All templates" : category} />)}
+        <p className="px-2.5 pt-5 text-[12px] leading-relaxed text-ed-faint">Preview before installing. Installing replaces the whole site, so export a backup first.</p>
     </nav>;
 }
