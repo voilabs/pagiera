@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RenderedPage } from "pagiera/runtime";
@@ -42,8 +43,33 @@ export async function renderPublishedPage(
   );
 }
 
-export async function publishedMetadata(slug: string) {
+/**
+ * The page's own SEO, resolved for this address: on `/blog/:slug` each post
+ * gets the title, description and image its data source returned.
+ */
+export async function publishedMetadata(slug: string): Promise<Metadata> {
   const server = await getPagieraServer(pagieraConfigFromEnv());
-  const page = await server.getPublishedDocument(slug);
-  return page ? { title: page.name } : { title: "Not found" };
+  const seo = await server.getPublishedMetadata(slug, {
+    params: {},
+    page: { slug },
+  });
+  if (!seo) return { title: "Not found" };
+  const images = seo.image ? [seo.image] : undefined;
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates: seo.canonical ? { canonical: seo.canonical } : undefined,
+    robots: seo.noindex ? { index: false, follow: false } : undefined,
+    openGraph: {
+      title: seo.title,
+      description: seo.description,
+      images,
+    },
+    twitter: {
+      card: images ? "summary_large_image" : "summary",
+      title: seo.title,
+      description: seo.description,
+      images,
+    },
+  };
 }

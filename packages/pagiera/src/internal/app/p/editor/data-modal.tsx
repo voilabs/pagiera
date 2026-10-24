@@ -9,7 +9,7 @@ import {
     IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
     type DataSource,
     HTTP_METHODS,
@@ -107,6 +107,15 @@ export function DataSourceModal({
         // Names only. A header's value is where an API key would be, and a
         // failure panel is not the place to put one on screen.
         headers: (source.headers ?? []).map((pair) => pair.key.trim()).filter(Boolean),
+    });
+
+    // Picking a suggested list sends the request again once the new path has
+    // reached the source, so the table shows that list's rows straight away.
+    const rerunFor = useRef<string | null>(null);
+    useEffect(() => {
+        if (rerunFor.current === null || rerunFor.current !== source.path) return;
+        rerunFor.current = null;
+        run();
     });
 
     const run = () => {
@@ -322,6 +331,10 @@ export function DataSourceModal({
                                     keys={keys}
                                     path={source.path}
                                     onPath={(path) => onChange({ path })}
+                                    onPick={(path) => {
+                                        rerunFor.current = path;
+                                        onChange({ path });
+                                    }}
                                     failure={failure}
                                 />
                             )}
@@ -501,15 +514,18 @@ function ResponseView({
     keys,
     path,
     onPath,
+    onPick,
     failure,
 }: {
     rows: Array<Record<string, unknown>>;
     keys: string[];
     path: string;
     onPath: (path: string) => void;
+    onPick: (path: string) => void;
     failure?: Failure | null;
 }) {
     if (failure) return <FailureView failure={failure} />;
+    const lists = rows.length === 1 ? listsIn(rows[0]) : [];
     if (rows.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
@@ -549,6 +565,30 @@ function ResponseView({
                     className="min-w-0 flex-1 rounded-md bg-ed-field px-3 py-1.5 font-mono text-[12px] text-ed-text outline-none placeholder:text-ed-faint"
                 />
             </div>
+
+            {lists.length > 0 && (
+                <div className="rounded-xl bg-[var(--ed-accent-soft)] p-3">
+                    <p className="text-[12px] font-medium text-ed-text">
+                        This response is one object. Repeat a list inside it:
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                        {lists.map((list) => {
+                            const full = path.trim() ? `${path.trim().replace(/^\$\.?/, "")}.${list.path}` : list.path;
+                            return (
+                                <button
+                                    key={list.path}
+                                    type="button"
+                                    onClick={() => onPick(full)}
+                                    className="flex items-center gap-1.5 rounded-md bg-ed-surface px-2 py-1 font-mono text-[11px] text-ed-text shadow-[inset_0_0_0_1px_var(--ed-border-strong)] hover:shadow-[inset_0_0_0_1px_var(--ed-accent)]"
+                                >
+                                    {full}
+                                    <span className="font-sans text-ed-faint">{list.count} items</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             <div>
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ed-faint">
@@ -605,6 +645,26 @@ function ResponseView({
             </div>
         </div>
     );
+}
+
+/**
+ * The arrays inside a one-row response, nearest first. A list API usually
+ * wraps its rows — GitHub's search answers `{ total_count, items }` — and the
+ * author should not have to know that to repeat them.
+ */
+function listsIn(row: Record<string, unknown>) {
+    const found: Array<{ path: string; count: number }> = [];
+    const walk = (value: unknown, prefix: string, depth: number) => {
+        if (!value || typeof value !== "object" || depth > 3) return;
+        for (const [key, child] of Object.entries(value)) {
+            const at = prefix ? `${prefix}.${key}` : key;
+            if (Array.isArray(child)) {
+                if (child.length > 0) found.push({ path: at, count: child.length });
+            } else walk(child, at, depth + 1);
+        }
+    };
+    walk(row, "", 0);
+    return found.slice(0, 8);
 }
 
 function formatCell(value: unknown) {

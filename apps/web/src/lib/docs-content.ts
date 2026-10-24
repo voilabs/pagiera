@@ -159,6 +159,29 @@ https://api.example.com/search?q={{query.q}}
 
 Connect text, images, links and visibility rules to fields returned by the request. For Repeat blocks, each repeated subtree receives the current item as its local data context.
 
+When the list sits inside the response, set the source's **List path** to it. Paths can be written dotted (\`items\`, \`data.results\`) or the JSONPath way (\`$.items\`, \`items[0].tags\`, \`$["items"]\`); a leading \`$\` is the response itself. After **Send**, a response that is a single object lists the arrays inside it — GitHub's search API, for example, offers \`items\` — and choosing one sets the path and loads its rows.
+
+### SEO for dynamic pages
+
+**Settings → SEO** holds a page's title, description, social image, canonical URL and a "hide from search engines" switch. Each is a template. On a page such as \`/blog/:slug\`, choose under **Data** the source that loads the post (its URL uses \`{{params.slug}}\`); after one test in the Data panel its fields appear as chips, and clicking one inserts \`{{field}}\` where the cursor is — \`{{title}} — Blog\`, \`{{excerpt}}\`, \`{{cover.url}}\`. \`{{params.slug}}\`, \`{{query.q}}\` and \`{{page.slug}}\` work too. The search preview fills the templates with the tested row.
+
+On the server, \`getPublishedPage\` returns the resolved values as \`seo\`, and \`getPublishedMetadata(slug)\` returns only them, ready for \`generateMetadata\`. HTML is stripped from descriptions, an image or canonical value that is not an http(s) URL or site path is dropped, and when the row is missing the title falls back to the page name. The source is loaded even when no layer on the page uses it.
+
+\`\`\`ts
+export async function generateMetadata({ params }) {
+  const server = await getPagieraServer(pagieraConfigFromEnv());
+  const seo = await server.getPublishedMetadata((await params).path.join("/"));
+  if (!seo) return { title: "Not found" };
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates: seo.canonical ? { canonical: seo.canonical } : undefined,
+    robots: seo.noindex ? { index: false, follow: false } : undefined,
+    openGraph: { title: seo.title, description: seo.description, images: seo.image ? [seo.image] : undefined },
+  };
+}
+\`\`\`
+
 ### Handle loading and failure
 
 Server rendering has no client-side loading phase for published output. Design empty and error states explicitly. An upstream 404 can turn the complete route into a 404 response when the data source uses the \`page-404\` behavior.
@@ -201,6 +224,8 @@ Import server-only functions from \`pagiera/server\`. Never include this entry p
 ### createPagieraRouteHandlers
 
 Creates the GET, POST, PUT, PATCH and DELETE handlers used by the catch-all backend route.
+
+Images are stored in the \`assets\` table, never inside a page. Luma's generated pictures and files uploaded from the inspector are saved there and the document keeps a short \`/api/pagiera/assets/<id>\` URL. \`POST /assets\` takes the raw file (PNG, JPG, WebP, GIF or AVIF, up to 8 MB; the format is read from the bytes, not the declared type) and answers with that URL; \`createPagieraClient\` wires it to the studio's \`uploadImage\` adapter. Any inline \`data:image/…\` value that still reaches a page save or a template import is moved into the table the same way, and identical bytes always resolve to the same asset.
 
 ### pagieraConfigFromEnv
 
@@ -265,6 +290,8 @@ Open \`/api/pagiera/health\` and address the first failing dependency. Verify en
 Import \`pagiera/full.css\` before your own stylesheet. CSS \`@import\` rules must appear before ordinary style rules. Restart the dev server after changing the root stylesheet.
 
 The stylesheet is confined to the editor. Every rule in \`pagiera/full.css\` applies only inside the \`.pg-scope\` element the studio renders itself into, and its theme variables (\`--radius\`, \`--primary\`, the colour scale) are defined there rather than on \`:root\`. Importing it into an app with its own design system leaves that app's colours, radii, headings and buttons unchanged, outside and around the editor.
+
+Mount the studio as the whole editing screen; it already lists, creates and renames pages in its Pages panel, so a host needs no page list of its own — send an editor route without a page to the home page with \`editorPath\`. Inside a host layout with its own sidebar or header, **Focus mode** (the expand button beside the save status, or Ctrl/⌘+Shift+F) makes the studio cover the whole window and stops the host page scrolling underneath. The choice is remembered per browser. It relies on \`position: fixed\`, so no ancestor of the studio may set \`transform\`, \`filter\` or \`contain\`.
 
 ## getEditorBootstrap is not a function
 

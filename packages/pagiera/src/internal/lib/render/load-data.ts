@@ -19,12 +19,15 @@ export async function loadPageData(
     elements: CanvasElement[],
     sources: DataSource[],
     options?: LoadOptions,
+    /** Sources used outside the elements, such as the one the page's SEO reads. */
+    alsoLoad: Array<string | undefined> = [],
 ): Promise<PageData> {
-    const used = new Set(
-        elements
+    const used = new Set([
+        ...elements
             .filter((el) => el.sourceId)
             .map((el) => el.sourceId as string),
-    );
+        ...alsoLoad.filter((id): id is string => Boolean(id)),
+    ]);
     const wanted = sources.filter((source) => used.has(source.id) && source.url);
     if (wanted.length === 0) return {};
 

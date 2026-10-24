@@ -478,6 +478,10 @@ Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacınd
 - Canvas aynı anda tek bir breakpoint artboard'u gösterir; dock'taki cihaz düğmeleri onu değiştirir, yeni bir dock düğmesi ise tüm breakpoint'leri yeniden yan yana gösterir. Layers ağacı yalnızca ekrandaki breakpoint'leri listeler. Seçim tarayıcıda hatırlanır.
 - Inspector alanları ince kenarlı beyaz alanlardır; değerler 12 px ve sola hizalıdır, odakta mavi kenar ve yumuşak bir hale görünür; seçim kutuları ve metin alanları da aynı görünümdedir.
 - Tam stüdyo stil dosyası artık host uygulamayı değiştirmez. \`pagiera/full.css\` içindeki her kural düzenleyicinin kendi \`.pg-scope\` öğesiyle sınırlıdır ve tema değişkenleri \`:root\` yerine orada tanımlanır; böylece içe aktarıldığında host uygulamanın renklerini, köşe yuvarlamalarını, başlıklarını veya düğmelerini ezmez. \`dark:\` varyantı host'un \`.dark\` sınıfına değil, düzenleyicinin kendi \`.pg-dark\` sınıfına bağlıdır.
+- Görseller artık sayfaların içinde base64 olarak saklanmıyor. \`createPagieraClient\` yeni \`POST /assets\` rotasına dayanan \`uploadImage\` adaptörünü sağlar, böylece inspector yüklemeleri bir adres tutar; kaydedilen bir sayfadaki veya içe aktarılan bir şablondaki her satır içi \`data:image/…\` değeri, eski sürümlerin kaydettiği Luma resimleri dahil, bir sonraki kayıtta \`assets\` tablosuna taşınır. Varlıklar içerik özetine göre tekilleştirilir, türleri dosya imzasından okunur ve \`X-Content-Type-Options: nosniff\` ile sunulur.
+- Bir veri kaynağının liste yolu artık noktalı yolların yanında JSONPath yazımlarını da kabul eder: \`$.items\`, \`items[0].name\`, \`$["items"]\`. Önceden \`$.items\`, adı tam olarak \`$\` olan bir alan arıyordu ve Repeat'in döngüye sokacağı bir şey kalmıyordu. Yanıt tek bir nesne olduğunda Response sekmesi içindeki dizileri öğe sayılarıyla listeler; birini seçmek yolu ayarlar ve isteği yeniden gönderir.
+- Focus mode eklendi: kayıt durumunun yanındaki genişletme düğmesi veya Ctrl/⌘+Shift+F, stüdyonun host uygulamanın kendi kenar çubuğu ve başlığının üzerinde tüm pencereyi kaplamasını sağlar ve alttaki host sayfasının kaymasını durdurur. Tarayıcı başına hatırlanır.
+- Settings → SEO altında sayfa SEO'su eklendi: başlık, açıklama, paylaşım görseli, canonical adres ve noindex, her biri bir kalıp. \`/blog/:slug\` gibi dinamik sayfalar öğeyi yükleyen veri kaynağını seçer ve alanlarını \`{{field}}\` olarak ekler; test edilen satırla dolan bir arama önizlemesi vardır. Sunucu bunları adres başına çözer: \`getPublishedPage\` \`seo\` döndürür, yeni \`getPublishedMetadata(slug)\` yalnızca onu döndürür ve \`pagiera/data\` \`resolvePageSeo\` dışa aktarır. Örnek uygulamanın \`generateMetadata\`'sı artık açıklama, Open Graph, Twitter, canonical ve robots değerlerini buradan üretir.
 - Settings ve Templates artık ikon şeridinin yanında tam sayfalar; her birinin solda kendi bölüm listesi var. Biri açıkken canvas, paneller, inspector ve dock kenara alınır; sayfa artık çalışan bir canvas'ın üzerine çizilmez. Templates sayfasında yenileme, içe aktarma ve dışa aktarma içeren tek bir başlık, bir arama alanı ve beyaz şablon kartları var; kategoriler yalnızca sayfanın kendi listesindedir.
 - Bir bileşeni düzenlemek artık Back to pages düğmesi gerektirmez. İkon şeridi tüm hedefleri korur; sayfa düzeyindeki bir hedefi (Pages, Templates, Assets, Data, History, Settings) açmak sayfaya döndürür. Üst çubuk, sayfa adı geri götüren bir yol gösterir; hiçbir şey seçili değilken Escape de geri döndürür ve bileşenin son ana öğesi silinince editör kendiliğinden sayfaya döner.
 - Insert paneli her öğeyi gri bir kutudaki ikon yerine, eklediği şeyin küçük bir çizimiyle (bir çerçeve, üst üste satırlar, ızgara, başlık çubukları, hap şeklinde düğme, form alanları) iki sütunda gösterir.
@@ -662,6 +666,29 @@ https://api.example.com/search?q={{query.q}}
 
 Metinleri, görselleri, bağlantıları ve görünürlük kurallarını isteğin döndürdüğü alanlara bağlayın. Repeat bloklarında tekrarlanan her alt ağaç, geçerli öğeyi yerel veri bağlamı olarak alır.
 
+Liste yanıtın içindeyse kaynağın **List path** alanını ona ayarlayın. Yollar noktalı (\`items\`, \`data.results\`) ya da JSONPath biçiminde (\`$.items\`, \`items[0].tags\`, \`$["items"]\`) yazılabilir; baştaki \`$\` yanıtın kendisidir. **Send**'den sonra tek bir nesne olan yanıt, içindeki dizileri listeler — örneğin GitHub arama API'si \`items\` önerir — ve birini seçmek yolu ayarlayıp satırlarını yükler.
+
+### Dinamik sayfalar için SEO
+
+**Settings → SEO**, bir sayfanın başlığını, açıklamasını, paylaşım görselini, canonical adresini ve "arama motorlarından gizle" anahtarını tutar. Her biri bir kalıptır. \`/blog/:slug\` gibi bir sayfada **Data** altında yazıyı yükleyen kaynağı seçin (adresi \`{{params.slug}}\` kullanır); Data panelinde bir kez test ettikten sonra alanları düğme olarak görünür ve birine tıklamak imlecin olduğu yere \`{{field}}\` ekler — \`{{title}} — Blog\`, \`{{excerpt}}\`, \`{{cover.url}}\`. \`{{params.slug}}\`, \`{{query.q}}\` ve \`{{page.slug}}\` da çalışır. Arama önizlemesi kalıpları test edilen satırla doldurur.
+
+Sunucuda \`getPublishedPage\` çözülmüş değerleri \`seo\` olarak döndürür; \`getPublishedMetadata(slug)\` ise yalnızca onları, \`generateMetadata\` için hazır döndürür. Açıklamalardaki HTML temizlenir, http(s) adresi veya site yolu olmayan görsel ve canonical değerleri atılır, satır yoksa başlık sayfa adına düşer. Sayfadaki hiçbir katman kullanmasa bile kaynak yüklenir.
+
+\`\`\`ts
+export async function generateMetadata({ params }) {
+  const server = await getPagieraServer(pagieraConfigFromEnv());
+  const seo = await server.getPublishedMetadata((await params).path.join("/"));
+  if (!seo) return { title: "Not found" };
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates: seo.canonical ? { canonical: seo.canonical } : undefined,
+    robots: seo.noindex ? { index: false, follow: false } : undefined,
+    openGraph: { title: seo.title, description: seo.description, images: seo.image ? [seo.image] : undefined },
+  };
+}
+\`\`\`
+
 ### Yüklemeyi ve hataları ele alın
 
 Sunucuda oluşturulan yayımlanmış çıktı için istemci tarafında bir yükleme aşaması yoktur. Boş ve hata durumlarını açıkça tasarlayın. Veri kaynağı \`page-404\` davranışını kullanıyorsa uzak kaynaktan gelen bir 404, rotanın tamamını 404 yanıtına dönüştürebilir.
@@ -704,6 +731,8 @@ Yalnızca sunucuya yönelik işlevleri \`pagiera/server\` üzerinden içe aktar�
 ### createPagieraRouteHandlers
 
 Tüm alt yolları yakalayan sunucu rotasının kullandığı GET, POST, PUT, PATCH ve DELETE işleyicilerini oluşturur.
+
+Görseller hiçbir zaman sayfanın içinde değil, \`assets\` tablosunda saklanır. Luma'nın ürettiği resimler ve inspector'dan yüklenen dosyalar oraya kaydedilir; belge yalnızca kısa bir \`/api/pagiera/assets/<id>\` adresi tutar. \`POST /assets\` ham dosyayı (PNG, JPG, WebP, GIF veya AVIF, en fazla 8 MB; biçim bildirilen türden değil baytlardan okunur) alır ve bu adresi döndürür; \`createPagieraClient\` bunu stüdyonun \`uploadImage\` adaptörüne bağlar. Bir sayfa kaydına veya şablon içe aktarımına hâlâ ulaşan satır içi \`data:image/…\` değerleri de aynı şekilde tabloya taşınır; aynı baytlar her zaman aynı varlığa çözülür.
 
 ### pagieraConfigFromEnv
 
@@ -768,6 +797,8 @@ PostgreSQL, Redis ve OpenRouter kimlik bilgileri asla \`NEXT_PUBLIC_\` önekini 
 \`pagiera/full.css\` dosyasını kendi stil dosyanızdan önce içe aktarın. CSS \`@import\` kuralları normal stil kurallarından önce gelmelidir. Kök stil dosyasını değiştirdikten sonra geliştirme sunucusunu yeniden başlatın.
 
 Stil dosyası düzenleyiciyle sınırlıdır. \`pagiera/full.css\` içindeki her kural yalnızca stüdyonun kendini içine çizdiği \`.pg-scope\` öğesinin içinde uygulanır; tema değişkenleri (\`--radius\`, \`--primary\`, renk ölçeği) \`:root\` yerine orada tanımlanır. Kendi tasarım sistemi olan bir uygulamaya içe aktarıldığında, düzenleyicinin dışında ve çevresinde o uygulamanın renkleri, köşe yuvarlamaları, başlıkları ve düğmeleri değişmeden kalır.
+
+Stüdyoyu düzenleme ekranının tamamı olarak yerleştirin; Pages panelinde sayfaları zaten listeler, oluşturur ve yeniden adlandırır, bu yüzden host'un ayrı bir sayfa listesine ihtiyacı yoktur — sayfa içermeyen bir editör rotasını \`editorPath\` ile ana sayfaya yönlendirin. Kendi kenar çubuğu veya başlığı olan bir host düzeninde **Focus mode** (kayıt durumunun yanındaki genişletme düğmesi veya Ctrl/⌘+Shift+F) stüdyonun tüm pencereyi kaplamasını sağlar ve alttaki host sayfasının kaymasını durdurur. Seçim tarayıcı başına hatırlanır. \`position: fixed\` kullandığı için stüdyonun hiçbir üst öğesi \`transform\`, \`filter\` veya \`contain\` ayarlamamalıdır.
 
 ## getEditorBootstrap bir işlev değil
 

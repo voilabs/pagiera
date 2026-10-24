@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { inspectMcpServer, type PagieraMcpServer } from "./mcp-server";
 import { createClient, type RedisClientType } from "redis";
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -120,7 +121,29 @@ CREATE TABLE IF NOT EXISTS assets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), mime text NOT NULL, bytes bytea NOT NULL,
   prompt text, created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS sha256 text;
+CREATE UNIQUE INDEX IF NOT EXISTS assets_sha256_idx ON assets(sha256);
 `;
+
+const MAX_ASSET_BYTES = 8 * 1024 * 1024;
+const INLINE_IMAGE = /^data:image\/(?:png|jpe?g|webp|gif|avif);base64,([a-z0-9+/]+=*)$/i;
+
+/**
+ * The format the bytes actually are, read from their signature.
+ *
+ * The declared type is never trusted: the asset is later served with the type
+ * stored here, and a file labelled `image/png` must not be able to deliver
+ * anything a browser would treat as markup.
+ */
+function imageMime(bytes: Buffer) {
+    if (bytes.length < 12) return undefined;
+    if (bytes[0] === 0x89 && bytes.toString("latin1", 1, 4) === "PNG") return "image/png";
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+    if (bytes.toString("latin1", 0, 4) === "GIF8") return "image/gif";
+    if (bytes.toString("latin1", 0, 4) === "RIFF" && bytes.toString("latin1", 8, 12) === "WEBP") return "image/webp";
+    if (bytes.toString("latin1", 4, 8) === "ftyp" && /^avi[fs]$/.test(bytes.toString("latin1", 8, 12))) return "image/avif";
+    return undefined;
+}
 
 function required(name: string, value: string) {
     if (!value?.trim()) throw new Error(`Pagiera config is missing ${name}.`);
@@ -151,19 +174,64 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const ai = await import("@/app/api/ai-design/route");
 
     const renderData = await import("@/lib/render/load-data");
+    const seoRuntime = await import("@/lib/render/seo");
     const { cascadeOf } = await import("@/lib/editor/cascade");
     const basePath = (config.basePath ?? "/api/pagiera").replace(/\/$/, "");
 
     // The design agent generates imagery but has no database of its own, and
     // the bytes are far too large to travel inside a document, so they are
     // stored here and the plan carries a URL instead.
-    ai.setImageStore(async (image) => {
-        const inserted = await pool.query<{ id: string }>(
-            "INSERT INTO assets (mime, bytes, prompt) VALUES ($1, $2, $3) RETURNING id",
-            [image.mime, image.bytes, image.prompt.slice(0, 500)],
+    // Identical bytes resolve to the same row, so re-saving a page that still
+    // carries an inline image, or uploading the same file twice, adds nothing.
+    const storeAsset = async (bytes: Buffer, prompt?: string) => {
+        const mime = imageMime(bytes);
+        if (!mime) throw new Error("Use a PNG, JPG, WebP, GIF or AVIF image.");
+        if (bytes.length > MAX_ASSET_BYTES) throw new Error("Images must be 8 MB or smaller.");
+        const sha256 = createHash("sha256").update(bytes).digest("hex");
+        const stored = await pool.query<{ id: string }>(
+            `INSERT INTO assets (mime, bytes, prompt, sha256) VALUES ($1, $2, $3, $4)
+             ON CONFLICT (sha256) DO UPDATE SET sha256 = EXCLUDED.sha256 RETURNING id`,
+            [mime, bytes, prompt?.slice(0, 500) ?? null, sha256],
         );
-        return `${basePath}/assets/${inserted.rows[0].id}`;
-    });
+        return `${basePath}/assets/${stored.rows[0].id}`;
+    };
+    ai.setImageStore((image) => storeAsset(image.bytes, image.prompt));
+
+    /**
+     * Moves every inline `data:image/...` value in a document into the asset
+     * table and leaves its URL behind.
+     *
+     * Images reach a document inline from older editors, from hosts without
+     * an upload adapter, and from pasted or imported JSON. Carried inline, one
+     * photograph is megabytes the document re-sends on every load and every
+     * save, so they are stored the moment a document reaches the server. This
+     * runs before validation, which would otherwise drop the larger ones. A
+     * value that is not a real bitmap is left alone for validation to judge.
+     */
+    const externalizeImages = async (value: unknown): Promise<unknown> => {
+        const seen = new Map<string, Promise<string | undefined>>();
+        const visit = async (node: unknown): Promise<unknown> => {
+            if (typeof node === "string") {
+                const match = node.length > 64 ? INLINE_IMAGE.exec(node.trim()) : null;
+                if (!match) return node;
+                let url = seen.get(match[1]);
+                if (!url) {
+                    url = storeAsset(Buffer.from(match[1], "base64")).catch(() => undefined);
+                    seen.set(match[1], url);
+                }
+                return (await url) ?? node;
+            }
+            if (Array.isArray(node)) return Promise.all(node.map(visit));
+            if (node && typeof node === "object") {
+                const entries = await Promise.all(
+                    Object.entries(node).map(async ([key, child]) => [key, await visit(child)] as const),
+                );
+                return Object.fromEntries(entries);
+            }
+            return node;
+        };
+        return visit(value);
+    };
 
     const invalidate = async () => {
         const keys = await redis.keys("pagiera:published:*");
@@ -428,23 +496,33 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     async function getPublishedPage(slug: string, context?: Record<string, unknown>) {
         const page = await getPublishedDocument(slug);
         if (!page) return undefined;
+        const pageContext = {
+            query: {},
+            page: { slug: page.routePattern ?? slug },
+            ...(context ?? {}),
+            params: { ...(page.routeParams ?? {}), ...((context as any)?.params ?? {}) },
+        };
         let data;
         try {
             data = await renderData.loadPageData(page.elements, page.dataSources ?? [], {
-                context: {
-                    query: {},
-                    page: { slug: page.routePattern ?? slug },
-                    ...(context ?? {}),
-                    params: { ...(page.routeParams ?? {}), ...((context as any)?.params ?? {}) },
-                },
+                context: pageContext,
                 allowPrivateHosts: config.allowPrivateHosts,
                 maxBytes: config.maxSourceBytes,
-            });
+            }, [page.rootStyle?.seo?.sourceId]);
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
             throw error;
         }
-        return { ...page, data };
+        return { ...page, data, seo: seoRuntime.resolvePageSeo(page, data, pageContext) };
+    }
+
+    /**
+     * The `<head>` values for one published address — `/blog/my-post` gets
+     * the title and description of my-post. Loads the same data the page
+     * renders with; undefined when the page, or its required data, is missing.
+     */
+    async function getPublishedMetadata(slug: string, context?: Record<string, unknown>) {
+        return (await getPublishedPage(slug, context))?.seo;
     }
 
     async function getEditorBootstrap(pageId?: string) {
@@ -465,7 +543,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 revalidate: false,
                 allowPrivateHosts: config.allowPrivateHosts,
                 maxBytes: config.maxSourceBytes,
-            });
+            }, [page.rootStyle?.seo?.sourceId]);
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
             throw error;
@@ -497,11 +575,22 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 return new Response(new Uint8Array(asset.bytes), {
                     headers: {
                         "Content-Type": asset.mime,
-                        // The id is derived from the bytes, so a URL can never
-                        // point at different content later.
+                        "X-Content-Type-Options": "nosniff",
+                        // A row is never rewritten, so a URL can never point
+                        // at different content later.
                         "Cache-Control": "public, max-age=31536000, immutable",
                     },
                 });
+            }
+            // Uploads arrive as the raw file body. The editor's image field
+            // sends them here so a document keeps a short URL, not the bytes.
+            if (request.method === "POST" && path === "/assets") {
+                const declared = Number(request.headers.get("content-length") ?? 0);
+                if (declared > MAX_ASSET_BYTES) return fail("Images must be 8 MB or smaller.", 413);
+                const bytes = Buffer.from(await request.arrayBuffer());
+                if (bytes.length === 0) return fail("The upload was empty.");
+                try { return ok({ status: "ok", url: await storeAsset(bytes) }, 201); }
+                catch (error) { return fail(error, bytes.length > MAX_ASSET_BYTES ? 413 : 415); }
             }
             if (request.method === "GET" && path === "/assets/manrope-variable.woff2") {
                 const encoded = manropeDataUrl.slice(manropeDataUrl.indexOf(",") + 1);
@@ -663,7 +752,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                     : fail(result.reason === "home-required" ? "The home page is required and cannot be deleted." : "The final page cannot be deleted", 409);
             }
             if (parts[0] === "pages" && parts[1] && parts[2] === "save" && request.method === "POST") {
-                const body = await bodyOf(request); const document = body.document ?? {};
+                const body = await bodyOf(request); const document = (await externalizeImages(body.document ?? {})) as Record<string, any>;
                 const saved = await pages.savePageDocument(parts[1], validation.parseElements(document.elements), validation.parseRootStyle(document.rootStyle), validation.parseDataSources(document.dataSources), Number(body.expectedVersion));
                 if (saved.status === "saved" && saved.componentsPublished) await invalidate();
                 return ok(saved);
@@ -719,7 +808,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
             // as a catalog install: an uploaded file is no more trusted.
             if (parts[0] === "templates" && parts[1] === "import" && parts.length === 2 && request.method === "POST") {
                 const body = await bodyOf(request);
-                const bundle = body?.bundle ?? body;
+                const bundle = (await externalizeImages(body?.bundle ?? body)) as Record<string, any>;
                 if (bundle?.schemaVersion !== 1 || !Array.isArray(bundle?.pages)) {
                     return fail("That file is not a Pagiera template bundle.", 400);
                 }
@@ -804,7 +893,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         }
     }
 
-    return { handle, getEditorBootstrap, getPreviewPage, getPublishedDocument, getPublishedPage, close: async () => { await redis.quit(); await pool.end(); }, redis, pool };
+    return { handle, getEditorBootstrap, getPreviewPage, getPublishedDocument, getPublishedPage, getPublishedMetadata, close: async () => { await redis.quit(); await pool.end(); }, redis, pool };
 }
 
 export function pagieraConfigFromEnv(env: NodeJS.ProcessEnv = process.env): PagieraServerConfig {

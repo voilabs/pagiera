@@ -108,9 +108,9 @@
     "semantic_hash": ""
   },
   "apps/example/src/lib/published-page.tsx": {
-    "mtime": 1791924840.6447086,
-    "seen": 1792706455.9924655,
-    "ast_hash": "0b2a8748e8a1101ec190a980e7b47cd6",
+    "mtime": 1792851136.902573,
+    "seen": 1792851516.38689,
+    "ast_hash": "9199391e50dcfbcc531795beba427d61",
     "semantic_hash": ""
   },
   "apps/example/src/lib/translations.ts": {
@@ -330,15 +330,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-content-tr.ts": {
-    "mtime": 1792775320.5126648,
-    "seen": 1792775342.9540753,
-    "ast_hash": "a7db00bd9b5a747f41ecd0171bdccca2",
+    "mtime": 1792851460.468565,
+    "seen": 1792851516.4007716,
+    "ast_hash": "5e5a20aa634091cb4b4e55b1e9bd0d3e",
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-content.ts": {
-    "mtime": 1792775253.182034,
-    "seen": 1792775299.2162225,
-    "ast_hash": "80b619853715de8464a2c44c472e93a0",
+    "mtime": 1792851460.4398565,
+    "seen": 1792851516.4007783,
+    "ast_hash": "a86840c22dc50da30c3395ebc31e982a",
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-localized.ts": {
@@ -348,9 +348,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-systems.ts": {
-    "mtime": 1792775320.5126648,
-    "seen": 1792775342.9545825,
-    "ast_hash": "3a177f749b72e1875382d10d176a47c9",
+    "mtime": 1792851460.4449737,
+    "seen": 1792851516.4012072,
+    "ast_hash": "2bdd81909460a72ccd174a1f506b8a6c",
     "semantic_hash": ""
   },
   "apps/web/src/lib/faq-tr.ts": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/package.json": {
-    "mtime": 1792755192.3097992,
-    "seen": 1792775299.224858,
-    "ast_hash": "7814aab8d7b09a95f165f29133a9fe22",
+    "mtime": 1792844829.179805,
+    "seen": 1792849985.160314,
+    "ast_hash": "eae074c81722bb74c74e93cc2d07dac9",
     "semantic_hash": ""
   },
   "packages/pagiera/q.mjs": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/scripts/build-full.mjs": {
-    "mtime": 1791802465.819363,
-    "seen": 1792706455.9925165,
-    "ast_hash": "58013768ce13e68dea79446ee473b620",
+    "mtime": 1792851136.9015746,
+    "seen": 1792851516.4155312,
+    "ast_hash": "3feb96882608000176d9504726a552c0",
     "semantic_hash": ""
   },
   "packages/pagiera/scripts/mcp-test-server.mjs": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/client.ts": {
-    "mtime": 1791802465.824875,
-    "seen": 1792706455.9925265,
-    "ast_hash": "4288db587fceb7b701cf3ad304c36b93",
+    "mtime": 1792840218.0787845,
+    "seen": 1792840535.6613266,
+    "ast_hash": "570495189ed4b79d7c7d785841141047",
     "semantic_hash": ""
   },
   "packages/pagiera/src/document.ts": {
@@ -678,9 +678,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/data-modal.tsx": {
-    "mtime": 1792749699.194448,
-    "seen": 1792749898.570533,
-    "ast_hash": "70599f5ac937dad3539f465c6177c515",
+    "mtime": 1792843651.4816809,
+    "seen": 1792843755.6560376,
+    "ast_hash": "d3abea4779156ea8263277706e6c06ea",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/data-panel.tsx": {
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/editor.tsx": {
-    "mtime": 1792754162.7829866,
-    "seen": 1792754312.743599,
-    "ast_hash": "477549524ff9bfa3f17968f011481240",
+    "mtime": 1792851210.1956697,
+    "seen": 1792851516.425924,
+    "ast_hash": "643445a99825c516f0822b2ac2ac9f2f",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/gesture-layer.tsx": {
@@ -720,9 +720,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/inspector.tsx": {
-    "mtime": 1792749699.30997,
-    "seen": 1792749898.570852,
-    "ast_hash": "fd80ffa94b2af3efed088d6a561bddde",
+    "mtime": 1792840225.514142,
+    "seen": 1792840535.6667974,
+    "ast_hash": "90a6f80b9e4da29c75572d57901c954c",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/library.tsx": {
@@ -894,15 +894,15 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/ui/settings-nav.tsx": {
-    "mtime": 1792750862.3771276,
-    "seen": 1792751479.7265847,
-    "ast_hash": "1b79acbd1a55d9f161ba7be695609791",
+    "mtime": 1792851203.0994637,
+    "seen": 1792851516.4390783,
+    "ast_hash": "8b16d66caf2c763bab7a98e5ab4d773e",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/ui/shell.tsx": {
-    "mtime": 1792775037.0990882,
-    "seen": 1792775299.2428987,
-    "ast_hash": "2037187be727c9cc98152fffa74bdabe",
+    "mtime": 1792849768.7877295,
+    "seen": 1792849985.1735013,
+    "ast_hash": "58b866ffe5db6a502cd97ccfc238e44e",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/ui/toolbar.tsx": {
@@ -960,9 +960,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/data/source.ts": {
-    "mtime": 1792704202.8297827,
-    "seen": 1792706455.99257,
-    "ast_hash": "7b985e7467838ddd0b03664c9d651ece",
+    "mtime": 1792843643.0461662,
+    "seen": 1792843755.6611898,
+    "ast_hash": "e2d44e40cf89f85e2d7221ae811e9620",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/ai-scope.ts": {
@@ -1134,15 +1134,15 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/types.ts": {
-    "mtime": 1792754814.2702534,
-    "seen": 1792754901.1036274,
-    "ast_hash": "0c9af9098d914ec1967c788aed94107d",
+    "mtime": 1792851136.8945093,
+    "seen": 1792851516.4567442,
+    "ast_hash": "dd961f551194406cf9e58e6366bdb43e",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/validate.ts": {
-    "mtime": 1792731855.2443602,
-    "seen": 1792732109.1335795,
-    "ast_hash": "5e35ab11ba1b7b1e2bff50ded4dca2a2",
+    "mtime": 1792851136.896044,
+    "seen": 1792851516.4567487,
+    "ast_hash": "20a589c5049a424f71bf8f1d43e5c28d",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/pages.ts": {
@@ -1182,9 +1182,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/render/load-data.ts": {
-    "mtime": 1791802465.8879185,
-    "seen": 1792706455.9925957,
-    "ast_hash": "8e12bbe528dd4bf19947845f89ec85fb",
+    "mtime": 1792851136.8970544,
+    "seen": 1792851516.4586368,
+    "ast_hash": "5fc5e364d418a328f77dccc4c96fb5bd",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/render/markdown.ts": {
@@ -1254,21 +1254,21 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/runtime.d.ts": {
-    "mtime": 1791924788.6449137,
-    "seen": 1792706455.9926033,
-    "ast_hash": "6b0cdaf5c0a0072bac6d4bdb76753c31",
+    "mtime": 1792851136.9005632,
+    "seen": 1792851516.4620655,
+    "ast_hash": "c8bbd7e14eed7a3c7cd9e99ddfb323fd",
     "semantic_hash": ""
   },
   "packages/pagiera/src/server-source.ts": {
-    "mtime": 1791802465.894088,
-    "seen": 1792706455.992604,
-    "ast_hash": "8215d62b952eca06f54dadfcfe323815",
+    "mtime": 1792851136.8990555,
+    "seen": 1792851516.46207,
+    "ast_hash": "25512872451a51821434b5aba3bf3f17",
     "semantic_hash": ""
   },
   "packages/pagiera/src/server.d.ts": {
-    "mtime": 1791802465.894088,
-    "seen": 1792706455.9926047,
-    "ast_hash": "fe52072eaa7e0c71db905d2fb0b3360d",
+    "mtime": 1792851136.8990555,
+    "seen": 1792851516.462073,
+    "ast_hash": "8a54c91dca93482acb02ebec3c4d2c5d",
     "semantic_hash": ""
   },
   "packages/pagiera/tsconfig.build.json": {
@@ -1575,6 +1575,18 @@
     "mtime": 1792750850.7222774,
     "seen": 1792751479.7270176,
     "ast_hash": "c246e0fa67cfd930960820b6613728d0",
+    "semantic_hash": ""
+  },
+  "packages/pagiera/src/internal/app/p/editor/seo-settings.tsx": {
+    "mtime": 1792851203.0984664,
+    "seen": 1792851516.4284265,
+    "ast_hash": "d9ccf0fdd164d45bf6d2db712e6c8fbb",
+    "semantic_hash": ""
+  },
+  "packages/pagiera/src/internal/lib/render/seo.ts": {
+    "mtime": 1792851320.4206097,
+    "seen": 1792851516.4599938,
+    "ast_hash": "a1bf5d54b0ce631b40635f8d6048ecd4",
     "semantic_hash": ""
   }
 }

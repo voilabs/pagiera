@@ -101,11 +101,29 @@ export function assertFetchableUrl(raw: string, allowPrivateHosts?: readonly str
 }
 
 /**
+ * Splits a path into its steps.
+ *
+ * Authors write paths the way their API docs and JSONPath tools do, so
+ * `$.items`, `items[0].name` and `data["items"]` all mean the same walk as the
+ * dotted `items`, `items.0.name` and `data.items`. A leading `$` names the
+ * payload itself.
+ */
+export function pathSteps(path: string): string[] {
+    return path
+        .trim()
+        .replace(/^\$/, "")
+        .replace(/\[\s*(?:"([^"]*)"|'([^']*)'|([^\]]*))\s*\]/g, (_, a, b, c) => `.${a ?? b ?? c}`)
+        .split(".")
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+/**
  * Walks a dotted path such as `data.items` or `results.0.tags`. An empty path
  * returns the payload itself, which is what a bare JSON array needs.
  */
 export function selectPath(payload: unknown, path: string): unknown {
-    const steps = path.split(".").map((s) => s.trim()).filter(Boolean);
+    const steps = pathSteps(path);
     let cursor: unknown = payload;
     for (const step of steps) {
         if (cursor === null || typeof cursor !== "object") return undefined;
@@ -279,7 +297,7 @@ export async function loadSource(
  * rather than a silent empty string.
  */
 export function readBinding(row: Record<string, unknown>, path: string): string {
-    const value = selectPath(row, path.replace(/^\s*\$\.?/, ""));
+    const value = selectPath(row, path);
     if (value === null || value === undefined) return "";
     if (typeof value === "object") return "";
     return String(value);

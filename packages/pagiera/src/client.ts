@@ -127,6 +127,22 @@ export function createPagieraClient(options: PagieraClientOptions = {}) {
                 call(`/pages/${id}/revisions/${revisionId}/restore`, "POST"),
             previewSource: (source: unknown, sampleQuery: string) => call("/data/preview", "POST", { source, sampleQuery }),
             compileCode: (source: string) => call("/code/compile", "POST", { source }),
+            // The file goes up as the raw body; the document keeps the URL.
+            uploadImage: async (file: File) => {
+                const response = await fetcher(`${base}/assets`, {
+                    method: "POST",
+                    headers: { "Content-Type": file.type || "application/octet-stream" },
+                    body: file,
+                });
+                const body = await response.json().catch(() => null);
+                if (!response.ok || typeof body?.url !== "string") {
+                    throw new PagieraRequestError(
+                        body?.error ?? `The image could not be uploaded (${response.status}).`,
+                        response.status,
+                    );
+                }
+                return body.url as string;
+            },
             mcp: (request: { action: "list" | "inspect"; id?: string }) => call("/mcp", "POST", request),
             generate: (request: unknown, onEvent?: (event: unknown) => void, signal?: AbortSignal) =>
                 streamAi(fetcher, `${base}/ai`, request, onEvent, signal),

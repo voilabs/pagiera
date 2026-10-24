@@ -28,6 +28,7 @@ export function EditorShell({
     overlays,
     dock,
     page,
+    focused = false,
 }: {
     /** The bar's left end: where you are, and the way to everywhere else. */
     toolbarLeft: React.ReactNode;
@@ -66,13 +67,19 @@ export function EditorShell({
      * stay mounted so coming back finds the canvas exactly where it was.
      */
     page?: React.ReactNode;
+    /**
+     * Focus mode: the editor covers the whole window, over whatever the host
+     * app draws around it — its sidebar, its header, its footer. Below the
+     * layer menu (z 1000), which is portalled to the body.
+     */
+    focused?: boolean;
 }) {
     const hidden = page ? "hidden" : "";
     return (
         // `pg-scope` is the box the editor's stylesheet is confined to (see
         // scripts/build-full-css.mjs); it takes no space of its own.
         <div className="pg-scope" style={{ display: "contents" }}>
-        <div className="pg-editor flex h-screen w-full flex-col overflow-hidden bg-ed-frame font-sans text-xs text-ed-text selection:bg-[var(--ed-accent-soft)]">
+        <div className={`pg-editor flex w-full flex-col overflow-hidden bg-ed-frame font-sans text-xs text-ed-text selection:bg-[var(--ed-accent-soft)] ${focused ? "fixed inset-0 z-[900] h-dvh" : "h-screen"}`}>
             {/* The bar across the top: three groups, the middle one taking
                 whatever the ends leave it. */}
             <header className="relative z-40 grid h-12 shrink-0 grid-cols-[260px_minmax(0,1fr)_288px] items-center gap-2 bg-ed-frame px-2">

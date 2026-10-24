@@ -5,6 +5,7 @@ import {
     IconArrowBackUp,
     IconArrowForwardUp,
     IconArrowsMaximize,
+    IconArrowsMinimize,
     IconCommand,
     IconCode,
     IconComponents,
@@ -142,6 +143,7 @@ import { PagieraMark } from "./brand";
 import { GestureLayer, type GestureLayerHandle, type Measure } from "./gesture-layer";
 
 import { DataPanel, type SourceSample } from "./data-panel";
+import { SeoSettings } from "./seo-settings";
 import type { SourcePreviewer } from "./data-modal";
 import { type LibraryPage, type LibraryPick, LibraryPanel } from "./library";
 import {
@@ -653,6 +655,37 @@ export default function Editor({
         try { localStorage.setItem("pagiera:all-breakpoints", current ? "0" : "1"); } catch { /* Optional preference. */ }
         return !current;
     });
+    /*
+     * Focus mode: the studio covers the window, over the host app's own
+     * sidebar and header, so the canvas gets every pixel. Remembered per
+     * browser, toggled from the bar or with Ctrl/Cmd+Shift+F. The host page
+     * stops scrolling underneath while it is on.
+     */
+    const [focusMode, setFocusMode] = useState(false);
+    useEffect(() => {
+        try { setFocusMode(localStorage.getItem("pagiera:focus") === "1"); } catch { /* Optional preference. */ }
+    }, []);
+    const toggleFocusMode = useCallback(() => setFocusMode((current) => {
+        try { localStorage.setItem("pagiera:focus", current ? "0" : "1"); } catch { /* Optional preference. */ }
+        return !current;
+    }), []);
+    useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            if (!(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey) return;
+            if (event.key.toLowerCase() !== "f") return;
+            event.preventDefault();
+            toggleFocusMode();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [toggleFocusMode]);
+    useEffect(() => {
+        if (!focusMode) return;
+        const root = document.documentElement;
+        const previous = root.style.overflow;
+        root.style.overflow = "hidden";
+        return () => { root.style.overflow = previous; };
+    }, [focusMode]);
     const frames = useMemo(() => {
         if (showAllBreakpoints) return allFrames;
         const groups = new Map<string, typeof allFrames>();
@@ -695,7 +728,7 @@ export default function Editor({
 
     const serverLeftTab = tabForDocumentMode(leftTabFromValue(initialPanel ?? null) ?? "Layers", componentMode);
     const [leftTab, setLeftTab] = useState<LeftEditorTab>(serverLeftTab);
-    const [settingsSection, setSettingsSection] = useState<"general" | "variables" | "transfer" | "ai">("general");
+    const [settingsSection, setSettingsSection] = useState<"general" | "seo" | "variables" | "transfer" | "ai">("general");
     const [enterToSend, setEnterToSend] = useState(true);
     useEffect(() => {
         try { setEnterToSend(localStorage.getItem("pagiera:ai-enter-to-send") !== "false"); } catch { /* Browser preference is optional. */ }
@@ -5009,6 +5042,13 @@ export default function Editor({
                 <span className="hidden text-[10px] text-ed-faint lg:block">Curated responsive starting points</span>
                 <ChromeButton onClick={() => openLeftPanel("Layers")}>Back to canvas</ChromeButton>
             </> : <>
+            <ToolButton
+                label={focusMode ? "Exit focus mode (Ctrl+Shift+F)" : "Focus mode (Ctrl+Shift+F)"}
+                active={focusMode}
+                onClick={toggleFocusMode}
+            >
+                {focusMode ? <IconArrowsMinimize size={15} stroke={1.7} /> : <IconArrowsMaximize size={15} stroke={1.7} />}
+            </ToolButton>
             <span className="hidden lg:block"><SaveIndicator status={saveStatus} error={saveError} /></span>
             <div className="mx-0.5 hidden h-4 w-px bg-ed-border lg:block" />
             {componentMode ? null : <>
@@ -5345,6 +5385,14 @@ export default function Editor({
         <SettingsWorkspace section={settingsSection} onSection={setSettingsSection}>
                             {settingsSection === "ai" && <AiSettings mcp={adapters?.mcp} available={Boolean(adapters?.generate)} enterToSend={enterToSend} onEnterToSend={updateEnterToSend} />}
                             {settingsSection === "general" && <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} layoutOptions={componentAssets.map((asset) => ({ label: asset.name, value: asset.id }))} />}
+                            {settingsSection === "seo" && <SeoSettings
+                                seo={rootStyle.seo}
+                                onChange={(seo) => updatePageSettings({ seo: Object.keys(seo).length ? seo : undefined })}
+                                sources={dataSources}
+                                samples={samples}
+                                slug={page.slug}
+                                pageName={page.name}
+                            />}
                             {settingsSection === "variables" && <VariablesPanel rootStyle={rootStyle} selectedElement={selectedElement} setRootStyle={setRootStyle} setElements={setElements} />}
                             {settingsSection === "transfer" && <SiteTransfer
                                 exportUrl={adapters?.exportTemplateUrl}
@@ -6279,6 +6327,7 @@ export default function Editor({
             inspectorVisible={!workspacePage}
             page={workspacePage}
             overlays={overlays}
+            focused={focusMode}
         />
     );
 }

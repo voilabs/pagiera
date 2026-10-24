@@ -220,7 +220,8 @@ function ImageUpload({
             </label>
             {inlined && (
                 <div className="flex items-center justify-between rounded-lg bg-ed-subtle px-2.5 py-2 text-[10px] text-ed-faint">
-                    <span>Stored inside the page JSON</span>
+                    {/* With storage, the server moves it out on the next save. */}
+                    <span>{uploadImage ? "Moves to storage when the page saves" : "Stored inside the page JSON"}</span>
                     <button type="button" onClick={() => onChange("")} className="text-ed-muted hover:text-red-600">Remove</button>
                 </div>
             )}

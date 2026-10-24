@@ -177,6 +177,16 @@ function bindingPath(value: unknown) {
     return /^[A-Za-z0-9_$][A-Za-z0-9_$.-]*$/.test(raw) ? raw : undefined;
 }
 
+/**
+ * Where a source's list sits inside the response. Wider than a binding: it
+ * also takes the JSONPath spellings authors copy from API docs, `$.items` and
+ * `items[0]`, which the source reader understands.
+ */
+function listPath(value: unknown) {
+    const raw = str(value, MAX_SHORT_STRING)?.trim();
+    if (!raw) return undefined;
+    return /^[A-Za-z0-9_$][A-Za-z0-9_$.\-[\]"' ]*$/.test(raw) ? raw : undefined;
+}
 
 const MAX_SVG = 24_000;
 
@@ -972,7 +982,29 @@ export function parseRootStyle(input: unknown): RootStyle {
         siteFooterId: str(raw.siteFooterId, MAX_SHORT_STRING),
         useSiteHeader: raw.useSiteHeader === false ? false : undefined,
         useSiteFooter: raw.useSiteFooter === false ? false : undefined,
+        seo: parseSeo(raw.seo),
     };
+}
+
+/**
+ * Templates are kept as written; the resolved values are checked when they
+ * are rendered (`resolvePageSeo`), because only then is it known what a
+ * `{{field}}` turns into.
+ */
+function parseSeo(input: unknown): RootStyle["seo"] {
+    if (!input || typeof input !== "object") return undefined;
+    const raw = input as Record<string, unknown>;
+    const text = (value: unknown, max: number) => str(value, max)?.trim() || undefined;
+    const seo = {
+        title: text(raw.title, 300),
+        description: text(raw.description, 1000),
+        image: text(raw.image, MAX_URL),
+        canonical: text(raw.canonical, MAX_URL),
+        noindex: raw.noindex === true ? true : undefined,
+        sourceId: text(raw.sourceId, MAX_SHORT_STRING),
+    };
+    const kept = Object.fromEntries(Object.entries(seo).filter(([, value]) => value !== undefined));
+    return Object.keys(kept).length ? kept : undefined;
 }
 
 /**
@@ -1011,7 +1043,7 @@ export function parseDataSources(input: unknown): DataSource[] {
             id,
             name: str(row.name, 120)?.trim() || "Untitled source",
             url: str(row.url, MAX_URL)?.trim() ?? "",
-            path: bindingPath(row.path) ?? "",
+            path: listPath(row.path) ?? "",
             method: oneOf(row.method, HTTP_METHODS, "GET"),
             body: str(row.body, 20_000)?.trim() ?? "",
             params: parsePairs(row.params),
