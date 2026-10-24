@@ -1,17 +1,17 @@
 # Graph Report - pagiera  (2026-10-24)
 
 ## Corpus Check
-- 250 files · ~783,881 words
+- 248 files · ~781,368 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 16 file(s) not represented in the graph (top: .css 5, (none) 4, .example 3)
 
 ## Summary
-- 2155 nodes · 5274 edges · 108 communities (94 shown, 14 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 72 edges (avg confidence: 0.9)
+- 2140 nodes · 5224 edges · 106 communities (93 shown, 13 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 70 edges (avg confidence: 0.9)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `626920c9`
+- Built from commit: `84e8848a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,14 +24,14 @@
 - ai-panel.tsx
 - ai-design/route.ts
 - DragSession
-- ref_react
+- Editor
 - web/package.json
 - source.ts
 - editor/validate.ts
 - dsl.ts
 - [[...slug]].tsx
+- showcase.tsx
 - page-render.tsx
-- cascade.ts
 - example/package.json
 - i18n.ts
 - pagiera/package.json
@@ -58,12 +58,12 @@
 - template-catalog.ts
 - compilerOptions
 - web/scripts/check-i18n.cjs
-- ref_node_fs
+- ref_node_assert
 - exports
-- Build and launch websites with Pagiera
+- .home
 - compilerOptions
 - server.d.ts
-- motion.ts
+- interactive.ts
 - Group
 - pagiera-editor.tsx
 - layout.tsx
@@ -75,7 +75,7 @@
 - custom.ts
 - cn
 - check-docs.cjs
-- test-ai-scope.ts
+- data-modal.tsx
 - drag-session.ts
 - build-extra.ts
 - css.ts
@@ -89,11 +89,11 @@
 - icons-panel.tsx
 - Pagiera Template Authoring Prompt
 - CanvasElement
-- motion-preview.ts
+- README.md
 - devDependencies
-- full-editor.d.ts
+- template-thumbnail.ts
 - EntranceGroup
-- tree.ts
+- resolveStyle
 - use-canvas-view.ts
 - Contributing to Pagiera
 - AI workspace
@@ -101,29 +101,27 @@
 - PULL_REQUEST_TEMPLATE.md
 - ai-settings.tsx
 - repository
-- assets-panel.tsx
+- RootStyle
 - Security policy
 - Next.js setup
 - mcp-test-server.mjs
 - Troubleshooting
 - example/AGENTS.md
 - example/postcss.config.mjs
-- check-docs.mjs
+- mountCarousel
 - web/AGENTS.md
 - web/postcss.config.mjs
 - peerDependencies
 - createPagieraClient
-- ref_node_assert
 - Pagiera template registry
 - assets.d.ts
 - { GET, POST, PUT, PATCH, DELETE }
 - PagieraStudio
 - RenderedPage
-- icon.tsx
 - build-full-css.mjs
 
 ## God Nodes (most connected - your core abstractions)
-1. `Editor()` - 108 edges
+1. `Editor()` - 107 edges
 2. `useI18n()` - 66 edges
 3. `localizedHref()` - 47 edges
 4. `Icon()` - 43 edges
@@ -149,15 +147,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (108 total, 14 thin omitted)
+## Communities (106 total, 13 thin omitted)
 
 ### Community 0 - "pages.ts"
 Cohesion: 0.07
 Nodes (64): applied, changed, content, layout, nested, own, parked, slot (+56 more)
 
 ### Community 1 - "editor/editor.tsx"
-Cohesion: 0.06
-Nodes (33): Clipboard, ComponentAsset, DragInfo, EditorAdapters, EditorPage, EMPTY_CHILDREN, INSERT_VIEWS, InsertView (+25 more)
+Cohesion: 0.07
+Nodes (26): LumaMark(), PagieraMark(), Clipboard, ComponentAsset, DragInfo, EditorAdapters, EditorPage, EMPTY_CHILDREN (+18 more)
 
 ### Community 2 - "presets.ts"
 Cohesion: 0.18
@@ -165,31 +163,31 @@ Nodes (41): Heading, bento(), body(), box(), button(), C, card(), ctaBanner() (+
 
 ### Community 3 - "inspector.tsx"
 Cohesion: 0.10
-Nodes (23): ALIGN_LABELS, AlignChoice, BezierEditor(), bezierValues(), CLICK_ACTIONS, ClickAction, Ctx, CurveValue (+15 more)
+Nodes (27): ALIGN_LABELS, AlignChoice, BezierEditor(), bezierValues(), CLICK_ACTIONS, ClickAction, Ctx, CurveValue (+19 more)
 
 ### Community 4 - "types.ts"
 Cohesion: 0.04
-Nodes (42): ASPECT_RATIOS, BgSize, BlendMode, BorderStyle, BREAKPOINT_CHAIN, BREAKPOINT_WIDTHS, BREAKPOINTS, ComponentSlotProps (+34 more)
+Nodes (43): ASPECT_RATIOS, BgSize, BlendMode, BorderStyle, BREAKPOINT_CHAIN, BREAKPOINT_WIDTHS, BREAKPOINTS, ComponentSlotProps (+35 more)
 
 ### Community 5 - "ai-panel.tsx"
-Cohesion: 0.15
-Nodes (20): AiDesignGenerator, AiDesignRequest, AiFocus, AiPanel(), AiRunEvent, Chat, key(), now() (+12 more)
+Cohesion: 0.14
+Nodes (22): AiDesignGenerator, AiDesignRequest, AiFocus, AiPanel(), AiRunEvent, Chat, key(), now() (+14 more)
 
 ### Community 6 - "ai-design/route.ts"
 Cohesion: 0.07
-Nodes (36): AiStreamEvent, attemptStructured(), Channel, childrenOf(), clearPage(), contentSchema, DEFAULT_THEME, describeSection() (+28 more)
+Nodes (34): AiStreamEvent, attemptStructured(), Channel, childrenOf(), clearPage(), contentSchema, DEFAULT_THEME, describeSection() (+26 more)
 
-### Community 8 - "ref_react"
-Cohesion: 0.20
-Nodes (15): FieldName, Labelled(), SeoSettings(), Row(), ScrubInput(), HEIGHT_SIZE_OPTIONS, SIZE_OPTIONS, SizeChoice (+7 more)
+### Community 8 - "Editor"
+Cohesion: 0.16
+Nodes (25): ComponentAssetCards(), componentHasContent(), Editor(), isEditorTab(), panelSlug(), tabForDocumentMode(), Box, edges() (+17 more)
 
 ### Community 9 - "web/package.json"
 Cohesion: 0.05
 Nodes (41): dependencies, framer-motion, marked, next, pagiera, react, react-dom, devDependencies (+33 more)
 
 ### Community 10 - "source.ts"
-Cohesion: 0.07
-Nodes (51): DataSourceModal(), Failure, FailureView(), formatCell(), listsIn(), PairTable(), ResponseView(), SourcePreview (+43 more)
+Cohesion: 0.14
+Nodes (21): assertFetchableUrl(), BLOCKED_HOSTS, buildRequest(), DataSourceError, DEFAULT_REVALIDATE, EMPTY_CONTEXT, LoadOptions, loadSource() (+13 more)
 
 ### Community 11 - "editor/validate.ts"
 Cohesion: 0.09
@@ -197,19 +195,19 @@ Nodes (31): CustomTag, DATA_SOURCE_NOT_FOUND_BEHAVIORS, DEFAULT_STATE_TRANSITION
 
 ### Community 12 - "dsl.ts"
 Cohesion: 0.07
-Nodes (38): Align, asBoolean(), asNumber(), BoxNode, BUTTON_KINDS, ButtonKind, ButtonNode, childArray() (+30 more)
+Nodes (39): Align, ALIGNS, asBoolean(), asNumber(), BoxNode, BUTTON_KINDS, ButtonKind, ButtonNode (+31 more)
 
 ### Community 13 - "[[...slug]].tsx"
 Cohesion: 0.10
 Nodes (27): DocsCodeBlock(), highlighted(), KEYWORDS, DocsCommandMenu(), keyDown(), docLink(), DocsMarkdown(), render() (+19 more)
 
-### Community 14 - "page-render.tsx"
-Cohesion: 0.05
-Nodes (64): metadata, ShowcasePage(), Arrow(), Mark(), projects, shader, Showcase(), ElementBody() (+56 more)
+### Community 14 - "showcase.tsx"
+Cohesion: 0.15
+Nodes (19): metadata, ShowcasePage(), Arrow(), Mark(), projects, shader, Showcase(), CarouselEditor() (+11 more)
 
-### Community 15 - "cascade.ts"
-Cohesion: 0.21
-Nodes (13): baseOf(), chainCache, chainFor(), DEFAULT_CASCADE, duplicateThresholds(), mediaPlan(), overrideChain(), widest() (+5 more)
+### Community 15 - "page-render.tsx"
+Cohesion: 0.19
+Nodes (21): readBinding(), baseOf(), cascadeOf(), widest(), isBand(), bindElement(), bindPageContext(), bindTemplate() (+13 more)
 
 ### Community 16 - "example/package.json"
 Cohesion: 0.05
@@ -233,15 +231,15 @@ Nodes (33): accentAsText(), alpha(), AXES, backdropFor(), BACKDROPS, clamp(), co
 
 ### Community 21 - "create-forma.ts"
 Cohesion: 0.07
-Nodes (32): add(), art, button(), carousel, contact, document, elements, emphasis (+24 more)
+Nodes (33): add(), art, button(), carousel, contact, document, elements, emphasis (+25 more)
 
 ### Community 22 - "Pagiera"
-Cohesion: 0.13
-Nodes (15): Client API, Dynamic routes and request data, Environment variables, Highlights, Installation, License, Lightweight editor, Package exports (+7 more)
+Cohesion: 0.15
+Nodes (13): Client API, Dynamic routes and request data, Environment variables, Highlights, Installation, License, Lightweight editor, Package exports (+5 more)
 
 ### Community 23 - "site-templates.ts"
-Cohesion: 0.15
-Nodes (35): disclosureChildren(), child(), addNocturneContactForm(), createNocturneShowcase(), createNocturneSiteTemplate(), enter(), nocturneInnerPage(), node() (+27 more)
+Cohesion: 0.12
+Nodes (39): child, elements, isolated, other, result, root, targeted, disclosureChildren() (+31 more)
 
 ### Community 24 - "useI18n"
 Cohesion: 0.17
@@ -257,15 +255,15 @@ Nodes (31): description, devDependencies, @biomejs/biome, typescript, engines, n
 
 ### Community 27 - "parts.tsx"
 Cohesion: 0.07
-Nodes (46): LumaMark(), PagieraMark(), ComponentAssetCards(), componentHasContent(), Editor(), isEditorTab(), panelSlug(), tabForDocumentMode() (+38 more)
+Nodes (39): stickyBlocker(), Breadcrumbs(), BreakpointRow(), ContextMenu(), CORNERS, ELEMENT_GROUPS, ElementsPanel(), HANDLE_SPOTS (+31 more)
 
 ### Community 28 - "published-page.tsx"
-Cohesion: 0.11
-Nodes (17): dynamic, handlers, maxDuration, dynamic, generateMetadata(), HomePage(), dynamic, generateMetadata() (+9 more)
+Cohesion: 0.12
+Nodes (16): dynamic, handlers, maxDuration, dynamic, generateMetadata(), HomePage(), dynamic, generateMetadata() (+8 more)
 
 ### Community 29 - "src/index.ts"
 Cohesion: 0.14
-Nodes (23): PagieraAdapters, PagieraDataPreview, PagieraPageSummary, PagieraSaveResult, createDocument(), PagieraBreakpoint, PagieraDocument, PagieraElement (+15 more)
+Nodes (23): 3. Design an editable website, PagieraAdapters, PagieraDataPreview, PagieraPageSummary, PagieraSaveResult, createDocument(), PagieraBreakpoint, PagieraDocument (+15 more)
 
 ### Community 30 - "compose.ts"
 Cohesion: 0.11
@@ -280,8 +278,8 @@ Cohesion: 0.07
 Nodes (26): source, assist, actions, css, parser, next, react, files (+18 more)
 
 ### Community 33 - "server-source.ts"
-Cohesion: 0.12
-Nodes (20): inspectMcpServer(), PagieraMcpServer, BUILTIN_TEMPLATE_IDS, BuiltinTemplateId, createPagieraRouteHandlers(), createPagieraServer(), getEditorBootstrap(), getPublishedDocument() (+12 more)
+Cohesion: 0.13
+Nodes (19): inspectMcpServer(), PagieraMcpServer, BUILTIN_TEMPLATE_IDS, BuiltinTemplateId, createPagieraRouteHandlers(), createPagieraServer(), getEditorBootstrap(), getPublishedDocument() (+11 more)
 
 ### Community 34 - "dependencies"
 Cohesion: 0.07
@@ -296,8 +294,8 @@ Cohesion: 0.08
 Nodes (21): nextConfig, nextConfig, ConversionFooterProps, FooterHeading(), SocialLink(), GuideBlocks(), GuideBlockView(), COMPARISONS (+13 more)
 
 ### Community 37 - "editor/style.ts"
-Cohesion: 0.16
-Nodes (15): ALIGN_CONTENT_MAP, ALIGN_MAP, ALIGN_SELF_MAP, applySize(), backgroundColorOf(), BoxContext, JUSTIFY_MAP, pinTo() (+7 more)
+Cohesion: 0.09
+Nodes (29): chainCache, chainFor(), DEFAULT_CASCADE, duplicateThresholds(), overrideChain(), windowRange(), windowRangeChip(), windowRangeLabel() (+21 more)
 
 ### Community 38 - "faq.tsx"
 Cohesion: 0.21
@@ -315,13 +313,17 @@ Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 Cohesion: 0.11
 Nodes (16): assert, cache, compareShape(), { createRequire }, { DOCS }, { DOCS_CATALOG_TR }, { DOCS_CONTENT_TR }, fs (+8 more)
 
+### Community 42 - "ref_node_assert"
+Cohesion: 0.19
+Nodes (5): run(), validate(), encoder, http, sse
+
 ### Community 43 - "exports"
 Cohesion: 0.11
 Nodes (19): import, types, exports, ./data, ./full, ./full.css, ./package.json, ./provider (+11 more)
 
-### Community 44 - "Build and launch websites with Pagiera"
-Cohesion: 0.12
-Nodes (13): 2. Wire the server and studio, 3. Design an editable website, 4. Save safely and preview, 5. Publish / activate the website, Build and launch websites with Pagiera, Command-line workflow, Example user request an agent should fulfill, Understand the request (+5 more)
+### Community 44 - ".home"
+Cohesion: 0.14
+Nodes (14): Pagiera package example, 2. Wire the server and studio, 4. Save safely and preview, 5. Publish / activate the website, Build and launch websites with Pagiera, Command-line workflow, Example user request an agent should fulfill, Understand the request (+6 more)
 
 ### Community 45 - "compilerOptions"
 Cohesion: 0.11
@@ -329,62 +331,62 @@ Nodes (17): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 
 ### Community 46 - "server.d.ts"
 Cohesion: 0.11
-Nodes (5): c, PagieraPageSeo, PagieraServerConfig, pg, redis
+Nodes (6): c, Server API, close(), PagieraServerConfig, pg, redis
 
-### Community 47 - "motion.ts"
-Cohesion: 0.14
-Nodes (15): AnimationLayer, clamp(), curves, GEOMETRY, LEGACY_STATE_TRANSITION, LOOP_KEYFRAMES, loopAmount(), loopAnimation() (+7 more)
+### Community 47 - "interactive.ts"
+Cohesion: 0.16
+Nodes (16): customButton, Action, EditorDocument, EditorDocumentSaver, EditorSaveResult, HistoryState, pushPast(), reducer() (+8 more)
 
 ### Community 48 - "Group"
-Cohesion: 0.25
-Nodes (23): BorderGroup(), CarouselControlGroup(), CompositionGroup(), FieldDesign(), FieldGroup(), FlexChildGroup(), fontOptionsFor(), Inspector() (+15 more)
+Cohesion: 0.23
+Nodes (28): BorderGroup(), CarouselControlGroup(), ClickGroup(), CompositionGroup(), FieldDesign(), FieldGroup(), FillGroup(), FlexChildGroup() (+20 more)
 
 ### Community 49 - "pagiera-editor.tsx"
-Cohesion: 0.23
-Nodes (11): dynamic, EditorPage(), dynamic, EditorDocumentPage(), dynamic, EditorPanelPage(), EditorBootstrap, PagieraEditor() (+3 more)
+Cohesion: 0.21
+Nodes (12): dynamic, EditorPage(), dynamic, EditorDocumentPage(), dynamic, EditorPanelPage(), EditorBootstrap, PagieraEditor() (+4 more)
 
 ### Community 50 - "layout.tsx"
 Cohesion: 0.14
 Nodes (14): figtree, geistMono, geistSans, manrope, metadata, pressStart2P, RootLayout(), syncopate (+6 more)
 
 ### Community 51 - "library.tsx"
-Cohesion: 0.15
-Nodes (18): BlockList(), CATEGORIES, DetailHeader(), Empty(), Entry, LibraryHome(), LibraryPage, LibraryPanel() (+10 more)
+Cohesion: 0.12
+Nodes (24): BlockList(), CATEGORIES, DetailHeader(), ElementsThumbnail(), Empty(), Entry, LibraryHome(), LibraryPage (+16 more)
 
 ### Community 52 - "src/page.tsx"
-Cohesion: 0.27
-Nodes (15): customTagOf(), constraints(), declarationMap(), fillOf(), formHeaders(), interactionDeclarationMap(), pageTransitionCss(), PagieraPage() (+7 more)
+Cohesion: 0.11
+Nodes (28): ElementBody(), GlyphComponent, ICON_CATALOG, ICON_COMPONENTS, IconCatalogEntry, IconCategory, IconGlyph(), customTagOf() (+20 more)
 
 ### Community 53 - "compilerOptions"
 Cohesion: 0.12
 Nodes (16): compilerOptions, baseUrl, isolatedModules, jsx, lib, module, moduleResolution, noEmit (+8 more)
 
 ### Community 54 - "parseStyle"
-Cohesion: 0.17
-Nodes (18): borderSide(), cornerRadius(), cssValue(), customCss(), customJs(), horizontalMargin(), lineHeightValue(), num() (+10 more)
+Cohesion: 0.18
+Nodes (17): borderSide(), cornerRadius(), cssValue(), customCss(), customJs(), horizontalMargin(), lineHeightValue(), num() (+9 more)
 
 ### Community 55 - "ref_react"
-Cohesion: 0.08
-Nodes (39): devicesFor(), FALLBACK_DEVICES, PreviewDevice, previewUrlFor(), TemplatePreview(), TemplatePreviewPage, TemplatePreviewStage(), useTemplatePreview() (+31 more)
+Cohesion: 0.06
+Nodes (55): PagieraMutationResult, PagieraStudioAdapters, PagieraStudioDocument, PagieraStudioPage, PagieraStudioProps, PagieraTranslations, devicesFor(), FALLBACK_DEVICES (+47 more)
 
 ### Community 56 - "custom.ts"
-Cohesion: 0.18
-Nodes (14): customButton, CarouselControl, carouselControlAttributes(), normalizeCarouselControl(), Disclosure, disclosureAttributes(), normalizeDisclosure(), CUSTOM_TAGS (+6 more)
+Cohesion: 0.19
+Nodes (13): CarouselControl, carouselControlAttributes(), normalizeCarouselControl(), Disclosure, disclosureAttributes(), normalizeDisclosure(), CUSTOM_TAGS, RESERVED_ATTRIBUTES (+5 more)
 
 ### Community 57 - "cn"
 Cohesion: 0.12
-Nodes (26): ChromeButton(), TOOL_SIZES, TOOL_TONES, ToolButton(), ToolTone, PanelAction(), PanelHeader(), PanelSearch() (+18 more)
+Nodes (27): ChromeButton(), TOOL_SIZES, TOOL_TONES, ToolButton(), ToolTone, PanelAction(), PanelHeader(), PanelSearch() (+19 more)
 
 ### Community 58 - "check-docs.cjs"
 Cohesion: 0.14
 Nodes (12): cache, dir, { DOCS }, errors, fs, { getDocsContent }, load(), path (+4 more)
 
-### Community 59 - "test-ai-scope.ts"
-Cohesion: 0.22
-Nodes (8): child, elements, isolated, other, result, root, targeted, scopeAiPlan()
+### Community 59 - "data-modal.tsx"
+Cohesion: 0.16
+Nodes (18): DataSourceModal(), Failure, FailureView(), formatCell(), listsIn(), PairTable(), ResponseView(), SourcePreview (+10 more)
 
 ### Community 60 - "drag-session.ts"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (13): DRAG_THRESHOLD, FlowInfo, flush(), flushAll(), idOf(), intersect(), later(), NO_OFFSET (+5 more)
 
 ### Community 61 - "build-extra.ts"
@@ -392,16 +394,16 @@ Cohesion: 0.28
 Nodes (11): band(), builds, bundle(), Element, ledger(), main(), Palette, rise() (+3 more)
 
 ### Community 62 - "css.ts"
-Cohesion: 0.15
-Nodes (23): animationDeclarations(), frameToCss(), rootStyleToCss(), splitBand(), classFor(), declarationsToCss(), DEFAULT_PAGE_FONT, ENTRANCE_CSS (+15 more)
+Cohesion: 0.08
+Nodes (43): animate(), playAllEntrances(), playEntrance(), mediaPlan(), animationDeclarations(), AnimationLayer, clamp(), curves (+35 more)
 
 ### Community 63 - "audit-responsive.ts"
-Cohesion: 0.15
-Nodes (14): SiteTemplateId, lines(), templateThumbnailSvg(), ThumbnailTemplate, xml(), DEFAULT_BREAKPOINTS, BUILTIN_IDS, failures (+6 more)
+Cohesion: 0.10
+Nodes (19): checker, elementTypes, here, result, createSiteTemplateBundle(), promoteSharedRoots(), SiteTemplateId, DEFAULT_BREAKPOINTS (+11 more)
 
 ### Community 64 - "ContentTab"
-Cohesion: 0.21
-Nodes (15): AttributesEditor(), ClickGroup(), ContentTab(), HtmlGroup(), IconGroup(), ImageUpload(), InstanceGroup(), stickyBlocker() (+7 more)
+Cohesion: 0.14
+Nodes (18): AttributesEditor(), ContentTab(), HtmlGroup(), ImageUpload(), InstanceGroup(), TranslationGroup(), CodeInput(), TextArea() (+10 more)
 
 ### Community 65 - "test-motion.ts"
 Cohesion: 0.13
@@ -428,32 +430,32 @@ Cohesion: 0.23
 Nodes (10): IconsPanel(), cache, ICON_PACKS, iconNames(), IconPack, iconSvg(), loaders, loadIconPack() (+2 more)
 
 ### Community 71 - "Pagiera Template Authoring Prompt"
-Cohesion: 0.12
-Nodes (16): Pagiera package example, Local package example, Publishing pages, 10. Data sources, Repeat and bindings, 11. Shared components, 12. Hard limits and silent drops, 13. Checklist before you emit, 14. Design direction (+8 more)
+Cohesion: 0.18
+Nodes (10): 10. Data sources, Repeat and bindings, 11. Shared components, 13. Checklist before you emit, 14. Design direction, 1. Repository layout, 2. registry.json, 4. RootStyle — the page shell, 6. ElementStyle (+2 more)
 
 ### Community 72 - "CanvasElement"
-Cohesion: 0.29
-Nodes (8): AiChanges(), display(), labels, AiDesignOperation, AiDesignPlan, AiElementExtras, CanvasElement, RootStyle
+Cohesion: 0.39
+Nodes (5): toAddOperations(), AiDesignOperation, AiDesignPlan, AiElementExtras, CanvasElement
 
-### Community 73 - "motion-preview.ts"
-Cohesion: 0.43
-Nodes (7): animate(), playAllEntrances(), playEntrance(), entranceFrom(), entranceTiming(), entranceTo(), MotionFrame
+### Community 73 - "README.md"
+Cohesion: 0.29
+Nodes (4): License, Monorepo, Quick start, Why Pagiera?
 
 ### Community 74 - "devDependencies"
 Cohesion: 0.33
 Nodes (6): devDependencies, @types/node, @types/pg, @types/react, @types/react-dom, typescript
 
-### Community 75 - "full-editor.d.ts"
-Cohesion: 0.29
-Nodes (6): PagieraMutationResult, PagieraStudioAdapters, PagieraStudioDocument, PagieraStudioPage, PagieraStudioProps, PagieraTranslations
+### Community 75 - "template-thumbnail.ts"
+Cohesion: 0.48
+Nodes (5): lines(), templateThumbnailSvg(), ThumbnailTemplate, xml(), main()
 
 ### Community 76 - "EntranceGroup"
-Cohesion: 0.29
-Nodes (15): CurveFields(), EntranceGroup(), FillGroup(), HoverGroup(), InteractTab(), LoopGroup(), PressGroup(), ScrollGroup() (+7 more)
+Cohesion: 0.39
+Nodes (9): CurveFields(), EntranceGroup(), InteractTab(), LoopGroup(), PressGroup(), ScrollGroup(), SpringGraph(), TransitionGroup() (+1 more)
 
-### Community 77 - "tree.ts"
-Cohesion: 0.11
-Nodes (39): artboardOf(), draggedBox(), DropGeometry, edgeBand(), idOf(), LIVE, orderWithin(), resolveDrop() (+31 more)
+### Community 77 - "resolveStyle"
+Cohesion: 0.12
+Nodes (27): artboardOf(), draggedBox(), DropGeometry, DropPlan, edgeBand(), idOf(), LIVE, orderWithin() (+19 more)
 
 ### Community 78 - "use-canvas-view.ts"
 Cohesion: 0.40
@@ -483,9 +485,9 @@ Nodes (3): AiSettings(), McpAdapter, McpPanel()
 Cohesion: 0.50
 Nodes (4): repository, directory, type, url
 
-### Community 85 - "assets-panel.tsx"
-Cohesion: 0.48
-Nodes (6): ElementsThumbnail(), Asset, AssetsPanel(), ComponentCard(), previewLayers(), Section()
+### Community 85 - "RootStyle"
+Cohesion: 0.50
+Nodes (4): AiChanges(), display(), labels, RootStyle
 
 ### Community 86 - "Security policy"
 Cohesion: 0.50
@@ -499,9 +501,9 @@ Nodes (6): 1. Import the editor stylesheet, 2. Add the font provider, 3. Mount t
 Cohesion: 0.33
 Nodes (6): AI generation fails, CSS says `@import` must precede other rules, PostgreSQL or Redis fails, Published API data is missing from HTML, `server.getEditorBootstrap is not a function`, Troubleshooting
 
-### Community 92 - "check-docs.mjs"
-Cohesion: 0.33
-Nodes (4): checker, elementTypes, here, result
+### Community 92 - "mountCarousel"
+Cohesion: 0.67
+Nodes (3): mountCarousel(), schedule(), show()
 
 ### Community 95 - "peerDependencies"
 Cohesion: 0.67
@@ -511,41 +513,33 @@ Nodes (3): peerDependencies, react, react-dom
 Cohesion: 0.48
 Nodes (5): createPagieraClient(), jsonRequest(), PagieraClientOptions, PagieraRequestError, streamAi()
 
-### Community 97 - "ref_node_assert"
-Cohesion: 0.33
-Nodes (3): encoder, http, sse
-
 ### Community 98 - "Pagiera template registry"
 Cohesion: 0.50
 Nodes (3): Pagiera template registry, Publishing a template, Structure
 
-### Community 106 - "icon.tsx"
-Cohesion: 0.33
-Nodes (5): GlyphComponent, ICON_CATALOG, ICON_COMPONENTS, IconCatalogEntry, IconCategory
-
 ### Community 109 - "build-full-css.mjs"
-Cohesion: 0.12
-Nodes (10): from, packageRoot, scope, internalRoot, packageRoot, esbuild, postcss, ids (+2 more)
+Cohesion: 0.15
+Nodes (7): from, packageRoot, scope, internalRoot, packageRoot, esbuild, postcss
 
 ## Knowledge Gaps
 - **45 isolated node(s):** `next`, `pagiera`, `react`, `react-dom`, `@biomejs/biome` (+40 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 853 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 849 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `DragSession` connect `DragSession` to `editor/editor.tsx`, `parts.tsx`, `drag-session.ts`, `Pagiera Template Authoring Prompt`?**
-  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `DragSession` connect `DragSession` to `Editor`, `editor/editor.tsx`, `drag-session.ts`, `.home`?**
+  _High betweenness centrality (0.062) - this node is a cross-community bridge._
 - **What connects `next`, `pagiera`, `react` to the rest of the system?**
   _45 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pages.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.06690140845070422 - nodes in this community are weakly interconnected._
-- **Why does `@tabler/icons-react` connect `ai-panel.tsx` to `editor/editor.tsx`, `inspector.tsx`, `icons-panel.tsx`, `ref_react`, `source.ts`, `icon.tsx`, `pagiera/package.json`, `library.tsx`, `ai-settings.tsx`, `assets-panel.tsx`, `ref_react`, `cn`, `parts.tsx`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `@tabler/icons-react` connect `ai-panel.tsx` to `editor/editor.tsx`, `inspector.tsx`, `icons-panel.tsx`, `parts.tsx`, `pagiera/package.json`, `library.tsx`, `ai-settings.tsx`, `src/page.tsx`, `ref_react`, `cn`, `data-modal.tsx`?**
+  _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **Should `editor/editor.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.06153846153846154 - nodes in this community are weakly interconnected._
-- **Why does `CanvasElement` connect `CanvasElement` to `pages.ts`, `editor/editor.tsx`, `presets.ts`, `inspector.tsx`, `types.ts`, `ai-panel.tsx`, `source.ts`, `editor/validate.ts`, `page-render.tsx`, `create-forma.ts`, `site-templates.ts`, `parts.tsx`, `compose.ts`, `editor/style.ts`, `library.tsx`, `ref_react`, `custom.ts`, `css.ts`, `audit-responsive.ts`, `test-motion.ts`, `icons-panel.tsx`, `motion-preview.ts`, `tree.ts`, `assets-panel.tsx`, `icon.tsx`?**
+  _Cohesion score 0.07130124777183601 - nodes in this community are weakly interconnected._
+- **Why does `dependencies` connect `dependencies` to `pagiera/package.json`?**
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Should `inspector.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.09782608695652174 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09788359788359788 - nodes in this community are weakly interconnected._

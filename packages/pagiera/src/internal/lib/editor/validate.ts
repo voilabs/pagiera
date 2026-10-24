@@ -982,29 +982,7 @@ export function parseRootStyle(input: unknown): RootStyle {
         siteFooterId: str(raw.siteFooterId, MAX_SHORT_STRING),
         useSiteHeader: raw.useSiteHeader === false ? false : undefined,
         useSiteFooter: raw.useSiteFooter === false ? false : undefined,
-        seo: parseSeo(raw.seo),
     };
-}
-
-/**
- * Templates are kept as written; the resolved values are checked when they
- * are rendered (`resolvePageSeo`), because only then is it known what a
- * `{{field}}` turns into.
- */
-function parseSeo(input: unknown): RootStyle["seo"] {
-    if (!input || typeof input !== "object") return undefined;
-    const raw = input as Record<string, unknown>;
-    const text = (value: unknown, max: number) => str(value, max)?.trim() || undefined;
-    const seo = {
-        title: text(raw.title, 300),
-        description: text(raw.description, 1000),
-        image: text(raw.image, MAX_URL),
-        canonical: text(raw.canonical, MAX_URL),
-        noindex: raw.noindex === true ? true : undefined,
-        sourceId: text(raw.sourceId, MAX_SHORT_STRING),
-    };
-    const kept = Object.fromEntries(Object.entries(seo).filter(([, value]) => value !== undefined));
-    return Object.keys(kept).length ? kept : undefined;
 }
 
 /**

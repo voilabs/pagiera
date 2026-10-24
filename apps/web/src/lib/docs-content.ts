@@ -161,27 +161,6 @@ Connect text, images, links and visibility rules to fields returned by the reque
 
 When the list sits inside the response, set the source's **List path** to it. Paths can be written dotted (\`items\`, \`data.results\`) or the JSONPath way (\`$.items\`, \`items[0].tags\`, \`$["items"]\`); a leading \`$\` is the response itself. After **Send**, a response that is a single object lists the arrays inside it — GitHub's search API, for example, offers \`items\` — and choosing one sets the path and loads its rows.
 
-### SEO for dynamic pages
-
-**Settings → SEO** holds a page's title, description, social image, canonical URL and a "hide from search engines" switch. Each is a template. On a page such as \`/blog/:slug\`, choose under **Data** the source that loads the post (its URL uses \`{{params.slug}}\`); after one test in the Data panel its fields appear as chips, and clicking one inserts \`{{field}}\` where the cursor is — \`{{title}} — Blog\`, \`{{excerpt}}\`, \`{{cover.url}}\`. \`{{params.slug}}\`, \`{{query.q}}\` and \`{{page.slug}}\` work too. The search preview fills the templates with the tested row.
-
-On the server, \`getPublishedPage\` returns the resolved values as \`seo\`, and \`getPublishedMetadata(slug)\` returns only them, ready for \`generateMetadata\`. HTML is stripped from descriptions, an image or canonical value that is not an http(s) URL or site path is dropped, and when the row is missing the title falls back to the page name. The source is loaded even when no layer on the page uses it.
-
-\`\`\`ts
-export async function generateMetadata({ params }) {
-  const server = await getPagieraServer(pagieraConfigFromEnv());
-  const seo = await server.getPublishedMetadata((await params).path.join("/"));
-  if (!seo) return { title: "Not found" };
-  return {
-    title: seo.title,
-    description: seo.description,
-    alternates: seo.canonical ? { canonical: seo.canonical } : undefined,
-    robots: seo.noindex ? { index: false, follow: false } : undefined,
-    openGraph: { title: seo.title, description: seo.description, images: seo.image ? [seo.image] : undefined },
-  };
-}
-\`\`\`
-
 ### Handle loading and failure
 
 Server rendering has no client-side loading phase for published output. Design empty and error states explicitly. An upstream 404 can turn the complete route into a 404 response when the data source uses the \`page-404\` behavior.

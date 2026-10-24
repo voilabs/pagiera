@@ -174,7 +174,6 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     const ai = await import("@/app/api/ai-design/route");
 
     const renderData = await import("@/lib/render/load-data");
-    const seoRuntime = await import("@/lib/render/seo");
     const { cascadeOf } = await import("@/lib/editor/cascade");
     const basePath = (config.basePath ?? "/api/pagiera").replace(/\/$/, "");
 
@@ -496,33 +495,23 @@ export async function createPagieraServer(config: PagieraServerConfig) {
     async function getPublishedPage(slug: string, context?: Record<string, unknown>) {
         const page = await getPublishedDocument(slug);
         if (!page) return undefined;
-        const pageContext = {
-            query: {},
-            page: { slug: page.routePattern ?? slug },
-            ...(context ?? {}),
-            params: { ...(page.routeParams ?? {}), ...((context as any)?.params ?? {}) },
-        };
         let data;
         try {
             data = await renderData.loadPageData(page.elements, page.dataSources ?? [], {
-                context: pageContext,
+                context: {
+                    query: {},
+                    page: { slug: page.routePattern ?? slug },
+                    ...(context ?? {}),
+                    params: { ...(page.routeParams ?? {}), ...((context as any)?.params ?? {}) },
+                },
                 allowPrivateHosts: config.allowPrivateHosts,
                 maxBytes: config.maxSourceBytes,
-            }, [page.rootStyle?.seo?.sourceId]);
+            });
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
             throw error;
         }
-        return { ...page, data, seo: seoRuntime.resolvePageSeo(page, data, pageContext) };
-    }
-
-    /**
-     * The `<head>` values for one published address — `/blog/my-post` gets
-     * the title and description of my-post. Loads the same data the page
-     * renders with; undefined when the page, or its required data, is missing.
-     */
-    async function getPublishedMetadata(slug: string, context?: Record<string, unknown>) {
-        return (await getPublishedPage(slug, context))?.seo;
+        return { ...page, data };
     }
 
     async function getEditorBootstrap(pageId?: string) {
@@ -543,7 +532,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
                 revalidate: false,
                 allowPrivateHosts: config.allowPrivateHosts,
                 maxBytes: config.maxSourceBytes,
-            }, [page.rootStyle?.seo?.sourceId]);
+            });
         } catch (error) {
             if (error instanceof renderData.PageDataNotFoundError) return undefined;
             throw error;
@@ -893,7 +882,7 @@ export async function createPagieraServer(config: PagieraServerConfig) {
         }
     }
 
-    return { handle, getEditorBootstrap, getPreviewPage, getPublishedDocument, getPublishedPage, getPublishedMetadata, close: async () => { await redis.quit(); await pool.end(); }, redis, pool };
+    return { handle, getEditorBootstrap, getPreviewPage, getPublishedDocument, getPublishedPage, close: async () => { await redis.quit(); await pool.end(); }, redis, pool };
 }
 
 export function pagieraConfigFromEnv(env: NodeJS.ProcessEnv = process.env): PagieraServerConfig {

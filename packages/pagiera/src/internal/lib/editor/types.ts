@@ -1420,28 +1420,6 @@ export type RootStyle = {
     siteFooterId?: string;
     useSiteHeader?: boolean;
     useSiteFooter?: boolean;
-    /** What search engines and link previews show for this page. */
-    seo?: PageSeo;
-};
-
-/**
- * A page's search and sharing metadata.
- *
- * Every text is a template: `{{params.slug}}`, `{{query.q}}` and
- * `{{page.slug}}` resolve from the address, and any other `{{field}}` reads
- * the first row of `sourceId` — so `/blog/:slug` names the source that loads
- * the post and writes `{{title}}` once for every post.
- */
-export type PageSeo = {
-    title?: string;
-    description?: string;
-    /** Social preview image (Open Graph / Twitter). */
-    image?: string;
-    canonical?: string;
-    /** Ask search engines not to index this page. */
-    noindex?: boolean;
-    /** The data source whose first row fills `{{field}}` tokens. */
-    sourceId?: string;
 };
 
 export type CustomFont = { id: string; name: string; url: string; weight: number; style: "normal" | "italic" };

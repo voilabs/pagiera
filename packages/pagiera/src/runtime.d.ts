@@ -52,12 +52,4 @@ export function loadPageData(
     elements: unknown[],
     sources: unknown[],
     options?: Record<string, unknown>,
-    /** Extra source ids to load, such as `rootStyle.seo.sourceId`. */
-    alsoLoad?: Array<string | undefined>,
 ): Promise<Record<string, Array<Record<string, unknown>>>>;
-/** Fills a page's SEO templates from its loaded data (`pagiera/data`). */
-export function resolvePageSeo(
-    page: { name?: string; rootStyle?: unknown },
-    data?: Record<string, Array<Record<string, unknown>>>,
-    context?: { query?: Record<string, string>; params?: Record<string, string>; page?: { slug?: string } },
-): { title: string; description?: string; image?: string; canonical?: string; noindex: boolean };

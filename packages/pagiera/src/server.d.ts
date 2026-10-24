@@ -17,28 +17,13 @@ export type PagieraServerConfig = {
     maxSourceBytes?: number;
 };
 
-/** A page's resolved `<head>` values for one request. */
-export type PagieraPageSeo = {
-    title: string;
-    description?: string;
-    image?: string;
-    canonical?: string;
-    noindex: boolean;
-};
-
 export function pagieraConfigFromEnv(env?: NodeJS.ProcessEnv): PagieraServerConfig;
 export function createPagieraServer(config: PagieraServerConfig): Promise<{
     handle(request: Request): Promise<Response>;
     getEditorBootstrap(pageId?: string): Promise<any | undefined>;
     getPreviewPage(pageId: string, context?: Record<string, unknown>): Promise<any | undefined>;
     getPublishedDocument(slug: string): Promise<any | undefined>;
-    getPublishedPage(slug: string, context?: Record<string, unknown>): Promise<(any & { data: Record<string, unknown>; seo: PagieraPageSeo }) | undefined>;
-    /**
-     * Title, description, social image, canonical URL and robots for one
-     * published address, with `{{field}}` templates filled from the page's
-     * data — one call per `generateMetadata`.
-     */
-    getPublishedMetadata(slug: string, context?: Record<string, unknown>): Promise<PagieraPageSeo | undefined>;
+    getPublishedPage(slug: string, context?: Record<string, unknown>): Promise<(any & { data: Record<string, unknown> }) | undefined>;
     close(): Promise<void>;
     redis: RedisClientType;
     pool: Pool;

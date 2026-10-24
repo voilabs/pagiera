@@ -143,7 +143,6 @@ import { PagieraMark } from "./brand";
 import { GestureLayer, type GestureLayerHandle, type Measure } from "./gesture-layer";
 
 import { DataPanel, type SourceSample } from "./data-panel";
-import { SeoSettings } from "./seo-settings";
 import type { SourcePreviewer } from "./data-modal";
 import { type LibraryPage, type LibraryPick, LibraryPanel } from "./library";
 import {
@@ -728,7 +727,7 @@ export default function Editor({
 
     const serverLeftTab = tabForDocumentMode(leftTabFromValue(initialPanel ?? null) ?? "Layers", componentMode);
     const [leftTab, setLeftTab] = useState<LeftEditorTab>(serverLeftTab);
-    const [settingsSection, setSettingsSection] = useState<"general" | "seo" | "variables" | "transfer" | "ai">("general");
+    const [settingsSection, setSettingsSection] = useState<"general" | "variables" | "transfer" | "ai">("general");
     const [enterToSend, setEnterToSend] = useState(true);
     useEffect(() => {
         try { setEnterToSend(localStorage.getItem("pagiera:ai-enter-to-send") !== "false"); } catch { /* Browser preference is optional. */ }
@@ -5385,14 +5384,6 @@ export default function Editor({
         <SettingsWorkspace section={settingsSection} onSection={setSettingsSection}>
                             {settingsSection === "ai" && <AiSettings mcp={adapters?.mcp} available={Boolean(adapters?.generate)} enterToSend={enterToSend} onEnterToSend={updateEnterToSend} />}
                             {settingsSection === "general" && <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} layoutOptions={componentAssets.map((asset) => ({ label: asset.name, value: asset.id }))} />}
-                            {settingsSection === "seo" && <SeoSettings
-                                seo={rootStyle.seo}
-                                onChange={(seo) => updatePageSettings({ seo: Object.keys(seo).length ? seo : undefined })}
-                                sources={dataSources}
-                                samples={samples}
-                                slug={page.slug}
-                                pageName={page.name}
-                            />}
                             {settingsSection === "variables" && <VariablesPanel rootStyle={rootStyle} selectedElement={selectedElement} setRootStyle={setRootStyle} setElements={setElements} />}
                             {settingsSection === "transfer" && <SiteTransfer
                                 exportUrl={adapters?.exportTemplateUrl}

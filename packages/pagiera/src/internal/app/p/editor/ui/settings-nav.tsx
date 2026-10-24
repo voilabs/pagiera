@@ -1,12 +1,11 @@
-import { IconAdjustments, IconLayoutGrid, IconPalette, IconPlugConnected, IconSeo, IconTransfer } from "@tabler/icons-react";
+import { IconAdjustments, IconLayoutGrid, IconPalette, IconPlugConnected, IconTransfer } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 import { WorkspaceNavItem, WorkspaceNavTitle, WorkspacePage } from "./workspace-page";
 
-export type SettingsSection = "general" | "seo" | "variables" | "transfer" | "ai";
+export type SettingsSection = "general" | "variables" | "transfer" | "ai";
 const sections = [
     { id: "general", label: "General", description: "Canvas, typography, page transitions and custom code.", icon: IconAdjustments },
-    { id: "seo", label: "SEO", description: "Title, description and sharing image for this page; dynamic pages fill them from their data.", icon: IconSeo },
     { id: "variables", label: "Design variables", description: "Reusable colours and numbers every layer can point at.", icon: IconPalette },
     { id: "ai", label: "AI & connections", description: "Luma's chat preferences and the MCP servers it can reach.", icon: IconPlugConnected },
     { id: "transfer", label: "Import & export", description: "Download the whole site as a bundle, or restore one.", icon: IconTransfer },

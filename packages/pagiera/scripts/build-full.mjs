@@ -78,7 +78,7 @@ await build({
 
 await build({
     stdin: {
-        contents: `export { loadPageData, PageDataNotFoundError } from "./lib/render/load-data.ts";\nexport { resolvePageSeo } from "./lib/render/seo.ts";`,
+        contents: `export { loadPageData, PageDataNotFoundError } from "./lib/render/load-data.ts";`,
         resolveDir: internalRoot,
         sourcefile: "pagiera-data-entry.ts",
         loader: "ts",
