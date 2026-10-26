@@ -1,4 +1,6 @@
-import { readBinding } from "@/lib/data/source";
+import { evaluate, isPlainPath } from "@/lib/data/expression";
+import { formatValue, parsePipes } from "@/lib/data/format";
+import { selectPath } from "@/lib/data/source";
 import type { CanvasElement } from "@/lib/editor/types";
 
 /** One object of a data source, as seen inside Request or Repeat. */
@@ -41,9 +43,30 @@ export function bindPageContext<T extends string | undefined>(
     }) as T;
 }
 
-function bindTemplate(value: string | undefined, row: Row) {
+/**
+ * Fills `{{field}}` from the row, with optional pipes:
+ * `{{published_at | date:"d MMMM yyyy" | default:"Taslak"}}`.
+ *
+ * Anything other than a plain field path is an expression in Pagiera's safe
+ * template language (`lib/data/expression.ts`):
+ * `{{status == "draft" ? "Taslak" : "Yayında"}}`,
+ * `{{tags.map(t => t.name).join(", ")}}`.
+ *
+ * Page tokens (`{{params.slug}}`, `{{query.q}}`, `{{page.slug}}`) belong to
+ * the address, not the row; they are left for `bindPageContext`, so the
+ * editor keeps showing them as written instead of blanking them.
+ */
+export function bindTemplate(value: string | undefined, row: Row) {
     if (!value?.includes("{{")) return value;
-    return value.replace(/{{\s*([^{}]+?)\s*}}/g, (_match, path: string) => readBinding(row, path));
+    return value.replace(/{{\s*([^{}]+?)\s*}}/g, (match, expression: string) => {
+        const { path, format } = parsePipes(expression);
+        if (/^(?:params|query|page)\./.test(path)) return match;
+        // A field path is read directly; when it finds nothing (`title.length`
+        // is a property, not a field) it is tried as an expression.
+        const direct = isPlainPath(path) ? selectPath(row, path) : undefined;
+        const value = direct !== undefined ? direct : evaluate(path, { row });
+        return formatValue(value, format);
+    });
 }
 
 /**
@@ -62,13 +85,17 @@ export function bindElement(
         ? { ...element.interaction, value: bindTemplate(element.interaction.value, row) ?? element.interaction.value }
         : undefined;
 
-    let bound = href !== element.href || interaction?.value !== element.interaction?.value
-        ? { ...element, href, interaction }
+    // Text written around a field — "Yazar: {{author.name}}" — reads the row
+    // too. A bound element takes its whole text from the field instead.
+    const content = element.binding ? element.content : bindTemplate(element.content, row);
+
+    let bound = href !== element.href || interaction?.value !== element.interaction?.value || content !== element.content
+        ? { ...element, href, interaction, content }
         : element;
 
     if (!element.binding) return bound;
 
-    const value = readBinding(row, element.binding);
+    const value = formatValue(selectPath(row, element.binding), element.bindingFormat);
     if (element.type === "Image" || element.type === "Video") {
         // An empty result would blank the element; keep the authored fallback.
         return value ? { ...bound, src: value } : bound;

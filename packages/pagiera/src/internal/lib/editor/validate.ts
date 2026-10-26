@@ -168,6 +168,56 @@ function imageUrl(value: unknown) {
 }
 
 /**
+ * A binding's format. Every field is optional and bounded; an unknown kind
+ * or transform is dropped rather than refusing the element.
+ */
+function parseBindingFormat(input: unknown): CanvasElement["bindingFormat"] {
+    if (!input || typeof input !== "object") return undefined;
+    const raw = input as Record<string, unknown>;
+    const text = (value: unknown, max: number) => {
+        const out = str(value, max);
+        return out === undefined || out === "" ? undefined : out;
+    };
+    const pick = <T extends string>(value: unknown, allowed: readonly T[]) =>
+        typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+    const whole = (value: unknown, max: number) =>
+        typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max ? value : undefined;
+    const format = {
+        kind: pick(raw.kind, ["text", "date", "number", "currency"] as const),
+        pattern: text(raw.pattern, 80),
+        locale: typeof raw.locale === "string" && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(raw.locale) ? raw.locale : undefined,
+        timeZone: typeof raw.timeZone === "string" && /^[A-Za-z_]+(?:\/[A-Za-z0-9_+-]+){0,2}$/.test(raw.timeZone) ? raw.timeZone : undefined,
+        decimals: whole(raw.decimals, 10),
+        currency: typeof raw.currency === "string" && /^[A-Za-z]{3}$/.test(raw.currency) ? raw.currency.toUpperCase() : undefined,
+        transform: pick(raw.transform, ["upper", "lower", "capitalize"] as const),
+        maxLength: whole(raw.maxLength, 10_000) || undefined,
+        prefix: text(raw.prefix, 40),
+        suffix: text(raw.suffix, 40),
+        // An empty string is a real choice here ("show nothing"), unlike the others.
+        empty: typeof raw.empty === "string" ? raw.empty.slice(0, 300) : undefined,
+        map: (() => {
+            if (!raw.map || typeof raw.map !== "object" || Array.isArray(raw.map)) return undefined;
+            const entries = Object.entries(raw.map as Record<string, unknown>)
+                .filter(([key, value]) => key.length <= 200 && typeof value === "string" && !["__proto__", "constructor", "prototype"].includes(key))
+                .slice(0, 50)
+                .map(([key, value]) => [key, (value as string).slice(0, 300)] as const);
+            return entries.length ? Object.fromEntries(entries) : undefined;
+        })(),
+        replace: Array.isArray(raw.replace)
+            ? (raw.replace as unknown[])
+                  .filter((pair): pair is [string, string] =>
+                      Array.isArray(pair) && pair.length === 2 && typeof pair[0] === "string" && pair[0] !== "" && typeof pair[1] === "string")
+                  .slice(0, 20)
+                  .map(([find, replacement]) => [find.slice(0, 200), replacement.slice(0, 200)] as [string, string])
+            : undefined,
+    };
+    const kept = Object.fromEntries(
+        Object.entries(format).filter(([, value]) => value !== undefined && !(Array.isArray(value) && value.length === 0)),
+    );
+    return Object.keys(kept).length ? (kept as CanvasElement["bindingFormat"]) : undefined;
+}
+
+/**
  * A binding is a dotted field path such as `author.name`. Restricting the
  * alphabet keeps it a lookup and nothing more.
  */
@@ -764,6 +814,7 @@ export function parseElements(
             attributes: parseAttributes(el.attributes),
             sourceId: str(el.sourceId, MAX_SHORT_STRING),
             binding: bindingPath(el.binding),
+            bindingFormat: parseBindingFormat(el.bindingFormat),
             hoverTrigger: oneOf(el.hoverTrigger, ["self", "parent"] as const, "self"),
             target: oneOf(el.target, ["_self", "_blank"] as const, "_self"),
             interaction:

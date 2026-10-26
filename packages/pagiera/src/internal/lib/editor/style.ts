@@ -253,10 +253,14 @@ export function styleToCss(
         boxSizing: "border-box",
         display: "flex",
         flexDirection: style.direction,
-        gap: style.gap || undefined,
-        // -1 means the author never split the axes, so `gap` stands alone.
-        rowGap: style.rowGap >= 0 ? style.rowGap : undefined,
-        columnGap: style.columnGap >= 0 ? style.columnGap : undefined,
+        // Always the two longhands, never the `gap` shorthand beside them.
+        // React applies a style object property by property: when a render
+        // drops `rowGap` while `gap` is set, it clears `row-gap` after
+        // writing `gap` and the spacing vanishes. That is what made gaps
+        // disappear on the canvas after switching pages. -1 means the author
+        // never split the axes, so both follow `gap`.
+        rowGap: (style.rowGap >= 0 ? style.rowGap : style.gap) || undefined,
+        columnGap: (style.columnGap >= 0 ? style.columnGap : style.gap) || undefined,
         justifyContent: JUSTIFY_MAP[style.justify],
         alignItems: ALIGN_MAP[style.align],
         flexWrap: style.wrap ? "wrap" : "nowrap",
@@ -535,7 +539,8 @@ export function splitBand(
         boxSizing: "border-box",
         display: css.display,
         flexDirection: css.flexDirection,
-        gap: css.gap,
+        rowGap: css.rowGap,
+        columnGap: css.columnGap,
         justifyContent: css.justifyContent,
         alignItems: css.alignItems,
         flexWrap: css.flexWrap,
@@ -551,7 +556,8 @@ export function splitBand(
     const shell: CSSProperties = { ...css };
     // The inner box owns the layout now.
     shell.flexDirection = undefined;
-    shell.gap = undefined;
+    shell.rowGap = undefined;
+    shell.columnGap = undefined;
     shell.justifyContent = undefined;
     shell.alignItems = undefined;
     shell.flexWrap = undefined;

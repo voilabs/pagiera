@@ -161,6 +161,25 @@ Connect text, images, links and visibility rules to fields returned by the reque
 
 When the list sits inside the response, set the source's **List path** to it. Paths can be written dotted (\`items\`, \`data.results\`) or the JSONPath way (\`$.items\`, \`items[0].tags\`, \`$["items"]\`); a leading \`$\` is the response itself. After **Send**, a response that is a single object lists the arrays inside it — GitHub's search API, for example, offers \`items\` — and choosing one sets the path and loads its rows.
 
+### Formatting bound values
+
+A bound field reads as it arrives unless you give it a format. Under **Data binding**, once a field is chosen, **Format** turns it into a date (presets such as *24 Ekim 2026* or a pattern such as \`d MMMM yyyy, HH:mm\`), a number or a currency, or keeps it as text with a letter case and a length limit. **Before** and **After** wrap a non-empty value, and **If empty** is shown when the field is missing, null, blank or an empty list. The language and time zone are stored with the format, so the canvas, the server and every visitor print the same text.
+
+Text inside a Request or Repeat can also mix fields into a sentence, and \`{{…}}\` takes pipes and expressions:
+
+\`\`\`text
+Yazar: {{author.name | default:"Anonim"}}
+{{published_at | date:"d MMMM yyyy" | locale:tr-TR | tz:Europe/Istanbul}}
+{{price | currency:TRY | locale:tr-TR}}
+{{status | map:draft=Taslak,published=Yayında,*=Bilinmiyor}}
+{{status == "draft" ? "Taslak" : "Yayında"}}
+{{title.replace("-", " ").toUpperCase()}}
+{{tags.map(t => t.name).join(", ")}}
+{{items.find(i => i.type == "main")?.price ?? "—"}}
+\`\`\`
+
+Pipes: \`date\`, \`number\`, \`currency\`, \`upper\`, \`lower\`, \`capitalize\`, \`truncate\`, \`prefix\`, \`suffix\`, \`locale\`, \`tz\`, \`map\`, \`replace\` and \`default\`. Expressions are JavaScript-shaped but interpreted, never executed: they read the row's fields, use the operators \`+ - * / % == != < > && || ?? ! ?:\` and optional chaining, call a fixed set of string and list methods (\`replace\`, \`split\`, \`slice\`, \`map\`, \`filter\`, \`find\`, \`join\`, …) and the helpers \`Math.*\`, \`String\`, \`Number\`, \`date\`, \`number\`, \`upper\`, \`lower\`, \`len\` and \`default\`. They cannot reach globals, prototypes or the server, and each evaluation is limited in steps and output size; an expression that fails renders as empty. \`{{params.…}}\`, \`{{query.…}}\` and \`{{page.…}}\` keep their meaning as page tokens.
+
 ### Handle loading and failure
 
 Server rendering has no client-side loading phase for published output. Design empty and error states explicitly. An upstream 404 can turn the complete route into a 404 response when the data source uses the \`page-404\` behavior.

@@ -459,6 +459,8 @@ Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacınd
 
 ### Stüdyo ve görüntüleme
 
+- Bağlanan değerler için biçimler eklendi: tarih (hazır biçim ya da kalıp; dil ve saat dilimiyle), sayı, para birimi, harf durumu, uzunluk sınırı, önüne/arkasına metin ve alan boşken gösterilecek değer. Request ve Repeat içindeki metin alanları cümleye katabilir; \`{{…}}\` boruları (\`date\`, \`currency\`, \`map\`, \`replace\`, \`default\`, …) ve güvenli, JavaScript'e benzeyen ifadeleri (koşullar, metin ve liste yöntemleri, ok fonksiyonları) kabul eder. İfadeler global nesnelere ya da sunucuya hiçbir erişim olmadan yorumlanır.
+- Stüdyoda sayfalar arasında geçince canvas'ta boşlukların (gap) kaybolması düzeltildi. Canvas artık \`gap\` kısa yazımını ayrı yazımların yanında kullanmıyor, her zaman \`row-gap\` ve \`column-gap\` yazıyor; React ayrı yazımları kaldırırken kısa yazımı da siliyordu. Tam genişlikteki Section'lar da ayrı satır ve sütun boşluklarını iç kutuya geçirir.
 - Animasyon modülü derinleştirildi. Girişlere bulanıklık, pop, perde açılması ve tamamen özel başlangıç durumları, **Children one by one** sıralaması, her ziyarette yeniden oynatma ve tetikleme payı eklendi. Yaylar artık sertlik, sönümleme ve kütleden simüle ediliyor ve yaklaşık bir cubic eğri yerine CSS linear() eğrisi olarak yayımlanıyor. Üzerine gelme ve basma; kaldırma, taşıma, döndürme, 3B eğme ve bulanıklaştırma yapabiliyor, durum geçişi düzenlenebiliyor. Kaydırma efektlerine kayma, dönme ve küçülme ile çıkarken tersine oynatma dahil aralık seçimi eklendi. Döngülere salınma, zıplama, kıpırdama ve nefes; miktar, gecikme, yön ve hız ayarlarıyla eklendi. Play ve All girişleri canvas'ta yayımlanan zamanlamayla yeniden oynatır.
 - Bir döngünün öğenin kendi girişi ya da kaydırma efekti tarafından kalıcı olarak iptal edilmesi düzeltildi; döngü artık giriş bitince devam ediyor. Giriş ve kaydırma efektlerinin bittikten sonra katmanı tam opaklığa zorlaması düzeltildi. Son çare görünürleştirme artık yalnızca ekrandakileri gösteriyor; böylece sayfanın aşağısındaki girişler oraya ulaşıldığında yine oynuyor.
 - Canvas sürükle-bırak yeniden yazıldı. Basılı tutma ancak imleç birkaç piksel hareket edince sürüklemeye dönüşür; böylece tıklama artık katmanları yanlışlıkla yeniden sıralamaz. Sürüklenen katman kalkar ve imleci izler, kardeşleri katman boyutunda bir yuva açmak için kayar ve bıraktığı boşluk kapanır. Bırakıldığında katman yerine süzülür. Escape sürüklemeyi iptal edip her şeyi eski haline getirir; imleç kenara yaklaşınca canvas kayar.
@@ -666,6 +668,25 @@ https://api.example.com/search?q={{query.q}}
 Metinleri, görselleri, bağlantıları ve görünürlük kurallarını isteğin döndürdüğü alanlara bağlayın. Repeat bloklarında tekrarlanan her alt ağaç, geçerli öğeyi yerel veri bağlamı olarak alır.
 
 Liste yanıtın içindeyse kaynağın **List path** alanını ona ayarlayın. Yollar noktalı (\`items\`, \`data.results\`) ya da JSONPath biçiminde (\`$.items\`, \`items[0].tags\`, \`$["items"]\`) yazılabilir; baştaki \`$\` yanıtın kendisidir. **Send**'den sonra tek bir nesne olan yanıt, içindeki dizileri listeler — örneğin GitHub arama API'si \`items\` önerir — ve birini seçmek yolu ayarlayıp satırlarını yükler.
+
+### Bağlanan değerleri biçimlendirme
+
+Bağlanan bir alan, biçim verilmedikçe geldiği gibi görünür. **Data binding** altında bir alan seçildiğinde **Format** onu tarihe (*24 Ekim 2026* gibi hazır biçimler ya da \`d MMMM yyyy, HH:mm\` gibi bir kalıp), sayıya veya para birimine çevirir ya da harf durumu ve uzunluk sınırıyla metin olarak bırakır. **Before** ve **After** boş olmayan değeri sarar; **If empty** alan yoksa, null, boş metin ya da boş liste ise gösterilir. Dil ve saat dilimi biçimle birlikte saklanır; böylece canvas, sunucu ve her ziyaretçi aynı metni yazar.
+
+Request veya Repeat içindeki metin de alanları cümleye katabilir; \`{{…}}\` borular ve ifadeler alır:
+
+\`\`\`text
+Yazar: {{author.name | default:"Anonim"}}
+{{published_at | date:"d MMMM yyyy" | locale:tr-TR | tz:Europe/Istanbul}}
+{{price | currency:TRY | locale:tr-TR}}
+{{status | map:draft=Taslak,published=Yayında,*=Bilinmiyor}}
+{{status == "draft" ? "Taslak" : "Yayında"}}
+{{title.replace("-", " ").toUpperCase()}}
+{{tags.map(t => t.name).join(", ")}}
+{{items.find(i => i.type == "main")?.price ?? "—"}}
+\`\`\`
+
+Borular: \`date\`, \`number\`, \`currency\`, \`upper\`, \`lower\`, \`capitalize\`, \`truncate\`, \`prefix\`, \`suffix\`, \`locale\`, \`tz\`, \`map\`, \`replace\` ve \`default\`. İfadeler JavaScript'e benzer ama yorumlanır, hiçbir zaman çalıştırılmaz: satırın alanlarını okur, \`+ - * / % == != < > && || ?? ! ?:\` işleçlerini ve güvenli zinciri kullanır, sabit bir metin ve liste yöntemleri kümesini (\`replace\`, \`split\`, \`slice\`, \`map\`, \`filter\`, \`find\`, \`join\`, …) ve \`Math.*\`, \`String\`, \`Number\`, \`date\`, \`number\`, \`upper\`, \`lower\`, \`len\`, \`default\` yardımcılarını çağırır. Global nesnelere, prototiplere ya da sunucuya ulaşamaz; her değerlendirme adım ve çıktı boyutuyla sınırlıdır, hata veren ifade boş görünür. \`{{params.…}}\`, \`{{query.…}}\` ve \`{{page.…}}\` sayfa değişkeni olarak anlamlarını korur.
 
 ### Yüklemeyi ve hataları ele alın
 

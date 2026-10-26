@@ -90,6 +90,7 @@ import {
     TextArea,
     TextInput,
 } from "./ui";
+import { BindingFormatFields } from "./binding-format";
 
 type Ctx = {
     element: CanvasElement;
@@ -2050,6 +2051,13 @@ function ContentTab({ element, elements, onProps, onSlot, sources, bindingKeys, 
                             onChange={(binding) => onProps({ binding: binding || undefined })}
                         />
                     ))}
+                    {element.binding && (
+                        <BindingFormatFields
+                            format={element.bindingFormat}
+                            media={element.type === "Image" || element.type === "Video"}
+                            onChange={(bindingFormat) => onProps({ bindingFormat })}
+                        />
+                    )}
                     <p className="text-[10px] leading-relaxed text-ed-faint">
                         Uses the returned object directly. Repeat is only needed when you want to render every item in a list.
                     </p>
@@ -2078,8 +2086,15 @@ function ContentTab({ element, elements, onProps, onSlot, sources, bindingKeys, 
                     <p className="text-[10px] leading-relaxed text-ed-faint">
                         {element.type === "Image" || element.type === "Video"
                             ? "The field supplies this element's source URL."
-                            : "The field supplies this element's text."}
+                            : "The field supplies this element's text. Without a field, write it into the text: {{author.name | default:\"Anonim\"}}."}
                     </p>
+                    {element.binding && (
+                        <BindingFormatFields
+                            format={element.bindingFormat}
+                            media={element.type === "Image" || element.type === "Video"}
+                            onChange={(bindingFormat) => onProps({ bindingFormat })}
+                        />
+                    )}
                 </Group>
             )}
 

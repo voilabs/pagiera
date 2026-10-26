@@ -734,6 +734,11 @@ export type CanvasElement = {
      * of using the element's content. Dotted paths work: "author.name".
      */
     binding?: string;
+    /**
+     * How the bound value reads: a date in words, a number with grouping, a
+     * price with its currency, and what to show when the field is empty.
+     */
+    bindingFormat?: import("@/lib/data/format").BindingFormat;
 
     /** Desktop values; every breakpoint falls back to these. */
     base: ElementStyle;

@@ -24,6 +24,17 @@
       ],
       "port": 3100,
       "autoPort": true
+    },
+    {
+      "name": "panel",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "--cwd",
+        "../wordpress",
+        "dev"
+      ],
+      "port": 3000
     }
   ]
 }

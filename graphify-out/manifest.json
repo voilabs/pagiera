@@ -1,8 +1,8 @@
 {
   ".claude/launch.json": {
-    "mtime": 1791802465.6949935,
-    "seen": 1792706455.9924462,
-    "ast_hash": "19bb0547d83f94856469c4c53d37a51a",
+    "mtime": 1792863540.1637516,
+    "seen": 1793019666.9158847,
+    "ast_hash": "8eadb639372afd3f4a78bec499080a87",
     "semantic_hash": ""
   },
   "apps/example/biome.json": {
@@ -330,15 +330,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-content-tr.ts": {
-    "mtime": 1792857592.9151483,
-    "seen": 1792857791.1011653,
-    "ast_hash": "94ce3a2592463361be46985cce65bcd8",
+    "mtime": 1793026752.0430984,
+    "seen": 1793026822.1055238,
+    "ast_hash": "3bfbba9692ec24e42ac4aaf62c926167",
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-content.ts": {
-    "mtime": 1792857592.8925729,
-    "seen": 1792857791.1011677,
-    "ast_hash": "c1b98eb11257583a845c66509716a814",
+    "mtime": 1793026752.0160975,
+    "seen": 1793026822.105531,
+    "ast_hash": "fadc4b7ad5964e4888230e060f907d30",
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-localized.ts": {
@@ -348,9 +348,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-systems.ts": {
-    "mtime": 1792857592.8950763,
-    "seen": 1792857791.1012893,
-    "ast_hash": "8753a41167da0afb40cdd0c04b27558d",
+    "mtime": 1793026752.019099,
+    "seen": 1793026822.1060042,
+    "ast_hash": "c3b3d12c9d52a1e08a7f33511f5ba0be",
     "semantic_hash": ""
   },
   "apps/web/src/lib/faq-tr.ts": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/package.json": {
-    "mtime": 1792856695.071819,
-    "seen": 1792857791.104939,
-    "ast_hash": "8efaf4795697ceab5160caef3bf781a5",
+    "mtime": 1792858185.7293727,
+    "seen": 1793019666.9345531,
+    "ast_hash": "10f8c925422f39522ba700c9ea62f69d",
     "semantic_hash": ""
   },
   "packages/pagiera/q.mjs": {
@@ -720,9 +720,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/inspector.tsx": {
-    "mtime": 1792840225.514142,
-    "seen": 1792840535.6667974,
-    "ast_hash": "90a6f80b9e4da29c75572d57901c954c",
+    "mtime": 1793026130.4390583,
+    "seen": 1793026822.128095,
+    "ast_hash": "fa1935927e62e9904fe0f8f9113c3fdd",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/app/p/editor/library.tsx": {
@@ -1104,9 +1104,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/style.ts": {
-    "mtime": 1792733763.4806225,
-    "seen": 1792733797.6024253,
-    "ast_hash": "40230c4825b124fefc472acaa304b6a8",
+    "mtime": 1793019409.6193762,
+    "seen": 1793019666.954428,
+    "ast_hash": "e438e78f1cd92774d53a656e76896749",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/template-registry.ts": {
@@ -1134,15 +1134,15 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/types.ts": {
-    "mtime": 1792857576.2474892,
-    "seen": 1792857791.1181815,
-    "ast_hash": "0c9af9098d914ec1967c788aed94107d",
+    "mtime": 1793026016.8813848,
+    "seen": 1793026822.1539762,
+    "ast_hash": "249ea72ed2d2c8015cc0e0d6a4539f03",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/editor/validate.ts": {
-    "mtime": 1792857576.249495,
-    "seen": 1792857791.1181834,
-    "ast_hash": "ecffc68e46ff158fc0f32525a450e0e8",
+    "mtime": 1793026561.9444904,
+    "seen": 1793026822.1539927,
+    "ast_hash": "aba8b2b486691418ae8943d941cfa391",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/pages.ts": {
@@ -1152,9 +1152,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/render/bind.ts": {
-    "mtime": 1791802465.8849072,
-    "seen": 1792706455.9925926,
-    "ast_hash": "e31292e8cb93a6b3790be45cae825e6f",
+    "mtime": 1793026590.6055577,
+    "seen": 1793026822.154513,
+    "ast_hash": "e901f7aca264c56cb8b5b487338756d9",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/render/carousel-content.tsx": {
@@ -1575,6 +1575,30 @@
     "mtime": 1792750850.7222774,
     "seen": 1792751479.7270176,
     "ast_hash": "c246e0fa67cfd930960820b6613728d0",
+    "semantic_hash": ""
+  },
+  "packages/pagiera/scripts/test-binding-format.ts": {
+    "mtime": 1793026636.8924336,
+    "seen": 1793026822.1200948,
+    "ast_hash": "52934148a8370a501217da8c8a3ba8f0",
+    "semantic_hash": ""
+  },
+  "packages/pagiera/src/internal/app/p/editor/binding-format.tsx": {
+    "mtime": 1793026112.628171,
+    "seen": 1793026822.1246984,
+    "ast_hash": "df1e4329b3116e72f3f9a1ff759acf0c",
+    "semantic_hash": ""
+  },
+  "packages/pagiera/src/internal/lib/data/expression.ts": {
+    "mtime": 1793026590.6085584,
+    "seen": 1793026822.1428356,
+    "ast_hash": "bc9fb11c984dd6cc8d006cfe06c6a7e0",
+    "semantic_hash": ""
+  },
+  "packages/pagiera/src/internal/lib/data/format.ts": {
+    "mtime": 1793026590.6065657,
+    "seen": 1793026822.1428385,
+    "ast_hash": "fc884e375a22abcc8477b6d84c9c1d8a",
     "semantic_hash": ""
   }
 }
