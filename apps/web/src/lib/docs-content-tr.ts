@@ -439,6 +439,12 @@ saveTranslation isteğe bağlıdır. Verildiğinde, bir dil seçiliyken tuvalde 
 
 Bu kayıtlar yayımlanmış bir npm sürümünü değil, mevcut kaynak ağacındaki çalışmaları açıklar. Pakette kullanılabilirlik, kurduğunuz sürüme göre kontrol edilmelidir.
 
+### Çalışma zamanı
+
+- İçerik Güvenlik Politikası (CSP) \`'unsafe-eval'\` izni vermeyen sitelerde, istemci tarafı gezintiden sonra (ör. Next.js \`<Link>\`) giriş animasyonları, katman eylemleri, formlar ve özel sayfa betikleri çalışmıyordu; düzeltildi. Sayfa betikleri artık \`new Function\` yerine satır içi \`<script>\` öğesi olarak çalışır (sayfada CSP nonce'u varsa o da kullanılır). Betik yine de çalışamazsa giriş animasyonunun gizlemesi kaldırılır ve içerik görünür kalır.
+- Alt öğesi olmayan metin öğeleri artık üç sütunlu ızgara olarak yerleşir; özel CSS ile eklenen \`::before\`/\`::after\` (ayraç, simge) metni aşağı itmek yerine metinle aynı satırda durur. Dikey hizalama değişmedi.
+- Resim \`src\` ve \`alt\`, bağlantı \`href\` ve "Open a link" artık tek başına \`{{…}}\` şablonu (\`{{cover.url}}\`, \`{{html_url}}\`) ve adres içinde şablon (\`https://cdn.ornek/{{file}}.png\`) kabul eder. Doldurulan adres sayfa çizilirken yeniden denetlenir: site yolu, \`#\`, http(s) ya da satır içi raster görsel dışındaki adresler atılır. Doldurulamayan şablon için hiç istek yapılmaz.
+
 ### Dokümantasyon
 
 - Düz renkli marka vurguları ve eylemler için Pagiera'nın mor ana rengi korundu; nötr gri biçimlendirme marka paletinin yerini almak yerine çevredeki yüzeylere uygulandı.

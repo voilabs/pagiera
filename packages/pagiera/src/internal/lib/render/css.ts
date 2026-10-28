@@ -6,6 +6,8 @@ import {
     rootStyleToCss,
     splitBand,
     styleToCss,
+    textOnly,
+    textOnlyPlacementCss,
 } from "@/lib/editor/style";
 import {
     baseOf,
@@ -138,6 +140,7 @@ function rulesFor(
             parentLayout: parentStyle?.layout ?? "stack",
             parentDirection: parentStyle?.direction ?? "column",
             parentAlign: parentStyle?.align ?? rootStyle.align,
+            textOnly: textOnly(element, byId),
         },
         element,
     );
@@ -196,6 +199,7 @@ function interactionDeclarations(
         parentLayout: parentStyle?.layout ?? "stack",
         parentDirection: parentStyle?.direction ?? "column",
         parentAlign: parentStyle?.align ?? rootStyle.align,
+        textOnly: textOnly(element, byId),
     } as const;
     const resting = resolveStyle(element, breakpoint, cascade);
     const restingCss = styleToCss(resting, context, element);
@@ -487,6 +491,9 @@ export function stylesheetFor(
             // choices lay themselves out rather than inheriting the box's own
             // flow, which is sized for a single control.
             ".pg-node[role=radiogroup]{display:flex;flex-direction:column;gap:8px}" +
+            // Text with a `::before`/`::after` from custom CSS keeps them on
+            // the text's line (the node itself is a grid, see `textOnly`).
+            textOnlyPlacementCss(".pg-text-only") +
             ".pg-choice{display:flex;align-items:center;gap:8px;cursor:pointer}" +
             ".pg-choice input{accent-color:currentColor;margin:0}" +
             ".pg-node:is(input[type=checkbox],input[type=radio]){accent-color:currentColor}" +

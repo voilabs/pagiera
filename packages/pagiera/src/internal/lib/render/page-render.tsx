@@ -8,7 +8,7 @@ import { MarqueeRuntime, PageScript } from "./marquee-runtime";
 import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import { isBand, resolveStyle } from "@/lib/editor/style";
 import { childrenOf, parkedIds } from "@/lib/editor/tree";
-import type { CanvasElement, EntranceSplit, RootStyle } from "@/lib/editor/types";
+import { type CanvasElement, type EntranceSplit, isTextual, type RootStyle } from "@/lib/editor/types";
 import { bindElement, bindPageContext, type PageContext, type PageData, type Row, rowsFor } from "./bind";
 import { classFor, ENTRANCE_SCRIPT, hasEntrances, stylesheetFor } from "./css";
 import { customTagOf, withCustom } from "./custom";
@@ -172,6 +172,8 @@ function RenderedNode({
         ? {
               ...spoken,
               href: bindPageContext(spoken.href, context),
+              src: bindPageContext(spoken.src, context),
+              alt: bindPageContext(spoken.alt, context),
               defaultValue: bindPageContext(spoken.defaultValue, context),
               content: bindPageContext(spoken.content, context),
               formAction: bindPageContext(spoken.formAction, context),
@@ -185,6 +187,9 @@ function RenderedNode({
         `pg-node ${classFor(element.id)}` +
         (element.componentRole === "master" || element.componentRole === "instance" ? " pg-component-root" : "") +
         (band ? " pg-band" : "") +
+        // Matches `textOnly` in the stylesheet: text with no child elements is
+        // a grid, and this class places its text and pseudo-elements.
+        (isTextual(element.type) && children.length === 0 ? " pg-text-only" : "") +
         (element.type === "List" && element.listStyle !== "none"
             ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}`
             : "") +

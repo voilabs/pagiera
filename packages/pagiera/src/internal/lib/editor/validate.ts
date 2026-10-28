@@ -160,6 +160,24 @@ function safeImageSource(value: unknown): string | undefined {
     return safeUrl(trimmed);
 }
 
+/**
+ * `src` and `href` may be `{{…}}` templates filled from a data row:
+ * `{{cover.url}}`, `/blog/{{slug}}`, `https://cdn.example/{{file}}`. Each
+ * token is replaced with a harmless URL and the result must pass the normal
+ * check, so the author cannot write a scheme around a token
+ * (`javascript:{{x}}`). What the row fills in is checked again when the page
+ * renders (`safeResolvedUrl`).
+ */
+const TEMPLATE_TOKEN = /\{\{[^{}]*\}\}/g;
+function templatedUrl(value: unknown, check: (value: unknown) => string | undefined) {
+    const direct = check(value);
+    if (direct !== undefined) return direct;
+    if (typeof value !== "string" || !value.includes("{{")) return undefined;
+    const trimmed = value.trim();
+    if (trimmed.length > MAX_URL) return undefined;
+    return check(trimmed.replace(TEMPLATE_TOKEN, "https://template.invalid/x")) === undefined ? undefined : trimmed;
+}
+
 /** Safe for interpolation into `url("…")`. */
 function imageUrl(value: unknown) {
     const raw = safeUrl(value);
@@ -771,7 +789,7 @@ export function parseElements(
             textEffects: normalizeTextEffects(el.textEffects),
             carouselControl: normalizeCarouselControl(el.carouselControl),
             interactive: normalizeInteractive(el.interactive) ?? restoreInteractiveElement({ code: str(el.code, MAX_CODE) }).interactive,
-            src: el.type === "Image" ? safeImageSource(el.src) : safeUrl(el.src),
+            src: templatedUrl(el.src, el.type === "Image" ? safeImageSource : safeUrl),
             alt: str(el.alt, MAX_SHORT_STRING),
             objectFit: oneOf(el.objectFit, ["cover", "contain", "fill", "none"] as const, "cover"),
             objectPosition: el.objectPosition === undefined ? undefined : oneOf(el.objectPosition, ["center", "top", "bottom", "left", "right"] as const, "center"),
@@ -807,7 +825,7 @@ export function parseElements(
             formErrorMessage: str(el.formErrorMessage, MAX_SHORT_STRING),
             formResetOnSuccess: el.formResetOnSuccess === true ? true : undefined,
             buttonType: oneOf(el.buttonType, ["button", "submit", "reset"] as const, "button"),
-            href: safeUrl(el.href),
+            href: templatedUrl(el.href, safeUrl),
             tag: customTag(el.tag),
             customClass: classList(el.customClass),
             customStyle: inlineStyle(el.customStyle),
@@ -829,7 +847,7 @@ export function parseElements(
                           const value =
                               action !== "navigate"
                                   ? str(interaction.value, MAX_SHORT_STRING)?.replace(/[^a-zA-Z0-9_-]/g, "")
-                                  : safeUrl(interaction.value);
+                                  : templatedUrl(interaction.value, safeUrl);
                           return value
                               ? {
                                     trigger: "click" as const,

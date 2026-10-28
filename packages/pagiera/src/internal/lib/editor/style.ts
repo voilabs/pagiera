@@ -8,6 +8,7 @@ import {
     type Breakpoint,
     type CanvasElement,
     type ElementStyle,
+    isTextual,
     type Justify,
     type RootStyle,
     type StyleKey,
@@ -232,7 +233,54 @@ export type BoxContext = {
     parentLayout: "absolute" | "stack";
     parentDirection: "row" | "column";
     parentAlign?: Align;
+    /**
+     * A textual element without child elements: laid out as a grid so
+     * pseudo-elements from custom CSS stay on the text's line. See `textOnly`.
+     */
+    textOnly?: boolean;
 };
+
+/** Vertical placement of a lone text line, from justify (column) or align (row). */
+const TEXT_VERTICAL: Record<Justify | Align, CSSProperties["alignContent"]> = {
+    start: "start",
+    center: "center",
+    end: "end",
+    between: "start",
+    stretch: "stretch",
+};
+
+/**
+ * Placement inside a text-only grid (see `textOnly`): every child — the text
+ * itself, or the editor's text box — in the middle column, `::before` and
+ * `::after` beside it on the first line. Without these the text would be
+ * auto-placed in the narrow first column whenever there is no `::before`.
+ * `selector` is the text node: `.pg-text-only` on a published page.
+ */
+export function textOnlyPlacementCss(selector: string) {
+    return (
+        `${selector}>*{grid-column:2}` +
+        `${selector}::before{grid-column:1;grid-row:1}` +
+        `${selector}::after{grid-column:3;grid-row:1}`
+    );
+}
+
+/** Ids that some element names as its parent, computed once per element map. */
+const parentIdsByMap = new WeakMap<object, Set<string>>();
+
+/** Whether an element is text with no child elements of its own. */
+export function textOnly(
+    element: Pick<CanvasElement, "id" | "type">,
+    byId: Map<string, Pick<CanvasElement, "parentId">>,
+) {
+    if (!isTextual(element.type)) return false;
+    let parents = parentIdsByMap.get(byId);
+    if (!parents) {
+        parents = new Set();
+        for (const other of byId.values()) if (other.parentId) parents.add(other.parentId);
+        parentIdsByMap.set(byId, parents);
+    }
+    return !parents.has(element.id);
+}
 
 /**
  * Turns a resolved style into inline CSS. Positioning depends on the parent:
@@ -336,6 +384,28 @@ export function styleToCss(
         css.display = "grid";
         css.gridTemplateColumns = `repeat(${Math.max(1, style.columns)}, minmax(0, 1fr))`;
         css.alignItems = ALIGN_MAP[style.align];
+    }
+
+    // A text element with nothing but its text. As a flex column, a
+    // `::before`/`::after` added by custom CSS (a separator dot, an icon, a
+    // label) became a line of its own above or below the text and pushed it
+    // out of line with its neighbours. A three-column grid keeps them on the
+    // text's line: before | text | after. The vertical placement the author
+    // chose moves to `align-content`, which does for the single row what
+    // `justify-content` did for the column; with no pseudo-elements the side
+    // columns are empty and the text lays out exactly as before.
+    if (context.textOnly && style.layout === "stack") {
+        const vertical = style.direction === "row" ? style.align : style.justify;
+        css.display = "grid";
+        css.gridTemplateColumns = "auto minmax(0, 1fr) auto";
+        css.alignContent = TEXT_VERTICAL[vertical];
+        css.alignItems = "baseline";
+        css.justifyContent = undefined;
+        css.flexDirection = undefined;
+        css.flexWrap = undefined;
+        // Empty side columns would still be separated by the gap and push
+        // the text sideways; spacing beside a pseudo-element is its margin.
+        css.columnGap = undefined;
     }
 
     // An absolute container is still a positioning context for its children.

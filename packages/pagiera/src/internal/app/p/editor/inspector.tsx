@@ -1938,13 +1938,13 @@ function ContentTab({ element, elements, onProps, onSlot, sources, bindingKeys, 
                     <TextInput
                         label="Source"
                         value={element.src ?? ""}
-                        placeholder="https://…"
+                        placeholder="https://… or {{cover.url}}"
                         onChange={(src) => onProps({ src })}
                     />
                     <TextInput
                         label="Alt text"
                         value={element.alt ?? ""}
-                        placeholder="Describes the image"
+                        placeholder="Describes the image, or {{title}}"
                         onChange={(alt) => onProps({ alt })}
                     />
                     <SelectInput

@@ -330,9 +330,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-content-tr.ts": {
-    "mtime": 1793026752.0430984,
-    "seen": 1793026822.1055238,
-    "ast_hash": "3bfbba9692ec24e42ac4aaf62c926167",
+    "mtime": 1793043337.7046964,
+    "seen": 1793043367.379851,
+    "ast_hash": "daeb9fabf491223fa901e5e5c02692e3",
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-content.ts": {
@@ -348,9 +348,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/docs-systems.ts": {
-    "mtime": 1793026752.019099,
-    "seen": 1793026822.1060042,
-    "ast_hash": "c3b3d12c9d52a1e08a7f33511f5ba0be",
+    "mtime": 1793043337.7035372,
+    "seen": 1793043367.3802807,
+    "ast_hash": "342d1cd17049539bb8e7545ce690615a",
     "semantic_hash": ""
   },
   "apps/web/src/lib/faq-tr.ts": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/package.json": {
-    "mtime": 1792858185.7293727,
-    "seen": 1793019666.9345531,
-    "ast_hash": "10f8c925422f39522ba700c9ea62f69d",
+    "mtime": 1793026960.36618,
+    "seen": 1793043367.3860362,
+    "ast_hash": "2b6b266a45c4e37ad1d7993c7ce3b067",
     "semantic_hash": ""
   },
   "packages/pagiera/q.mjs": {
@@ -1194,9 +1194,9 @@
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/render/marquee-runtime.tsx": {
-    "mtime": 1792703968.65794,
-    "seen": 1792706455.992597,
-    "ast_hash": "180cfdc243b49ddfb8d7b9a42a6eb7a9",
+    "mtime": 1793043186.7252226,
+    "seen": 1793043367.4086754,
+    "ast_hash": "61f2f92aac8b1647d1fb91c15cb6d345",
     "semantic_hash": ""
   },
   "packages/pagiera/src/internal/lib/render/marquee.tsx": {

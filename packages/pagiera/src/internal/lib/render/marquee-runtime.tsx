@@ -9,6 +9,29 @@ type RanFor = Record<string, string | undefined>;
 const noSubscription = () => () => {};
 
 /**
+ * Runs code as an inline `<script>` and reports whether it executed.
+ *
+ * The body is wrapped in a function so its variables stay local, as they did
+ * under `new Function`. A nonce on the page's own scripts is copied, so a
+ * nonce-based policy accepts it too. The first statement sets a one-off flag:
+ * a script the policy refuses never sets it. An error thrown later in the
+ * code still counts as run; it reaches the console like any page error.
+ */
+function runInline(code: string) {
+    const flag = `__pgExec${Math.random().toString(36).slice(2)}`;
+    const host = window as unknown as Record<string, unknown>;
+    const script = document.createElement("script");
+    const nonce = document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce;
+    if (nonce) script.nonce = nonce;
+    script.text = `window[${JSON.stringify(flag)}]=1;(function(){\n${code}\n})();`;
+    document.head.appendChild(script);
+    script.remove();
+    const ran = host[flag] === 1;
+    delete host[flag];
+    return ran;
+}
+
+/**
  * An inline page script that also runs after a client-side navigation.
  *
  * A `<script>` only executes when the HTML parser inserts it. One that React
@@ -22,6 +45,12 @@ const noSubscription = () => () => {};
  * whenever the note does not match the page now on screen. The note carries
  * the page's signature because moving between two pages of one route keeps
  * this component mounted and only changes the document around it.
+ *
+ * The effect runs the code as a `<script>` element of its own, never through
+ * `new Function`: that is `eval`, and a site whose Content Security Policy
+ * omits `'unsafe-eval'` — the normal case in production — blocked it, so
+ * after a link every entrance stayed hidden. An appended script is an inline
+ * script, which the same policy already allows for the server-rendered tag.
  */
 export function PageScript({ name, code, page }: { name: string; code: string; page: string }) {
     // True while the server renders and while the client hydrates that HTML,
@@ -37,11 +66,11 @@ export function PageScript({ name, code, page }: { name: string; code: string; p
             delete ran[name];
             return;
         }
-        try {
-            new Function(code)();
-        } catch (error) {
-            console.error(error);
-        }
+        if (runInline(code)) return;
+        console.error(`Pagiera: the "${name}" page script could not run (blocked by the Content Security Policy?).`);
+        // Entrances hide content until the script reveals it. When it cannot
+        // run, show everything rather than leave the page blank.
+        if (name === "entrance") document.documentElement.classList.remove("pg-ready");
     }, [code, name, page]);
     if (!fromServer) return null;
     return (

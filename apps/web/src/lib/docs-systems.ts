@@ -531,6 +531,12 @@ Translations are your data. Decide who may change them in your own saveTranslati
 
 These entries describe work in the current source tree, not a published npm release. Package availability must be checked against the version you install.
 
+### Runtime
+
+- Fixed entrances, layer actions, forms and custom page scripts not running after a client-side navigation (for example a Next.js \`<Link>\`) on sites whose Content Security Policy omits \`'unsafe-eval'\`. Page scripts now run as inline \`<script>\` elements (copying the page's CSP nonce when present) instead of \`new Function\`. If a script still cannot run, entrance hiding is removed so content stays visible.
+- Text elements without child elements now lay out as a three-column grid, so a \`::before\`/\`::after\` added by custom CSS (a separator, an icon) sits on the text's line instead of pushing the text down. Vertical alignment is unchanged.
+- Image \`src\` and \`alt\`, link \`href\` and "Open a link" now accept \`{{…}}\` templates on their own (\`{{cover.url}}\`, \`{{html_url}}\`) as well as inside an address (\`https://cdn.example/{{file}}.png\`). The filled-in address is checked again when the page renders: anything other than a site path, \`#\`, http(s) or an inline raster image is dropped. An unfilled template is never requested.
+
 ### Documentation
 
 - Preserved the Pagiera purple primary color for solid brand accents and actions; neutral gray styling applies to surrounding surfaces rather than replacing the brand palette.

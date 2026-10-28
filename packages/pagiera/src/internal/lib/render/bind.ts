@@ -70,35 +70,98 @@ export function bindTemplate(value: string | undefined, row: Row) {
 }
 
 /**
+ * Whether an address that came out of a template or a data field may be
+ * written into the page: a site path, a fragment, http(s), or an inline
+ * raster image for `src`. The editor only checks what the author typed;
+ * `{{url}}` can resolve to anything a data source returns, including
+ * `javascript:`, so the resolved value is checked again here.
+ */
+export function safeResolvedUrl(value: string | undefined, image = false) {
+    if (value === undefined) return undefined;
+    const trimmed = value.trim();
+    if (trimmed === "") return "";
+    if (trimmed.startsWith("/") || trimmed.startsWith("#")) return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (image && /^data:image\/(?:png|jpe?g|webp|gif|avif);base64,/i.test(trimmed)) return trimmed;
+    return undefined;
+}
+
+/** A `{{…}}` the row could not fill: never requested, never linked. */
+const unresolved = (value: string | undefined) => value?.includes("{{") ?? false;
+
+/**
  * Applies a row to an element. A bound Image or Video takes its `src` from the
- * field; anything else takes its text. Returns the element unchanged when
- * there is nothing to bind, so callers can use the result directly.
+ * field; anything else takes its text. `src`, `alt` and `href` may also hold
+ * `{{…}}` templates — `{{cover.url}}`, `https://cdn.example/{{file}}` — read
+ * from the same row. Returns the element unchanged when there is nothing to
+ * bind, so callers can use the result directly.
  */
 export function bindElement(
     element: CanvasElement,
     row: Row | undefined,
 ): CanvasElement {
-    if (!row) return element;
+    const media = element.type === "Image" || element.type === "Video";
+    if (!row) {
+        // Outside any data (the editor before a source loads, a template the
+        // author is still wiring) a templated address has no value yet; an
+        // <img> would request the literal "{{cover.url}}".
+        const navigate = element.interaction?.action === "navigate";
+        if (
+            !unresolved(element.href) &&
+            !(media && unresolved(element.src)) &&
+            !(navigate && unresolved(element.interaction?.value))
+        )
+            return element;
+        return {
+            ...element,
+            href: unresolved(element.href) ? undefined : element.href,
+            src: media && unresolved(element.src) ? undefined : element.src,
+            interaction: navigate && unresolved(element.interaction?.value) ? undefined : element.interaction,
+        };
+    }
 
-    const href = bindTemplate(element.href, row);
+    const templatedHref = bindTemplate(element.href, row);
+    const href = templatedHref === element.href ? element.href : safeResolvedUrl(templatedHref);
+    // "Open a link" with `{{html_url}}`: the filled address is checked like
+    // an href; one that is unsafe or still unfilled drops the click action.
+    const templatedValue = element.interaction
+        ? bindTemplate(element.interaction.value, row) ?? element.interaction.value
+        : undefined;
+    const navigateTo =
+        element.interaction?.action === "navigate" && templatedValue !== element.interaction.value
+            ? safeResolvedUrl(templatedValue)
+            : templatedValue;
     const interaction = element.interaction
-        ? { ...element.interaction, value: bindTemplate(element.interaction.value, row) ?? element.interaction.value }
+        ? navigateTo === undefined || (element.interaction.action === "navigate" && unresolved(navigateTo))
+            ? undefined
+            : { ...element.interaction, value: navigateTo }
         : undefined;
 
     // Text written around a field — "Yazar: {{author.name}}" — reads the row
     // too. A bound element takes its whole text from the field instead.
     const content = element.binding ? element.content : bindTemplate(element.content, row);
+    const templatedSrc = media ? bindTemplate(element.src, row) : element.src;
+    const src = templatedSrc === element.src ? element.src : safeResolvedUrl(templatedSrc, true);
+    const alt = media ? bindTemplate(element.alt, row) : element.alt;
 
-    let bound = href !== element.href || interaction?.value !== element.interaction?.value || content !== element.content
-        ? { ...element, href, interaction, content }
+    let bound = href !== element.href || interaction?.value !== element.interaction?.value || content !== element.content || src !== element.src || alt !== element.alt
+        ? { ...element, href, interaction, content, src, alt }
         : element;
+    if (unresolved(bound.href) || (media && unresolved(bound.src)))
+        bound = {
+            ...bound,
+            href: unresolved(bound.href) ? undefined : bound.href,
+            src: media && unresolved(bound.src) ? undefined : bound.src,
+        };
 
     if (!element.binding) return bound;
 
     const value = formatValue(selectPath(row, element.binding), element.bindingFormat);
-    if (element.type === "Image" || element.type === "Video") {
-        // An empty result would blank the element; keep the authored fallback.
-        return value ? { ...bound, src: value } : bound;
+    if (media) {
+        // An empty or unsafe result would blank the element; keep the
+        // authored fallback.
+        const resolved = safeResolvedUrl(value, true);
+        return resolved ? { ...bound, src: resolved } : bound;
     }
     return { ...bound, content: value };
 }

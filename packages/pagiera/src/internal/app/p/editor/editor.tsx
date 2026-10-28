@@ -102,6 +102,8 @@ import {
     rootStyleToCss,
     splitBand,
     styleToCss,
+    textOnly,
+    textOnlyPlacementCss,
 } from "@/lib/editor/style";
 import { loopAmount, loopAnimation, stateTransition } from "@/lib/editor/motion";
 import {
@@ -1829,6 +1831,7 @@ export default function Editor({
                 parentLayout: parentStyle?.layout ?? rootStyle.layout,
                 parentDirection: parentStyle?.direction ?? rootStyle.direction,
                 parentAlign: parentStyle?.align ?? rootStyle.align,
+                textOnly: textOnly(element, byId),
             };
         },
         [byId, breakpoint, rootStyle.align, rootStyle.direction, rootStyle.layout],
@@ -4457,6 +4460,7 @@ export default function Editor({
             <div
                 key={`${keyPrefix}${el.id}`}
                 data-canvas-element={el.id}
+                data-pg-text-only={textOnly(el, byId) ? "" : undefined}
                 {...carouselControlAttributes(el.carouselControl)}
                 {...disclosureAttributes(el.disclosure)}
                 style={split ? split.shell : css}
@@ -6294,6 +6298,7 @@ export default function Editor({
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: webkit scrollbar pseudo-elements have no Tailwind utility
                 dangerouslySetInnerHTML={{
                     __html: `${customFontCss}
+                        ${textOnlyPlacementCss("[data-pg-text-only]")}
                         .canvas-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
                         .canvas-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
                     `,
