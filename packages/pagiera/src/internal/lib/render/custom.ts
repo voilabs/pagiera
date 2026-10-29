@@ -12,6 +12,9 @@ import { CUSTOM_TAGS, RESERVED_ATTRIBUTES } from "@/lib/editor/types";
  */
 export type CustomMarkup = {
     disclosure?: Disclosure;
+    /** Action workflows and overlay marker; see `lib/editor/actions.ts`. Kept structural so this module stays dependency-free. */
+    actions?: unknown[];
+    overlay?: { open?: boolean };
     carouselControl?: CarouselControl;
     tag?: string;
     customClass?: string;
@@ -94,6 +97,9 @@ export function withCustom(
         ...custom,
         ...carouselControlAttributes(element.carouselControl),
         ...disclosureAttributes(element.disclosure),
+        "data-pg-actions": element.actions?.length ? JSON.stringify(element.actions) : undefined,
+        "data-pg-overlay": element.overlay ? JSON.stringify(element.overlay) : undefined,
+        "data-pg-open": element.overlay?.open ? "true" : undefined,
         className: element.customClass ? `${props.className} ${element.customClass}` : props.className,
         style: inline
             ? { ...(props.style as CSSProperties | undefined), ...inline }

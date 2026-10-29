@@ -1,3 +1,4 @@
+import { remapActions } from "./actions";
 import { type Cascade, DEFAULT_CASCADE } from "./cascade";
 import { applyStyle, resolveStyle } from "./style";
 import {
@@ -94,6 +95,8 @@ export function cloneSubtree(
             ...el,
             id: remap(el.id),
             parentId: el.parentId ? idMap.get(el.parentId) : undefined,
+            // A trigger and its popover copied together keep pointing at each other.
+            ...(el.actions ? { actions: remapActions(el.actions, remap) } : {}),
             // Only the root shifts; descendants stay positioned relative to it.
             base:
                 el.id === rootId

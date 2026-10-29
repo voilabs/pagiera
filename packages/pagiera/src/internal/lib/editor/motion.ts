@@ -125,6 +125,10 @@ export function entranceFrom(
             return { opacity: 0, scale: "0.6" };
         case "reveal":
             return { clipPath: "inset(0 0 100% 0)", translate: "0 24px" };
+        case "flip":
+            return { opacity: 0, rotate: "x 70deg" };
+        case "shrink":
+            return { opacity: 0, scale: "1.12" };
         case "custom": {
             const frame: MotionFrame = {};
             if (style.entranceOpacity < 100) frame.opacity = style.entranceOpacity / 100;
@@ -149,6 +153,48 @@ export function frameToCss(frame: MotionFrame) {
 /** The opposite of a reveal's clip, so the keyframe has a known end to wipe to. */
 export function entranceTo(frame: MotionFrame): MotionFrame {
     return frame.clipPath ? { clipPath: "inset(0 0 0% 0)" } : {};
+}
+
+/* ------------------------------------------------------------ action motion */
+
+/**
+ * The hidden end of a show or hide driven by the action engine.
+ *
+ * A show plays from this frame to the element's own style; a hide plays the
+ * same keyframes in reverse. One description serves both, so a popover that
+ * slides down on open slides back up on close.
+ */
+export function actionFrame(animation: import("./actions").ActionAnimation): MotionFrame {
+    const distance = animation.distance ?? 24;
+    const offset = (direction = "up") =>
+        direction === "up" ? `0 ${distance}px` : direction === "down" ? `0 -${distance}px` : direction === "left" ? `-${distance}px 0` : `${distance}px 0`;
+    switch (animation.type) {
+        case "fade":
+            return { opacity: 0 };
+        case "slide":
+            return { opacity: 0, translate: offset(animation.direction) };
+        case "scale":
+            return { opacity: 0, scale: "0.92" };
+        case "zoom":
+            return { opacity: 0, scale: "0.8" };
+        case "pop":
+            return { opacity: 0, scale: "0.5" };
+        case "blur":
+            return { opacity: 0, filter: "blur(12px)" };
+        case "flip":
+            return { opacity: 0, rotate: animation.direction === "left" || animation.direction === "right" ? "y 80deg" : "x 80deg" };
+        default:
+            return {};
+    }
+}
+
+export function actionTiming(animation: import("./actions").ActionAnimation) {
+    const easing = animation.bezier
+        ? `cubic-bezier(${animation.bezier})`
+        : animation.type === "pop"
+          ? "cubic-bezier(.34,1.56,.64,1)"
+          : "cubic-bezier(.16,1,.3,1)";
+    return { duration: animation.duration, easing };
 }
 
 /* -------------------------------------------------------------------- loops */

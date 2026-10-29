@@ -5,6 +5,8 @@ import { interactiveDocument, restoreInteractiveElement, upgradeCarouselElements
 import { CarouselContent } from "./carousel-content";
 import { MarqueeContent } from "./marquee";
 import { MarqueeRuntime, PageScript } from "./marquee-runtime";
+import { OVERLAY_CSS } from "./actions";
+import { hasActions } from "../editor/actions";
 import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import { isBand, resolveStyle } from "@/lib/editor/style";
 import { childrenOf, parkedIds } from "@/lib/editor/tree";
@@ -106,9 +108,9 @@ export function RenderedPage({
         <>
             <style
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: the sheet is generated from validated style values, never raw user markup
-                dangerouslySetInnerHTML={{ __html: stylesheetFor(elements, rootStyle) }}
+                dangerouslySetInnerHTML={{ __html: stylesheetFor(elements, rootStyle) + (hasActions(elements) ? OVERLAY_CSS : "") }}
             />
-            <MarqueeRuntime enabled={includeScripts && elements.some(element => element.interactive || element.disclosure)}>
+            <MarqueeRuntime enabled={includeScripts && (elements.some(element => element.interactive || element.disclosure) || hasActions(elements))}>
                 {childrenOf(elements, undefined).map((el) => (
                     <RenderedNode
                         key={el.id}

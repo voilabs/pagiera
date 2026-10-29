@@ -244,6 +244,8 @@ export type Entrance =
     | "blur"
     | "pop"
     | "reveal"
+    | "flip"
+    | "shrink"
     | "custom";
 export type MotionCurve = "ease" | "spring";
 export type CursorStyle = "auto" | "default" | "pointer" | "text" | "grab" | "zoom-in" | "none";
@@ -589,6 +591,10 @@ export type ComponentSlotProps = {
 
 export type CanvasElement = {
     disclosure?: import('./disclosure').Disclosure;
+    /** Workflows this layer runs: trigger → steps. See `actions.ts`. */
+    actions?: import('./actions').ActionWorkflow[];
+    /** Marks this layer as a popover, modal or dropdown the action engine opens and closes. */
+    overlay?: import('./actions').Overlay;
     fieldAppearance?: import('./field-appearance').FieldAppearance;
     textEffects?: import('./text-effects').TextEffects;
     /**
@@ -1582,6 +1588,8 @@ export const ENTRANCES: Array<{ label: string; value: Entrance }> = [
     { label: "Blur in", value: "blur" },
     { label: "Pop", value: "pop" },
     { label: "Reveal (wipe up)", value: "reveal" },
+    { label: "Flip in", value: "flip" },
+    { label: "Shrink in", value: "shrink" },
     { label: "Custom", value: "custom" },
 ];
 

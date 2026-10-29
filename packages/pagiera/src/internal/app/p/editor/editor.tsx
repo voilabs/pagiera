@@ -177,6 +177,8 @@ import { CarouselEditor } from "./ui/carousel-editor";
 import { carouselControlAttributes } from "@/lib/editor/carousel-controls";
 import { disclosureAttributes, disclosureChildren } from '@/lib/editor/disclosure';
 import { mountDisclosures } from '@/lib/render/disclosure';
+import { mountActions } from '@/lib/render/actions';
+import { actionAttributes, overlayPreset } from '@/lib/editor/actions';
 import { canvasTargetSelector } from "@/lib/editor/canvas-target";
 import { applyPageLayout } from "@/lib/editor/page-layout";
 
@@ -2695,6 +2697,9 @@ export default function Editor({
     useEffect(() => {
         if (effectsPreview && viewportRef.current) return mountDisclosures(viewportRef.current);
     }, [effectsPreview, elements]);
+    useEffect(() => {
+        if (effectsPreview && viewportRef.current) return mountActions(viewportRef.current);
+    }, [effectsPreview, elements]);
     const selectionSelector = selectedForChrome
         ? canvasTargetSelector(selectedForChrome, breakpoint, parkedSubtree.has(selectedForChrome))
         : null;
@@ -4463,6 +4468,7 @@ export default function Editor({
                 data-pg-text-only={textOnly(el, byId) ? "" : undefined}
                 {...carouselControlAttributes(el.carouselControl)}
                 {...disclosureAttributes(el.disclosure)}
+                {...(effectsPreview ? actionAttributes(el) : undefined)}
                 style={split ? split.shell : css}
                 onMouseDown={(event) => handleElementMouseDown(event, interactionElement, frame.bp)}
                 onMouseEnter={() => effectsPreview && hoverEffectIds.length > 0 && setHoveredEffectIds((current) => {

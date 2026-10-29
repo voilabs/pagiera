@@ -1,4 +1,5 @@
 import { createElement } from "./tree";
+import { overlayPreset } from "./actions";
 import type { CanvasElement, ElementStyle, ElementType } from "./types";
 
 export const PRESET_CATEGORIES = [
@@ -10,6 +11,7 @@ export const PRESET_CATEGORIES = [
     "Pricing",
     "CTA",
     "Footer",
+    "Interactive",
 ] as const;
 
 export type PresetCategory = (typeof PRESET_CATEGORIES)[number];
@@ -663,4 +665,8 @@ export const COMPONENT_PRESETS: ComponentPreset[] = [
     { id: "footer-columns", name: "Footer Columns", category: "Footer", description: "Responsive link footer", create: footer },
     { id: "footer-minimal", name: "Footer Minimal", category: "Footer", description: "Brand, links and legal on one rule", create: footerMinimal },
     { id: "footer-cta", name: "Footer CTA", category: "Footer", description: "Closing invitation above the links", create: footerCta },
+
+    { id: "overlay-popover", name: "Popover", category: "Interactive", description: "Button that opens a small panel beside it", create: () => overlayPreset("popover") },
+    { id: "overlay-dropdown", name: "Dropdown", category: "Interactive", description: "Menu button with a sliding list", create: () => overlayPreset("dropdown") },
+    { id: "overlay-modal", name: "Modal", category: "Interactive", description: "Centered dialog over a dimmed page", create: () => overlayPreset("modal") },
 ];

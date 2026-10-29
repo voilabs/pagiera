@@ -3,6 +3,7 @@
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { mountMarquees } from "./marquee";
 import { mountDisclosures } from './disclosure';
+import { mountActions } from './actions';
 import { mountNativeCarousels } from "./carousel-content";
 
 type RanFor = Record<string, string | undefined>;
@@ -89,7 +90,8 @@ export function MarqueeRuntime({ children, enabled }: { children: ReactNode; ena
             const stopMarquees = mountMarquees(root.current);
             const stopCarousels = mountNativeCarousels(root.current);
             const stopDisclosures = mountDisclosures(root.current);
-            return () => { stopDisclosures(); stopCarousels(); stopMarquees(); };
+            const stopActions = mountActions(root.current);
+            return () => { stopActions(); stopDisclosures(); stopCarousels(); stopMarquees(); };
         }
     }, [enabled, children]);
     return <main ref={root} className="pg-root">{children}</main>;

@@ -24,6 +24,7 @@ const CATEGORIES: Array<{ view: View; name: string; description: string; icon: t
     { view: "Pricing", name: "Pricing", description: "Plans and comparison", icon: IconCoin },
     { view: "CTA", name: "Call to action", description: "Closing bands and sign-up", icon: IconSparkles },
     { view: "Footer", name: "Footer", description: "Links, legal and conversion", icon: IconLayoutRows },
+    { view: "Interactive", name: "Interactive", description: "Popovers, dropdowns and modals", icon: IconSparkles },
     { view: "Blocks", name: "Page blocks", description: "Sections reused from your pages", icon: IconLayoutRows },
 ];
 

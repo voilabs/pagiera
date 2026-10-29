@@ -1,3 +1,4 @@
+import { remapActions } from "@/lib/editor/actions";
 import { and, asc, desc, eq, isNotNull, ne, notInArray, sql } from "drizzle-orm";
 import { db } from "@/drizzle";
 import { applyPageLayout, unwrapPageLayout } from "@/lib/editor/page-layout";
@@ -130,6 +131,7 @@ function syncComponentInstances(elements: CanvasElement[], components: CanvasEle
                 interaction: source.interaction && source.interaction.action !== "navigate"
                     ? { ...source.interaction, value: idBySource.get(source.interaction.value) ?? source.interaction.value }
                     : source.interaction,
+                actions: remapActions(source.actions, (id) => idBySource.get(id) ?? id),
             };
             if (isRoot) {
                 clone.base = {
@@ -202,6 +204,7 @@ function layoutBand(
             interaction: source.interaction && source.interaction.action !== "navigate" && ids.has(source.interaction.value)
                 ? { ...source.interaction, value: idFor(slotOf(source.interaction.value)) }
                 : source.interaction,
+            actions: remapActions(source.actions, (id) => ids.has(id) ? idFor(slotOf(id)) : id),
             layoutRole: role,
             // The page is not where a layout is edited: it is edited once, in
             // the component it is made of, and every page follows.

@@ -1,3 +1,4 @@
+import { remapActions } from "@/lib/editor/actions";
 import { createElement } from "./tree";
 import { DEFAULT_ROOT_STYLE, type CanvasElement, type DataSource, type ElementStyle, type ElementType, type RootStyle } from "./types";
 import { createNocturneSiteTemplate, type SiteTemplatePage } from "./showcase";
@@ -274,6 +275,7 @@ function promoteSharedRoots(pages: SiteTemplatePage[], names: string[]): SiteTem
                 interaction: source.interaction && source.interaction.action !== "navigate"
                     ? { ...source.interaction, value: idMap.get(source.interaction.value) ?? source.interaction.value }
                     : source.interaction,
+                actions: remapActions(source.actions, (id) => idMap.get(id) ?? id),
             }));
             // Replace the local subtree where its root originally lived. The
             // old append-based implementation moved shared navigation to the

@@ -1,5 +1,6 @@
 import { normalizeShader } from "./shaders";
 import { normalizeDisclosure } from "./disclosure";
+import { normalizeActions, normalizeOverlay } from "./actions";
 import { normalizeFieldAppearance } from "./field-appearance";
 import { normalizeTextEffects } from "./text-effects";
 import { normalizeCarouselControl } from "./carousel-controls";
@@ -592,7 +593,7 @@ function parseStyle(input: unknown, base: ElementStyle): ElementStyle {
 
         entrance: oneOf(
             raw.entrance,
-            ["none", "fade", "up", "down", "left", "right", "zoom", "blur", "pop", "reveal", "custom"] as const,
+            ["none", "fade", "up", "down", "left", "right", "zoom", "blur", "pop", "reveal", "flip", "shrink", "custom"] as const,
             base.entrance,
         ),
         entranceSplit: oneOf(raw.entranceSplit, ["none", "words", "letters", "children"] as const, base.entranceSplit),
@@ -785,6 +786,8 @@ export function parseElements(
             codeLanguage: oneOf(el.codeLanguage, ["html", "tsx"] as const, "html"),
             shader: normalizeShader(el.shader),
             disclosure: normalizeDisclosure(el.disclosure),
+            actions: normalizeActions(el.actions, (url) => templatedUrl(url, safeUrl)),
+            overlay: normalizeOverlay(el.overlay),
             fieldAppearance: normalizeFieldAppearance(el.fieldAppearance),
             textEffects: normalizeTextEffects(el.textEffects),
             carouselControl: normalizeCarouselControl(el.carouselControl),

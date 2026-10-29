@@ -91,6 +91,7 @@ import {
     TextInput,
 } from "./ui";
 import { BindingFormatFields } from "./binding-format";
+import { ActionsGroup, OverlayGroup } from "./actions-panel";
 
 type Ctx = {
     element: CanvasElement;
@@ -2506,6 +2507,8 @@ function InteractTab(ctx: Ctx) {
     return (
         <div className="flex flex-col">
             <ClickGroup {...ctx} />
+            <ActionsGroup {...ctx} />
+            <OverlayGroup {...ctx} />
             {['Text', 'Heading', 'Button', 'Quote', 'ListItem', 'Label'].includes(ctx.element.type) && <TextEffectsGroup {...ctx} />}
             <HoverGroup {...ctx} />
             <PressGroup {...ctx} />
