@@ -1,0 +1,52 @@
+---
+title: "CLI for coding agents"
+description: "Inspect, validate, create and update native documents from a terminal."
+---
+
+## Availability
+
+The CLI is included in the current source tree. The unreleased implementation is not a promise that an older npm version contains the command. From this repository, run node packages/pagiera/cli/main.mjs help after building the package. In a package version that ships the bin entry, use pagiera through your package runner.
+
+## Inspect before editing
+
+Run these commands from the repository root. The schema command reads the built package contract.
+
+
+
+~~~bash
+node packages/pagiera/cli/main.mjs help
+node packages/pagiera/cli/main.mjs schema
+node packages/pagiera/cli/main.mjs inspect --url http://localhost:3000/api/pagiera
+node packages/pagiera/cli/main.mjs page get PAGE_ID
+~~~
+
+The default API base is http://localhost:3000/api/pagiera. Override it with --url or PAGIERA_URL. PAGIERA_TOKEN supplies a bearer token accepted by your host application; the CLI does not create authentication. Use HTTPS outside localhost when sending credentials.
+
+## Validate and create
+
+Write a native document JSON file, then validate it before creating a page. Replace the placeholder ID and version in subsequent examples with values returned by your server.
+
+~~~bash
+node packages/pagiera/cli/main.mjs page validate --file page.json
+node packages/pagiera/cli/main.mjs page create --name "About" --slug /about --file page.json
+~~~
+
+Creation creates the page, saves the document and reads it back. If saving fails after creation, the error includes the created page ID; inspect that page before retrying to avoid duplicates.
+
+## Update without overwriting another editor
+
+~~~bash
+node packages/pagiera/cli/main.mjs page get PAGE_ID
+node packages/pagiera/cli/main.mjs page update PAGE_ID --file page.json --expected-version 3
+node packages/pagiera/cli/main.mjs page preview PAGE_ID
+~~~
+
+Updates replace the document. Preserve unrelated fields. On a revision conflict, fetch the latest page and reconcile changes instead of retrying blindly. The preview command returns a conventional preview URL; your host must implement that route.
+
+## Publish only with approval
+
+~~~bash
+node packages/pagiera/cli/main.mjs page publish PAGE_ID
+~~~
+
+Publishing is separate from saving. Commands return JSON; failures write JSON to stderr and exit nonzero. Structural validation does not guarantee visual correctness or complete style validation.

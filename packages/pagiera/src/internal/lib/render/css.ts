@@ -16,6 +16,7 @@ import {
     DEFAULT_CASCADE,
     mediaPlan,
 } from "@/lib/editor/cascade";
+import { firstFrameCss, motionCss, originCss } from "@/lib/editor/keyframes";
 import { childrenOf } from "@/lib/editor/tree";
 import {
     type AnimationLayer,
@@ -337,7 +338,7 @@ export function hasScrollEffects(
  */
 export const ENTRANCE_SCRIPT = `
 (function(){
-  var nodes=document.querySelectorAll('.pg-anim');
+  var nodes=document.querySelectorAll('.pg-anim,.pg-kf');
   if(!nodes.length)return;
   var reveal=function(n){n.classList.add('pg-in');};
   var all=function(){for(var i=0;i<nodes.length;i++)reveal(nodes[i]);};
@@ -355,8 +356,9 @@ export const ENTRANCE_SCRIPT = `
   // one frame, and a class added before the first paint has nothing to
   // transition from — the content simply popped in.
   var pending=[],visible=[];
+  // Keyframed layers set to play on load start with the page, wherever they are.
   for(var i=0;i<nodes.length;i++){
-    if(onScreen(nodes[i]))visible.push(nodes[i]);else pending.push(nodes[i]);
+    if(onScreen(nodes[i])||nodes[i].hasAttribute('data-pg-now'))visible.push(nodes[i]);else pending.push(nodes[i]);
   }
 
   // One observer per trigger offset: how far into the viewport an element
@@ -408,6 +410,7 @@ export function hasEntrances(
     const baseId = baseOf(cascade).id;
     return elements.some(
         (el) => {
+            if (el.motion) return true;
             const style = resolveStyle(el, baseId, cascade);
             return style.entrance !== "none" && style.scrollEffect === "none";
         },
@@ -613,7 +616,7 @@ export function stylesheetFor(
         const calm: string[] = [];
         for (const element of elements) {
             const style = resolveStyle(element, baseId, cascade);
-            if (style.entrance === "none" || style.scrollEffect !== "none") continue;
+            if (style.entrance === "none" || style.scrollEffect !== "none" || element.motion) continue;
             const cls = classFor(element.id);
             const from = entranceFrom(style);
             const to = entranceTo(from);
@@ -658,6 +661,22 @@ export function stylesheetFor(
             }
         }
         if (calm.length) parts.push(`@media (prefers-reduced-motion:reduce){${calm.join(",")}{animation:none!important}}`);
+
+        // Keyframed layers wait on their first frame until the reveal script
+        // marks them in, then play. Without the script (or with reduced
+        // motion) pg-ready is never set and the layer simply rests.
+        for (const element of elements) {
+            if (!element.motion) continue;
+            const cls = classFor(element.id);
+            const { keyframes, declarations } = motionCss(element.motion, `pg-k-${cls}`);
+            // A split text plays on each piece, each delayed by its place in the order.
+            const target = element.motion.split ? " .pg-part" : "";
+            const origin = originCss(element.motion);
+            parts.push(
+                `${keyframes}${origin ? `.${cls}${target}{${origin}}` : ""}` +
+                    `.pg-ready .${cls}.pg-kf:not(.pg-in)${target}{${firstFrameCss(element.motion)}}.pg-ready .${cls}.pg-kf.pg-in${target}{${declarations}}`,
+            );
+        }
     }
 
     if (hasScrollEffects(elements, cascade)) {
@@ -667,7 +686,8 @@ export function stylesheetFor(
         for (const element of elements) {
             const style = resolveStyle(element, baseId, cascade);
             const effect = style.scrollEffect;
-            if (effect === "none") continue;
+            // Keyframes own the layer's movement; a scroll effect would fight them.
+            if (effect === "none" || element.motion) continue;
             // Distance means different things per effect: pixels for the ones
             // that move, a proportion for the ones that do not.
             const vars =

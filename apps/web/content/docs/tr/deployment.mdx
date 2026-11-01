@@ -1,0 +1,61 @@
+---
+title: "Dağıtım ve işletim"
+description: "Üretim yapılandırması, güvenlik sınırları, önbellekler ve kurtarma kontrolleri."
+---
+
+## Ana uygulama ortamını hazırlayın
+
+1. Pagiera arka ucu bağlanmış, sunucu çalıştırabilen bir Next.js uygulamasını dağıtın.
+2. PostgreSQL ve Redis URL'lerini yalnızca sunucuya açık yapılandırmayla sağlayın.
+3. OpenRouter'ı yalnızca yapay zekâ ile üretim gerekiyorsa yapılandırın.
+4. Düzenleyici, veri değiştirme ve önizleme rotalarını ana uygulamanın kimlik doğrulaması ve yetkilendirmesiyle koruyun.
+5. Hedef ortamda sağlık durumunu, kaydetmeyi, önizlemeyi ve herkese açık sayfa oluşturmayı kontrol edin.
+
+Bir sayfayı yayımlamak uygulama verisini günceller; ana uygulamayı dağıtmaz veya altyapı sağlamaz.
+
+## Sunucu yapılandırması
+
+| Seçenek | Amaç |
+| --- | --- |
+| postgresUrl | PostgreSQL bağlantısı |
+| redisUrl | Redis bağlantısı |
+| openRouterApiKey / openRouterModel | Yapay zekâ sağlayıcısı yapılandırması |
+| basePath | Bağlanan API'nin temel yolu |
+| aiRateLimitPerMinute | Yapay zekâ istek sınırı |
+| templateRegistryUrl | Şablon kayıt deposunun uzak kaynağı |
+| allowPrivateHosts | Özel ağdaki veri kaynağı sunucuları için açık istisnalar |
+| maxSourceBytes | Azami kaynak yanıt boyutu; varsayılan 2 MB |
+| mcpServers / authorizeMcp | İşletmeciye ait MCP bağlantıları ve yetkilendirme |
+
+Kesin imzalar için sunucu tür tanımlarını kullanın. Özel ağ sunucusu istisnalarını veya MCP komut yapılandırmasını herkese açık kullanıcı girdisi olarak sunmayın.
+
+## Veri ve önbellek yaşam döngüsü
+
+PostgreSQL kalıcı depolamadır. Redis; yayımlanmış sayfa önbelleğine, şablon önbelleğine ve istek hızı sınırlamasına katılır. Veritabanını yedekleyin; önbelleği kurtarma kopyanız olarak görmeyin. Dağıtımınızdaki güncelliğini yitirmiş içerik davranışını yakalamak için yayımlamayı ve yayından kaldırmayı çalışma ortamı üzerinden test edin.
+
+## Sürüm çıkarma kontrol listesi
+
+Yetkisiz isteklerin reddedildiğini, gizli bilgilerin sunucuda kaldığını, taslak rotalarının gizli kaldığını, veri kaynağı hatalarının öngörülebilir davrandığını ve yedeklerin geri yüklenebildiğini doğrulayın. Kimlik bilgilerini günlüğe kaydetmeden veritabanı bağlantısını, istek hatalarını ve yapay zekâ sağlayıcısı hatalarını izleyin. Üretime geçmeden önce [güvenlik](/tr/docs/security) sayfasını okuyun.
+
+## Ortam değişkenleri
+
+| Değişken | Kullanım |
+| --- | --- |
+| `PAGIERA_POSTGRES_URL` | Zorunlu PostgreSQL URL’si; yoksa `DATABASE_URL` |
+| `PAGIERA_REDIS_URL` | Zorunlu Redis URL’si; yoksa `REDIS_URL` |
+| `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` | İsteğe bağlı yapay zekâ ayarı; hesabınızın eriştiği modeli seçin |
+| `PAGIERA_TEMPLATE_REGISTRY_URL` | Güvenilir depo URL’si; üretimde varsayılan resmî depodur |
+| `PAGIERA_ALLOW_PRIVATE_HOSTS` | Virgülle ayrılmış özel kaynak host istisnaları |
+| `PAGIERA_MAX_SOURCE_BYTES` | Veri kaynağı yanıtları için pozitif bayt sınırı |
+
+`basePath`, `aiRateLimitPerMinute` ve MCP ayarları programatik seçeneklerdir; `pagieraConfigFromEnv` tarafından otomatik okunan ortam değişkeni adları değildir. Varsayılan yapay zekâ sınırı sunucunun hız sınırlama kovasında dakikada on istektir. Bunu sağlayıcınızın hesap kotasıyla karıştırmayın.
+
+## Çalışma ortamı gereksinimleri
+
+Backend rotalarında Node.js runtime kullanın. Statik dışa aktarma veya yalnızca Edge işlevi burada kullanılan PostgreSQL/Redis bağlantılarını, Node bağımlılıklarını ve sunucu işlemesini sağlayamaz. Sunucu yapılandırması başına tek bağlantı havuzu yaşam döngüsü kullanın; veri/AI isteklerine yeterli işlev süresi tanıyın ve reverse proxy’nin AI akış ilerlemesini süresiz tamponlamadığından emin olun.
+
+Şema başlatma yapılandırılmış veritabanı bağlantısını kullanır. Yetkileri bilinçli verip yükseltme öncesinde yedek alın; geliştirme örneklerini üretim verisine bağlamayın. PostgreSQL ve Redis portlarını özel tutun.
+
+## Kurtarma denemesi
+
+Yalıtılmış staging veritabanı kullanın: yedek alın, taslağı düzenleyip kaydedin, revizyonu geri yükleyin, önizleyin, yayımlayın ve kamusal HTML’yi doğrulayın. Veritabanı yedeğini yalıtılmış ortamda geri yükleyip sayfaların ve varlıkların varlığını kontrol edin. Başarılı yedek komutu tek başına kurtarmanın çalıştığını kanıtlamaz.

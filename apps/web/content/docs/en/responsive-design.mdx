@@ -1,0 +1,25 @@
+---
+title: "Responsive design"
+description: "Understand artboards, cascading overrides and real viewport checks."
+---
+
+## Start with the page breakpoints
+
+Desktop, tablet and mobile are required breakpoint identities in the editor. Read each page's configured widths instead of copying hard-coded numbers from another document. The visitor breakpoint width and the canvas artboard width can differ: resizing the drawing area should not silently change published behavior.
+
+## Build from wide to narrow
+
+1. Establish the shared layout on the widest artboard.
+2. Move to tablet and change only properties that need an override.
+3. Move to mobile; stack columns, reduce oversized spacing and check text wrapping.
+4. Resize a real preview between artboard widths, not only at their exact sizes.
+
+Styles cascade from wider breakpoints toward narrower ones. A narrower explicit override can keep a value even after its desktop value changes. Remove the override when you want inheritance again.
+
+## Avoid overflow
+
+Prefer flexible widths for content wrappers, natural height for text and deliberate maximum widths for reading. Check images, long URLs, buttons and nested grids. Absolute positioning needs extra care because content can grow independently of its container.
+
+## Acceptance checklist
+
+Verify navigation, headings, controls and forms at narrow, intermediate and wide widths. Test long content and data-driven empty states. Confirm there is no unintended horizontal scrolling in the published runtime.

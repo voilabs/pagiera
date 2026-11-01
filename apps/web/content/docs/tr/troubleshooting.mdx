@@ -1,0 +1,32 @@
+---
+title: "Sorun giderme"
+description: "En yaygın kurulum, CSS, veritabanı ve yapay zekâ hatalarını giderin."
+---
+
+## Sağlık uç noktası başarısız oluyor
+
+`/api/pagiera/health` adresini açın ve ilk başarısız bağımlılığı ele alın. Ortam değişkenlerinin Next.js sunucu sürecinde kullanılabilir olduğunu doğrulayın, ardından PostgreSQL ve Redis'i birbirinden bağımsız test edin.
+
+## Düzenleyicide stiller görünmüyor
+
+`pagiera/full.css` dosyasını kendi stil dosyanızdan önce içe aktarın. CSS `@import` kuralları normal stil kurallarından önce gelmelidir. Kök stil dosyasını değiştirdikten sonra geliştirme sunucusunu yeniden başlatın.
+
+Stil dosyası düzenleyiciyle sınırlıdır. `pagiera/full.css` içindeki her kural yalnızca stüdyonun kendini içine çizdiği `.pg-scope` öğesinin içinde uygulanır; tema değişkenleri (`--radius`, `--primary`, renk ölçeği) `:root` yerine orada tanımlanır. Kendi tasarım sistemi olan bir uygulamaya içe aktarıldığında, düzenleyicinin dışında ve çevresinde o uygulamanın renkleri, köşe yuvarlamaları, başlıkları ve düğmeleri değişmeden kalır.
+
+Stüdyoyu düzenleme ekranının tamamı olarak yerleştirin; Pages panelinde sayfaları zaten listeler, oluşturur ve yeniden adlandırır, bu yüzden host'un ayrı bir sayfa listesine ihtiyacı yoktur — sayfa içermeyen bir editör rotasını `editorPath` ile ana sayfaya yönlendirin. Kendi kenar çubuğu veya başlığı olan bir host düzeninde **Focus mode** (kayıt durumunun yanındaki genişletme düğmesi veya Ctrl/⌘+Shift+F) stüdyonun tüm pencereyi kaplamasını sağlar ve alttaki host sayfasının kaymasını durdurur. Seçim tarayıcı başına hatırlanır. `position: fixed` kullandığı için stüdyonun hiçbir üst öğesi `transform`, `filter` veya `contain` ayarlamamalıdır.
+
+## getEditorBootstrap bir işlev değil
+
+Uygulamanız ve oluşturulan kilit dosyası farklı paket sürümlerini çözümlüyor olabilir. Kurulu `pagiera` sürümünü inceleyin, bağımlılıkları yeniden yükleyin ve Next.js'i yeniden başlatın.
+
+## Yapay zekâ ile üretim başarısız oluyor
+
+`OPENROUTER_API_KEY` değerinin sunucuda bulunduğunu ve `OPENROUTER_MODEL` değerinin hesabın erişebildiği bir modeli adlandırdığını doğrulayın. Yapay zekâ isteğe bağlıdır; temel düzenleyiciyi teşhis ederken yapılandırmasını kaldırın.
+
+## Yayımlanan API verisi HTML'de eksik
+
+Yayımlanmış belgeyi istek bağlamıyla birlikte sunucuda yükleyin. Rota parametrelerinin ve sorgu değerlerinin Request bloklarındaki yer tutucularla eşleştiğini doğrulayın. Yalnızca istemci etkileşimleri bağlanmış tarayıcı görünümünü değil, ham HTML yanıtını inceleyin.
+
+## Sayfa kaydediliyor ancak herkese açık görünüm değişmiyor
+
+Kaydetme yalnızca taslağı değiştirir. Taslağı doğrulamak için önizlemeyi açın, ardından yayımlayın. Herkese açık sayfa eski kalıyorsa Redis bağlantısını ve önbellek geçersiz kılmayı kontrol edin.

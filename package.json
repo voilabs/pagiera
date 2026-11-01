@@ -9,7 +9,8 @@
     "url": "git+https://github.com/voilabs/pagiera.git"
   },
   "workspaces": [
-    "apps/*",
+    "apps/example",
+    "apps/web",
     "packages/*"
   ],
   "scripts": {
@@ -24,7 +25,9 @@
     "package:check": "bun run --cwd packages/pagiera check",
     "package:pack": "bun run package:build && npm pack --workspace pagiera --ignore-scripts",
     "templates:sync": "bun run templates/scripts/export-builtins.ts",
-    "templates:check": "bun run templates/scripts/validate.ts && bun run templates/scripts/audit-responsive.ts"
+    "templates:check": "bun run templates/scripts/validate.ts && bun run templates/scripts/audit-responsive.ts",
+    "web:dev": "bun run --cwd apps/web dev",
+    "docs:validate": "node scripts/check-docs.cjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

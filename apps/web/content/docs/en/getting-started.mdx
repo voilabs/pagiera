@@ -1,0 +1,75 @@
+---
+title: "Getting started"
+description: "Requirements, installation and environment variables."
+---
+
+## Before you begin
+
+Pagiera runs inside your application. You keep control of authentication, page data and deployment. For the complete studio integration you need Node.js 20 or newer, React 18.3 or newer, the Next.js App Router, PostgreSQL and Redis. OpenRouter is optional and is only required for AI-assisted generation.
+
+## Install the package
+
+Choose the command for your package manager:
+
+<Tabs items={["bun", "npm", "pnpm", "yarn"]}>
+<Tab value="bun">
+
+```bash
+bun add pagiera
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install pagiera
+```
+
+</Tab>
+<Tab value="pnpm">
+
+```bash
+pnpm add pagiera
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add pagiera
+```
+
+</Tab>
+</Tabs>
+
+### Import the editor stylesheet
+
+Add the full studio stylesheet before your own overrides. Import it once in the root stylesheet used by the editor route.
+
+```css
+@import "tailwindcss";
+@import "pagiera/full.css";
+```
+
+## Configure the services
+
+Create `.env.local` and add the two required service URLs.
+
+<Callout type="warn">Keep these values on the server; never expose them through a `NEXT_PUBLIC_` variable.</Callout>
+
+```bash
+PAGIERA_POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pagiera
+PAGIERA_REDIS_URL=redis://localhost:6379
+
+# Optional: needed only for AI generation
+OPENROUTER_API_KEY=sk-or-v1-your-key
+OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+```
+
+PostgreSQL stores projects, drafts and published documents. Redis caches published pages and template bundles and provides AI rate limiting.
+
+## Verify the installation
+
+Continue to [Next.js setup](/docs/nextjs-setup), mount the backend route, then open `/api/pagiera/health`.
+
+<Callout type="error" title="Protect the studio">Do not expose the studio publicly before adding your authentication check.</Callout>

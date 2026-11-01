@@ -1,0 +1,82 @@
+---
+title: "API reference"
+description: "Server, client and package exports in one place."
+---
+
+## Entry points
+
+| Import | Purpose |
+| --- | --- |
+| `pagiera` | `createDocument`, `createPagieraClient`, lightweight editor, panel URL helpers |
+| `pagiera/full` | `PagieraStudio` and its props/adapters contract |
+| `pagiera/provider` | `PagieraProvider` and host font registration |
+| `pagiera/server` | Server configuration, route handlers and database-backed loading |
+| `pagiera/runtime` | `RenderedPage` and `loadPageData` |
+| `pagiera/data` | Data rendering helpers |
+| `pagiera/full.css` / `pagiera/styles.css` | Full studio / lightweight editor styles |
+
+Server imports require a Node.js server environment and must not enter a client bundle.
+
+## Server loader
+
+`pagieraConfigFromEnv(env?)` reads server configuration. `createPagieraRouteHandlers(config)` returns GET, POST, PUT, PATCH and DELETE handlers; initialization is lazy. `getPagieraServer(config)` returns a reused server instance. `createPagieraServer(config)` explicitly creates one; call `close()` when the owner disposes it, not after each ordinary request.
+
+| Server method | Result |
+| --- | --- |
+| `getEditorBootstrap(pageId?)` | Current page, page list and document library, or undefined |
+| `getPublishedDocument(slug)` | Published document and matched route pattern/parameters, without fetching page data |
+| `getPublishedPage(slug, context?)` | Published document plus server-resolved `data`, or undefined |
+| `getPreviewPage(pageId, context?)` | Draft plus fresh source data, or undefined |
+| `handle(request)` | Backend HTTP response; the host must authorize access |
+| `close()` | Close owned Redis/PostgreSQL resources |
+
+## HTTP surface
+
+Paths below are relative to `/api/pagiera`. The host controls authentication and role checks for every endpoint.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/health` | Health after server initialization |
+| GET | `/bootstrap?pageId=…` | Studio bootstrap |
+| POST | `/pages` | Create a page; list pages through `/bootstrap` |
+| GET / PATCH / DELETE | `/pages/:id` | Read / rename / delete |
+| POST | `/pages/:id/save` | Save `{ document, expectedVersion }` |
+| POST | `/pages/:id/duplicate` | Duplicate with name and slug |
+| POST | `/pages/:id/publish` / `unpublish` | Change public state |
+| GET | `/pages/:id/revisions` | List saved revisions |
+| POST | `/pages/:id/revisions/:revisionId/restore` | Restore a draft revision |
+| POST / GET | `/assets` / `/assets/:id` | Raw raster upload / media delivery |
+| POST | `/data/preview` | Preview a source and sample query |
+| POST | `/ai` | AI generation; NDJSON progress when streamed |
+| POST | `/mcp` | Authorized list/inspect discovery |
+| GET | `/templates/registry.json` | Configured registry |
+| POST | `/templates/install` / `import` | Install by ID / import a bundle |
+| GET | `/templates/export?id=…` | Export a page template |
+
+## Browser client and adapters
+
+```ts
+import { createPagieraClient } from "pagiera";
+const client = createPagieraClient({ baseUrl: "/api/pagiera" });
+const page = await client.loadPage("PAGE_ID");
+const result = await client.adapters.save(page.id, {
+  elements: page.elements,
+  rootStyle: page.rootStyle,
+  dataSources: page.dataSources,
+}, page.version);
+if (result.status === "conflict") {
+  // Reload and reconcile; never overwrite a newer page blindly.
+} else if (result.status === "error") {
+  throw new Error(result.message);
+}
+```
+
+Supply a custom `fetch` to `createPagieraClient` when your host needs extra request handling. Save can return `saved`, `conflict` or `error` in a successful HTTP response. Other HTTP failures throw; inspect the status and response before retrying.
+
+Studio adapters include page CRUD, publishing, revisions, source preview, image upload, generation and template operations. Host callbacks such as `navigate`, `editorHref`, `previewHref`, `publishedHref`, `refresh` and `saveTranslation` are supplied by your application. See [the complete setup](/docs/nextjs-setup).
+
+## Assets and trust
+
+`uploadImage(file)` sends raw bytes, not multipart form data. The server accepts PNG, JPEG, WebP, GIF and AVIF, checks image signatures and limits each asset to 8 MB. It returns a short URL. Base64 raster images reaching saves/imports are externalized; identical bytes deduplicate. This is separate from visitor FileInput submissions.
+
+A document's data-source headers are readable by authorized editors; they are not a secret vault. Keep service credentials in host code. See [security](/docs/security) and [deployment configuration](/docs/deployment).

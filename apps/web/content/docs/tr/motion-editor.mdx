@@ -1,0 +1,66 @@
+---
+title: "Motion editörü"
+description: "Katmanları keyframe, eğri, efekt ve metin kademelendirmesiyle canlandırın."
+---
+
+## Zaman çizelgesini açın
+
+Editör rayından **Motion** seçin. Actions’tan ayrı bir çalışma alanıdır. Statik görünümü ve duyarlı düzeni çalışan, kaydedilmiş katmanla başlayın. Tuvalden veya çizelgeden seçin; animasyonu yoksa **Show every layer** kullanın.
+
+## Basit bir giriş oluşturun
+
+1. Başlık seçip oynatma çizgisini başlangıca taşıyın.
+2. Position Y ve Opacity kronometrelerini etkinleştirin. Y = 32, Opacity = 0 ile başlayın.
+3. Yaklaşık 600 ms’ye gidip Y = 0 ve Opacity = 100 yapın.
+4. Cetveli sürükleyerek ara durumları inceleyin, sonra çizelgeyi oynatın.
+5. Ease-out eğrisi seçin, kaydedin ve korumalı sayfa önizlemesini açın.
+
+Transform değerleri katmanın oluşturulmuş görünümüne göre farktır: Y = 0 doğal konum, Scale = 100 doğal boyuttur. Dolgu, metin rengi ve köşe yarıçapı gibi Appearance değerleri mutlaktır. Bunları değiştirirken amaçlanan dinlenme değerinden başlayın.
+
+## İzler ve keyframe’lerle çalışın
+
+Her animasyonlu özelliğin ayrı şeridi vardır. Kronometre oynatma çizgisinde ilk keyframe’i oluşturur; zamanı taşıyıp değeri değiştirmek yenisini oluşturur. Şeride çift tıklayarak o ana keyframe ekleyin. Elmasları sürükleyerek zamanı değiştirin, Shift ile birden fazla seçin, Delete ile seçili kareleri silin. Katman çubuğunu sürüklemek bütün karelerini birlikte taşır.
+
+Değer yanındaki kontroller önceki/sonraki kareye gider veya geçerli kareyi ekler/siler. Sayıyı yatay sürükleyerek değeri tarayın, Shift ile daha büyük adım kullanın veya tıklayarak yazın. **U** ile animasyonlu özelliklere odaklanın. Çizelge oynatma, kare adımı, yavaş oynatma, döngü ve yakınlaştırma/sığdırma sunar. Sayfa hareketini gösterir; işlenmiş video dışa aktarmaz.
+
+## Özellik grupları
+
+| Grup | Kontroller |
+| --- | --- |
+| Transform | X/Y konumu, ölçek, döndürme, opaklık ve dönüşüm odağı |
+| 3D & skew | Bağımsız ölçek eksenleri, X/Y döndürme, perspektif ve eğim |
+| Appearance | Yarıçap, arka plan ve metin rengi |
+| Shadow | Gölge konumu, bulanıklığı ve rengi |
+| Filters | Bulanıklık, parlaklık, kontrast, doygunluk, ton ve gri ton |
+| Mask | Üst, sağ, alt ve soldan içe kesme |
+| Text | Harf aralığı ve harf/kelime ayırma |
+
+Hazır eğri için kareye sağ tıklayın. Bezier tutamaçları veya yay sertliği/sönümlemesi için çift tıklayın. Karenin eğrisi **o kareden sonraki kareye** olan aralığı yönetir. Hold değeri sonraki kareye kadar korur; bilinçli kesmeler için kullanın.
+
+## Efektler, wiggle ve metin
+
+**Effects**, oynatma çizgisinden başlayarak normal düzenlenebilir keyframe’ler üretir. Önce doğru katmanı ve zamanı seçin. Oluşan izleri inceleyip düzenleyin; hazır efekt başlangıç noktasıdır, ikinci bağımsız animasyon motoru değildir.
+
+Dalga kontrolü, miktar ve hızla yumuşak rastgele değişim ekleyen **wiggle** uygular. Metin bölme; ileri, geri, merkez veya rastgele sırayla harfleri/kelimeleri gecikmeli canlandırır. Son okunabilir durumu, satır kırılmasını ve gerçek fontu dar ekranlarda kontrol edin. Tekrarlanan dekoratif hareketi ölçülü tutun.
+
+## Web sitesinde oynatma
+
+Katman keyframe’leri **view** veya **load** tetikleyicisi kullanır; bir kez, döngülü veya ileri-geri oynatılabilir. Keyframe hareketi o katmanın hazır girişinin yerini alır; mevcut girişte keyframe etkinleştirmek onu düzenleme öncesinde dönüştürür. Kaydırmaya bağlı efektler çizelge saatini değil ekran ilerlemesini izler.
+
+<Callout type="info">
+Yayımlanan keyframe’ler CSS animasyonlarıdır. JavaScript görünürlükle tetiklenen katmanları açar; JavaScript yoksa veya azaltılmış hareket açıksa içerik dinlenme halinde kalır. Çizelge oynatımının kaydırma zamanını birebir taklit ettiğini varsaymak yerine yayımlanmış sayfayı test edin. Çizelge, sayfanın aşağısındaki katmanları zaten görünürmüş gibi önizler.
+</Callout>
+
+## Actions için adlandırılmış animasyonlar
+
+Motion yan panelinde [aksiyon grafiğinin](/tr/docs/action-workflow) kullandığı **Custom animations** da vardır. Adlandırılmış animasyon oluşturun, kare şeridini düzenleyip süre, gecikme, yön ve eğriyi seçin. Tekrar sayısı 0 sonsuz döngüdür. Show/Hide/Toggle bunları ileri/geri oynatır; Play animation adlarıyla seçer.
+
+Kökteki adlandırılmış animasyonlar katmana özel çizelge izlerinden ayrıdır. En fazla 40 adlandırılmış animasyon ve her birinde 24 kare kabul edilir. Katman izleri özellik başına en fazla 120 kare tutup zamanı 60 saniyeyle sınırlar. Doğrulayıcı sınırlarını aşan değerlere güvenmeyin.
+
+## Doğrulama ve sorun giderme
+
+- Efekt çalışmıyorsa seçilen katmanı, tetikleyiciyi ve oynatma çizgisini kontrol edin.
+- Giriş beklenmedik değiştiyse dönüştürülen izleri ve çakışan efektleri inceleyin.
+- Metin kesiliyorsa maskeleri, overflow, satır yüksekliği ve dönüşüm odağını kontrol edin.
+- Çevredeki içerik sıçrıyorsa gerçek akış düzeni kullanıp aksiyon grafiğindeki görünürlük/morph değişimlerini test edin. Transform farkları düzende yeni alan ayırmaz.
+- Yayımlamadan önce kaydedip yeniden yükleyin, masaüstü/mobili karşılaştırın, azaltılmış hareketi açın ve okunabilir dinlenme durumunu doğrulayın.

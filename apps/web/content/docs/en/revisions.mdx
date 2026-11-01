@@ -1,0 +1,30 @@
+---
+title: "Saving and revisions"
+description: "Handle optimistic concurrency, recover drafts and separate save from publish."
+---
+
+## Two different versions
+
+document.version identifies the serialization format. page.version identifies the saved page revision. Use the page revision as expectedVersion when saving. Never substitute the document format number.
+
+## Save sequence
+
+1. Load the latest page and retain its version.
+2. Edit the document without discarding unrelated fields.
+3. Save with that expected version.
+4. Check the returned status, not only the HTTP status code.
+5. Retain the returned new version and read back important changes.
+
+The save operation can return a conflict result even when the HTTP request itself succeeds. On conflict, reload and reconcile the edits; an automatic blind retry risks replacing another person's work.
+
+## Restore a revision
+
+The client adapters expose listRevisions and restoreRevision. Inspect the target revision, confirm the intended recovery with the user, then reload after restoration. Keep preview and publishing as separate verification steps; do not assume restoring a draft republishes the site.
+
+## Operational recovery
+
+Revision history helps recover editing mistakes but is not a database backup. Maintain PostgreSQL backups and test restores as described in [deployment](/docs/deployment).
+
+## Shared state and recovery
+
+Page saves also carry shared component masters. Preserve their whole subtrees when restoring or editing through the API. A conflict is an application-level result; HTTP 200 does not mean your draft was accepted. Never substitute `document.version` for `page.version` or force a stale document over a fresh one. After restoration inspect shared components on other pages, then preview before publishing.

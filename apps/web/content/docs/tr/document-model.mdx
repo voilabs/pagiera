@@ -1,0 +1,38 @@
+---
+title: "Belge modeli"
+description: "Öğe kimlikleri, üst öğe ilişkileri, stiller ve sürüm güvenliğini koruyan belge düzenleme."
+---
+
+## Yerel belge yapısı
+
+Serileştirme biçimi `{ version: 1, elements, rootStyle, dataSources }` şeklindedir. Veritabanındaki sayfa revizyonundan ayrıdır. Küçük kamusal sözleşmeyle başlarken zorunlu kök varsayılanlarını tahmin etmek yerine `createDocument` kullanın.
+
+```ts
+import { createDocument } from "pagiera";
+const document = createDocument({
+  elements: [{ id: "hero", type: "Heading", z: 0,
+    base: { fontSize: 48 }, content: "Hello, Pagiera" }],
+});
+```
+
+Tam stüdyo; veri bağlama, yeniden kullanılan bileşenler, workflow ve motion için ek doğrulanmış alanlar saklar. Daha küçük kamusal TypeScript arayüzü bir alanı sıralamıyor diye onu silmeyin.
+
+## Öğeler arasındaki ilişkiler
+
+Her öğenin benzersiz `id`, `type`, sayısal `z` ve `base` stili olmalıdır. İsteğe bağlı `parentId` başka öğeye işaret eder. Ebeveyn yoksa öğe köktedir. Eksik ebeveyn ve döngüler geçersizdir. ID’leri sabit tutun: aksiyonlar, düzenler ve bağlar bunlara başvurabilir.
+
+`base` ortak stil, `overrides` ise kırılma noktası ID’lerine göre kısmi stillerdir. `rootStyle.breakpoints` ziyaretçi ekran eşiklerini tanımlar; çizim alanının boyutu ayrıdır. `dataSources`, Request ve Repeat’in başvurduğu sayfa veri kaynağı tanımlarını içerir.
+
+## Ortak master’lar kaydın parçasıdır
+
+Sayfa kaydı, sitenin ortak bileşen kümesini gönderilen belgeden yeniden oluşturur. **Her programatik kayıttan önce hedef sayfayı yeniden okuyup bileşen master’larını bütün alt öğeleriyle koruyun.** Yalnızca görünen sayfa köklerini göndermek başka sayfaların ortak bileşenlerini silebilir.
+
+1. Güncel sayfayı ve `page.version` değerini okuyun.
+2. Kök ayarlarını, kaynakları, ortak master’ları ve ilgisiz alanları koruyun.
+3. Amaçlanan en küçük değişikliği yapıp ebeveyn bağlantılarını ve hedefleri doğrulayın.
+4. Okuduğunuz sürümü `expectedVersion` vererek kaydedin.
+5. `conflict` sonucunu açıkça ele alıp yeniden yükleyerek uzlaştırın. Başarılı kaydı tekrar okuyun.
+
+## Doğrulama sınırları
+
+[CLI](/tr/docs/cli) üst düzey yapıyı, benzersiz ID’leri ve ebeveyn bağlantılarını denetler. Sunucu normalleştirmesi belirleyicidir; desteklenmeyen değerleri atabilir. Bunlar erişilebilirliği veya görsel doğruluğu kanıtlamaz. Kaydedilen çıktıyı farklı ekranlarda kontrol edip yapısal değişiklikten sonra [workflow’ları](/tr/docs/action-workflow) test edin.

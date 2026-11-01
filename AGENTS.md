@@ -7,8 +7,9 @@ separate task or claim an unpublished feature is released.
 
 - Source of truth: implemented code and verified behavior, not GitHub README sync.
 - Website catalog: `apps/web/src/lib/docs-catalog.ts`.
-- Handbook content: `apps/web/src/lib/docs-content.ts` and `docs-systems.ts`.
-- Changelog: the `changelog` entry in `docs-systems.ts`.
+- Handbook content: `apps/web/content/docs/en/*.mdx` and matching `apps/web/content/docs/tr/` files.
+- Fumadocs content: `apps/web/source.config.ts`; navigation: each locale’s `meta.json`.
+- Changelog: `apps/web/content/docs/en/changelog.mdx` and `apps/web/content/docs/tr/changelog.mdx`.
 - Add new pages to the catalog; navigation, search and sitemap derive from it.
 - Explain prerequisites, ordered steps, expected outcomes, failure cases and
   security boundaries. Verify commands and examples against the implementation.
@@ -24,8 +25,7 @@ background writer or scheduled service exists.
 
 Public website changes must preserve both locales. English uses the unprefixed
 route; Turkish uses `/tr`. Translate new interface copy with `useI18n`, preserve
-internal link locales with `localizedHref`, and update matching `*-tr.ts`
-content alongside English. Do not translate executable examples, API identifiers,
+internal link locales with `localizedHref`, and update matching Turkish content alongside English (Fumadocs uses `apps/web/content/docs/tr/`). Do not translate executable examples, API identifiers,
 stable slugs or user-authored external templates. Run `node scripts/check-i18n.cjs`
 to check dataset coverage, code-example parity and locale routing helpers.
 

@@ -1,0 +1,137 @@
+[
+  {
+    "slug": "architecture",
+    "en": "System architecture",
+    "tr": "Sistem mimarisi"
+  },
+  {
+    "slug": "studio",
+    "en": "Studio workflow",
+    "tr": "Stüdyo iş akışı"
+  },
+  {
+    "slug": "blocks",
+    "en": "Native block reference",
+    "tr": "Yerel blok başvurusu"
+  },
+  {
+    "slug": "document-model",
+    "en": "Document model",
+    "tr": "Belge modeli"
+  },
+  {
+    "slug": "responsive-design",
+    "en": "Responsive design",
+    "tr": "Duyarlı tasarım"
+  },
+  {
+    "slug": "components-layouts",
+    "en": "Components and layouts",
+    "tr": "Bileşenler ve düzenler"
+  },
+  {
+    "slug": "forms",
+    "en": "Forms and submission",
+    "tr": "Formlar ve gönderim"
+  },
+  {
+    "slug": "interactions",
+    "en": "Motion and interactions",
+    "tr": "Hareket ve etkileşimler"
+  },
+  {
+    "slug": "ai-mcp",
+    "en": "AI generation and MCP",
+    "tr": "Yapay zekâ ile üretim ve MCP"
+  },
+  {
+    "slug": "cli",
+    "en": "CLI for coding agents",
+    "tr": "Kodlama ajanları için CLI"
+  },
+  {
+    "slug": "revisions",
+    "en": "Saving and revisions",
+    "tr": "Kaydetme ve revizyonlar"
+  },
+  {
+    "slug": "fonts-assets",
+    "en": "Fonts, icons and assets",
+    "tr": "Yazı tipleri, simgeler ve varlıklar"
+  },
+  {
+    "slug": "deployment",
+    "en": "Deployment and operations",
+    "tr": "Dağıtım ve işletim"
+  },
+  {
+    "slug": "translations",
+    "en": "Translations",
+    "tr": "Çeviriler"
+  },
+  {
+    "slug": "changelog",
+    "en": "Changelog",
+    "tr": "Değişiklik günlüğü"
+  },
+  {
+    "slug": "getting-started",
+    "en": "Getting started",
+    "tr": "Başlarken"
+  },
+  {
+    "slug": "nextjs-setup",
+    "en": "Next.js setup",
+    "tr": "Next.js kurulumu"
+  },
+  {
+    "slug": "publishing",
+    "en": "Preview and publish",
+    "tr": "Önizleme ve yayımlama"
+  },
+  {
+    "slug": "data-binding",
+    "en": "Dynamic routes and data",
+    "tr": "Dinamik rotalar ve veri"
+  },
+  {
+    "slug": "templates",
+    "en": "Template registry",
+    "tr": "Şablon kayıt deposu"
+  },
+  {
+    "slug": "api-reference",
+    "en": "API reference",
+    "tr": "API başvurusu"
+  },
+  {
+    "slug": "security",
+    "en": "Security",
+    "tr": "Güvenlik"
+  },
+  {
+    "slug": "troubleshooting",
+    "en": "Troubleshooting",
+    "tr": "Sorun giderme"
+  },
+  {
+    "slug": "agents",
+    "en": "Coding agent guide",
+    "tr": "Kodlama ajanı rehberi"
+  },
+  {
+    "slug": "action-workflow",
+    "en": "Action Workflow",
+    "tr": "Aksiyon akışları"
+  },
+  {
+    "slug": "motion-editor",
+    "en": "Motion Editor",
+    "tr": "Motion editörü"
+  },
+  {
+    "slug": "integrations",
+    "en": "Integrations",
+    "tr": "Entegrasyonlar"
+  }
+]

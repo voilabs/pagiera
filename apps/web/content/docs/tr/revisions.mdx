@@ -1,0 +1,30 @@
+---
+title: "Kaydetme ve revizyonlar"
+description: "İyimser eşzamanlılığı yönetin, taslakları kurtarın ve kaydetmeyi yayımlamadan ayırın."
+---
+
+## İki farklı sürüm
+
+document.version serileştirme biçimini belirtir. page.version kaydedilmiş sayfanın revizyonunu belirtir. Kaydederken expectedVersion olarak sayfa revizyonunu kullanın. Bunun yerine asla belge biçimi numarasını koymayın.
+
+## Kaydetme sırası
+
+1. En son sayfayı yükleyin ve sürümünü saklayın.
+2. İlgisiz alanları atmadan belgeyi düzenleyin.
+3. Bu beklenen sürümle kaydedin.
+4. Yalnızca HTTP durum kodunu değil, döndürülen durumu da kontrol edin.
+5. Döndürülen yeni sürümü saklayın ve önemli değişiklikleri yeniden okuyun.
+
+HTTP isteğinin kendisi başarılı olsa bile kaydetme işlemi çakışma sonucu döndürebilir. Çakışmada yeniden yükleyin ve düzenlemeleri uzlaştırın; otomatik ve körlemesine yeniden deneme, başka birinin çalışmasının yerini alma riski taşır.
+
+## Bir revizyonu geri yükleyin
+
+İstemci bağdaştırıcıları listRevisions ve restoreRevision işlemlerini sunar. Hedef revizyonu inceleyin, amaçlanan kurtarmayı kullanıcıyla doğrulayın ve geri yüklemeden sonra yeniden yükleyin. Önizleme ve yayımlamayı ayrı doğrulama adımları olarak tutun; bir taslağı geri yüklemenin siteyi yeniden yayımladığını varsaymayın.
+
+## İşletim sırasında kurtarma
+
+Revizyon geçmişi düzenleme hatalarından kurtulmaya yardımcı olur, ancak veritabanı yedeği değildir. [Dağıtım](/tr/docs/deployment) sayfasında anlatıldığı gibi PostgreSQL yedekleri tutun ve geri yüklemeleri test edin.
+
+## Ortak durum ve kurtarma
+
+Sayfa kayıtları ortak bileşen master’larını da taşır. API ile geri yüklerken veya düzenlerken alt ağaçlarını bütünüyle koruyun. Çakışma uygulama düzeyinde sonuçtur; HTTP 200 taslağın kabul edildiği anlamına gelmez. `page.version` yerine `document.version` vermeyin veya eski belgeyi güncel olanın üzerine zorla yazmayın. Geri yükleme sonrası diğer sayfalardaki ortak bileşenleri inceleyip yayımlamadan önce önizleyin.

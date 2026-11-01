@@ -1,0 +1,75 @@
+---
+title: "Başlarken"
+description: "Gereksinimler, kurulum ve ortam değişkenleri."
+---
+
+## Başlamadan önce
+
+Pagiera uygulamanızın içinde çalışır. Kimlik doğrulama, sayfa verisi ve dağıtım sizin denetiminizde kalır. Tam stüdyo entegrasyonu için Node.js 20 veya üzeri, React 18.3 veya üzeri, Next.js App Router, PostgreSQL ve Redis gerekir. OpenRouter isteğe bağlıdır ve yalnızca yapay zekâ destekli üretim için gereklidir.
+
+## Paketi yükleyin
+
+Paket yöneticinizi seçin:
+
+<Tabs items={["bun", "npm", "pnpm", "yarn"]}>
+<Tab value="bun">
+
+```bash
+bun add pagiera
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install pagiera
+```
+
+</Tab>
+<Tab value="pnpm">
+
+```bash
+pnpm add pagiera
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add pagiera
+```
+
+</Tab>
+</Tabs>
+
+### Düzenleyicinin stil dosyasını içe aktarın
+
+Tam stüdyo stil dosyasını kendi geçersiz kılmalarınızdan önce ekleyin. Düzenleyici rotasının kullandığı kök stil dosyasında bir kez içe aktarın.
+
+```css
+@import "tailwindcss";
+@import "pagiera/full.css";
+```
+
+## Hizmetleri yapılandırın
+
+`.env.local` oluşturun ve gerekli iki hizmet URL'sini ekleyin.
+
+<Callout type="warn">Bu değerleri sunucuda tutun; hiçbir zaman bir `NEXT_PUBLIC_` değişkeniyle tarayıcıya açmayın.</Callout>
+
+```bash
+PAGIERA_POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pagiera
+PAGIERA_REDIS_URL=redis://localhost:6379
+
+# Optional: needed only for AI generation
+OPENROUTER_API_KEY=sk-or-v1-your-key
+OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+```
+
+PostgreSQL projeleri, taslakları ve yayımlanmış belgeleri saklar. Redis, yayımlanmış sayfaları ve şablon paketlerini önbelleğe alır ve yapay zekâ istek hızı sınırlaması sağlar.
+
+## Kurulumu doğrulayın
+
+[Next.js kurulumu](/tr/docs/nextjs-setup) ile devam edin, sunucu rotasını bağlayın ve ardından `/api/pagiera/health` adresini açın.
+
+<Callout type="error" title="Stüdyoyu koruyun">Kimlik doğrulama kontrolünüzü eklemeden stüdyoyu herkese açmayın.</Callout>

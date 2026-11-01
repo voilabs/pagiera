@@ -3,21 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "node scripts/check-docs.mjs && node scripts/check-i18n.cjs && next build",
     "i18n:check": "node scripts/check-i18n.cjs",
     "docs:check": "node scripts/check-docs.mjs",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "dev:site": "next dev --port 3000",
+    "docs:generate": "fumadocs-mdx",
+    "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.50.0",
+    "@types/mdx": "^2.0.14",
     "framer-motion": "^13.1.1",
+    "fumadocs-core": "16.17.9",
+    "fumadocs-mdx": "15.4.10",
+    "fumadocs-ui": "16.17.9",
     "marked": "^18.0.11",
     "next": "16.3.5",
     "pagiera": "^0.2.0-alpha.38",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "simple-icons": "^16.36.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

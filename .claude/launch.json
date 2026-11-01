@@ -18,12 +18,10 @@
         "run",
         "--cwd",
         "apps/web",
-        "dev",
-        "--port",
-        "3100"
+        "dev"
       ],
-      "port": 3100,
-      "autoPort": true
+      "port": 3000,
+      "autoPort": false
     },
     {
       "name": "panel",

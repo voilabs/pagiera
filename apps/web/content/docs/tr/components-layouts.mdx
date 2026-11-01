@@ -1,0 +1,46 @@
+---
+title: "Bileşenler ve düzenler"
+description: "Yerel bileşenleri, varyantları ve ortak sayfa düzenlerini güvenle yeniden kullanın."
+---
+
+## Yeniden kullanılabilir bileşenler
+
+Sıradan katmanlardan yeniden kullanılabilir bir parça oluşturun, ardından bir ana bileşen oluşturup gereken yerlere örneklerini yerleştirin. Ortak görsel kuralları ana bileşende; bilinçli farklılıkları örnek geçersiz kılmalarında veya varyantlarda tutun.
+
+1. Bileşenin temel düzenini ve duyarlı davranışını tamamlayın.
+2. Ana bileşene ve alt katmanlarına anlamlı adlar verin.
+3. Örnekler oluşturun ve ana bileşendeki düzenlemenin bunlara yansıdığını doğrulayın.
+4. Her varyantı ve geçersiz kılınmış her örneği ayrı ayrı test edin.
+
+### Bir örnek neleri değiştirebilir
+
+Yerleştirilmiş bir bileşeni seçip Content sekmesini açın. Component content, içindeki her metin, görsel ve bağlantı katmanını listeler:
+
+- Text, o katmanın metnini değiştirir.
+- Source ve Alt text, bir görseli değiştirir.
+- Link, bağlantılı bir katmanın gittiği yeri değiştirir.
+
+Bu değerler yalnızca o yerleşime aittir. Düzen, stil ve geri kalan her şey ana bileşenden gelmeye devam eder; bu yüzden ana bileşende sonradan yapılan değişiklik bütün örneklere ulaşır. Bir alanı ana bileşendeki değere geri getirmek geçersiz kılmayı kaldırır.
+
+### Bir bileşeni düzenlemek
+
+Bir bileşeni açtığınızda kendi tuvalinde gösterilir. Kökü kullanılabilir genişliği dolduran bileşen — gezinme çubuğu, alt bilgi, bölüm — sayfanın her breakpoint'i için bir kez çizilir ve dar bir tuvalde yapılan düzenlemeler, tıpkı sayfada olduğu gibi o breakpoint'in geçersiz kılmaları olarak saklanır. İçeriğine göre boyutlanan veya sabit boyutlu bileşen, temel breakpoint'te bir kez çizilir.
+
+## Ortak sayfa düzenleri
+
+Sayfa düzeni, düzen olarak işaretlenmiş ve tam olarak bir alt içerik yuvası içeren ana bileşendir. Yuva, sayfanın kendi kök içeriğini alır; çevresindeki katmanlar üst bilgi ve alt bilgi gibi ortak arayüzü sağlar.
+
+1. Üst bilgi, içerik yuvası ve alt bilgi içeren ana düzen bileşenini oluşturun.
+2. İçinde tam olarak bir alt içerik yuvası bulundurun.
+3. Düzeni bir sayfaya atayın.
+4. Hem ortak arayüzü hem sayfaya özgü içeriği önizlemede doğrulayın.
+
+Oluşturulan düzen katmanları, yazılmış sayfa yapısı kaydedilirken kaldırılır. Düzen eksikse veya yuva yapısı geçersizse mevcut uygulama sayfa içeriğini gizlemek yerine görünür tutar.
+
+## Şablonları bileşenlerden ayırın
+
+Bileşen, belge sistemi içinde yeniden kullanılır. Şablon ise bir proje başlangıç noktası yükler ve proje içeriğinin yerini alabilir; mevcut çalışmanıza içe aktarmadan önce [şablon kurulumu](/tr/docs/templates) sayfasını okuyun.
+
+## Programatik kayıt sınırı
+
+Ortak master’lar ve alt öğeleri kaydettiğiniz her sayfa belgesinde kalmalıdır. Kaydetme sitenin bileşen koleksiyonunu değiştirir; yalnızca görünen sayfa katmanlarını göndermek başka yerde kullanılan master’ları kaldırabilir. Yazmadan önce sayfayı yeniden yükleyin, ortak alt ağaçları koruyun, güncel revizyonla kaydedin; hem değişen sayfayı hem aynı bileşeni kullanan başka sayfayı doğrulayın. [Belge modeline](/tr/docs/document-model) bakın.

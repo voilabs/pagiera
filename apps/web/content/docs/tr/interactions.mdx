@@ -1,0 +1,38 @@
+---
+title: "Hareket ve etkileşimler"
+description: "Üzerine gelme durumları, tıklama eylemleri, döngülü slaytlar, kayan içerik, sekmeler ve akordeon iş akışları."
+---
+
+## Doğru aracı seçin
+
+| İhtiyaç | Araç |
+| --- | --- |
+| Basit bağlantı veya kaydırma hedefi | Yerel bağlantı/tıklama ayarları |
+| Üzerine gelme/basma görünümü, giriş, döngü veya kaydırma efekti | Özellik paneli efektleri |
+| Kararlar, değişkenler ve çok adımlı aksiyonlar | [Action Workflow](/tr/docs/action-workflow) |
+| Özelliğe özel keyframe, eğri ve metin kademelendirme | [Motion Editor](/tr/docs/motion-editor) |
+| Birbirine bağlı içerik panelleri | Yerel tabs/accordion kompozisyonu |
+
+Kullanılabilir statik sayfayla başlayın. Her seferinde tek davranış ekleyip ziyaretçi önizlemesinde test edin. Dekoratif hareket temel içeriği veya yetkilendirmeyi belirlememelidir.
+
+## Üzerine gelme, basma ve girişler
+
+Katmanın hover/press değerlerini ve geçiş süresini ayarlayın. Girişler içeriği saydamlaştırabilir, taşıyabilir, ölçekleyebilir, bulanıklaştırabilir veya açabilir. Özel ayarlar konum farkı ve opaklığı birleştirir. Yay ve bezier eğrileri hissi belirler. Görünürlükle tetiklenen girişler bir kez veya tekrar girişlerde oynayabilir.
+
+Döngüler girişten sonra tekrarlanır. Kaydırma efektleri ekrana giriş, geçiş veya çıkış ilerlemesini izler. Kaydırma efekti zamana bağlı klip değildir. Azaltılmış hareket tercihini test edin: yayımlanmış hareket içeriği okunabilir dinlenme durumunda bırakmalıdır.
+
+## Overlay’ler
+
+Panel sayfanın üstünde açılacaksa popover, dropdown veya modal kullanın. Tetikleyiciyi, başlangıç durumunu ve kapanış animasyonunu seçin. Escape ve dış tıklamayla kapanmayı test edin. Görsel overlay tam dialog erişilebilirliğinin kanıtı değildir: host sayfada klavye odağını, okuma sırasını ve odağın geri dönüşünü doğrulayın.
+
+## Carousel ve marquee
+
+Kompozisyonun yerel alt öğelerini düzenleyip otomatik oynatma, aralık ve yönü ayarlayın. Carousel; oklar, noktalar, kaydırma, döngü, üzerine gelince durma ve slide/fade/zoom geçişleri sunar. Tek slayt, çok slayt ve uzun içeriği dar ekranlarda test edin. Temel metin kayan şeridi kovalamadan veya otomatik geçiş beklemeden erişilebilir kalmalıdır.
+
+## Tabs ve accordion
+
+Başlıklar ve paneller kompozisyon içinde ortak hedef kimlikleri kullanır. Çoğaltma veya yeniden düzenlemeden sonra bu ilişkileri koruyun. İşlenmiş sayfada görünür durumu ve klavye davranışını doğrulayın. Aynı tıkta basit açılır kontrol ve başka workflow kullanıyorsanız işleyici çakışmalarını kontrol edin.
+
+## Yayımlamadan önce inceleyin
+
+Fare, klavye ve dokunmatik genişliği test edin. Hızlı tekrarlı girdiyi, yenilemeyi, istemci gezinmesini ve azaltılmış hareketi deneyin. Kalıcı ayarları doğrulamak için kaydedip yeniden yükleyin; geçici tuval önizlemesi kaydedilen runtime değildir.

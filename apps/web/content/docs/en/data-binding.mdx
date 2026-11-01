@@ -1,0 +1,95 @@
+---
+title: "Dynamic routes and data"
+description: "Resolve request data and repeat API results on the server."
+---
+
+## Choose Request or Repeat
+
+Use a **Request** block when an endpoint returns one object. Use a **Repeat** block when a list should create one visual subtree per item. Published requests resolve on the server before HTML is returned.
+
+## Use route and query values
+
+A page slug may contain named parameters such as `blog/:slug`. Pass the matched values into the published-page context:
+
+```ts
+const context = {
+  params: { slug: "introducing-pagiera" },
+  query: { preview: "true" },
+  page: { slug: "blog/:slug" }
+}
+```
+
+Reference those values in request URLs, headers or bodies:
+
+```text
+https://api.example.com/posts/{{params.slug}}
+https://api.example.com/search?q={{query.q}}
+```
+
+## Bind returned fields
+
+Connect text, images, links and visibility rules to fields returned by the request. For Repeat blocks, each repeated subtree receives the current item as its local data context.
+
+When the list sits inside the response, set the source's **List path** to it. Paths can be written dotted (`items`, `data.results`) or the JSONPath way (`$.items`, `items[0].tags`, `$["items"]`); a leading `$` is the response itself. After **Send**, a response that is a single object lists the arrays inside it — GitHub's search API, for example, offers `items` — and choosing one sets the path and loads its rows.
+
+### Formatting bound values
+
+A bound field reads as it arrives unless you give it a format. Under **Data binding**, once a field is chosen, **Format** turns it into a date (presets such as *24 Ekim 2026* or a pattern such as `d MMMM yyyy, HH:mm`), a number or a currency, or keeps it as text with a letter case and a length limit. **Before** and **After** wrap a non-empty value, and **If empty** is shown when the field is missing, null, blank or an empty list. The language and time zone are stored with the format, so the canvas, the server and every visitor print the same text.
+
+Text inside a Request or Repeat can also mix fields into a sentence, and `{{…}}` takes pipes and expressions:
+
+```text
+Yazar: {{author.name | default:"Anonim"}}
+{{published_at | date:"d MMMM yyyy" | locale:tr-TR | tz:Europe/Istanbul}}
+{{price | currency:TRY | locale:tr-TR}}
+{{status | map:draft=Taslak,published=Yayında,*=Bilinmiyor}}
+{{status == "draft" ? "Taslak" : "Yayında"}}
+{{title.replace("-", " ").toUpperCase()}}
+{{tags.map(t => t.name).join(", ")}}
+{{items.find(i => i.type == "main")?.price ?? "—"}}
+```
+
+Pipes: `date`, `number`, `currency`, `upper`, `lower`, `capitalize`, `truncate`, `prefix`, `suffix`, `locale`, `tz`, `map`, `replace` and `default`. Expressions are JavaScript-shaped but interpreted, never executed: they read the row's fields, use the operators `+ - * / % == != < > && || ?? ! ?:` and optional chaining, call a fixed set of string and list methods (`replace`, `split`, `slice`, `map`, `filter`, `find`, `join`, …) and the helpers `Math.*`, `String`, `Number`, `date`, `number`, `upper`, `lower`, `len` and `default`. They cannot reach globals, prototypes or the server, and each evaluation is limited in steps and output size; an expression that fails renders as empty. `{{params.…}}`, `{{query.…}}` and `{{page.…}}` keep their meaning as page tokens.
+
+### Handle loading and failure
+
+Server rendering has no client-side loading phase for published output. Design empty and error states explicitly. An upstream 404 can turn the complete route into a 404 response when the data source uses the `page-404` behavior.
+
+## Keep pages indexable
+
+Do not move essential content into an effect that runs after hydration. Confirm with “View Source” or an HTTP request that titles, descriptions and primary page copy are present in the returned HTML.
+
+## A concrete source definition
+
+```json
+{
+  "id": "posts",
+  "name": "Published posts",
+  "url": "https://api.example.com/posts?slug={{params.slug}}",
+  "path": "$.items",
+  "method": "GET",
+  "onNotFound": "page-404"
+}
+```
+
+Replace the example domain with your own JSON endpoint. For a collection response like `{ "items": [{ "title": "Hello", "price": 12 }] }`, choose `$.items`, assign this source to Repeat and bind a child text layer to `title`. An empty path reads the root response; the request preview is the fastest way to confirm whether the selected value is an array.
+
+## Source configuration and limits
+
+Supported methods are GET, POST, PUT, PATCH and DELETE. Body content is used for POST/PUT/PATCH. Query pairs and headers can contain the same request tokens. The loader caps results at 200 rows, uses an 8-second request timeout and follows at most three redirects. The default response limit is 2,000,000 bytes; operators can change `maxSourceBytes`.
+
+Private hosts are refused by default. To call your own local API during development, set `PAGIERA_ALLOW_PRIVATE_HOSTS=localhost,127.0.0.1` on the host server and restart it. This opens those hosts on any port; it is an operator decision, not a per-page permission. Review [security](/docs/security) before allowing private services.
+
+Source URLs and header values are part of the page document. Treat them as visible to editors and avoid embedding permanent credentials. A host-owned proxy can add server-only secrets while validating allowed resource IDs. Route/query tokens are input, not proof of authorization.
+
+## Troubleshooting by symptom
+
+| Symptom | What to inspect |
+| --- | --- |
+| Repeat has no rows | HTTP response, array path and whether the API returned an object or list |
+| A field becomes empty | Exact key spelling, scope, unsupported expression or missing value |
+| Date differs from expectations | Explicit locale and time zone in the field format |
+| Local endpoint is refused | Host allowlist and the server restart |
+| Whole page becomes 404 | The source's `onNotFound` choice and upstream status |
+
+When adding dynamic SEO, use the same server-resolved record in your framework metadata. Pagiera's field bindings do not automatically populate the host application's title, canonical URL or description.

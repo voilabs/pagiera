@@ -1,0 +1,65 @@
+---
+title: "Aksiyon akışları"
+description: "Olay, koşul ve aksiyonları bağlayın; katmana özel grafikleri ve morph geçişlerini test edin."
+---
+
+## Başlamadan önce
+
+Düzenlenebilir sayfa, tetikleyici katman ve sabit ID’li hedef katman gerekir. Normal öğelerle buton ve panel oluşturun; paneli başlangıçta gizleyin veya kapalı overlay olarak ayarlayın. Davranış eklemeden önce temel sürümü kaydedin.
+
+Editör rayından **Actions** açın. Katmana özel bölünmüş görünüm için katmana **Alt + çift tıklayın** veya bağlam menüsünden **Edit actions** seçin. Normal çift tıklama metin/bileşen düzenlemeyi sürdürür. Daraltılmış grafik seçilen katmanı izler; **All** bütün sayfa grafiğine döner.
+
+## Açılıp kapanan etkileşim oluşturun
+
+1. **On click** olayı ekleyip katman olarak butonu seçin.
+2. **Toggle layer** ekleyin. Hedef paneli ve kısa bir animasyon seçin.
+3. Olayın yürütme çıkışını aksiyonun yürütme girişine bağlayın.
+4. Korumalı sayfa önizlemesinde butona tıklayın. İlk tık paneli açmalı, sonraki kapatmalıdır.
+5. Yayımlamadan önce kaydedip yeniden yükleyerek tekrar önizleyin.
+
+Düzenleme tuvali katman seçer; her zaman ziyaretçi tıklaması gibi davranmaz. Tuvalde test ederken etkileşim önizlemesini açın veya gerçek sayfa önizlemesini kullanın.
+
+## Düğüm aileleri
+
+| Aile | Düğümler ve davranış |
+| --- | --- |
+| Olay | Sayfa yüklenmesi, tıklama, üzerine gelme başlangıcı/sonu, görünür olma, girdi değişimi, tekrarlı zamanlayıcı |
+| Akış | Branch, üç çıkışlı Sequence, Delay, Do once |
+| Aksiyon | Göster/gizle/aç-kapat, kaydır, metin değiştir, sınıf değiştir, gezinme, değişken, kopyala, animasyon, morph |
+| Veri | Değişken/değer, karşılaştırma, and/or/not, matematik, birleştirme, görünürlük, girdi değeri, katman metni |
+
+Yürütme bağlantıları neyin çalışacağını belirler. Veri bağlantıları değer sağlar; çalışmayı başlatmaz. Bağlantısız veri girişi ayarlanan değeri kullanır. Pin türleri uyumlu olmalıdır. Bir yürütme çıkışı tek hedefe bağlanır; sıralı birden fazla işlem için Sequence kullanın. Her veri girişi tek kaynaktan okur.
+
+Boş alana sağ tıklayarak düğüm arayın. Bağlantıyı boş alana bırakınca uyumlu düğümler filtrelenir ve seçilen bağlanır. Pin’e **Alt + tıklamak** bağlantıyı keser. Bağlantı veya düğümü seçip Delete ile silin. Eksik katman hedefleri işaretlenir; yeniden seçilmelidir.
+
+## Koşul ekleyin
+
+Branch koşuluna **Is layer visible** bağlayın. True çıkışını Hide layer’a, False çıkışını Show layer’a bağlayın. Akış uygulama durumuna bağlıysa aynı koşula karşılaştırma veya değişken verin. Değişken paneli adları ve başlangıç değerlerini yönetir; anlamlı ve benzersiz adlar kullanın.
+
+<Callout type="warn" title="Ziyaretçiye özel durum">
+**Keep**, değişkeni ilgili yol için tarayıcının yerel depolamasında saklar. Bu ziyaretçiye özel durumdur; ortak veritabanı veya yetkilendirme kararı değildir. Gizli bilgi, satın alma veya erişim haklarını burada saklamayın.
+</Callout>
+
+## Canlandırın ve morph uygulayın
+
+Show, Hide ve Toggle yerleşik veya özel animasyon kabul eder. **Play animation** adlandırılmış özel animasyonu çalıştırır; bunu Motion özel animasyon panelinde oluşturun. Döngü sonsuza kadar sürebilir; kritik sonraki aksiyonu döngülü animasyonun tamamlanmasına bağlamayın.
+
+**Morph into layer** kaynak, hedef, süre ve hareket hissini alır. **Then swap** açıkken sonda kaynak gizlenip hedef gösterilir. Altında içerik olan komşu iki akış katmanıyla test edin: kapladıkları alan son takasta sıçramak yerine geçiş boyunca boyut değiştirmelidir. Mutlak konumlandırma, farklı ebeveynler veya karmaşık grid’ler sonucu değiştirebilir; gerçek önizlemeyi bütün hedef genişliklerde kontrol edin.
+
+Morph, öğe/düzen geçişidir; keyfi vektör yol dönüşümü veya video efekti değildir. Özellik keyframe’leri ve metin açılışları için [Motion](/tr/docs/motion-editor) kullanın.
+
+## Sınırlar ve güvenlik
+
+Doğrulayıcı en fazla 300 düğüm, 600 bağlantı ve 50 değişken tutar. Runtime keyfi JavaScript yerine çalıştırma başına 2.000 adımlı sınırlı yorumlayıcı kullanır. Gezinme HTTP(S), site yolları, fragment, e-posta ve telefon adreslerini kabul eder. Grafikler sunucu yetkilendirmesinin yerini tutmaz; gizli panel verisini korumaz.
+
+## Akışı teşhis edin
+
+| Belirti | Kontrol |
+| --- | --- |
+| Hiçbir şey çalışmıyor | Olay bağlantısı, doğru hedef, etkileşim önizlemesi veya gerçek önizleme açık mı? |
+| Branch yanlış tarafı seçiyor | Girdi türlerini ve koşulun güncel değerini inceleyin |
+| Kaydedince aksiyon kayboldu | Desteklenmeyen düğüm/özellik veya doğrulama sınırı; kaydedilmiş grafiği inceleyin |
+| Yeniden yüklemede eski durum geliyor | Kalıcı değişkeni temizleyin veya Keep’i kapatın |
+| Morph sırasında içerik sıçrıyor | Akış ebeveynlerini, konumu ve duyarlı geçersiz kılmaları karşılaştırın |
+
+Klavye erişimini, odağı, azaltılmış hareketi ve hızlı tekrarlı tıklamaları test edin. Overlay ve yerel açılır kontroller için [etkileşim kalıplarına](/tr/docs/interactions) bakın.

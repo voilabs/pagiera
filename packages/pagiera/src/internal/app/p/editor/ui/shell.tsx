@@ -28,6 +28,8 @@ export function EditorShell({
     overlays,
     dock,
     page,
+    timeline,
+    split,
     focused = false,
 }: {
     /** The bar's left end: where you are, and the way to everywhere else. */
@@ -67,6 +69,10 @@ export function EditorShell({
      * stay mounted so coming back finds the canvas exactly where it was.
      */
     page?: React.ReactNode;
+    /** A strip under the canvas, as wide as it: Motion's timeline. */
+    timeline?: React.ReactNode;
+    /** A pane beside the canvas, sharing the row with it: a layer's actions. */
+    split?: React.ReactNode;
     /**
      * Focus mode: the editor covers the whole window, over whatever the host
      * app draws around it — its sidebar, its header, its footer. Below the
@@ -116,7 +122,8 @@ export function EditorShell({
                     </aside>
                 )}
 
-                <div className={`relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-ed-canvas shadow-[inset_0_0_0_1px_var(--ed-border)] ${hidden}`}>
+                <div className={`flex min-w-0 flex-1 flex-col gap-2 ${hidden}`}>
+                <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-ed-canvas shadow-[inset_0_0_0_1px_var(--ed-border)]">
                     <div className="flex flex-1 overflow-hidden">
                         <main
                             className="pg-canvas-well relative flex min-w-0 flex-1 flex-col overflow-hidden"
@@ -135,6 +142,14 @@ export function EditorShell({
                     )}
                     {overlays}
                 </div>
+                {timeline}
+                </div>
+
+                {split && !page && (
+                    <section aria-label="Layer actions" className="flex w-[52%] min-w-[420px] shrink-0 flex-col overflow-hidden rounded-2xl bg-ed-surface shadow-[var(--ed-panel-shadow)]">
+                        {split}
+                    </section>
+                )}
 
                 {inspectorVisible && !page && (
                     <aside aria-label="Inspector" className="z-10 flex w-[288px] shrink-0 flex-col overflow-hidden rounded-2xl bg-ed-surface shadow-[var(--ed-panel-shadow)]">

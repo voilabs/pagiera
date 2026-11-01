@@ -1,0 +1,38 @@
+---
+title: "Document model"
+description: "Element IDs, parent relationships, styles and version-safe document editing."
+---
+
+## A native document
+
+The serialization format is `{ version: 1, elements, rootStyle, dataSources }`. It is separate from the database page revision. Use `createDocument` when starting with the public lightweight contract instead of guessing required root defaults.
+
+```ts
+import { createDocument } from "pagiera";
+const document = createDocument({
+  elements: [{ id: "hero", type: "Heading", z: 0,
+    base: { fontSize: 48 }, content: "Hello, Pagiera" }],
+});
+```
+
+The full studio stores additional validated fields for data binding, reusable components, workflows and motion. Do not discard fields because a smaller public TypeScript surface does not enumerate them.
+
+## Element relationships
+
+Each element needs a unique `id`, `type`, numeric `z` and `base` style. The optional `parentId` points to another element. No parent means a root element. Missing parents and cycles are invalid. Keep IDs stable: actions, layouts and bindings may reference them.
+
+`base` is the shared style; `overrides` maps breakpoint IDs to partial styles. `rootStyle.breakpoints` describes viewport thresholds; artboard drawing size is a separate concern. `dataSources` contains page source definitions referenced by Request and Repeat.
+
+## Shared masters are part of a save
+
+Saving a page replaces the site's shared component set from the supplied document. **Before every programmatic save, reread the target page and retain its component masters and their complete child subtrees.** Sending only the page's visible roots can remove shared components from other pages.
+
+1. Read the current page and its `page.version`.
+2. Preserve root settings, sources, shared masters and unrelated fields.
+3. Apply the smallest intended edit; validate parent links and targets.
+4. Save with that loaded version as `expectedVersion`.
+5. Handle `conflict` explicitly, reload and reconcile. Read back a successful save.
+
+## Validation boundaries
+
+The [CLI](/docs/cli) checks top-level structure, unique IDs and parent links. Server normalization is authoritative and may discard unsupported values. Neither proves a design is accessible or visually correct. Check saved output at multiple viewports and test [workflows](/docs/action-workflow) after structural edits.

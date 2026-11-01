@@ -1,0 +1,31 @@
+---
+title: "Template registry"
+description: "Install, validate and maintain reusable template bundles."
+---
+
+## What a template contains
+
+A Pagiera template is a validated document bundle: pages, reusable components, linked layouts, assets and the metadata required to present it in the template browser.
+
+## Configure the registry
+
+Point the server at a registry you control, or use the official registry:
+
+```bash
+PAGIERA_TEMPLATE_REGISTRY_URL=https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json
+```
+
+## Install a template
+
+The browser sends only the selected template ID to your backend. The server downloads the configured bundle, validates it and replaces the project atomically. This keeps registry trust and network access on the server.
+
+### Before installation
+
+- Save or export work that should not be replaced.
+- Confirm the target project.
+- Review the pages and assets listed by the template.
+- Ensure the registry URL uses HTTPS and belongs to a trusted publisher.
+
+## Maintain your own registry
+
+Version bundles, keep IDs stable and validate every release in a clean project. Avoid changing an existing version in place; publish a new version so installations remain reproducible.

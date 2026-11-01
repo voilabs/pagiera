@@ -1,0 +1,53 @@
+---
+title: "Fonts, icons and assets"
+description: "Register host fonts, choose media and keep content accessible."
+---
+
+## Register site fonts
+
+Use PagieraProvider from pagiera/provider to register the next/font variables available to your host. Each font entry has a variable and title. The studio's site font selection is intended to apply to canvas, preview and published output.
+
+1. Load the font in your host application.
+2. Register its variable and readable title in the provider.
+3. Select the site font in the studio's typography settings.
+4. Verify that the font is loaded on both preview and public routes.
+
+The full editor ships its own Figtree font for studio chrome; this is separate from your website typography. See [Next.js setup](/docs/nextjs-setup) for integration context.
+
+## Images, video and icons
+
+Choose assets with appropriate dimensions and usage rights. Supply meaningful image alt text, reserve layout space and test loading failures. Use the icon library for symbols, but retain visible text or an accessible name for important controls.
+
+## External media
+
+Remote images, video and embeds still depend on their origins and your application's browser security policy. Do not assume a URL working on your machine guarantees access for every visitor. Test published pages without an editor session.
+
+## Delivery checks
+
+Review large assets on a slow connection, avoid hiding primary content in decorative media, and confirm font fallback does not make controls overflow.
+
+## next/font example
+
+```tsx
+// src/app/layout.tsx
+import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
+import { PagieraProvider } from "pagiera/provider";
+import "./globals.css";
+const inter = Inter({ subsets: ["latin"], variable: "--font-site" });
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return <html lang="en" className={inter.variable}><body>
+    <PagieraProvider fonts={[{ variable: "--font-site", title: "Inter" }]}>
+      {children}
+    </PagieraProvider>
+  </body></html>;
+}
+```
+
+The font variable must exist in the DOM on editor, preview and published routes. A provider registration does not download a font on its own. Self-hosted custom-font URLs must be reachable by visitors and allowed by your font/CORS/CSP policy.
+
+## Durable image uploads
+
+The standard client wires `uploadImage` to the backend. It uploads raw bytes and receives a durable asset URL. The server stores accepted raster data in PostgreSQL, deduplicates identical bytes and externalizes base64 raster images during save/import. PNG, JPEG, WebP, GIF and AVIF are accepted up to 8 MB per image. Without a host upload adapter, the editor may inline bytes in its draft; choose durable storage for production.
+
+These editor assets differ from files a visitor selects in a form. FormData delivery and receiving-side validation remain your responsibility. The host decides whether media URLs are public, signed or authenticated.

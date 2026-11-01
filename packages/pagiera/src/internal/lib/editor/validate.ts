@@ -1,4 +1,7 @@
 import { normalizeShader } from "./shaders";
+import { parseCustomAnimations } from "./custom-animation";
+import { parseLayerMotion } from "./keyframes";
+import { parseActionGraph } from "./action-graph";
 import { normalizeDisclosure } from "./disclosure";
 import { normalizeActions, normalizeOverlay } from "./actions";
 import { normalizeFieldAppearance } from "./field-appearance";
@@ -872,6 +875,7 @@ export function parseElements(
             press: Object.keys(press).length > 0 ? press : undefined,
             transition: parseStateTransition(el.transition),
             loop: parseLoop(el.loop),
+            motion: parseLayerMotion(el.motion),
             draggable: el.draggable === true ? true : undefined,
         });
     }
@@ -1048,6 +1052,8 @@ export function parseRootStyle(input: unknown): RootStyle {
         customFonts,
         customCss: customCss(raw.customCss),
         customJs: customJs(raw.customJs),
+        actionGraph: parseActionGraph(raw.actionGraph),
+        animations: parseCustomAnimations(raw.animations),
         // The site's layout, and this page's right to step out of it.
         siteHeaderId: str(raw.siteHeaderId, MAX_SHORT_STRING),
         pageLayoutId: str(raw.pageLayoutId, MAX_SHORT_STRING),

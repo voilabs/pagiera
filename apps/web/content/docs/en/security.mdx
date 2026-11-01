@@ -1,0 +1,43 @@
+---
+title: "Security"
+description: "Protect editor routes and understand the trust boundary."
+---
+
+## Define the trust boundary
+
+Pagiera provides editor and publishing primitives, not an authentication product. Your application decides who can list projects, open a draft, upload assets and publish a page.
+
+## Protect editor routes
+
+Require an authenticated session and an explicit editor role before rendering the studio. Repeat the authorization check in API handlers; hiding a navigation link is not access control.
+
+## Keep secrets on the server
+
+PostgreSQL, Redis and OpenRouter credentials must never use the `NEXT_PUBLIC_` prefix. Do not serialize them into the editor bootstrap or return them from health endpoints.
+
+## Validate external data
+
+Treat template registries and APIs used by Request blocks as external input. Use HTTPS, allowlist hosts when possible, limit response sizes and avoid forwarding arbitrary user-provided headers.
+
+## Production checklist
+
+- Editor and preview routes require authentication.
+- Publishing requires a narrower role than ordinary editing when appropriate.
+- Database and Redis connections use production credentials and encryption.
+- Preview pages send `noindex`.
+- Backups and a document recovery process exist.
+- Logs do not include secrets or complete authorization headers.
+
+## Browser-visible configuration
+
+Data-source definitions, form body templates and form headers travel with documents or rendered forms. They are not a credential vault. Keep external-service keys behind host-owned endpoints; validate route parameters before using them to access private records. A workflow variable, hidden layer or overlay is never an authorization boundary.
+
+## Outbound network policy
+
+The source loader blocks common private/loopback addresses and private hostname suffixes and checks redirects. `allowPrivateHosts` bypasses those private-host rules for the named host, on any port. These URL checks are not a substitute for DNS-aware egress controls and network isolation. Do not allow user-authored endpoints to reach cloud metadata or administrative services.
+
+## Custom code, assets and CSP
+
+Native graphs and binding expressions use fixed interpreters. Custom Embed/TSX and page scripts have a different trust level: allow only trusted authors to create executable content. Strict CSP can prevent inline scripts even when no unsafe-eval is needed; supply your application's nonce/policy and test client-side navigation. Do not weaken CSP simply to hide an integration error.
+
+Uploaded raster files become durable URLs. The setup example deliberately serves these publicly so public pages can load images. Protect confidential media with a separate delivery policy; an unpredictable asset ID is not authorization.

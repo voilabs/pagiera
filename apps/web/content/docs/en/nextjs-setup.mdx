@@ -1,0 +1,124 @@
+---
+title: "Next.js setup"
+description: "Mount the backend, load the bootstrap and open the studio."
+---
+
+## Before you start
+
+Complete [installation](/docs/getting-started). These examples use the Next.js App Router and TypeScript. They assume your application already provides `getEditorSession(request?: Request)` from `@/lib/auth`, returning a session with a boolean `canEdit`. Implement that check with your existing authentication provider before mounting the editor; it is not a Pagiera export.
+
+## 1. Create a server-only loader
+
+```ts
+// src/lib/pagiera.ts
+import "server-only";
+import { getPagieraServer, pagieraConfigFromEnv } from "pagiera/server";
+export const pagiera = () => getPagieraServer(pagieraConfigFromEnv());
+```
+
+## 2. Mount and protect the API
+
+```ts
+// src/app/api/pagiera/[...path]/route.ts
+import { createPagieraRouteHandlers, pagieraConfigFromEnv } from "pagiera/server";
+import { getEditorSession } from "@/lib/auth";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+const handlers = createPagieraRouteHandlers(pagieraConfigFromEnv());
+async function handle(request: Request) {
+  const path = new URL(request.url).pathname;
+  const publicAsset = request.method === "GET" &&
+    /^\/api\/pagiera\/assets\/(?:[a-f0-9-]{36}|manrope-variable\.woff2)$/i.test(path);
+  if (!publicAsset) {
+    const session = await getEditorSession(request);
+    if (!session?.canEdit) return new Response("Unauthorized", { status: 401 });
+  }
+  return handlers[request.method as keyof typeof handlers](request);
+}
+export const GET = handle;
+export const POST = handle;
+export const PUT = handle;
+export const PATCH = handle;
+export const DELETE = handle;
+```
+
+The example makes raster asset URLs public so published images load without an editor session. Uploaded assets are therefore public media, not a private document store. For confidential media, provide your own authorized storage and delivery adapter. The health endpoint and every mutation remain protected. For a different API mount, update the route, server `basePath` and client `baseUrl` together.
+
+## 3. Open the default page
+
+```tsx
+// src/app/editor/page.tsx
+import { redirect } from "next/navigation";
+import { editorPath } from "pagiera";
+import { pagiera } from "@/lib/pagiera";
+import { getEditorSession } from "@/lib/auth";
+export const dynamic = "force-dynamic";
+export default async function EditorIndex() {
+  if (!(await getEditorSession())?.canEdit) redirect("/login");
+  const initial = await (await pagiera()).getEditorBootstrap();
+  if (!initial) throw new Error("Editor bootstrap unavailable");
+  redirect(editorPath(initial.page.id));
+}
+```
+
+Bootstrap creates or finds the mandatory Home page. It returns `page`, `pages` and `library`; an unknown explicit page ID returns no bootstrap.
+
+## 4. Load a page and its panel on the server
+
+```tsx
+// src/app/editor/[pageId]/[[...panel]]/page.tsx
+import { notFound, redirect } from "next/navigation";
+import { editorPanel } from "pagiera";
+import { pagiera } from "@/lib/pagiera";
+import { getEditorSession } from "@/lib/auth";
+import Studio from "@/components/studio";
+export const dynamic = "force-dynamic";
+export default async function EditorPage({ params }: {
+  params: Promise<{ pageId: string; panel?: string[] }>
+}) {
+  if (!(await getEditorSession())?.canEdit) redirect("/login");
+  const { pageId, panel = [] } = await params;
+  if (panel.length > 1 || (panel[0] && !editorPanel(panel[0]))) notFound();
+  const initial = await (await pagiera()).getEditorBootstrap(pageId);
+  if (!initial) notFound();
+  return <Studio initial={initial} initialPanel={panel[0] ?? "layers"} />;
+}
+```
+
+## 5. Mount the interactive client
+
+```tsx
+// src/components/studio.tsx
+"use client";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { createPagieraClient, editorPanel, editorPath } from "pagiera";
+import PagieraStudio, { type PagieraStudioProps } from "pagiera/full";
+type Bootstrap = Pick<PagieraStudioProps, "page" | "pages" | "library">;
+export default function Studio({ initial, initialPanel }: {
+  initial: Bootstrap; initialPanel: string
+}) {
+  const router = useRouter();
+  const client = useMemo(() => createPagieraClient(), []);
+  return <PagieraStudio {...initial} initialPanel={initialPanel}
+    adapters={{ ...client.adapters,
+      editorHref: (id, panel) => editorPath(id, editorPanel(panel) ?? "layers"),
+      navigate: (id) => { window.location.assign(editorPath(id)); },
+      refresh: () => router.refresh(),
+      previewHref: (id) => "/preview/" + encodeURIComponent(id),
+      publishedHref: (slug) => slug === "home" ? "/" : "/" + slug.replace(/^\/+/, ""),
+    }} />;
+}
+```
+
+Import `pagiera/full.css` once in your root stylesheet. This minimal navigation reloads the selected editor page to keep the server bootstrap authoritative. A richer integration may use `client.bootstrap(id)` and client routing, but must replace the current page, page list and library together.
+
+## Verify the integration
+
+1. Sign in with editor access and request `/api/pagiera/health`. Expect a successful JSON response after PostgreSQL and Redis connect.
+2. Open `/editor`. It should redirect to the Home page's canonical editor route.
+3. Create another page, switch between pages, save and reload. The saved version and content must survive.
+4. Sign out. Editor routes and API mutations must be denied; public images remain available by the policy above.
+5. Add [preview and published rendering](/docs/publishing). Preview links do not work until your host supplies their route.
+
+If styles are absent, check CSS imports. If saving fails, inspect the API status and server logs before retrying. See [troubleshooting](/docs/troubleshooting).

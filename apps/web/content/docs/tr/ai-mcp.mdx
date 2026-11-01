@@ -1,0 +1,43 @@
+---
+title: "Yapay zekâ ile üretim ve MCP"
+description: "Yapay zekâ ile üretimi yapılandırın, düzenleme kapsamını belirleyin ve MCP keşfini yetkilendirin."
+---
+
+## Yapay zekâ ile üretim iş akışı
+
+Yapay zekâ ile üretim, sunucu tarafındaki OpenRouter yapılandırmanızı kullanır. Anahtarı tarayıcı paketlerinin dışında tutun. Düzenleyici arayüzündeki hataları araştırmadan önce modeli sunucuda yapılandırın ve sağlayıcı erişimini doğrulayın.
+
+1. Mevcut çalışmanızı kaydedin.
+2. Sayfanın amacını, yapısını, içeriğini ve duyarlı tasarım beklentilerini açıklayın.
+3. Stüdyoda amaçlanan düzenleme kapsamını seçin.
+4. Üretilen yerel katmanları gözden geçirin ve duyarlı sonucu inceleyin.
+5. Kaydedin ve önizleyin; yalnızca açık bir incelemeden sonra yayımlayın.
+
+İstemcinin generate işlemi, akış hâlinde olayları ve iptali destekler. İptal edilen veya başarısız olan çalışmayı tamamlanmamış sayın ve yeniden denemeden önce mevcut belgeyi inceleyin. Redis, yapay zekâ istek hızı sınırlamasına katılır; sağlayıcı sınırları ve faturalandırma ayrıdır.
+
+## MCP keşfi
+
+Sunucu yapılandırması, işletmeciye ait MCP sunucularını stdio, HTTP veya SSE taşıma yöntemleriyle kaydedebilir. Arka uç, keşif için listeleme ve inceleme işlemleri sunar. Bu entegrasyon, tarayıcı kullanıcısına sınırsız araç çalıştırma yetkisi vermez.
+
+İstekte bulunan kullanıcının yetkisini kontrol etmek için authorizeMcp yapılandırın. Komut yolları, argümanlar, ortam değişkenleri ve uzak uç noktalar sunucunun denetiminde olmalıdır; ziyaretçilerden keyfî bağlantı yapılandırmaları kabul etmeyin.
+
+## Ajanla düzenleme
+
+Terminalde çalışan bir kodlama ajanı için [CLI iş akışını](/tr/docs/cli) kullanın. MCP keşfi ile CLI üzerinden belge düzenleme ayrı yeteneklerdir. İkisi de ana uygulamanın kimlik doğrulamasının veya yayımlamak için açık onayın yerini almaz.
+
+## Operatöre ait bağlantı yapılandırın
+
+```ts
+import { pagieraConfigFromEnv, getPagieraServer } from "pagiera/server";
+import { getEditorSession } from "@/lib/auth";
+const server = await getPagieraServer({
+  ...pagieraConfigFromEnv(),
+  mcpServers: [{ id: "catalog", name: "Internal catalog",
+    transport: "http", url: "https://mcp.example.com/mcp" }],
+  authorizeMcp: async (request) => Boolean((await getEditorSession(request))?.canEdit),
+});
+```
+
+Kimlik doğrulama yardımcısı [kurulumdaki](/tr/docs/nextjs-setup) host uygulamanızdır; örnek uç noktayı operatörün onayladığı sunucuyla değiştirin. MCP ayarları ziyaretçi isteminden okunmaz. `authorizeMcp` callback’i yoksa keşif reddedilir. Stdio için yapılandırılmış çalıştırılabilir dosya sunucuda bulunmalıdır; yönetilen/serverless host’lar bunu desteklemeyebilir.
+
+MCP keşfi araçları listeler veya inceler. Sayfa düzenlemenin parçası olarak bulunan her aracı otomatik çalıştırmaz. Sitenin kendi içeriğinde yerel katmanlar kullanıp kayıt öncesinde ortak bileşen master’larını koruyun. Üretilmiş kod veya URL’yi güvenilir girdi saymak yerine model çıktısını inceleyin.

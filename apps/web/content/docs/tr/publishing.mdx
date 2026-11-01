@@ -1,0 +1,76 @@
+---
+title: "Önizleme ve yayımlama"
+description: "Taslakları gizli tutun, güvenle önizleyin ve yayımlanan sayfaları oluşturun."
+---
+
+## Taslak, önizleme ve kamusal çıktı
+
+Kaydetme taslağı günceller. Önizleme taslağı yetkili editörler için işler. Yayımlama onaylı içeriği kamusal sürüme kopyalar ve yayımlanmış önbelleği geçersiz kılar. Uygulamayı dağıtmaz veya DNS yapılandırmaz.
+
+## Kamusal rotayı işleyin
+
+Önce `pagiera` sunucu yükleyicisini tanımlayan [Next.js kurulumunu](/tr/docs/nextjs-setup) tamamlayın. Bu isteğe bağlı catch-all hem Home hem iç içe yolları işler. Aynı URL’ye iki işleyici eklemek yerine çakışan kök sayfayı değiştirin veya yükleyiciyi mevcut rotalarınızda kullanın.
+
+```tsx
+// src/app/[[...path]]/page.tsx
+import { notFound } from "next/navigation";
+import { RenderedPage } from "pagiera/runtime";
+import { pagiera } from "@/lib/pagiera";
+export const dynamic = "force-dynamic";
+export default async function PublishedPage({ params, searchParams }: {
+  params: Promise<{ path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { path = [] } = await params;
+  const slug = path.join("/") || "home";
+  const query = Object.fromEntries(Object.entries(await searchParams)
+    .map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? "" : value ?? ""]));
+  const context = { query, page: { slug } };
+  const page = await (await pagiera()).getPublishedPage(slug, context);
+  if (!page) notFound();
+  return <RenderedPage elements={page.elements} rootStyle={page.rootStyle}
+    data={page.data} context={{ ...context, params: page.routeParams ?? {},
+      page: { slug: page.routePattern ?? slug } }} />;
+}
+```
+
+`elements`, `rootStyle` ve `data` değerlerinin tamamını aktarın. Sayfa stilleri aktarılmazsa sayfa düzeni ve hareketi, çözülmüş veri aktarılmazsa Request/Repeat içeriği eksik kalır. Veri kaynağı URL’lerinin dışındaki token’lar için rota bağlamı da renderer’a aktarılır.
+
+`blog/:slug` şeklinde saklanan kalıp `blog/hello` isteğiyle eşleşir. Tam yayımlanmış yollar kalıplardan önce gelir. Sunucu `routeParams` alanını doldurup eşleşen `routePattern` değerini döndürür. `page-404` seçeneğiyle yapılandırılan bir üst servis 404 yanıtı sayfa döndürmez; host gerçek 404 yanıtını verebilir.
+
+## Özel taslağı işleyin
+
+```tsx
+// src/app/preview/[pageId]/page.tsx
+import { notFound, redirect } from "next/navigation";
+import { RenderedPage } from "pagiera/runtime";
+import { getEditorSession } from "@/lib/auth";
+import { pagiera } from "@/lib/pagiera";
+export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false, follow: false } };
+export default async function Preview({ params }: {
+  params: Promise<{ pageId: string }>
+}) {
+  if (!(await getEditorSession())?.canEdit) redirect("/login");
+  const page = await (await pagiera()).getPreviewPage((await params).pageId);
+  if (!page) notFound();
+  return <RenderedPage elements={page.elements} rootStyle={page.rootStyle}
+    data={page.data} />;
+}
+```
+
+Dinamik taslak verisi için gerçekçi sorgu ve parametre değerlerini `getPreviewPage` işlevinin ikinci argümanı olarak verip aynı bağlamı `RenderedPage` bileşenine aktarın. Yukarıdaki basit örnek boş bağlam kullanır.
+
+## İnceleyip yayımlayın
+
+1. Kaydedip dönen sürümü doğrulayın.
+2. Masaüstü ve mobil genişlikte önizleyin. Formları, workflow hedeflerini, bağlantıları ve azaltılmış hareketi test edin.
+3. Editörden veya `client.adapters.publishPage(id)` ile yayımlayın.
+4. Editör oturumu olmadan kamusal yolu isteyin. Dönen HTML’de temel metin ve API içeriğini inceleyin.
+5. Taslakta başka değişiklik yapın. Yeniden yayımlayana kadar kamusal sayfa değişmemelidir.
+
+Kamusal sürümü kaldırmak için `unpublishPage(id)` kullanın. Kamusal içerik bulunmadığında yedek olarak taslağı sunmayın. Metadata üretimi host’a aittir: şablon sayfa başlığı otomatik olarak kayda özel SEO başlığı değildir. Çözülmüş kaydı okuyup framework metadata’sını üretin.
+
+## Hata ve kurtarma
+
+Kamusal sayfa eskiyse Redis bağlantısını ve yayımlama yanıtını kontrol edin. Düzen eksikse `rootStyle` ve runtime stillerini kontrol edin. Geri almak için [revizyonu](/tr/docs/revisions) taslağa yükleyin, önizleyin ve ayrıca yayımlayın.

@@ -1,0 +1,24 @@
+---
+title: Changelog
+description: Verified documentation and source-tree changes awaiting release.
+---
+
+## Unreleased
+
+These notes describe the current source tree. They do not announce an npm release or invent a release date.
+
+### Documentation
+
+- Simplified the website navbar: integrations live in the Features mega menu, while templates and documentation live in Resources, without duplicate standalone links on desktop or mobile.
+- Reorganized the handbook into seven collapsible topic categories, with a category directory on the documentation home page and existing page URLs preserved.
+- Added an English/Turkish integration catalog with search, category filters, setup steps and links to configuration guides; documented service requirements and host-owned connections.
+- Embedded Fumadocs directly in the website's Next.js application at `/docs` and `/tr/docs`; removed the separate Mintlify process and proxy.
+- Completed the English and Turkish handbook with setup, editing, data, forms, runtime, security and operations guides.
+- Added dedicated Action Workflow and Motion Editor guides.
+- Corrected runtime examples to pass page styles, resolved data and route context; expanded the protected studio integration.
+- Documented shared component preservation, optimistic save conflicts and the boundary between save and publish.
+- Added same-process document search and checked internal links, translated code examples and MDX compilation.
+
+### Compatibility
+
+Documentation describes source capabilities. Check your installed version's exports before using an API. `document.version` is the serialization format; the saved page revision is the value needed for `expectedVersion`. Publishing a document does not deploy its host application.

@@ -1,0 +1,46 @@
+---
+title: "Components and layouts"
+description: "Reuse native components, variants and shared page layouts safely."
+---
+
+## Reusable components
+
+Build a reusable piece from ordinary layers, then create a component master and place instances where needed. Keep shared visual rules in the master and intentional differences in instance overrides or variants.
+
+1. Finish the component's base layout and responsive behavior.
+2. Give the master and its child layers meaningful names.
+3. Create instances and verify that a master edit reaches them.
+4. Test each variant and any overridden instance separately.
+
+### What an instance can change
+
+Select a placed component and open the Content tab. Component content lists every text, image and link layer inside it:
+
+- Text replaces the words of that layer.
+- Source and Alt text replace an image.
+- Link replaces where a linked layer leads.
+
+These values belong to that placement only. Layout, styling and everything else still come from the master, so a later change to the master reaches every instance. Setting a field back to the master's value removes the override.
+
+### Editing a component
+
+Opening a component shows it on its own canvas. A component whose root fills the available width — a navbar, a footer, a section — is drawn once for each breakpoint of the page, and edits made on a narrower artboard are stored as that breakpoint's overrides, exactly as on a page. A component that hugs its content or has a fixed size is drawn once, at the base breakpoint.
+
+## Shared page layouts
+
+A page layout is a component master marked as a layout with exactly one children slot. The slot receives the page's own root content; surrounding layers provide shared chrome such as a header and footer.
+
+1. Create the layout master with header, content slot and footer.
+2. Keep exactly one children slot inside it.
+3. Assign the layout to a page.
+4. Verify both shared chrome and page-specific content in preview.
+
+Generated layout layers are removed when saving the authored page structure. If the layout is missing or its slot structure is invalid, the current implementation keeps page content visible rather than hiding it.
+
+## Distinguish templates from components
+
+A component is reused within the document system. A template installs a project starting point and can replace project content; read [template installation](/docs/templates) before importing into existing work.
+
+## Programmatic save boundary
+
+Shared masters and their descendants must stay in every page document you save. A save replaces the site's component collection; sending only visible page layers can remove masters used elsewhere. Reload the page before writing, retain shared subtrees, save with its current revision and verify both the changed page and a second page using the same component. See [document model](/docs/document-model).

@@ -1,10 +1,12 @@
 "use client";
 import { ElementSketch } from "./ui/element-sketch";
+import { InsertEmpty } from "./ui/insert-panel";
 import { TextEffectsContent } from "@/lib/render/text-effects";
 
 import {
     IconArrowDown,
     IconArrowUp,
+    IconBolt,
     IconArrowsMove,
     IconBox,
     IconCheck,
@@ -215,7 +217,7 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
         <span className="pointer-events-none block w-full select-none whitespace-pre-wrap">
             {element.textEffects && (element.textEffects.hover !== "none" || element.textEffects.scroll !== "none") ? <TextEffectsContent content={element.content} effects={element.textEffects} enabled={effectsPreview} /> : entranceSplit === "none"
                 ? element.content
-                : splitTextParts(element.content, entranceSplit)}
+                : splitTextParts(element.content, entranceSplit, element.motion?.split?.order)}
         </span>
     );
 }
@@ -382,66 +384,153 @@ export function SaveIndicator({
 
 /* ------------------------------------------------------------- left panels */
 
-const ELEMENT_GROUPS: Array<{ title: string; types: ElementType[] }> = [
-    { title: "Layout", types: ["Frame", "Stack", "Grid", "Section", "Container"] },
-    { title: "Basic", types: ["Heading", "Text", "Quote", "Markdown", "Image", "Button", "Video", "Embed"] },
-    { title: "Structure", types: ["Divider", "Spacer", "List", "ListItem"] },
-    { title: "Forms", types: ["Form", "Fieldset", "Label", "Input", "Textarea", "Select", "Checkbox", "Radio", "FileInput"] },
-    { title: "Data", types: ["Request", "Repeat"] },
+const ELEMENT_GROUPS: Array<{ title: string; hint: string; types: ElementType[] }> = [
+    { title: "Layout", hint: "Boxes that arrange layers", types: ["Section", "Container", "Stack", "Grid", "Frame"] },
+    { title: "Basic", hint: "Text, media and actions", types: ["Heading", "Text", "Button", "Image", "Video", "Quote", "Markdown", "Embed"] },
+    { title: "Structure", hint: "Rhythm and lists", types: ["Divider", "Spacer", "List", "ListItem"] },
+    { title: "Forms", hint: "Fields that collect input", types: ["Form", "Input", "Textarea", "Select", "Checkbox", "Radio", "FileInput", "Label", "Fieldset"] },
+    { title: "Data", hint: "Fetch and repeat content", types: ["Request", "Repeat"] },
 ];
+
+/** What each card says under its name, and the extra words a search finds it by. */
+const ELEMENT_INFO: Partial<Record<ElementType, { label?: string; description: string; keywords?: string }>> = {
+    Frame: { description: "Free-form box", keywords: "div box absolute" },
+    Stack: { description: "Rows or columns", keywords: "flex row column auto layout" },
+    Grid: { description: "Tiles in a grid", keywords: "columns bento tiles" },
+    Section: { description: "Full-width band", keywords: "band block hero" },
+    Container: { description: "Centred max width", keywords: "wrapper center" },
+    Heading: { description: "Title text", keywords: "h1 h2 title" },
+    Text: { description: "Paragraph", keywords: "paragraph body copy" },
+    Quote: { description: "Pull quote", keywords: "blockquote testimonial" },
+    Markdown: { description: "Formatted text", keywords: "rich text md" },
+    Image: { description: "Photo or graphic", keywords: "picture photo img" },
+    Button: { description: "Link or action", keywords: "cta link" },
+    Video: { description: "Video player", keywords: "movie youtube" },
+    Embed: { description: "Custom HTML", keywords: "code iframe html" },
+    Divider: { description: "Horizontal rule", keywords: "hr line separator" },
+    Spacer: { description: "Empty space", keywords: "gap space" },
+    List: { description: "Bulleted list", keywords: "ul ol bullets" },
+    ListItem: { label: "List item", description: "One list row", keywords: "li" },
+    Form: { description: "Submits fields", keywords: "contact newsletter" },
+    Fieldset: { description: "Grouped fields", keywords: "group" },
+    Label: { description: "Field caption" },
+    Input: { description: "One-line field", keywords: "text email field" },
+    Textarea: { description: "Multi-line field", keywords: "message" },
+    Select: { description: "Dropdown", keywords: "options dropdown" },
+    Checkbox: { description: "On or off", keywords: "toggle check" },
+    Radio: { description: "One of many", keywords: "option choice" },
+    FileInput: { label: "File upload", description: "File picker", keywords: "upload attachment" },
+    Request: { description: "Fetch data", keywords: "api fetch cms" },
+    Repeat: { description: "One per item", keywords: "loop collection map" },
+};
+
+/** The name a card shows for a type. */
+function elementLabel(type: ElementType) {
+    return ELEMENT_INFO[type]?.label ?? type;
+}
 
 export function ElementsPanel({
     search,
     onInsert,
+    onClearSearch,
 }: {
     search: string;
     onInsert: (type: ElementType) => void;
+    /** Offered from the empty state when a search hid every element. */
+    onClearSearch?: () => void;
 }) {
+    const [category, setCategory] = useState<string | null>(null);
+    const [dragging, setDragging] = useState<ElementType | null>(null);
     const query = search.trim().toLowerCase();
-    const groups = ELEMENT_GROUPS.map((group) => ({
-        ...group,
-        types: group.types.filter((type) => type.toLowerCase().includes(query)),
-    })).filter((group) => group.types.length > 0);
-
-    if (groups.length === 0) {
-        return <p className="p-4 text-center text-ed-faint">No elements match “{search}”</p>;
-    }
+    const words = query.split(/\s+/).filter(Boolean);
+    const matches = (type: ElementType) => {
+        const info = ELEMENT_INFO[type];
+        const haystack = `${type} ${elementLabel(type)} ${info?.description ?? ""} ${info?.keywords ?? ""}`.toLowerCase();
+        return words.every((word) => haystack.includes(word));
+    };
+    const groups = ELEMENT_GROUPS
+        .filter((group) => !category || group.title === category)
+        .map((group) => ({ ...group, types: group.types.filter(matches) }))
+        .filter((group) => group.types.length > 0);
 
     return (
-        <div className="flex flex-col gap-5 px-3 pb-4 pt-1">
-            {groups.map((group) => (
-                <section key={group.title}>
-                    <h3 className="px-0.5 pb-2 text-[12px] font-semibold text-ed-text">
-                        {group.title}
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                        {group.types.map((type) => {
-                            const Icon = TYPE_ICONS[type];
-                            return (
-                                <button
-                                    type="button"
-                                    key={type}
-                                    draggable
-                                    onDragStart={(event) => {
-                                        event.dataTransfer.setData(DRAG_MIME, type);
-                                        event.dataTransfer.effectAllowed = "copy";
-                                    }}
-                                    onClick={() => onInsert(type)}
-                                    title={`Add ${type} — click, or drag onto the page`}
-                                    className="group flex cursor-grab flex-col gap-1.5 rounded-xl p-1.5 text-left transition-colors hover:bg-[var(--ed-nav-hover)] focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)] active:cursor-grabbing"
-                                >
-                                    <span className="pointer-events-none flex h-[64px] w-full items-center justify-center rounded-lg bg-ed-field transition-shadow group-hover:shadow-[0_0_0_1px_var(--ed-border-strong)]">
-                                        <ElementSketch type={type} fallback={<Icon size={18} stroke={1.5} className="text-ed-muted" />} />
-                                    </span>
-                                    <span className="pointer-events-none truncate px-0.5 text-[12px] font-medium text-ed-text">
-                                        {type === "ListItem" ? "List item" : type === "FileInput" ? "File upload" : type}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-            ))}
+        <div className="flex flex-col pb-4">
+            {/* Narrows the list to one group; "All" is how a reader gets back. */}
+            <div role="toolbar" aria-label="Element categories" className="flex flex-wrap gap-1 px-3 pb-2 pt-0.5">
+                {[null, ...ELEMENT_GROUPS.map((group) => group.title)].map((title) => {
+                    const active = category === title;
+                    return (
+                        <button
+                            type="button"
+                            key={title ?? "All"}
+                            aria-pressed={active}
+                            onClick={() => setCategory(title)}
+                            className={`h-6 rounded-full px-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)] ${active
+                                ? "bg-ed-text text-ed-surface"
+                                : "bg-ed-field text-ed-muted hover:bg-ed-field-hover hover:text-ed-text"}`}
+                        >
+                            {title ?? "All"}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {groups.length === 0 ? (
+                <InsertEmpty
+                    title={query ? `No elements match “${search.trim()}”` : "Nothing here"}
+                    hint="Try another word, such as “photo”, “columns” or “email”."
+                    onClear={query ? onClearSearch : undefined}
+                />
+            ) : (
+                <div className="flex flex-col gap-4 px-3 pt-1">
+                    {groups.map((group) => (
+                        <section key={group.title} aria-labelledby={`insert-group-${group.title}`}>
+                            <header className="flex items-baseline gap-2 px-0.5 pb-2">
+                                <h3 id={`insert-group-${group.title}`} className="text-[12px] font-semibold text-ed-text">
+                                    {group.title}
+                                </h3>
+                                <span className="rounded-full bg-ed-field px-1.5 text-[10px] tabular-nums text-ed-faint">{group.types.length}</span>
+                                <span className="ml-auto truncate text-[10px] text-ed-faint">{group.hint}</span>
+                            </header>
+                            <div className="grid grid-cols-2 gap-2">
+                                {group.types.map((type) => {
+                                    const Icon = TYPE_ICONS[type];
+                                    const label = elementLabel(type);
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={type}
+                                            draggable
+                                            onDragStart={(event) => {
+                                                event.dataTransfer.setData(DRAG_MIME, type);
+                                                event.dataTransfer.effectAllowed = "copy";
+                                                setDragging(type);
+                                            }}
+                                            onDragEnd={() => setDragging(null)}
+                                            onClick={() => onInsert(type)}
+                                            title={`Add ${label} — click, or drag onto the page`}
+                                            aria-label={`Add ${label}`}
+                                            className={`group relative flex cursor-grab flex-col overflow-hidden rounded-xl bg-ed-surface p-1 text-left shadow-[inset_0_0_0_1px_var(--ed-border)] transition-[box-shadow,transform,opacity] duration-150 hover:shadow-[inset_0_0_0_1px_var(--ed-border-strong),0_6px_16px_-10px_var(--ed-border-strong)] focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)] active:scale-[0.98] active:cursor-grabbing ${dragging === type ? "opacity-50" : ""}`}
+                                        >
+                                            <span className="pointer-events-none flex h-[58px] w-full items-center justify-center rounded-lg bg-ed-field transition-colors group-hover:bg-ed-field-hover">
+                                                <ElementSketch type={type} fallback={<Icon size={18} stroke={1.5} className="text-ed-muted" />} />
+                                            </span>
+                                            <span className="pointer-events-none flex min-w-0 flex-col px-1.5 pb-1 pt-1.5">
+                                                <span className="truncate text-[12px] font-medium text-ed-text">{label}</span>
+                                                <span className="truncate text-[10px] text-ed-faint">{ELEMENT_INFO[type]?.description}</span>
+                                            </span>
+                                            <span aria-hidden className="pointer-events-none absolute right-2 top-2 flex size-5 items-center justify-center rounded-md bg-ed-accent text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                                                <IconPlus size={12} stroke={2.25} />
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    ))}
+                    <p className="px-0.5 pt-1 text-center text-[10px] text-ed-faint">Click to add · drag onto the canvas to place</p>
+                </div>
+            )}
         </div>
     );
 }
@@ -1271,6 +1360,7 @@ export function ContextMenu({
     isFree,
     onCreateComponent,
     onAskLuma,
+    onActions,
     onDelete,
 }: {
     x: number;
@@ -1287,6 +1377,8 @@ export function ContextMenu({
     /** Absent for a layer that is already part of a component. */
     onCreateComponent?: () => void;
     onAskLuma: () => void;
+    /** Opens the layer's actions beside the canvas. */
+    onActions?: () => void;
     onDelete: () => void;
 }) {
     return (
@@ -1300,6 +1392,14 @@ export function ContextMenu({
                 label="Ask Luma…"
                 onClick={onAskLuma}
             />
+            {onActions && (
+                <MenuItem
+                    icon={<IconBolt size={14} className="text-ed-muted" />}
+                    label="Edit actions"
+                    shortcut="Alt + double-click"
+                    onClick={onActions}
+                />
+            )}
             <MenuSeparator />
             <MenuItem
                 icon={<IconArrowUp size={14} className="text-ed-muted" />}

@@ -1,0 +1,43 @@
+---
+title: "Güvenlik"
+description: "Düzenleyici rotalarını koruyun ve güven sınırını anlayın."
+---
+
+## Güven sınırını tanımlayın
+
+Pagiera bir kimlik doğrulama ürünü değil, düzenleyici ve yayımlama yapı taşları sunar. Projeleri kimin listeleyebileceğine, taslak açabileceğine, varlık yükleyebileceğine ve sayfa yayımlayabileceğine uygulamanız karar verir.
+
+## Düzenleyici rotalarını koruyun
+
+Stüdyoyu oluşturmadan önce kimliği doğrulanmış bir oturum ve açık bir düzenleyici rolü şart koşun. Yetkilendirme kontrolünü API işleyicilerinde tekrarlayın; bir gezinme bağlantısını gizlemek erişim denetimi değildir.
+
+## Gizli bilgileri sunucuda tutun
+
+PostgreSQL, Redis ve OpenRouter kimlik bilgileri asla `NEXT_PUBLIC_` önekini kullanmamalıdır. Bunları düzenleyicinin başlangıç verilerine serileştirmeyin veya sağlık uç noktalarından döndürmeyin.
+
+## Haricî veriyi doğrulayın
+
+Şablon kayıt depolarını ve Request bloklarının kullandığı API'leri haricî girdi olarak değerlendirin. HTTPS kullanın, mümkün olduğunda sunucuları izin listesine alın, yanıt boyutlarını sınırlayın ve kullanıcıların sağladığı keyfî başlıkları iletmekten kaçının.
+
+## Üretim kontrol listesi
+
+- Düzenleyici ve önizleme rotaları kimlik doğrulama gerektirir.
+- Uygun olduğunda yayımlama, sıradan düzenlemeye göre daha dar kapsamlı bir rol gerektirir.
+- Veritabanı ve Redis bağlantıları üretim kimlik bilgileri ve şifreleme kullanır.
+- Önizleme sayfaları `noindex` gönderir.
+- Yedekler ve bir belge kurtarma süreci vardır.
+- Günlükler gizli bilgileri veya yetkilendirme başlıklarının tamamını içermez.
+
+## Tarayıcıya görünen yapılandırma
+
+Veri kaynağı tanımları, form gövde şablonları ve form başlıkları belgeyle veya işlenmiş formla taşınır. Gizli anahtar kasası değildir. Harici servis anahtarlarını host’a ait uç noktalarda tutun; özel kayıtlara erişimde rota parametrelerini doğrulayın. Workflow değişkeni, gizli katman veya overlay yetkilendirme sınırı değildir.
+
+## Dış ağ politikası
+
+Kaynak yükleyici yaygın özel/loopback adresleri ve özel hostname son eklerini engeller; yönlendirmeleri kontrol eder. `allowPrivateHosts`, adı verilen host için bütün portlarda özel host kurallarını atlar. Bu URL kontrolleri DNS farkındalıklı dış ağ denetimi ve ağ yalıtımının yerini tutmaz. Kullanıcının yazdığı uç noktaların bulut metadata veya yönetim servislerine ulaşmasına izin vermeyin.
+
+## Özel kod, varlıklar ve CSP
+
+Yerel grafikler ve bağlama ifadeleri sabit yorumlayıcı kullanır. Özel Embed/TSX ve sayfa betikleri farklı güven düzeyindedir: çalıştırılabilir içerik oluşturmayı yalnızca güvenilir yazarlara açın. unsafe-eval gerekmese bile sıkı CSP inline betikleri engelleyebilir; uygulamanızın nonce/politikasını sağlayıp istemci gezinmesini test edin. Entegrasyon hatasını gizlemek için CSP’yi zayıflatmayın.
+
+Yüklenen raster dosyalar kalıcı URL olur. Kurulum örneği, kamusal sayfaların görsel yükleyebilmesi için bunları bilinçli biçimde açık sunar. Gizli medyayı ayrı dağıtım politikasıyla koruyun; tahmin edilemeyen varlık ID’si yetki değildir.

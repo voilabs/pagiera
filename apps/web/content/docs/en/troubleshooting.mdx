@@ -1,0 +1,32 @@
+---
+title: "Troubleshooting"
+description: "Fix the most common setup, CSS, database and AI failures."
+---
+
+## The health endpoint fails
+
+Open `/api/pagiera/health` and address the first failing dependency. Verify environment variables are available to the Next.js server process, then test PostgreSQL and Redis independently.
+
+## The editor has no styles
+
+Import `pagiera/full.css` before your own stylesheet. CSS `@import` rules must appear before ordinary style rules. Restart the dev server after changing the root stylesheet.
+
+The stylesheet is confined to the editor. Every rule in `pagiera/full.css` applies only inside the `.pg-scope` element the studio renders itself into, and its theme variables (`--radius`, `--primary`, the colour scale) are defined there rather than on `:root`. Importing it into an app with its own design system leaves that app's colours, radii, headings and buttons unchanged, outside and around the editor.
+
+Mount the studio as the whole editing screen; it already lists, creates and renames pages in its Pages panel, so a host needs no page list of its own — send an editor route without a page to the home page with `editorPath`. Inside a host layout with its own sidebar or header, **Focus mode** (the expand button beside the save status, or Ctrl/⌘+Shift+F) makes the studio cover the whole window and stops the host page scrolling underneath. The choice is remembered per browser. It relies on `position: fixed`, so no ancestor of the studio may set `transform`, `filter` or `contain`.
+
+## getEditorBootstrap is not a function
+
+Your application and generated lockfile may be resolving different package versions. Inspect the installed `pagiera` version, reinstall dependencies and restart Next.js.
+
+## AI generation fails
+
+Confirm that `OPENROUTER_API_KEY` is present on the server and that `OPENROUTER_MODEL` names a model available to the account. AI is optional; remove its configuration while diagnosing the core editor.
+
+## Published API data is missing from HTML
+
+Load the published document with request context on the server. Verify route parameters and query values match the placeholders used by Request blocks. Inspect the raw HTML response rather than only the hydrated browser view.
+
+## A page saves but does not change publicly
+
+Saving changes the draft only. Open preview to verify the draft, then publish it. If the public page remains stale, check Redis connectivity and cache invalidation.

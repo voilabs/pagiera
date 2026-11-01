@@ -1,0 +1,33 @@
+---
+title: "Sistem mimarisi"
+description: "Stüdyo, belgeler, sunucu ve yayımlanan sayfaların çalışma ortamı nasıl bir araya gelir?"
+---
+
+## Sisteme genel bakış
+
+Pagiera, uygulamanıza gömülü olarak çalışır. Tarayıcı stüdyoyu barındırır, sunucunuz kalıcı kaydı ve veri isteklerini yönetir, PostgreSQL belgeleri saklar, Redis ise önbellek ve istek hızı sınırlaması sağlar. Kimlik doğrulama ve dağıtım, ana uygulamanın sorumluluğundadır.
+
+## Bir belgenin sistemdeki yolculuğunu izleyin
+
+1. Düzenleyicinin başlangıç verilerini sunucuda yükleyin ve tam stüdyoya aktarın.
+2. Tarayıcıda yerel katmanları düzenleyin. Bir belge; öğeler, kök stiller ve veri kaynağı tanımları içerir.
+3. Sayfanın beklenen revizyonunu kullanarak sunucu üzerinden kaydedin. Kaydetme, herkese açık sayfayı değil taslağı değiştirir.
+4. İstek verilerini sunucuda çözümleyerek taslağı kimlik doğrulaması gerektiren bir rota üzerinden önizleyin.
+5. Açıkça yayımlama işlemini başlatın. Herkese açık çalışma ortamı yayımlanmış belgeyi okur ve HTML oluşturur.
+
+## Paket sınırları
+
+| Giriş noktası | Sorumluluk |
+| --- | --- |
+| pagiera/full | Tam stüdyo arayüzü |
+| pagiera/provider | Ana uygulamanın yazı tiplerini kaydetme |
+| pagiera/server | Sunucu işleyicileri, kalıcı kayıt ve sunucuda yükleme |
+| pagiera/runtime | Yayımlanmış sayfaları oluşturma |
+| pagiera/data | Veri entegrasyonu dışa aktarımları |
+| pagiera | Daha küçük düzenleyici, istemci ve belge API'leri |
+
+Sunucu kodunu yalnızca sunucu modüllerine aktarın. Tam stüdyo için pagiera/full.css dosyasını içe aktarın; pagiera/styles.css daha küçük düzenleyici içindir.
+
+## Sonraki adımınızı seçin
+
+[Kurulum](/tr/docs/getting-started) ile başlayın, [Next.js rotalarını](/tr/docs/nextjs-setup) bağlayın ve ardından [stüdyo iş akışını](/tr/docs/studio) izleyin. Uygulamayı kullanıcılara açmadan önce [dağıtım](/tr/docs/deployment) rehberini okuyun.

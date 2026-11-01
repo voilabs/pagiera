@@ -1,0 +1,132 @@
+[
+  {
+    "path": "/",
+    "en": "Pagiera",
+    "tr": "Pagiera"
+  },
+  {
+    "path": "/features",
+    "en": "Features",
+    "tr": "Özellikler"
+  },
+  {
+    "path": "/features/data",
+    "en": "Data",
+    "tr": "Data"
+  },
+  {
+    "path": "/features/action-workflow",
+    "en": "Action Workflow",
+    "tr": "Action Workflow"
+  },
+  {
+    "path": "/features/motion-editor",
+    "en": "Motion Editor",
+    "tr": "Motion Editor"
+  },
+  {
+    "path": "/guides",
+    "en": "Guides",
+    "tr": "Rehberler"
+  },
+  {
+    "path": "/guides/add-a-visual-editor-to-nextjs",
+    "en": "Add a visual page editor to a Next.js application",
+    "tr": "Add a visual page editor to a Next.js application"
+  },
+  {
+    "path": "/guides/bind-api-data-to-a-page",
+    "en": "Bind API data to a visually designed page",
+    "tr": "Bind API data to a visually designed page"
+  },
+  {
+    "path": "/guides/preview-and-publish-pages",
+    "en": "Preview a draft and publish it safely",
+    "tr": "Preview a draft and publish it safely"
+  },
+  {
+    "path": "/guides/build-with-a-coding-agent",
+    "en": "Build an editable website with a coding agent",
+    "tr": "Build an editable website with a coding agent"
+  },
+  {
+    "path": "/guides/reuse-layouts-and-components",
+    "en": "Reuse navigation, footers and layouts across pages",
+    "tr": "Reuse navigation, footers and layouts across pages"
+  },
+  {
+    "path": "/guides/use-pagiera-as-a-cms",
+    "en": "Use Pagiera as a self-hosted CMS for a Next.js site",
+    "tr": "Use Pagiera as a self-hosted CMS for a Next.js site"
+  },
+  {
+    "path": "/compare",
+    "en": "Comparisons",
+    "tr": "Karşılaştırmalar"
+  },
+  {
+    "path": "/compare/pagiera-vs-puck",
+    "en": "Pagiera vs Puck",
+    "tr": "Pagiera ve Puck"
+  },
+  {
+    "path": "/compare/pagiera-vs-builder-io",
+    "en": "Pagiera vs Builder.io",
+    "tr": "Pagiera ve Builder.io"
+  },
+  {
+    "path": "/compare/pagiera-vs-plasmic",
+    "en": "Pagiera vs Plasmic",
+    "tr": "Pagiera ve Plasmic"
+  },
+  {
+    "path": "/compare/pagiera-vs-payload",
+    "en": "Pagiera vs Payload",
+    "tr": "Pagiera ve Payload"
+  },
+  {
+    "path": "/compare/pagiera-vs-webflow",
+    "en": "Pagiera vs Webflow",
+    "tr": "Pagiera ve Webflow"
+  },
+  {
+    "path": "/compare/pagiera-vs-framer",
+    "en": "Pagiera vs Framer",
+    "tr": "Pagiera ve Framer"
+  },
+  {
+    "path": "/templates",
+    "en": "Templates",
+    "tr": "Şablonlar"
+  },
+  {
+    "path": "/templates/nocturne/preview",
+    "en": "Nocturne Studio",
+    "tr": "Nocturne Studio"
+  },
+  {
+    "path": "/templates/relay/preview",
+    "en": "Relay",
+    "tr": "Relay"
+  },
+  {
+    "path": "/templates/x-clone/preview",
+    "en": "X Clone",
+    "tr": "X Clone"
+  },
+  {
+    "path": "/templates/nexthive/preview",
+    "en": "NextHive",
+    "tr": "NextHive"
+  },
+  {
+    "path": "/faq",
+    "en": "FAQ",
+    "tr": "Sık sorulan sorular"
+  },
+  {
+    "path": "/integrations",
+    "en": "Integrations",
+    "tr": "Entegrasyonlar"
+  }
+]

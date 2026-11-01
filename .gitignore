@@ -49,3 +49,7 @@ next-env.d.ts
 # workspace caches
 .turbo/
 .cache/
+
+
+# Generated Fumadocs content module
+apps/web/.source/

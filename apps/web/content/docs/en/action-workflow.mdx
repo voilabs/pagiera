@@ -1,0 +1,65 @@
+---
+title: "Action Workflow"
+description: "Connect events, conditions and actions; test scoped graphs and morph transitions."
+---
+
+## Before you start
+
+You need an editable page, a trigger layer and a target layer with stable IDs. Build a button and a panel using ordinary layers; initially hide the panel or configure it as a closed overlay. Save a baseline before adding behaviour.
+
+Open **Actions** from the editor rail. For a layer-specific split view, **Alt + double-click** the layer or use **Edit actions** in its context menu. Ordinary double-click retains text/component editing. The scoped graph follows the selected layer; **All** returns to the page graph.
+
+## Build a toggle interaction
+
+1. Add an **On click** event. Select the button as its layer.
+2. Add **Toggle layer**. Choose the panel as the target and a short animation.
+3. Connect the event's execution output to the action's execution input.
+4. Open the protected page preview and click the button. First click opens the panel; the next closes it.
+5. Save, reload and preview again before publishing.
+
+The editing canvas selects layers; it does not always behave like a visitor click. Enable interaction preview when testing on the canvas, or use the actual page preview.
+
+## Node families
+
+| Family | Nodes and behaviour |
+| --- | --- |
+| Event | Page loaded, click, hover start/end, scroll into view, input change, repeating timer |
+| Flow | Branch, Sequence with three outputs, Delay, Do once |
+| Action | Show/hide/toggle, scroll, text replacement, class changes, navigation, variables, copy, animation, morph |
+| Data | Variable/value, compare, and/or/not, math, join, visibility, input value, layer text |
+
+Execution wires decide what runs. Data wires supply values; they do not start execution. A data input without a wire uses its configured value. Pin types must be compatible. A single execution output connects to one destination; use Sequence to branch ordered execution. Each data input reads one source.
+
+Right-click empty space to search for a node. Dropping a wire on empty space filters compatible nodes and connects the chosen one. **Alt + click** a pin disconnects it. Select a wire or node and press Delete to remove it. Missing layer targets are flagged and must be replaced.
+
+## Add a condition
+
+Use **Is layer visible** as Branch's condition. Connect True to Hide layer and False to Show layer. Feed a comparison or variable to the same condition when your flow depends on application state. The variable panel manages names and initial values; keep names meaningful and unique.
+
+<Callout type="warn" title="Visitor-local state">
+**Keep** persists a variable in the browser's local storage for that path. It is visitor-local state, not a shared database or authorization decision. Do not store secrets, purchases or access rights in it.
+</Callout>
+
+## Animate and morph
+
+Show, Hide and Toggle accept built-in or custom animations. **Play animation** runs a named custom animation; build it in Motion's custom-animation panel. A loop can run indefinitely, so do not depend on a looping animation finishing before an essential later action.
+
+**Morph into layer** takes the source layer, destination layer, duration and feel. With **Then swap**, the source is hidden and the destination shown at the end. Test two neighbouring flow layers with content below them: their occupied space should resize during the transition rather than jump at the final swap. Absolute positioning, different parents or complex grids can change the layout result; check the real preview on every target width.
+
+Morph is an element/layout transition, not arbitrary path interpolation or a video effect. Use [Motion](/docs/motion-editor) for property keyframes and text reveals.
+
+## Limits and security
+
+The validator retains at most 300 nodes, 600 links and 50 variables. The runtime uses a bounded interpreter with 2,000 steps per run, not arbitrary JavaScript. Navigation accepts HTTP(S), site paths, fragments, mail and telephone URLs. Graphs cannot replace server authorization; a hidden panel does not protect its data.
+
+## Diagnose a flow
+
+| Symptom | Check |
+| --- | --- |
+| Nothing runs | Event connected, correct target, interaction preview or real preview enabled |
+| Branch chooses the wrong side | Inspect input types and the condition's current value |
+| Action vanished after save | Unsupported node/property or validation limit; inspect saved graph |
+| Old state returns after reload | Clear the persisted variable or turn Keep off |
+| Content jumps during morph | Compare flow parents, positioning and responsive overrides |
+
+Test keyboard access, focus, reduced motion and repeated rapid clicks. See [interaction patterns](/docs/interactions) for overlays and native disclosure controls.

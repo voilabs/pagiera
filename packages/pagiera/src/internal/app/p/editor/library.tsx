@@ -1,6 +1,6 @@
 "use client";
 
-import { IconArrowLeft, IconBox, IconChevronRight, IconCoin, IconLayoutGrid, IconLayoutNavbar, IconLayoutRows, IconPhoto, IconPlus, IconQuote, IconSearch, IconSparkles } from "@tabler/icons-react";
+import { IconArrowLeft, IconBox, IconChevronRight, IconCoin, IconLayoutGrid, IconLayoutNavbar, IconLayoutRows, IconPhoto, IconPlus, IconQuote, IconSearch, IconSparkles, IconX } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -41,14 +41,40 @@ export function LibraryPanel({ pages, currentPageId, onInsert }: { pages: Librar
     const insertPreset = (preset: ComponentPreset) => { const elements = preset.create(); onInsert({ elements, rootId: elements[0].id }); };
 
     return <div className="relative h-full overflow-hidden"><AnimatePresence initial={false} custom={direction} mode="popLayout"><motion.div key={view} custom={direction} variants={{ enter: (value: number) => ({ x: value > 0 ? "100%" : "-28%", opacity: 0 }), center: { x: 0, opacity: 1 }, exit: (value: number) => ({ x: value > 0 ? "-28%" : "100%", opacity: 0 }) }} initial="enter" animate="center" exit="exit" transition={{ type: "spring", stiffness: 360, damping: 34, mass: 0.8 }} className="custom-scrollbar absolute inset-0 overflow-y-auto">
-        {view === "home" ? <LibraryHome onOpen={open} /> : <DetailHeader view={view} search={search} onSearch={setSearch} onBack={back} />}
+        {view === "home" ? <LibraryHome onOpen={open} search={search} onSearch={setSearch} blockCount={entries.filter((entry) => entry.pageId !== currentPageId).length} /> : <DetailHeader view={view} search={search} onSearch={setSearch} onBack={back} />}
+        {view === "home" && search.trim() ? <PresetList query={search} onInsert={insertPreset} /> : null}
         {PRESET_VIEWS.has(view) && view !== "home" ? <PresetList category={view as PresetCategory} query={search} onInsert={insertPreset} /> : null}
         {view === "Blocks" ? <BlockList entries={entries} currentPageId={currentPageId} query={search} onInsert={onInsert} /> : null}
     </motion.div></AnimatePresence></div>;
 }
 
-function LibraryHome({ onOpen }: { onOpen: (view: View) => void }) {
-    return <div className="p-3"><div className="pg-chrome-card relative mb-3 overflow-hidden rounded-[18px] bg-ed-subtle p-5"><span className="mb-4 flex size-9 items-center justify-center rounded-xl bg-ed-accent text-white"><IconBox size={17} /></span><p className="text-[13px] font-semibold tracking-tight text-ed-text">Component library</p><p className="mt-1.5 text-[10px] leading-relaxed text-ed-muted">Choose a category, preview a component and add its complete editable structure.</p></div><div className="flex flex-col gap-1.5">{CATEGORIES.map(({ view, name, description, icon: Icon }) => <motion.button whileTap={{ scale: .995 }} key={view} type="button" onClick={() => onOpen(view)} className="group relative rounded-[18px] bg-ed-surface p-3.5 text-left transition-colors hover:border-ed-accent/40 hover:bg-ed-subtle"><span className="relative flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ed-field text-ed-muted transition-colors group-hover:text-ed-text"><Icon size={17} /></span><span className="min-w-0 flex-1"><span className="block text-[11px] font-semibold text-ed-text">{name}</span><span className="mt-0.5 block truncate text-[10px] text-ed-faint">{description}</span></span><IconChevronRight size={14} className="text-ed-faint transition-transform group-hover:translate-x-1 group-hover:text-ed-text" /></span></motion.button>)}</div></div>;
+/**
+ * The library's front page: a search over every component, then the
+ * categories as rows that say how many variants each one holds.
+ */
+function LibraryHome({ onOpen, search, onSearch, blockCount }: { onOpen: (view: View) => void; search: string; onSearch: (value: string) => void; blockCount: number }) {
+    const searching = search.trim().length > 0;
+    return <div className={searching ? "sticky top-0 z-10 border-b border-ed-border bg-ed-surface/95 backdrop-blur-md" : ""}>
+        <div className="px-3 pb-2 pt-2">
+            <label className="pg-field flex h-8 items-center gap-2 rounded-[9px] bg-ed-surface px-2.5 shadow-[inset_0_0_0_1px_var(--ed-border-strong)] transition-shadow focus-within:shadow-[inset_0_0_0_1px_var(--ed-accent),0_0_0_3px_var(--ed-accent-soft)]">
+                <IconSearch size={14} className="shrink-0 text-ed-faint" />
+                <input value={search} aria-label="Search components" onChange={(event) => onSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape" && search) { event.stopPropagation(); onSearch(""); } }} placeholder="Search components…" className="min-w-0 flex-1 bg-transparent text-[12px] text-ed-text outline-none placeholder:text-ed-faint" />
+                {searching && <button type="button" aria-label="Clear search" onClick={() => onSearch("")} className="flex size-5 shrink-0 items-center justify-center rounded-md text-ed-faint transition-colors hover:bg-ed-field hover:text-ed-text"><IconX size={12} /></button>}
+            </label>
+        </div>
+        {!searching && <div className="flex flex-col gap-1 px-3 pb-4">
+            <p className="px-0.5 pb-1.5 text-[11px] leading-relaxed text-ed-faint">Ready-made sections. Open a category, preview a variant and click to add its full editable structure.</p>
+            {CATEGORIES.map(({ view, name, description, icon: Icon }) => {
+                const count = view === "Blocks" ? blockCount : COMPONENT_PRESETS.filter((preset) => preset.category === view).length;
+                return <motion.button whileTap={{ scale: .99 }} key={view} type="button" onClick={() => onOpen(view)} className="group flex items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-ed-field focus-visible:outline-none focus-visible:shadow-[var(--ed-accent-glow)]">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ed-field text-ed-muted transition-colors group-hover:bg-ed-surface group-hover:text-ed-accent"><Icon size={17} stroke={1.6} /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-[12px] font-medium text-ed-text">{name}</span><span className="mt-0.5 block truncate text-[10px] text-ed-faint">{description}</span></span>
+                    <span className="rounded-full bg-ed-field px-1.5 text-[10px] tabular-nums text-ed-faint group-hover:bg-ed-surface">{count}</span>
+                    <IconChevronRight size={14} className="shrink-0 text-ed-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ed-text" />
+                </motion.button>;
+            })}
+        </div>}
+    </div>;
 }
 
 function DetailHeader({ view, search, onSearch, onBack }: { view: Exclude<View, "home">; search: string; onSearch: (value: string) => void; onBack: () => void }) {
@@ -166,8 +192,10 @@ export function ElementsThumbnail({ elements, title, rootStyle = THUMB_ROOT }: {
     );
 }
 
-function PresetList({ category, query, onInsert }: { category: ComponentPreset["category"]; query: string; onInsert: (preset: ComponentPreset) => void }) {
-    const presets = COMPONENT_PRESETS.filter((preset) => preset.category === category && `${preset.name} ${preset.description}`.toLowerCase().includes(query.toLowerCase()));
+/** One category's presets, or — with no category — every preset the query finds. */
+function PresetList({ category, query, onInsert }: { category?: ComponentPreset["category"]; query: string; onInsert: (preset: ComponentPreset) => void }) {
+    const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const presets = COMPONENT_PRESETS.filter((preset) => (!category || preset.category === category) && words.every((word) => `${preset.name} ${preset.description} ${preset.category}`.toLowerCase().includes(word)));
     return (
         <div className="space-y-2.5 p-3">
             {presets.map((preset) => (
@@ -182,6 +210,7 @@ function PresetList({ category, query, onInsert }: { category: ComponentPreset["
                     <PresetThumbnail preset={preset} />
                     <span className="flex items-center gap-3 p-3.5">
                         <span className="min-w-0 flex-1">
+                            {!category && <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-ed-accent">{preset.category}</span>}
                             <span className="block text-[11px] font-semibold text-ed-text">{preset.name}</span>
                             <span className="mt-0.5 block text-[10px] text-ed-faint">{preset.description}</span>
                         </span>
@@ -197,7 +226,7 @@ function PresetList({ category, query, onInsert }: { category: ComponentPreset["
                     />
                 </motion.div>
             ))}
-            {presets.length === 0 && <Empty />}
+            {presets.length === 0 && <Empty text={category ? undefined : `No components match “${query.trim()}”.`} />}
         </div>
     );
 }
@@ -208,6 +237,6 @@ function BlockList({ entries, currentPageId, query, onInsert }: { entries: Entry
 }
 
 
-function Empty() { return <p className="p-6 text-center text-[10px] leading-relaxed text-ed-faint">Nothing matches this category yet.</p>; }
+function Empty({ text = "Nothing matches this category yet." }: { text?: string }) { return <p className="p-6 text-center text-[10px] leading-relaxed text-ed-faint">{text}</p>; }
 
 export { IconArrowLeft };

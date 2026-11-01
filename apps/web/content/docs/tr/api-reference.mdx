@@ -1,0 +1,82 @@
+---
+title: "API başvurusu"
+description: "Sunucu, istemci ve paket dışa aktarımları tek yerde."
+---
+
+## Dışa aktarım noktaları
+
+| İçe aktarma | Amaç |
+| --- | --- |
+| `pagiera` | `createDocument`, `createPagieraClient`, küçük editör, panel URL yardımcıları |
+| `pagiera/full` | `PagieraStudio` ve props/adaptör sözleşmesi |
+| `pagiera/provider` | `PagieraProvider` ve host yazı tipi kaydı |
+| `pagiera/server` | Sunucu ayarları, rota işleyicileri, veritabanına dayalı yükleme |
+| `pagiera/runtime` | `RenderedPage` ve `loadPageData` |
+| `pagiera/data` | Veri işleme yardımcıları |
+| `pagiera/full.css` / `pagiera/styles.css` | Tam stüdyo / küçük editör stilleri |
+
+Sunucu içe aktarmaları Node.js sunucu ortamı gerektirir; istemci paketine girmemelidir.
+
+## Sunucu yükleyicisi
+
+`pagieraConfigFromEnv(env?)` sunucu ayarlarını okur. `createPagieraRouteHandlers(config)` GET, POST, PUT, PATCH ve DELETE işleyicilerini döndürür; başlatma ilk istekte gerçekleşir. `getPagieraServer(config)` yeniden kullanılan sunucu örneğini döndürür. `createPagieraServer(config)` açıkça yeni örnek oluşturur; sahibi onu sonlandırırken `close()` çağırın, her normal isteğin ardından değil.
+
+| Sunucu yöntemi | Sonuç |
+| --- | --- |
+| `getEditorBootstrap(pageId?)` | Geçerli sayfa, sayfa listesi ve belge kütüphanesi veya undefined |
+| `getPublishedDocument(slug)` | Sayfa verilerini çekmeden yayımlanmış belge ve eşleşen rota kalıbı/parametreleri |
+| `getPublishedPage(slug, context?)` | Yayımlanmış belge ve sunucuda çözülmüş `data` veya undefined |
+| `getPreviewPage(pageId, context?)` | Taslak ve güncel kaynak verisi veya undefined |
+| `handle(request)` | Backend HTTP yanıtı; erişimi host yetkilendirmelidir |
+| `close()` | Sahip olunan Redis/PostgreSQL kaynaklarını kapatma |
+
+## HTTP yüzeyi
+
+Aşağıdaki yollar `/api/pagiera` konumuna göredir. Her uç noktanın kimlik doğrulama ve rol kontrolü host’a aittir.
+
+| Yöntem | Yol | Amaç |
+| --- | --- | --- |
+| GET | `/health` | Sunucu başlatıldıktan sonraki sağlık durumu |
+| GET | `/bootstrap?pageId=…` | Stüdyo başlangıç verisi |
+| POST | `/pages` | Sayfa oluşturma; liste için `/bootstrap` |
+| GET / PATCH / DELETE | `/pages/:id` | Okuma / yeniden adlandırma / silme |
+| POST | `/pages/:id/save` | `{ document, expectedVersion }` kaydı |
+| POST | `/pages/:id/duplicate` | Ad ve slug ile çoğaltma |
+| POST | `/pages/:id/publish` / `unpublish` | Kamusal durumu değiştirme |
+| GET | `/pages/:id/revisions` | Kaydedilmiş revizyonları listeleme |
+| POST | `/pages/:id/revisions/:revisionId/restore` | Taslak revizyonunu geri yükleme |
+| POST / GET | `/assets` / `/assets/:id` | Ham raster yükleme / medya dağıtımı |
+| POST | `/data/preview` | Kaynak ve örnek sorgu önizlemesi |
+| POST | `/ai` | Yapay zekâ üretimi; akışta NDJSON ilerleme olayları |
+| POST | `/mcp` | Yetkili listeleme/inceleme keşfi |
+| GET | `/templates/registry.json` | Yapılandırılmış kayıt deposu |
+| POST | `/templates/install` / `import` | ID ile kurma / paket içe aktarma |
+| GET | `/templates/export?id=…` | Sayfa şablonu dışa aktarma |
+
+## Tarayıcı istemcisi ve adaptörler
+
+```ts
+import { createPagieraClient } from "pagiera";
+const client = createPagieraClient({ baseUrl: "/api/pagiera" });
+const page = await client.loadPage("PAGE_ID");
+const result = await client.adapters.save(page.id, {
+  elements: page.elements,
+  rootStyle: page.rootStyle,
+  dataSources: page.dataSources,
+}, page.version);
+if (result.status === "conflict") {
+  // Reload and reconcile; never overwrite a newer page blindly.
+} else if (result.status === "error") {
+  throw new Error(result.message);
+}
+```
+
+Host ek istek işlemesi gerektiriyorsa `createPagieraClient` için özel `fetch` sağlayın. Kaydetme, başarılı HTTP yanıtında `saved`, `conflict` veya `error` döndürebilir. Diğer HTTP hataları istisna oluşturur; yeniden denemeden önce durum kodunu ve yanıtı inceleyin.
+
+Stüdyo adaptörleri; sayfa CRUD, yayımlama, revizyonlar, kaynak önizleme, görsel yükleme, üretim ve şablon işlemlerini içerir. `navigate`, `editorHref`, `previewHref`, `publishedHref`, `refresh` ve `saveTranslation` gibi host callback’leri uygulamanızca sağlanır. [Tam kuruluma](/tr/docs/nextjs-setup) bakın.
+
+## Varlıklar ve güven sınırı
+
+`uploadImage(file)` multipart yerine ham bayt gönderir. Sunucu PNG, JPEG, WebP, GIF ve AVIF kabul eder; imzayı kontrol eder ve her varlığı 8 MB ile sınırlar. Kısa URL döndürür. Kaydetme/içe aktarmaya ulaşan base64 raster görseller dışarı alınır; aynı baytlar tek kayıtta tutulur. Bu, ziyaretçinin FileInput gönderiminden ayrıdır.
+
+Belgedeki veri kaynağı başlıkları yetkili editörlerce okunabilir; gizli anahtar kasası değildir. Servis kimlik bilgilerini host kodunda tutun. [Güvenlik](/tr/docs/security) ve [dağıtım ayarlarına](/tr/docs/deployment) bakın.

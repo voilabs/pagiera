@@ -1,0 +1,95 @@
+---
+title: "Dinamik rotalar ve veri"
+description: "İstek verilerini çözümleyin ve API sonuçlarını sunucuda tekrarlayın."
+---
+
+## Request veya Repeat seçin
+
+Bir uç nokta tek nesne döndürdüğünde **Request** bloğu kullanın. Bir listenin her öğesi için bir görsel alt ağaç oluşturulması gerektiğinde **Repeat** bloğu kullanın. Yayımlanmış sayfalardaki istekler, HTML döndürülmeden önce sunucuda çözümlenir.
+
+## Rota ve sorgu değerlerini kullanın
+
+Sayfa kısa adı, `blog/:slug` gibi adlandırılmış parametreler içerebilir. Eşleşen değerleri yayımlanmış sayfa bağlamına aktarın:
+
+```ts
+const context = {
+  params: { slug: "introducing-pagiera" },
+  query: { preview: "true" },
+  page: { slug: "blog/:slug" }
+}
+```
+
+İstek URL'lerinde, başlıklarında veya gövdelerinde bu değerlere başvurun:
+
+```text
+https://api.example.com/posts/{{params.slug}}
+https://api.example.com/search?q={{query.q}}
+```
+
+## Döndürülen alanları bağlayın
+
+Metinleri, görselleri, bağlantıları ve görünürlük kurallarını isteğin döndürdüğü alanlara bağlayın. Repeat bloklarında tekrarlanan her alt ağaç, geçerli öğeyi yerel veri bağlamı olarak alır.
+
+Liste yanıtın içindeyse kaynağın **List path** alanını ona ayarlayın. Yollar noktalı (`items`, `data.results`) ya da JSONPath biçiminde (`$.items`, `items[0].tags`, `$["items"]`) yazılabilir; baştaki `$` yanıtın kendisidir. **Send**'den sonra tek bir nesne olan yanıt, içindeki dizileri listeler — örneğin GitHub arama API'si `items` önerir — ve birini seçmek yolu ayarlayıp satırlarını yükler.
+
+### Bağlanan değerleri biçimlendirme
+
+Bağlanan bir alan, biçim verilmedikçe geldiği gibi görünür. **Data binding** altında bir alan seçildiğinde **Format** onu tarihe (*24 Ekim 2026* gibi hazır biçimler ya da `d MMMM yyyy, HH:mm` gibi bir kalıp), sayıya veya para birimine çevirir ya da harf durumu ve uzunluk sınırıyla metin olarak bırakır. **Before** ve **After** boş olmayan değeri sarar; **If empty** alan yoksa, null, boş metin ya da boş liste ise gösterilir. Dil ve saat dilimi biçimle birlikte saklanır; böylece canvas, sunucu ve her ziyaretçi aynı metni yazar.
+
+Request veya Repeat içindeki metin de alanları cümleye katabilir; `{{…}}` borular ve ifadeler alır:
+
+```text
+Yazar: {{author.name | default:"Anonim"}}
+{{published_at | date:"d MMMM yyyy" | locale:tr-TR | tz:Europe/Istanbul}}
+{{price | currency:TRY | locale:tr-TR}}
+{{status | map:draft=Taslak,published=Yayında,*=Bilinmiyor}}
+{{status == "draft" ? "Taslak" : "Yayında"}}
+{{title.replace("-", " ").toUpperCase()}}
+{{tags.map(t => t.name).join(", ")}}
+{{items.find(i => i.type == "main")?.price ?? "—"}}
+```
+
+Borular: `date`, `number`, `currency`, `upper`, `lower`, `capitalize`, `truncate`, `prefix`, `suffix`, `locale`, `tz`, `map`, `replace` ve `default`. İfadeler JavaScript'e benzer ama yorumlanır, hiçbir zaman çalıştırılmaz: satırın alanlarını okur, `+ - * / % == != < > && || ?? ! ?:` işleçlerini ve güvenli zinciri kullanır, sabit bir metin ve liste yöntemleri kümesini (`replace`, `split`, `slice`, `map`, `filter`, `find`, `join`, …) ve `Math.*`, `String`, `Number`, `date`, `number`, `upper`, `lower`, `len`, `default` yardımcılarını çağırır. Global nesnelere, prototiplere ya da sunucuya ulaşamaz; her değerlendirme adım ve çıktı boyutuyla sınırlıdır, hata veren ifade boş görünür. `{{params.…}}`, `{{query.…}}` ve `{{page.…}}` sayfa değişkeni olarak anlamlarını korur.
+
+### Yüklemeyi ve hataları ele alın
+
+Sunucuda oluşturulan yayımlanmış çıktı için istemci tarafında bir yükleme aşaması yoktur. Boş ve hata durumlarını açıkça tasarlayın. Veri kaynağı `page-404` davranışını kullanıyorsa uzak kaynaktan gelen bir 404, rotanın tamamını 404 yanıtına dönüştürebilir.
+
+## Sayfaları dizine eklenebilir tutun
+
+Temel içeriği, istemcide etkileşimlerin bağlanmasından sonra çalışan bir efekte taşımayın. “Sayfa kaynağını görüntüle” veya bir HTTP isteğiyle başlıkların, açıklamaların ve birincil sayfa metninin döndürülen HTML'de bulunduğunu doğrulayın.
+
+## Somut kaynak tanımı
+
+```json
+{
+  "id": "posts",
+  "name": "Published posts",
+  "url": "https://api.example.com/posts?slug={{params.slug}}",
+  "path": "$.items",
+  "method": "GET",
+  "onNotFound": "page-404"
+}
+```
+
+Örnek alan adını kendi JSON uç noktanızla değiştirin. `{ "items": [{ "title": "Hello", "price": 12 }] }` gibi yanıtta `$.items` seçin, kaynağı Repeat’e atayıp alt metin katmanını `title` alanına bağlayın. Boş yol kök yanıtı okur; seçilen değerin dizi olup olmadığını doğrulamanın en hızlı yolu kaynak önizlemesidir.
+
+## Kaynak ayarları ve sınırlar
+
+GET, POST, PUT, PATCH ve DELETE desteklenir. Gövde POST/PUT/PATCH için kullanılır. Sorgu çiftleri ve başlıklar aynı istek token’larını içerebilir. Yükleyici sonuçları 200 satırla sınırlar, 8 saniye istek zaman aşımı uygular ve en fazla üç yönlendirme izler. Varsayılan yanıt sınırı 2.000.000 bayttır; operatör `maxSourceBytes` ile değiştirebilir.
+
+Özel host’lar varsayılan olarak reddedilir. Geliştirmede kendi yerel API’nizi çağırmak için host sunucuda `PAGIERA_ALLOW_PRIVATE_HOSTS=localhost,127.0.0.1` ayarlayıp yeniden başlatın. Bu, ilgili host’ları bütün portlarda açar; sayfa bazlı izin değil operatör kararıdır. Özel servislere izin vermeden önce [güvenliği](/tr/docs/security) inceleyin.
+
+Kaynak URL’leri ve başlık değerleri sayfa belgesinin parçasıdır. Editörlerce görülebilir kabul edip kalıcı kimlik bilgisi gömmeyin. Host’a ait bir proxy, izin verilen kaynak ID’lerini doğrularken yalnızca sunucuda kalan anahtarları ekleyebilir. Rota/sorgu token’ları girdidir; yetki kanıtı değildir.
+
+## Belirtiye göre sorun giderme
+
+| Belirti | İncelenecekler |
+| --- | --- |
+| Repeat satır getirmiyor | HTTP yanıtı, dizi yolu ve API’nin nesne mi liste mi döndürdüğü |
+| Alan boş görünüyor | Anahtar yazımı, kapsam, desteklenmeyen ifade veya eksik değer |
+| Tarih beklenenden farklı | Alan biçimindeki açık dil ve saat dilimi |
+| Yerel uç nokta reddediliyor | Host izin listesi ve sunucunun yeniden başlatılması |
+| Bütün sayfa 404 oluyor | Kaynağın `onNotFound` seçimi ve üst servis durum kodu |
+
+Dinamik SEO eklerken framework metadata’sında aynı sunucuda çözülmüş kaydı kullanın. Pagiera alan bağları host uygulamanın title, canonical URL veya description değerlerini otomatik doldurmaz.

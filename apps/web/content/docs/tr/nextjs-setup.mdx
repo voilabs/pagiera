@@ -1,0 +1,124 @@
+---
+title: "Next.js kurulumu"
+description: "Sunucuyu bağlayın, başlangıç verilerini yükleyin ve stüdyoyu açın."
+---
+
+## Başlamadan önce
+
+[Kurulumu](/tr/docs/getting-started) tamamlayın. Örnekler Next.js App Router ve TypeScript kullanır. Uygulamanızda `@/lib/auth` modülünden gelen `getEditorSession(request?: Request)` işlevinin bulunduğu ve boolean `canEdit` alanına sahip oturum döndürdüğü varsayılır. Editörü bağlamadan önce bu denetimi mevcut kimlik doğrulama sağlayıcınızla uygulayın; bu işlev Pagiera dışa aktarımı değildir.
+
+## 1. Yalnızca sunucuda çalışan yükleyici oluşturun
+
+```ts
+// src/lib/pagiera.ts
+import "server-only";
+import { getPagieraServer, pagieraConfigFromEnv } from "pagiera/server";
+export const pagiera = () => getPagieraServer(pagieraConfigFromEnv());
+```
+
+## 2. API rotasını bağlayıp koruyun
+
+```ts
+// src/app/api/pagiera/[...path]/route.ts
+import { createPagieraRouteHandlers, pagieraConfigFromEnv } from "pagiera/server";
+import { getEditorSession } from "@/lib/auth";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+const handlers = createPagieraRouteHandlers(pagieraConfigFromEnv());
+async function handle(request: Request) {
+  const path = new URL(request.url).pathname;
+  const publicAsset = request.method === "GET" &&
+    /^\/api\/pagiera\/assets\/(?:[a-f0-9-]{36}|manrope-variable\.woff2)$/i.test(path);
+  if (!publicAsset) {
+    const session = await getEditorSession(request);
+    if (!session?.canEdit) return new Response("Unauthorized", { status: 401 });
+  }
+  return handlers[request.method as keyof typeof handlers](request);
+}
+export const GET = handle;
+export const POST = handle;
+export const PUT = handle;
+export const PATCH = handle;
+export const DELETE = handle;
+```
+
+Örnek, yayımlanmış görsellerin editör oturumu olmadan yüklenmesi için raster varlık adreslerini herkese açık bırakır. Yüklenen varlıklar özel belge deposu değil, kamusal medyadır. Gizli medya için kendi yetkilendirilmiş depolama ve dağıtım adaptörünüzü sağlayın. Sağlık uç noktası ve bütün değişiklik işlemleri korumalı kalır. API konumu değişirse rota, sunucunun `basePath` ve istemcinin `baseUrl` değerlerini birlikte değiştirin.
+
+## 3. Varsayılan sayfayı açın
+
+```tsx
+// src/app/editor/page.tsx
+import { redirect } from "next/navigation";
+import { editorPath } from "pagiera";
+import { pagiera } from "@/lib/pagiera";
+import { getEditorSession } from "@/lib/auth";
+export const dynamic = "force-dynamic";
+export default async function EditorIndex() {
+  if (!(await getEditorSession())?.canEdit) redirect("/login");
+  const initial = await (await pagiera()).getEditorBootstrap();
+  if (!initial) throw new Error("Editor bootstrap unavailable");
+  redirect(editorPath(initial.page.id));
+}
+```
+
+Bootstrap zorunlu Home sayfasını bulur veya oluşturur. `page`, `pages` ve `library` döndürür; açıkça istenen sayfa ID’si bulunamazsa bootstrap döndürmez.
+
+## 4. Sayfayı ve panelini sunucuda yükleyin
+
+```tsx
+// src/app/editor/[pageId]/[[...panel]]/page.tsx
+import { notFound, redirect } from "next/navigation";
+import { editorPanel } from "pagiera";
+import { pagiera } from "@/lib/pagiera";
+import { getEditorSession } from "@/lib/auth";
+import Studio from "@/components/studio";
+export const dynamic = "force-dynamic";
+export default async function EditorPage({ params }: {
+  params: Promise<{ pageId: string; panel?: string[] }>
+}) {
+  if (!(await getEditorSession())?.canEdit) redirect("/login");
+  const { pageId, panel = [] } = await params;
+  if (panel.length > 1 || (panel[0] && !editorPanel(panel[0]))) notFound();
+  const initial = await (await pagiera()).getEditorBootstrap(pageId);
+  if (!initial) notFound();
+  return <Studio initial={initial} initialPanel={panel[0] ?? "layers"} />;
+}
+```
+
+## 5. Etkileşimli istemciyi bağlayın
+
+```tsx
+// src/components/studio.tsx
+"use client";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { createPagieraClient, editorPanel, editorPath } from "pagiera";
+import PagieraStudio, { type PagieraStudioProps } from "pagiera/full";
+type Bootstrap = Pick<PagieraStudioProps, "page" | "pages" | "library">;
+export default function Studio({ initial, initialPanel }: {
+  initial: Bootstrap; initialPanel: string
+}) {
+  const router = useRouter();
+  const client = useMemo(() => createPagieraClient(), []);
+  return <PagieraStudio {...initial} initialPanel={initialPanel}
+    adapters={{ ...client.adapters,
+      editorHref: (id, panel) => editorPath(id, editorPanel(panel) ?? "layers"),
+      navigate: (id) => { window.location.assign(editorPath(id)); },
+      refresh: () => router.refresh(),
+      previewHref: (id) => "/preview/" + encodeURIComponent(id),
+      publishedHref: (slug) => slug === "home" ? "/" : "/" + slug.replace(/^\/+/, ""),
+    }} />;
+}
+```
+
+Kök stil dosyanızda `pagiera/full.css` dosyasını bir kez içe aktarın. Bu basit gezinme, sunucudan gelen bootstrap verisini esas almak için seçilen editör sayfasını yeniden yükler. Daha gelişmiş entegrasyon `client.bootstrap(id)` ve istemci yönlendirmesi kullanabilir; ancak geçerli sayfa, sayfa listesi ve kütüphaneyi birlikte değiştirmelidir.
+
+## Entegrasyonu doğrulayın
+
+1. Editör yetkisiyle giriş yapıp `/api/pagiera/health` adresini isteyin. PostgreSQL ve Redis bağlandıktan sonra başarılı JSON yanıtı beklenir.
+2. `/editor` adresini açın. Home sayfasının standart editör adresine gitmelidir.
+3. Yeni sayfa oluşturun, sayfalar arasında geçin, kaydedip yeniden yükleyin. Kaydedilen sürüm ve içerik korunmalıdır.
+4. Çıkış yapın. Editör rotaları ve API değişiklikleri reddedilmelidir; yukarıdaki politika gereği kamusal görseller açık kalır.
+5. [Önizleme ve yayımlanmış sayfa işleme](/tr/docs/publishing) rotalarını ekleyin. Host bu rotayı sağlamadan önizleme bağlantıları çalışmaz.
+
+Stiller görünmüyorsa CSS içe aktarmalarını kontrol edin. Kaydetme hatasında tekrar denemeden önce API durum kodunu ve sunucu kayıtlarını inceleyin. [Sorun giderme](/tr/docs/troubleshooting) bölümüne bakın.

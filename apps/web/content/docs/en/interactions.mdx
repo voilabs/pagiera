@@ -1,0 +1,38 @@
+---
+title: "Motion and interactions"
+description: "Hover states, click actions, carousel, marquee, tabs and accordion workflows."
+---
+
+## Choose the right tool
+
+| Need | Tool |
+| --- | --- |
+| A simple link or scroll target | Native link/click settings |
+| Hover/press appearance, entrance, loop or scroll effect | Inspector effects |
+| Events with decisions, variables and multiple actions | [Action Workflow](/docs/action-workflow) |
+| Per-property keyframes, curves and text stagger | [Motion Editor](/docs/motion-editor) |
+| Related content panels | Native tabs/accordion composition |
+
+Start from a usable static page. Add one behaviour at a time and test it in the visitor preview. Decorative movement should not gate essential content or authorization.
+
+## Hover, press and entrances
+
+Configure hover/press values on a layer and choose transition timing. Entrance presets can fade, translate, scale, blur or reveal content. Custom settings combine offsets and opacity. Spring and bezier curves control the feel. View-triggered entrances can play once or on re-entry.
+
+Loop effects repeat after an entrance. Scroll effects follow progress while entering, crossing or leaving the viewport. A scroll effect is not a time-based clip. Test reduced-motion preferences: published motion should leave content in its readable resting state.
+
+## Overlays
+
+Use a popover, dropdown or modal when a panel should open above the page. Choose the trigger, initial state and close animation. Test Escape and outside-click dismissal. A visual overlay is not sufficient proof of complete dialog accessibility: verify keyboard focus, reading order and focus return in your host page.
+
+## Carousel and marquee
+
+Edit the composition's native children, then configure autoplay, interval and direction. Carousels support arrows, dots, swipe, looping, pause-on-hover and slide/fade/zoom transitions. Test one slide, several slides and long content at narrow widths. Essential text must remain available without chasing a marquee or waiting for autoplay.
+
+## Tabs and accordion
+
+Headers and panels share target identifiers inside the composition. Preserve those relationships after duplication or restructuring. Verify visible state and keyboard behaviour in the rendered page. Do not combine a simple disclosure and another workflow on the same click without checking for conflicting handlers.
+
+## Review before publishing
+
+Test a mouse, keyboard and touch viewport. Try quick repeated input, refresh, client-side navigation and reduced motion. Save and reload to verify persisted settings; a transient canvas preview is not the saved runtime.

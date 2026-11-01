@@ -13,6 +13,8 @@ export const PAGIERA_EDITOR_PANELS = [
     "pages",
     "history",
     "settings",
+    "actions",
+    "motion",
 ] as const;
 
 export type PagieraEditorPanel = (typeof PAGIERA_EDITOR_PANELS)[number];

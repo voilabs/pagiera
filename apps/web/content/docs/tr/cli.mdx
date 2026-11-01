@@ -1,0 +1,52 @@
+---
+title: "Kodlama ajanları için CLI"
+description: "Terminalden yerel belgeleri inceleyin, doğrulayın, oluşturun ve güncelleyin."
+---
+
+## Kullanılabilirlik
+
+CLI mevcut kaynak ağacına dâhildir. Henüz yayımlanmamış bu uygulama, eski bir npm sürümünün komutu içerdiğine dair bir vaat değildir. Bu depoda paketi derledikten sonra node packages/pagiera/cli/main.mjs help çalıştırın. bin girişini içeren bir paket sürümünde pagiera komutunu paket çalıştırıcınız üzerinden kullanın.
+
+## Düzenlemeden önce inceleyin
+
+Bu komutları depo kökünden çalıştırın. schema komutu derlenmiş paketin sözleşmesini okur.
+
+
+
+~~~bash
+node packages/pagiera/cli/main.mjs help
+node packages/pagiera/cli/main.mjs schema
+node packages/pagiera/cli/main.mjs inspect --url http://localhost:3000/api/pagiera
+node packages/pagiera/cli/main.mjs page get PAGE_ID
+~~~
+
+Varsayılan API tabanı http://localhost:3000/api/pagiera adresidir. --url veya PAGIERA_URL ile değiştirin. PAGIERA_TOKEN, ana uygulamanızın kabul ettiği bir taşıyıcı belirteç sağlar; CLI kimlik doğrulama oluşturmaz. Kimlik bilgilerini gönderirken localhost dışında HTTPS kullanın.
+
+## Doğrulayın ve oluşturun
+
+Yerel belge biçiminde bir JSON dosyası yazın, ardından sayfa oluşturmadan önce doğrulayın. Sonraki örneklerdeki yer tutucu kimliği ve sürümü sunucunuzun döndürdüğü değerlerle değiştirin.
+
+~~~bash
+node packages/pagiera/cli/main.mjs page validate --file page.json
+node packages/pagiera/cli/main.mjs page create --name "About" --slug /about --file page.json
+~~~
+
+Oluşturma işlemi sayfayı oluşturur, belgeyi kaydeder ve yeniden okur. Oluşturmadan sonra kaydetme başarısız olursa hata, oluşturulan sayfanın kimliğini içerir; kopya oluşmasını önlemek için yeniden denemeden önce bu sayfayı inceleyin.
+
+## Başka bir düzenleyicinin çalışmasının üzerine yazmadan güncelleyin
+
+~~~bash
+node packages/pagiera/cli/main.mjs page get PAGE_ID
+node packages/pagiera/cli/main.mjs page update PAGE_ID --file page.json --expected-version 3
+node packages/pagiera/cli/main.mjs page preview PAGE_ID
+~~~
+
+Güncellemeler belgenin tamamını değiştirir. İlgisiz alanları koruyun. Revizyon çakışmasında körlemesine yeniden denemek yerine en son sayfayı alın ve değişiklikleri uzlaştırın. preview komutu, alışılmış yapıda bir önizleme URL'si döndürür; bu rotayı ana uygulamanız uygulamalıdır.
+
+## Yalnızca onayla yayımlayın
+
+~~~bash
+node packages/pagiera/cli/main.mjs page publish PAGE_ID
+~~~
+
+Yayımlama, kaydetmeden ayrıdır. Komutlar JSON döndürür; hatalar stderr akışına JSON yazar ve sıfırdan farklı çıkış koduyla sonlanır. Yapısal doğrulama, görsel doğruluğu veya eksiksiz stil doğrulamasını garanti etmez.

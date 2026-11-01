@@ -1,0 +1,33 @@
+---
+title: "System architecture"
+description: "How the studio, documents, backend and published runtime fit together."
+---
+
+## The system at a glance
+
+Pagiera is embedded in your application. The browser hosts the studio, your server handles persistence and data requests, PostgreSQL stores documents, and Redis provides caches and rate limiting. Authentication and deployment belong to the host application.
+
+## Follow a document through the system
+
+1. Load editor bootstrap on the server and pass it to the full studio.
+2. Edit native layers in the browser. A document contains elements, root styles and data source definitions.
+3. Save through the backend with the page's expected revision. Saving changes the draft, not the public page.
+4. Preview the draft through an authenticated route, resolving request data on the server.
+5. Publish explicitly. The public runtime reads the published document and renders HTML.
+
+## Package boundaries
+
+| Entry point | Responsibility |
+| --- | --- |
+| pagiera/full | Complete studio interface |
+| pagiera/provider | Host font registration |
+| pagiera/server | Backend handlers, persistence and server loading |
+| pagiera/runtime | Published page rendering |
+| pagiera/data | Data integration exports |
+| pagiera | Smaller editor, client and document APIs |
+
+Import server code only in server modules. Import pagiera/full.css for the full studio; pagiera/styles.css is for the smaller editor.
+
+## Choose your next step
+
+Start with [installation](/docs/getting-started), mount [Next.js routes](/docs/nextjs-setup), then follow the [studio workflow](/docs/studio). Read [deployment](/docs/deployment) before exposing the application to users.

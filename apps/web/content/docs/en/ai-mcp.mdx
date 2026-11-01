@@ -1,0 +1,43 @@
+---
+title: "AI generation and MCP"
+description: "Configure AI generation, scope edits and authorize MCP discovery."
+---
+
+## AI generation workflow
+
+AI generation uses your server-side OpenRouter configuration. Keep the key out of browser bundles. Configure the model on the server and verify provider access before debugging the editor interface.
+
+1. Save your current work.
+2. Describe the page purpose, structure, content and responsive expectations.
+3. Select the intended editing scope in the studio.
+4. Review generated native layers and inspect the responsive result.
+5. Save and preview; publish only after explicit review.
+
+The client generate operation supports streamed events and cancellation. Treat a cancelled or failed run as incomplete and inspect the current document before retrying. Redis participates in AI rate limiting; provider limits and billing remain separate.
+
+## MCP discovery
+
+Server configuration can register operator-owned MCP servers using stdio, HTTP or SSE transports. The backend exposes list and inspect operations for discovery. This integration is not unrestricted tool execution by a browser user.
+
+Configure authorizeMcp to check the requesting user's authorization. The server must own command paths, arguments, environment variables and remote endpoints; do not accept arbitrary connection configurations from visitors.
+
+## Agent-driven editing
+
+For a coding agent working from a terminal, use the [CLI workflow](/docs/cli). MCP discovery and CLI document editing are separate capabilities. Neither replaces host authentication or explicit approval to publish.
+
+## Configure an operator-owned connection
+
+```ts
+import { pagieraConfigFromEnv, getPagieraServer } from "pagiera/server";
+import { getEditorSession } from "@/lib/auth";
+const server = await getPagieraServer({
+  ...pagieraConfigFromEnv(),
+  mcpServers: [{ id: "catalog", name: "Internal catalog",
+    transport: "http", url: "https://mcp.example.com/mcp" }],
+  authorizeMcp: async (request) => Boolean((await getEditorSession(request))?.canEdit),
+});
+```
+
+The auth helper is your host implementation from [setup](/docs/nextjs-setup); replace the example endpoint with an operator-approved server. No MCP configuration is read from a visitor's prompt. With no `authorizeMcp` callback, discovery is denied. Stdio transports also require the configured executable in your server environment; managed/serverless hosts may not support it.
+
+MCP discovery lists or inspects tools. It does not automatically execute every discovered tool as part of a page edit. For the website's own content, use native layers and preserve shared component masters before saving. Review model output rather than treating generated code or URLs as trusted input.

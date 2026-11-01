@@ -1,0 +1,24 @@
+---
+title: Değişiklik günlüğü
+description: Yayımlanmayı bekleyen doğrulanmış dokümantasyon ve kaynak ağacı değişiklikleri.
+---
+
+## Unreleased
+
+Bu notlar güncel kaynak ağacını anlatır. npm yayını duyurmaz veya sürüm tarihi uydurmaz.
+
+### Dokümantasyon
+
+- Site navbarı sadeleştirildi: Entegrasyonlar Özellikler mega menüsünde, Şablonlar ve Dokümantasyon Kaynaklar menüsünde toplandı; masaüstü ve mobilde tekrarlanan bağımsız bağlantılar kaldırıldı.
+- El kitabı açılıp kapanabilen yedi konu kategorisine ayrıldı; doküman ana sayfasına kategori dizini eklendi ve mevcut sayfa adresleri korundu.
+- Arama, kategori filtreleri, kurulum adımları ve yapılandırma rehberleriyle İngilizce/Türkçe entegrasyon kataloğu eklendi; servis gereksinimleri ve uygulamanın sağladığı bağlantılar belgelendi.
+- Fumadocs `/docs` ve `/tr/docs` adreslerinde doğrudan sitenin Next.js uygulamasına gömüldü; ayrı Mintlify süreci ve proxy kaldırıldı.
+- Kurulum, düzenleme, veri, formlar, runtime, güvenlik ve işletim rehberleriyle İngilizce/Türkçe el kitabı tamamlandı.
+- Action Workflow ve Motion Editor için ayrı rehberler eklendi.
+- Runtime örnekleri sayfa stilleri, çözülmüş veri ve rota bağlamını aktaracak şekilde düzeltildi; korumalı stüdyo entegrasyonu genişletildi.
+- Ortak bileşen koruması, iyimser kayıt çakışmaları ve kaydetme/yayımlama sınırı belgelendi.
+- Aynı süreçte belge araması eklendi; iç bağlantılar, çevrilen kod örnekleri ve MDX derlemesi kontrol edildi.
+
+### Uyumluluk
+
+Dokümantasyon kaynak özelliklerini anlatır. API kullanmadan önce kurulu sürümün dışa aktarımlarını kontrol edin. `document.version` serileştirme biçimidir; `expectedVersion` için kaydedilmiş sayfa revizyonu gerekir. Belge yayımlamak host uygulamayı dağıtmaz.

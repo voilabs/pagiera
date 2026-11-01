@@ -1,0 +1,31 @@
+---
+title: "Şablon kayıt deposu"
+description: "Yeniden kullanılabilir şablon paketlerini yükleyin, doğrulayın ve bakımını yapın."
+---
+
+## Bir şablon neler içerir?
+
+Pagiera şablonu doğrulanmış bir belge paketidir: sayfalar, yeniden kullanılabilir bileşenler, bağlı düzenler, varlıklar ve şablon tarayıcısında sunulması için gereken üst veriler.
+
+## Kayıt deposunu yapılandırın
+
+Sunucuyu denetlediğiniz bir kayıt deposuna yönlendirin veya resmî kayıt deposunu kullanın:
+
+```bash
+PAGIERA_TEMPLATE_REGISTRY_URL=https://raw.githubusercontent.com/voilabs/pagiera/main/templates/registry.json
+```
+
+## Bir şablon yükleyin
+
+Tarayıcı arka ucunuza yalnızca seçilen şablonun kimliğini gönderir. Sunucu yapılandırılmış paketi indirir, doğrular ve projeyi atomik olarak değiştirir. Böylece kayıt deposuna duyulan güvenin yönetimi ve ağ erişimi sunucuda kalır.
+
+### Yüklemeden önce
+
+- Değiştirilmemesi gereken çalışmaları kaydedin veya dışa aktarın.
+- Hedef projeyi doğrulayın.
+- Şablonda listelenen sayfaları ve varlıkları inceleyin.
+- Kayıt deposu URL'sinin HTTPS kullandığından ve güvenilir bir yayımlayıcıya ait olduğundan emin olun.
+
+## Kendi kayıt deponuzun bakımını yapın
+
+Paketleri sürümlendirin, kimlikleri sabit tutun ve her sürümü temiz bir projede doğrulayın. Mevcut bir sürümü yerinde değiştirmekten kaçının; kurulumların tekrarlanabilir kalması için yeni bir sürüm yayımlayın.

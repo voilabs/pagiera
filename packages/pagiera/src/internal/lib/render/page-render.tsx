@@ -1,3 +1,4 @@
+import { type SplitOrder, splitIndex } from "../editor/keyframes";
 import React from "react";
 import { TextEffectsContent } from "./text-effects";
 import { shaderDocument } from "../editor/shaders";
@@ -5,7 +6,7 @@ import { interactiveDocument, restoreInteractiveElement, upgradeCarouselElements
 import { CarouselContent } from "./carousel-content";
 import { MarqueeContent } from "./marquee";
 import { MarqueeRuntime, PageScript } from "./marquee-runtime";
-import { OVERLAY_CSS } from "./actions";
+import { graphScriptJson, OVERLAY_CSS } from "./actions";
 import { hasActions } from "../editor/actions";
 import { baseOf, cascadeOf } from "@/lib/editor/cascade";
 import { isBand, resolveStyle } from "@/lib/editor/style";
@@ -103,6 +104,8 @@ export function RenderedPage({
     }
     const pageKey = `${elements.length}:${signature}`;
     const translate = resolverFor(translations);
+    // The page's action graph only matters once it has an event to start it.
+    const hasGraph = Boolean(rootStyle.actionGraph?.nodes.some((node) => node.type.startsWith("event.")));
 
     return (
         <>
@@ -110,7 +113,15 @@ export function RenderedPage({
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: the sheet is generated from validated style values, never raw user markup
                 dangerouslySetInnerHTML={{ __html: stylesheetFor(elements, rootStyle) + (hasActions(elements) ? OVERLAY_CSS : "") }}
             />
-            <MarqueeRuntime enabled={includeScripts && (elements.some(element => element.interactive || element.disclosure) || hasActions(elements))}>
+            <MarqueeRuntime enabled={includeScripts && (elements.some(element => element.interactive || element.disclosure) || hasActions(elements) || hasGraph)}>
+                {includeScripts && hasGraph && (
+                    <script
+                        type="application/json"
+                        data-pg-graph=""
+                        // biome-ignore lint/security/noDangerouslySetInnerHtml: validated graph data, JSON with `<` escaped; never executed
+                        dangerouslySetInnerHTML={{ __html: graphScriptJson(rootStyle.actionGraph, rootStyle.animations) }}
+                    />
+                )}
                 {childrenOf(elements, undefined).map((el) => (
                     <RenderedNode
                         key={el.id}
@@ -195,11 +206,13 @@ function RenderedNode({
         (element.type === "List" && element.listStyle !== "none"
             ? ` pg-list pg-list-${element.listStyle === "number" ? "number" : "bullet"}`
             : "") +
-        (style.entrance === "none" || style.scrollEffect !== "none"
-            ? ""
-            : style.entranceSplit === "none"
-              ? " pg-anim"
-              : " pg-anim pg-split");
+        (element.motion
+            ? " pg-kf"
+            : style.entrance === "none" || style.scrollEffect !== "none"
+              ? ""
+              : style.entranceSplit === "none"
+                ? " pg-anim"
+                : " pg-anim pg-split");
 
     // Repeat iterates a list. Request renders once and provides the source's
     // first object as the binding context for its entire subtree.
@@ -242,7 +255,7 @@ function RenderedNode({
         <>
             <ElementContent
                 element={element}
-                split={style.entrance === "none" || style.scrollEffect !== "none" ? "none" : style.entranceSplit}
+                split={element.motion ? (element.motion.split?.by ?? "none") : style.entrance === "none" || style.scrollEffect !== "none" ? "none" : style.entranceSplit}
             />
             {element.interactive?.kind === "marquee" ? <MarqueeContent settings={element.interactive}>{renderChildren()}</MarqueeContent> : element.interactive?.kind === "carousel" ? <CarouselContent settings={element.interactive} controls={renderChildren(children.filter(child => child.carouselControl))}>{renderChildren(children.filter(child => !child.carouselControl))}</CarouselContent> : renderChildren()}
             {element.type === "Form" && <span className="pg-form-status" data-pg-form-status aria-live="polite" />}
@@ -257,7 +270,9 @@ function RenderedNode({
     // static script and one static rule serve every such element.
     // What the entrance script needs to know per element: whether it plays
     // again on every visit, and how far into the viewport it waits.
-    const entranceAttrs = style.entrance !== "none" && style.scrollEffect === "none"
+    const entranceAttrs = element.motion
+        ? { "data-pg-now": element.motion.trigger === "load" ? "" : undefined }
+        : style.entrance !== "none" && style.scrollEffect === "none"
         ? {
               "data-pg-replay": style.entranceReplay ? "" : undefined,
               "data-pg-offset": style.entranceOffset !== 8 ? String(style.entranceOffset) : undefined,
@@ -436,7 +451,7 @@ function RenderedNode({
                     // class the script wrote, which is the visible result we
                     // want — and silencing it would mean the host component
                     // accepting the prop.
-                    suppressHydrationWarning: style.entrance !== "none" || undefined,
+                    suppressHydrationWarning: style.entrance !== "none" || Boolean(element.motion) || undefined,
                     id: classFor(element.id),
                     ...pinAfter, ...entranceAttrs,
                     "data-pg-drag": element.draggable ? "true" : undefined,
@@ -454,7 +469,7 @@ function RenderedNode({
     }
 
     const tag = customTagOf(element) ?? semanticTag(element);
-    const animates = style.entrance !== "none";
+    const animates = style.entrance !== "none" || Boolean(element.motion);
     return React.createElement(tag, withCustom(element, {
         /**
          * The entrance script runs while the document is still parsing, which
@@ -557,17 +572,22 @@ function isContainerType(type: CanvasElement["type"]) {
  * words visibly jumping as it lands, and a space is not something a reader
  * watches anyway.
  */
-export function splitTextParts(content: string, split: EntranceSplit) {
+export function splitTextParts(content: string, split: EntranceSplit, order?: SplitOrder) {
     // `children` staggers the element's children, not its own text.
     if (split !== "words" && split !== "letters") return content;
     const chunks = content.split(/(\s+)/);
+    // A keyframed text plays its pieces in an order of its own: the index
+    // each piece carries is its place in that order.
+    const count = chunks.filter((chunk) => chunk && !/^\s+$/.test(chunk)).reduce((sum, chunk) => sum + (split === "words" ? 1 : Array.from(chunk).length), 0);
+    let place = 0;
+    const next = () => splitIndex(place++, count, order);
     let index = 0;
     return chunks.map((chunk, at) => {
         if (!chunk) return null;
         if (/^\s+$/.test(chunk)) return <React.Fragment key={at}>{chunk}</React.Fragment>;
         if (split === "words") {
             return (
-                <span key={at} className="pg-part" style={{ "--i": index++, display: "inline-block", whiteSpace: "pre-wrap" } as React.CSSProperties}>
+                <span key={at} className="pg-part" style={{ "--i": order ? next() : index++, display: "inline-block", whiteSpace: "pre-wrap" } as React.CSSProperties}>
                     {chunk}
                 </span>
             );
@@ -576,7 +596,7 @@ export function splitTextParts(content: string, split: EntranceSplit) {
             <span
                 key={`${at}-${position}`}
                 className="pg-part"
-                style={{ "--i": index++, display: "inline-block", whiteSpace: "pre-wrap" } as React.CSSProperties}
+                style={{ "--i": order ? next() : index++, display: "inline-block", whiteSpace: "pre-wrap" } as React.CSSProperties}
             >
                 {letter}
             </span>
@@ -640,7 +660,7 @@ if (element.code) return <iframe title={element.name ?? "Code component"} srcDoc
     if (!element.content) return null;
     return (
         <span style={{ display: "block", width: "100%", whiteSpace: "pre-wrap" }}>
-            {element.textEffects && (element.textEffects.hover !== "none" || element.textEffects.scroll !== "none") ? <TextEffectsContent content={element.content} effects={element.textEffects} /> : split === "none" ? element.content : splitTextParts(element.content, split)}
+            {element.textEffects && (element.textEffects.hover !== "none" || element.textEffects.scroll !== "none") ? <TextEffectsContent content={element.content} effects={element.textEffects} /> : split === "none" ? element.content : splitTextParts(element.content, split, element.motion?.split?.order)}
         </span>
     );
 }

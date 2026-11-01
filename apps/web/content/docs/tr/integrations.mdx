@@ -1,0 +1,64 @@
+---
+title: Entegrasyonlar
+description: Uygulamanızı, veritabanınızı, veri kaynaklarınızı ve yapay zekâ araçlarınızı kendi altyapınızda bağlayın.
+---
+
+## İhtiyacınız olan bağlantıyı seçin
+
+Pagiera uygulamanızın içinde çalışır. Uygulama adaptörleri, sunucu servisleri ve veri kaynakları farklı görevler üstlenir: paketle gelen sunucu PostgreSQL ve Redis gerektirir; yapay zekâ ve MCP bağlantıları isteğe bağlıdır. Kimlik doğrulamayı uygulamanız sağlar. Entegrasyon kataloğu yüklenebilir bir eklenti mağazası yerine bu bağlantıları anlatır.
+
+| Bağlantı | Görev | Başlangıç |
+| --- | --- | --- |
+| Next.js App Router | Stüdyoyu ve Node.js sunucusunu çalıştırır | [Next.js kurulumu](/tr/docs/nextjs-setup) |
+| React render | Yerel belgeleri çözülmüş veri ve rota bağlamıyla gösterir | [Önizleme ve yayımlama](/tr/docs/publishing) |
+| PostgreSQL | Sayfaları, revizyonları ve yüklenen varlıkları saklar | [Kurulum](/tr/docs/getting-started) |
+| Redis | Yayımlanan sayfaları ve şablonları önbelleğe alır; yapay zekâ isteklerini sınırlar | [Dağıtım](/tr/docs/deployment) |
+| JSON uç noktaları | API veya CMS içeriğini Request ve Repeat'e taşır | [Dinamik veri](/tr/docs/data-binding) |
+| OpenRouter | İsteğe bağlı Luma yapay zekâ üretimini açar | [Yapay zekâ üretimi](/tr/docs/ai-mcp) |
+| MCP | İşleticinin onayladığı sunuculardaki araçları keşfeder | [MCP keşfi](/tr/docs/ai-mcp) |
+| Kimlik sağlayıcınız | Editör, önizleme ve API erişimini yetkilendirir | [Güvenlik](/tr/docs/security) |
+
+## 1. Uygulamayı ve gerekli servisleri bağlayın
+
+Üretimden ayrı bir geliştirme uygulaması, PostgreSQL veritabanı ve Redis servisiyle başlayın. `pagiera` paketini kurun, `pagiera/full.css` dosyasını içe aktarın ve servis adreslerini yalnızca sunucuda tanımlayın:
+
+```bash
+PAGIERA_POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pagiera
+PAGIERA_REDIS_URL=redis://localhost:6379
+```
+
+Korumalı API'yi bağlamak, editörün başlangıç verisini yüklemek ve stüdyoyu göstermek için [Next.js kurulumunu](/tr/docs/nextjs-setup) izleyin. Sunucu Node.js çalışma ortamı gerektirir; statik dışa aktarım veya yalnızca Edge kullanan dağıtım bu bağlantıları çalıştıramaz. Tek başına React render işlemi sunucu veya kimlik doğrulama sağlamaz.
+
+**Doğrulayın:** oturum açın, `/api/pagiera/health` yanıtını kontrol edin, sayfa oluşturup kaydedin ve yeniden yükleyin. Ardından çıkış yapıp editör işlemlerinin reddedildiğini doğrulayın. Veritabanını ve Redis'i özel ağda tutun. Sağlık kontrolü başarısızsa yapay zekâ veya veri bağlamayı denemeden önce servis ya da yetkilendirme sorununu çözün.
+
+## 2. Bir API veya CMS bağlayın
+
+Uygun JSON uç noktası sunan servislerden sayfa verisi alabilirsiniz. Bu bir HTTP veri kaynağı bağlantısıdır; her CMS için pakete gömülü SDK veya hesap bağlantısı olduğu anlamına gelmez.
+
+1. Stüdyonun veri kaynağı arayüzünde uç noktayı ekleyip yanıtı inceleyin.
+2. Nesne için Request, koleksiyon için Repeat kullanın. Gerekirse `$.items` gibi iç içe liste yolunu seçin.
+3. Alt katmanları dönen alanlara bağlayın. Rota değerlerini `{{params.slug}}` gibi belirteçlerle aktarın.
+4. Yayımlamadan önce boş, hatalı ve bulunamayan yanıtları önizleyin.
+
+Kalıcı kimlik bilgilerini sayfa adresine veya başlıklarına koymayın: editörler belgeyi görebilir. Gizli anahtarları sunucuda ekleyen ve istenen kaynakları doğrulayan, uygulamanıza ait bir proxy kullanın. İşletici açıkça izin vermedikçe özel ağ adresleri engellenir. İç servislere bağlanmadan önce [kaynak sınırlarını ve hata davranışını](/tr/docs/data-binding) okuyun.
+
+## 3. İsteğe bağlı yapay zekâ ve ajan araçlarını ekleyin
+
+Luma için sunucuda `OPENROUTER_API_KEY` ve `OPENROUTER_MODEL` tanımlayın. Sağlayıcı erişimini ve ücretlendirmeyi kontrol edip sınırlı bir düzenleme kapsamında üretin. Yayımlamadan önce katmanları inceleyip önizleyin. Editörün elle kullanılan araçları yapay zekâ anahtarı olmadan çalışır.
+
+MCP keşfi için onaylı `mcpServers` bağlantılarını tanımlayıp `authorizeMcp` kontrolünü uygulayın. Bağlantılar stdio, HTTP veya SSE kullanabilir; stdio ayrıca çalıştırılabilir dosyanın sunucu ortamında kurulu olmasını gerektirir. Yetkilendirme geri çağırımı yoksa keşif reddedilir. Araçları listelemek veya incelemek onları otomatik çalıştırmaz. Yapılandırma sözleşmesi için [yapay zekâ ve MCP rehberini](/tr/docs/ai-mcp) okuyun.
+
+[CLI](/tr/docs/cli), kodlama ajanlarının yerel belgeleri inceleyip güncellemesinin ayrı bir yoludur. Uygulamanın API'sini ve yetkilendirme kurallarını kullanır; çalışan bir sunucu entegrasyonunun yerini almaz.
+
+## Bağlantı sorununu teşhis edin
+
+| Belirti | Kontrol |
+| --- | --- |
+| Sağlık kontrolü başarısız | Veritabanı adresi, Redis adresi, ağ ve uygulama oturumu |
+| Stüdyo stilsiz açılıyor | `pagiera/full.css` içe aktarımı |
+| Repeat boş | Yanıt yapısı, liste yolu ve bağlanan alan adları |
+| İç API engelleniyor | İşleticinin özel ağ izinleri ve veri kaynağı politikası |
+| Yapay zekâ üretimi başarısız | Sunucudaki anahtar, model erişimi, ücretlendirme ve istek sınırları |
+| MCP keşfi 403 dönüyor | İstek sahibinin oturumu ve `authorizeMcp` |
+
+Sonraki teşhis adımları için [sorun gidermeyi](/tr/docs/troubleshooting) kullanın. Bir bağlantıyı çalıştırmak için üretim kimlik bilgilerini tarayıcı yapılandırmasına kopyalamayın veya editörü korumasız açmayın.

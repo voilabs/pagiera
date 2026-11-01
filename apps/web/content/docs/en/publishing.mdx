@@ -1,0 +1,76 @@
+---
+title: "Preview and publish"
+description: "Keep drafts private, preview safely and render published pages."
+---
+
+## Draft, preview and public output
+
+Saving updates a draft. Preview renders that draft for authorized editors. Publishing copies the approved content into the public version and invalidates its published cache. It does not deploy your application or configure DNS.
+
+## Render the public route
+
+Complete [Next.js setup](/docs/nextjs-setup) first; it defines the `pagiera` server loader. This optional catch-all handles both Home and nested paths. Replace a conflicting existing root page or use the loader from your existing routes instead of creating two handlers for the same URL.
+
+```tsx
+// src/app/[[...path]]/page.tsx
+import { notFound } from "next/navigation";
+import { RenderedPage } from "pagiera/runtime";
+import { pagiera } from "@/lib/pagiera";
+export const dynamic = "force-dynamic";
+export default async function PublishedPage({ params, searchParams }: {
+  params: Promise<{ path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { path = [] } = await params;
+  const slug = path.join("/") || "home";
+  const query = Object.fromEntries(Object.entries(await searchParams)
+    .map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? "" : value ?? ""]));
+  const context = { query, page: { slug } };
+  const page = await (await pagiera()).getPublishedPage(slug, context);
+  if (!page) notFound();
+  return <RenderedPage elements={page.elements} rootStyle={page.rootStyle}
+    data={page.data} context={{ ...context, params: page.routeParams ?? {},
+      page: { slug: page.routePattern ?? slug } }} />;
+}
+```
+
+Pass all of `elements`, `rootStyle` and `data`. Omitting page styles loses page-level layout and motion; omitting resolved data leaves Request/Repeat content incomplete. Route context is also passed to the renderer for tokens outside data-source URLs.
+
+A stored pattern such as `blog/:slug` matches a request for `blog/hello`. Exact published slugs win over patterns. The server fills `routeParams` and returns the matched `routePattern`. An upstream 404 configured as `page-404` produces no page, so the host can send its actual 404 response.
+
+## Render a private draft
+
+```tsx
+// src/app/preview/[pageId]/page.tsx
+import { notFound, redirect } from "next/navigation";
+import { RenderedPage } from "pagiera/runtime";
+import { getEditorSession } from "@/lib/auth";
+import { pagiera } from "@/lib/pagiera";
+export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false, follow: false } };
+export default async function Preview({ params }: {
+  params: Promise<{ pageId: string }>
+}) {
+  if (!(await getEditorSession())?.canEdit) redirect("/login");
+  const page = await (await pagiera()).getPreviewPage((await params).pageId);
+  if (!page) notFound();
+  return <RenderedPage elements={page.elements} rootStyle={page.rootStyle}
+    data={page.data} />;
+}
+```
+
+For dynamic draft data, pass realistic query and parameter values as the second argument to `getPreviewPage` and pass the same context to `RenderedPage`. The simple example above uses an empty context.
+
+## Review and publish
+
+1. Save and confirm the returned version.
+2. Open preview at desktop and mobile widths. Test forms, workflow targets, links and reduced motion.
+3. Publish with the editor or `client.adapters.publishPage(id)`.
+4. Request the public path without an editor session. Inspect the returned HTML for essential text and API content.
+5. Make another draft edit. The public page should stay unchanged until you publish again.
+
+Use `unpublishPage(id)` to remove the public version. Do not serve drafts as a fallback when public content is missing. Keep metadata generation in the host: a template page title is not automatically a record-specific SEO title. Read the resolved record and return its metadata in your framework.
+
+## Failure and recovery
+
+If a public page is stale, check Redis connectivity and the publish response. If layout is missing, check `rootStyle` and runtime styles. Restore a [revision](/docs/revisions) into the draft, preview it, and publish separately when a rollback is needed.

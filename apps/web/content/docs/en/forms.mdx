@@ -1,0 +1,66 @@
+---
+title: "Forms and submission"
+description: "Build accessible controls and connect them to your own submission backend."
+---
+
+## Build the form
+
+1. Add a Form container.
+2. Group related fields with Fieldset where appropriate.
+3. Add a visible Label for each control and provide meaningful field names.
+4. Choose Input, Textarea, Select, Checkbox or Radio according to the value needed.
+5. Add a submit control and configure the destination supported by your integration.
+
+Input types include text, email, password, number, tel, url, search, date, time, datetime-local, month, week, color, range and hidden. Use types that match the expected value, but do not treat browser validation as security.
+
+## Own the receiving endpoint
+
+Pagiera's visual form controls are not a managed inbox or payment service. Your application must receive and validate submissions, enforce authorization where needed, prevent abuse and return useful success or error feedback. Never place a server credential in a hidden field.
+
+## File fields
+
+FileInput selects a file in the browser. Your upload endpoint must enforce size and type limits, storage policy and access controls. Test the actual submission encoding and upload flow in your host application.
+
+## Verify the visitor experience
+
+Test keyboard navigation, labels, required fields, invalid input, repeated submission, network failure and a successful response. Check the public preview, not only the editor canvas.
+
+## Submission settings
+
+| Setting | Behaviour |
+| --- | --- |
+| Native | Browser form submission; use browser-supported GET/POST methods |
+| Request | JavaScript fetch, loading/success/error state and optional reset |
+| JSON | Sends named field values as an object; repeated names become arrays |
+| URL encoded | Sends field values as URLSearchParams |
+| Form data | Sends FormData, including selected file bytes |
+
+Example Form element configuration (add labelled child inputs and a submit Button separately):
+
+```json
+{
+  "id": "contact",
+  "type": "Form",
+  "z": 0,
+  "base": {
+    "layout": "stack",
+    "direction": "column",
+    "gap": 16
+  },
+  "formAction": "/api/contact",
+  "formMethod": "POST",
+  "formSubmitMode": "request",
+  "formContentType": "json",
+  "formSuccessMessage": "Message received.",
+  "formErrorMessage": "Please try again.",
+  "formResetOnSuccess": true
+}
+```
+
+Your `/api/contact` endpoint must actually validate and store/deliver the message. HTTP success drives the success state; do not return a successful status when processing failed. The request runtime disables its submit control while in flight and dispatches `pagiera:form-success` or `pagiera:form-error` events.
+
+## Custom bodies and headers
+
+Optional body/header templates can read `{{form.email}}` and other named values. Without a custom body, JSON encoding safely serializes the field map. Custom JSON templates are literal text substitution: test values containing quotes and newlines rather than assuming they are escaped. JSON/URL-encoded file values contain filenames, not file bytes; use FormData for uploads and let the browser choose its multipart boundary.
+
+Submission happens in the visitor's browser. Cross-origin destinations need the appropriate CORS policy; headers and body templates are visible to the visitor. Keep mail-service keys in the receiving server. Enforce CSRF/origin checks where appropriate, validation, rate limiting and upload limits in your host.

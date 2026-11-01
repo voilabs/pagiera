@@ -1,0 +1,37 @@
+---
+title: "Stüdyo iş akışı"
+description: "Sayfa oluşturun, katmanları düzenleyin, biçimlendirin ve kaydedilen sonucu doğrulayın."
+---
+
+## İlk düzenlenebilir sayfanızı oluşturun
+
+1. Korumalı stüdyoyu açın ve açıklayıcı bir ad ile rota kısa adına sahip bir sayfa oluşturun.
+2. Bir Section ve bir Container ekleyin. Başlık, destekleyici metin ve düğme için dikey bir Stack kullanın.
+3. İnsanların ve ajanların daha sonra bulabilmesi için katmanları Ana tanıtım veya Birincil eylem gibi amaçlarına göre yeniden adlandırın.
+4. İçeriği ve görünümü özellik panelinde düzenlemek için her katmanı seçin.
+5. Kaydetmeden önce çalışma yüzeyleri arasında geçiş yaparak satır kaymasını, boşlukları ve taşmayı kontrol edin.
+
+## Katmanlar ve düzen
+
+Katman ağacı iç içe geçme ilişkilerini; aynı düzeydeki öğelerin sıralaması ve düzen ise yerleşimi belirler. Yoğun metin içeren bölümlerde akış düzenlerini tercih edin. Serbest konumlandırılmış öğeler dekoratif kompozisyonlarda kullanışlıdır, ancak dar genişliklerde ayrıca kontrol edilmelidir.
+
+Tekrarlanan arayüz parçaları için [yeniden kullanılabilir bileşenleri](/tr/docs/components-layouts), içerik için [yerel blokları](/tr/docs/blocks) kullanın. Düzenlenebilir bir bölümün tamamını tek bir görsele veya gömülü içeriğe dönüştürmekten kaçının.
+
+## Kaydedin ve doğrulayın
+
+1. Taslağı kaydedin ve onayı bekleyin.
+2. Yalnızca yerel tuval durumunu değil, kalıcı kaydı doğrulamak için sayfayı yeniden yükleyin.
+3. Taslak önizlemesini açın; bağlantıları, formları ve etkileşimli denetimleri test edin.
+4. Yalnızca sonucu inceledikten sonra yayımlayın. Tek başına kaydetmek yayımlamaz.
+
+## Bir sorun çıktığında
+
+Kaydetme çakışırsa yeniden denemeden önce en son revizyonu yükleyin. Tuval doğru göründüğü hâlde önizleme farklıysa stil dosyası içe aktarımlarını, veri bağlamını ve duyarlı tasarım geçersiz kılmalarını kontrol edin. [Revizyonlar](/tr/docs/revisions) ve [sorun giderme](/tr/docs/troubleshooting) sayfalarına bakın.
+
+## Araçları bulun
+
+**Insert** yerel öğe ve kompozisyonları; **Pages** belgeleri; **Components** ortak parçaları; **Data** kaynakları; **Actions** grafiği; **Motion** çizelgeyi; **History** revizyonları yönetir. Host entegrasyonu `editorPath` ile `layers`, `elements`, `actions` ve `motion` gibi sabit panel slug’larını kullanır.
+
+Odak modu, kayıt durumu yanındaki genişletme kontrolü veya Ctrl/⌘ + Shift + F ile host sayfayı kaplar. Sabit konumlandırmayı değiştiren transform, filter veya contain uygulanmış üst öğelerden kaçının. Host’un ikinci sayfa tarayıcısı yapması gerekmez; stüdyo bunu sağlar.
+
+İlk etkileşim için [Action Workflow](/tr/docs/action-workflow), özel animasyon için [Motion Editor](/tr/docs/motion-editor) kullanın.

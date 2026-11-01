@@ -1,0 +1,66 @@
+---
+title: "Motion Editor"
+description: "Animate layers with keyframes, easing, effects and text stagger."
+---
+
+## Open the timeline
+
+Choose **Motion** in the editor rail. It is a dedicated workspace, separate from Actions. Start with a saved layer whose static appearance and responsive layout already work. Select it on the canvas or timeline; use **Show every layer** if it has no animation yet.
+
+## Make a simple entrance
+
+1. Select a heading and move the playhead to the start.
+2. Enable the stopwatch for Position Y and Opacity. Start at Y = 32 and Opacity = 0.
+3. Move the playhead to about 600 ms. Set Y = 0 and Opacity = 100.
+4. Scrub the ruler to inspect intermediate states, then play the timeline.
+5. Choose an ease-out curve, save, and open the protected page preview.
+
+Transform values are offsets from the layer's authored look: Y = 0 means its natural position, Scale = 100 means its natural size. Appearance values such as fill, text colour and corner radius are absolute. Changing one should start from a deliberate resting value.
+
+## Work with tracks and keyframes
+
+Each animated property has its own lane. A stopwatch creates the first keyframe at the playhead; moving time and changing a value creates another. Double-click a lane to add a keyframe there. Drag diamonds to change time, Shift-click for multiple selection, and Delete to remove selected keys. Drag the layer bar to move all its keys together.
+
+The controls beside a value jump to previous/next keys or add/remove the current key. Drag a number horizontally to scrub its value, hold Shift for larger changes, or click it to type. Use **U** to focus on animated properties. The timeline supports playback, frame stepping, slower playback, looping and zoom/fit. The timeline illustrates page motion; it does not export a rendered video.
+
+## Property groups
+
+| Group | Controls |
+| --- | --- |
+| Transform | X/Y position, scale, rotation, opacity and transform origin |
+| 3D & skew | Independent scale axes, X/Y rotation, perspective and skew |
+| Appearance | Radius, background and text colour |
+| Shadow | Shadow offsets, blur and colour |
+| Filters | Blur, brightness, contrast, saturation, hue and greyscale |
+| Mask | Insets from top, right, bottom and left |
+| Text | Letter spacing and letter/word splitting |
+
+Right-click a key for a preset curve. Double-click it to edit bezier handles or spring stiffness and damping. A key's curve controls the interval **from that key to the next one**. Hold keeps a value until the following key; use it for intentional cuts.
+
+## Effects, wiggle and text
+
+**Effects** applies a preset as ordinary editable keyframes beginning at the playhead. Select the intended layer and time first. Inspect the resulting tracks and adjust them; a preset is a starting point, not a second independent animation engine.
+
+The wave control adds **wiggle**, a smooth random variation with amount and speed. Text splitting can animate letters or words with a stagger, in forward, backward, centre or random order. Check the final readable state, line wrapping and actual font at narrow widths. Repeated decorative motion should remain subtle.
+
+## Playback on the website
+
+Layer keyframes use a **view** or **load** trigger and can play once, loop or ping-pong. Keyframed motion replaces that layer's preset entrance; enabling keyframes on an existing entrance converts it before editing. Scroll-driven effects follow viewport progress, not the timeline clock.
+
+<Callout type="info">
+Published keyframes are CSS animations. JavaScript reveals view-triggered layers; without JavaScript or with reduced motion enabled, content remains at rest. Test the published page rather than assuming timeline playback reproduces scroll timing. Timeline previews treat layers lower on the page as if they were already visible.
+</Callout>
+
+## Named animations for Actions
+
+The Motion side panel also holds **Custom animations** used by the [action graph](/docs/action-workflow). Create a named animation, edit its frame strip and choose duration, delay, direction and easing. A repeat count of 0 loops forever. Show/Hide/Toggle play these forward or backward; Play animation addresses them by name.
+
+These root-level named animations are distinct from per-layer timeline tracks. Named animations accept up to 40 animations with 24 frames each. Per-layer tracks retain up to 120 keys per property and clamp times to 60 seconds. Do not rely on values outside validator limits.
+
+## Verify and troubleshoot
+
+- If an effect does nothing, check the selected layer, trigger and playhead position.
+- If an entrance changed unexpectedly, inspect the converted tracks and overlapping effects.
+- If text clips, check masks, overflow, line height and the selected transform origin.
+- If surrounding content jumps, use actual flow layout and test visibility/morph changes from the action graph. Transform offsets do not reserve new layout space.
+- Save, reload, compare desktop/mobile, enable reduced motion and verify a readable resting state before publishing.

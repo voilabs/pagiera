@@ -1,0 +1,37 @@
+---
+title: "Studio workflow"
+description: "Create a page, organize layers, style it and verify the saved result."
+---
+
+## Create your first editable page
+
+1. Open the protected studio and create a page with a descriptive name and route slug.
+2. Insert a Section and a Container. Use a vertical Stack for a heading, supporting text and a button.
+3. Rename layers by purpose, such as Hero or Primary action, so humans and agents can find them later.
+4. Select each layer to edit content and appearance in the inspector.
+5. Switch artboards and check wrapping, spacing and overflow before saving.
+
+## Layers and layout
+
+The layer tree determines nesting; sibling ordering and layout determine placement. Prefer flow layouts for text-heavy sections. Free-positioned elements are useful for decorative compositions, but require explicit checks at narrow widths.
+
+Use [reusable components](/docs/components-layouts) for repeated interface pieces and [native blocks](/docs/blocks) for content. Avoid baking a whole editable section into one image or embed.
+
+## Save and verify
+
+1. Save the draft and wait for confirmation.
+2. Reload the page to verify persistence, not just local canvas state.
+3. Open the draft preview and test links, forms and interactive controls.
+4. Publish only after reviewing the result. Saving alone does not publish.
+
+## When something goes wrong
+
+If a save conflicts, reload the latest revision before retrying. If the canvas looks right but preview differs, check stylesheet imports, data context and responsive overrides. See [revisions](/docs/revisions) and [troubleshooting](/docs/troubleshooting).
+
+## Find your tools
+
+**Insert** contains native elements and compositions; **Pages** selects documents; **Components** manages shared pieces; **Data** configures sources; **Actions** edits the graph; **Motion** opens the timeline; **History** shows revisions. Host integrations use stable panel slugs such as `layers`, `elements`, `actions` and `motion` with `editorPath`.
+
+Focus mode uses the expand control beside save status or Ctrl/⌘ + Shift + F to cover the host page. Avoid transformed, filtered or contained ancestors that can change fixed positioning. The host need not build a second page browser; the studio already provides one.
+
+For a first interaction, follow [Action Workflow](/docs/action-workflow); for custom animation, use [Motion Editor](/docs/motion-editor).

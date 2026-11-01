@@ -1,0 +1,53 @@
+---
+title: "Yazı tipleri, simgeler ve varlıklar"
+description: "Ana uygulamanın yazı tiplerini kaydedin, medya seçin ve içeriği erişilebilir tutun."
+---
+
+## Site yazı tiplerini kaydedin
+
+Ana uygulamanızda kullanılabilen next/font değişkenlerini kaydetmek için pagiera/provider içindeki PagieraProvider bileşenini kullanın. Her yazı tipi kaydında variable ve title bulunur. Stüdyodaki site yazı tipi seçiminin tuvale, önizlemeye ve yayımlanmış çıktıya uygulanması amaçlanır.
+
+1. Yazı tipini ana uygulamanızda yükleyin.
+2. Değişkenini ve okunabilir başlığını sağlayıcıya kaydedin.
+3. Stüdyonun tipografi ayarlarında site yazı tipini seçin.
+4. Yazı tipinin hem önizleme hem herkese açık rotalarda yüklendiğini doğrulayın.
+
+Tam düzenleyici, stüdyo arayüzü için kendi Figtree yazı tipiyle gelir; bu, web sitenizin tipografisinden ayrıdır. Entegrasyon bağlamı için [Next.js kurulumu](/tr/docs/nextjs-setup) sayfasına bakın.
+
+## Görseller, video ve simgeler
+
+Uygun boyutlara ve kullanım haklarına sahip varlıklar seçin. Anlamlı görsel alternatif metni sağlayın, düzende alan ayırın ve yükleme hatalarını test edin. Semboller için simge kütüphanesini kullanın, ancak önemli denetimlerde görünür metni veya erişilebilir bir adı koruyun.
+
+## Haricî medya
+
+Uzak görseller, videolar ve gömülü içerikler hâlâ kaynaklarına ve uygulamanızın tarayıcı güvenlik politikasına bağlıdır. Bir URL'nin sizin bilgisayarınızda çalışmasının her ziyaretçi için erişimi garanti ettiğini varsaymayın. Yayımlanan sayfaları düzenleyici oturumu olmadan test edin.
+
+## Teslim kontrolleri
+
+Büyük varlıkları yavaş bağlantıda inceleyin, birincil içeriği dekoratif medyanın içine gizlemekten kaçının ve yedek yazı tipine geçişin denetimlerde taşmaya yol açmadığını doğrulayın.
+
+## next/font örneği
+
+```tsx
+// src/app/layout.tsx
+import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
+import { PagieraProvider } from "pagiera/provider";
+import "./globals.css";
+const inter = Inter({ subsets: ["latin"], variable: "--font-site" });
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return <html lang="en" className={inter.variable}><body>
+    <PagieraProvider fonts={[{ variable: "--font-site", title: "Inter" }]}>
+      {children}
+    </PagieraProvider>
+  </body></html>;
+}
+```
+
+Font değişkeni editör, önizleme ve yayımlanmış rotaların DOM’unda bulunmalıdır. Provider kaydı tek başına font indirmez. Kendi barındırdığınız font URL’lerine ziyaretçiler erişebilmeli; font/CORS/CSP politikanız izin vermelidir.
+
+## Kalıcı görsel yüklemeleri
+
+Standart istemci `uploadImage` adaptörünü backend’e bağlar. Ham baytları yükleyip kalıcı varlık URL’si alır. Sunucu kabul edilen raster veriyi PostgreSQL’de saklar, aynı baytları tekilleştirir ve kaydetme/içe aktarmada base64 raster görselleri dışarı alır. Görsel başına 8 MB’a kadar PNG, JPEG, WebP, GIF ve AVIF kabul edilir. Host yükleme adaptörü yoksa editör taslağa bayt gömebilir; üretimde kalıcı depolama seçin.
+
+Bu editör varlıkları ziyaretçinin formda seçtiği dosyalardan ayrıdır. FormData gönderimi ve alıcı doğrulaması sizin sorumluluğunuzdadır. Medya URL’lerinin kamusal, imzalı veya oturum gerektiren olmasını host belirler.

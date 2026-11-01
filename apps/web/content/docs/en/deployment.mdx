@@ -1,0 +1,61 @@
+---
+title: "Deployment and operations"
+description: "Production configuration, security boundaries, caches and recovery checks."
+---
+
+## Provision the host
+
+1. Deploy a server-capable Next.js application with the Pagiera backend mounted.
+2. Provide PostgreSQL and Redis URLs through server-only configuration.
+3. Configure OpenRouter only if AI generation is needed.
+4. Protect editor, mutation and preview routes with host authentication and authorization.
+5. Check health, save, preview and public rendering in the target environment.
+
+Publishing a page updates application data; it does not deploy the host application or provision infrastructure.
+
+## Server configuration
+
+| Option | Purpose |
+| --- | --- |
+| postgresUrl | PostgreSQL connection |
+| redisUrl | Redis connection |
+| openRouterApiKey / openRouterModel | AI provider configuration |
+| basePath | Mounted API base path |
+| aiRateLimitPerMinute | AI request limit |
+| templateRegistryUrl | Template registry upstream |
+| allowPrivateHosts | Explicit private data-source host exceptions |
+| maxSourceBytes | Maximum source response size; default 2 MB |
+| mcpServers / authorizeMcp | Operator-owned MCP connections and authorization |
+
+Use the server type definitions for exact signatures. Do not expose private host exceptions or MCP command configuration as public user input.
+
+## Data and cache lifecycle
+
+PostgreSQL is persistent storage. Redis participates in published-page caching, template caching and rate limiting. Back up the database; do not treat a cache as your recovery copy. Test publishing and unpublishing through the runtime to catch stale content behavior in your deployment.
+
+## Release checklist
+
+Verify unauthorized requests are rejected, secrets stay server-side, draft routes stay private, data-source failures behave predictably, and backups can be restored. Monitor database connectivity, request errors and AI provider failures without logging credentials. Read [security](/docs/security) before production.
+
+## Environment reference
+
+| Variable | Use |
+| --- | --- |
+| `PAGIERA_POSTGRES_URL` | Required PostgreSQL URL; falls back to `DATABASE_URL` |
+| `PAGIERA_REDIS_URL` | Required Redis URL; falls back to `REDIS_URL` |
+| `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` | Optional AI configuration; choose a model your account can access |
+| `PAGIERA_TEMPLATE_REGISTRY_URL` | Trusted registry URL; production defaults to the official registry |
+| `PAGIERA_ALLOW_PRIVATE_HOSTS` | Comma-separated private source host exceptions |
+| `PAGIERA_MAX_SOURCE_BYTES` | Positive byte limit for data-source responses |
+
+`basePath`, `aiRateLimitPerMinute` and MCP configuration are programmatic options, not environment names automatically read by `pagieraConfigFromEnv`. The default AI limit is ten requests per minute in the server's rate-limit bucket. Do not confuse this with your provider's account quota.
+
+## Runtime requirements
+
+Use the Node.js runtime for backend routes. A static export or an Edge-only function cannot supply PostgreSQL/Redis connections, Node dependencies and server rendering used here. Run one connection-pool lifecycle per server configuration, allow enough function time for data/AI requests and ensure your reverse proxy does not buffer streamed AI progress indefinitely.
+
+Schema initialization uses the configured database connection. Provision permissions intentionally and back up before upgrades; do not point development examples at production data. Keep PostgreSQL and Redis ports private.
+
+## Recovery exercise
+
+Use an isolated staging database: export a backup, edit and save a draft, restore a revision, preview, publish, then confirm public HTML. Restore the database backup in an isolated environment and verify pages plus assets are present. A successful backup command alone does not prove recovery works.

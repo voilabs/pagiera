@@ -759,6 +759,8 @@ export type CanvasElement = {
     /** How hover and press states animate in and out; absent uses the default ease. */
     transition?: StateTransition;
     loop?: LoopMotion;
+    /** Free keyframes per property, edited on Motion's timeline; they replace the entrance. */
+    motion?: import("./keyframes").LayerMotion;
     draggable?: boolean;
 };
 
@@ -1416,6 +1418,10 @@ export type RootStyle = {
      * the editor it is being built in.
      */
     customJs?: string;
+    /** The page's actions as a Blueprint-style node graph; see `action-graph.ts`. */
+    actionGraph?: import("./action-graph").ActionGraph;
+    /** The site's custom keyframe animations; see `custom-animation.ts`. */
+    animations?: import("./custom-animation").CustomAnimation[];
     /*
      * The site's layout: what wraps every page.
      *

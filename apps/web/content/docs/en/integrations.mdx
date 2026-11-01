@@ -1,0 +1,64 @@
+---
+title: Integrations
+description: Connect your application, database, data sources and AI tools without giving up control of your stack.
+---
+
+## Choose the connection you need
+
+Pagiera runs inside your application. Framework adapters, backend services and data sources play different roles: PostgreSQL and Redis are required by the bundled backend; AI and MCP connections are optional. Your application supplies authentication. The integration catalog describes these connections, rather than a marketplace of installable plugins.
+
+| Connection | Role | Start here |
+| --- | --- | --- |
+| Next.js App Router | Host the studio and Node.js backend | [Next.js setup](/docs/nextjs-setup) |
+| React rendering | Render native documents with resolved data and route context | [Preview and publish](/docs/publishing) |
+| PostgreSQL | Persist pages, revisions and uploaded assets | [Installation](/docs/getting-started) |
+| Redis | Cache published pages and templates; rate-limit AI requests | [Deployment](/docs/deployment) |
+| JSON endpoints | Bring API or CMS content into Request and Repeat | [Dynamic data](/docs/data-binding) |
+| OpenRouter | Enable optional Luma AI generation | [AI generation](/docs/ai-mcp) |
+| MCP | Discover tools on operator-approved servers | [MCP discovery](/docs/ai-mcp) |
+| Your authentication provider | Authorize editor, preview and API access | [Security](/docs/security) |
+
+## 1. Connect the host and required services
+
+Start with an isolated development application, PostgreSQL database and Redis service. Install `pagiera`, import `pagiera/full.css`, then keep the service URLs in server-only configuration:
+
+```bash
+PAGIERA_POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pagiera
+PAGIERA_REDIS_URL=redis://localhost:6379
+```
+
+Follow [Next.js setup](/docs/nextjs-setup) to mount the protected API, load the editor bootstrap and render the studio. The backend requires a Node.js runtime; a static export or Edge-only deployment cannot run these connections. React rendering alone does not provision a backend or authentication.
+
+**Verify:** sign in, check `/api/pagiera/health`, create a page, save and reload. Then sign out and confirm editor operations are denied. Keep the database and Redis private. A failed health request is a service or authorization problem to diagnose before testing AI or data bindings.
+
+## 2. Connect an API or CMS
+
+Any service exposing a suitable JSON endpoint can supply page data. This is an HTTP data-source connection; it does not imply a built-in SDK or account connector for every CMS.
+
+1. Add the endpoint in the studio's data-source interface and inspect the response.
+2. Use Request for an object or Repeat for a collection. Select a nested list path such as `$.items` when needed.
+3. Bind child layers to returned fields. Pass route values with tokens such as `{{params.slug}}`.
+4. Preview empty, failed and not-found responses before publishing.
+
+Do not place permanent credentials in page URLs or headers: editors can see the document. Use an application-owned proxy that adds secrets on the server and validates requested resources. Private hosts are blocked unless the operator explicitly allows them. See [source limits and failure behavior](/docs/data-binding) before connecting internal services.
+
+## 3. Add optional AI and agent tools
+
+For Luma, set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` on the server. Verify provider access and billing, then generate within a limited editing scope. Review the resulting layers and preview them before publishing. The editor's manual tools work without an AI key.
+
+For MCP discovery, configure approved `mcpServers` and implement `authorizeMcp`. Connections can use stdio, HTTP or SSE; stdio also needs the executable installed in the host environment. With no authorization callback, discovery is denied. Listing or inspecting tools does not automatically execute them. See the [AI and MCP guide](/docs/ai-mcp) for the configuration contract.
+
+The [CLI](/docs/cli) is a separate way for coding agents to inspect and update native documents. It uses the host API and its authorization rules; it is not a substitute for a working server integration.
+
+## Diagnose a connection
+
+| Symptom | Check |
+| --- | --- |
+| Health fails | Database URL, Redis URL, networking and host session |
+| Studio loads without styles | The `pagiera/full.css` import |
+| Repeat is empty | Response shape, list path and bound field names |
+| Internal API is blocked | Operator-owned private-host exceptions and source policy |
+| AI generation fails | Server-only key, model access, billing and rate limits |
+| MCP discovery returns 403 | The requesting session and `authorizeMcp` |
+
+Use [troubleshooting](/docs/troubleshooting) for the next diagnostic steps. Never copy production credentials into browser configuration or expose an unprotected editor to make a connection work.

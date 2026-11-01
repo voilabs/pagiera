@@ -1,0 +1,66 @@
+---
+title: "Formlar ve gönderim"
+description: "Erişilebilir denetimler oluşturun ve bunları kendi gönderim sunucunuza bağlayın."
+---
+
+## Formu oluşturun
+
+1. Bir Form kapsayıcısı ekleyin.
+2. Uygun olduğunda ilişkili alanları Fieldset ile gruplandırın.
+3. Her denetim için görünür bir Label ekleyin ve anlamlı alan adları belirtin.
+4. Gereken değere göre Input, Textarea, Select, Checkbox veya Radio seçin.
+5. Bir gönderim denetimi ekleyin ve entegrasyonunuzun desteklediği hedefi yapılandırın.
+
+Girdi türleri arasında text, email, password, number, tel, url, search, date, time, datetime-local, month, week, color, range ve hidden bulunur. Beklenen değerle eşleşen türleri kullanın, ancak tarayıcı doğrulamasını güvenlik önlemi saymayın.
+
+## Alıcı uç noktanın sorumluluğunu üstlenin
+
+Pagiera'nın görsel form denetimleri, yönetilen bir gelen kutusu veya ödeme hizmeti değildir. Uygulamanız gönderimleri alıp doğrulamalı, gerektiğinde yetkilendirmeyi uygulamalı, kötüye kullanımı önlemeli ve yararlı başarı ya da hata geri bildirimi döndürmelidir. Bir sunucu kimlik bilgisini asla gizli bir alana yerleştirmeyin.
+
+## Dosya alanları
+
+FileInput tarayıcıda bir dosya seçer. Yükleme uç noktanız boyut ve tür sınırlarını, depolama politikasını ve erişim denetimlerini uygulamalıdır. Gerçek gönderim kodlamasını ve yükleme akışını ana uygulamanızda test edin.
+
+## Ziyaretçi deneyimini doğrulayın
+
+Klavye gezinmesini, etiketleri, zorunlu alanları, geçersiz girdiyi, yinelenen gönderimi, ağ hatasını ve başarılı yanıtı test edin. Yalnızca düzenleyici tuvalini değil, herkese açık görünümün önizlemesini de kontrol edin.
+
+## Gönderim ayarları
+
+| Ayar | Davranış |
+| --- | --- |
+| Native | Tarayıcı form gönderimi; tarayıcının desteklediği GET/POST yöntemlerini kullanın |
+| Request | JavaScript fetch, yüklenme/başarı/hata durumu ve isteğe bağlı temizleme |
+| JSON | Adlandırılmış alanları nesne olarak gönderir; yinelenen adlar dizi olur |
+| URL encoded | Alanları URLSearchParams olarak gönderir |
+| Form data | Seçilen dosya baytları dahil FormData gönderir |
+
+Örnek Form öğesi ayarı (etiketli alt girdileri ve submit Button’ı ayrıca ekleyin):
+
+```json
+{
+  "id": "contact",
+  "type": "Form",
+  "z": 0,
+  "base": {
+    "layout": "stack",
+    "direction": "column",
+    "gap": 16
+  },
+  "formAction": "/api/contact",
+  "formMethod": "POST",
+  "formSubmitMode": "request",
+  "formContentType": "json",
+  "formSuccessMessage": "Message received.",
+  "formErrorMessage": "Please try again.",
+  "formResetOnSuccess": true
+}
+```
+
+`/api/contact` uç noktanız mesajı gerçekten doğrulayıp saklamalı/iletmelidir. HTTP başarısı başarılı durumu belirler; işlem başarısızken başarılı durum kodu döndürmeyin. Request runtime, istek sırasında gönderme kontrolünü devre dışı bırakır ve `pagiera:form-success` veya `pagiera:form-error` olaylarını yayınlar.
+
+## Özel gövdeler ve başlıklar
+
+İsteğe bağlı gövde/başlık şablonları `{{form.email}}` ve diğer adlandırılmış değerleri okuyabilir. Özel gövde yokken JSON kodlama alan haritasını güvenli biçimde serileştirir. Özel JSON şablonları düz metin yerleştirmesidir: tırnak ve yeni satır içeren değerlerin kaçırıldığını varsaymayıp test edin. JSON/URL-encoded dosya değerleri bayt değil dosya adı içerir; yüklemede FormData kullanıp multipart sınırını tarayıcıya bırakın.
+
+Gönderim ziyaretçinin tarayıcısında gerçekleşir. Başka origin’e giden uç nokta uygun CORS politikası ister; başlık ve gövde şablonları ziyaretçiye görünür. E-posta servisi anahtarlarını alıcı sunucuda tutun. Gerektiğinde CSRF/origin kontrolü, doğrulama, hız sınırlama ve yükleme sınırlarını host’ta uygulayın.

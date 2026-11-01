@@ -5,8 +5,9 @@ import {
     IconArrowBackUp,
     IconArrowForwardUp,
     IconArrowsMaximize,
+    IconBolt,
+    IconMovie,
     IconArrowsMinimize,
-    IconCommand,
     IconCode,
     IconComponents,
     IconCopy,
@@ -145,6 +146,9 @@ import { PagieraMark } from "./brand";
 import { GestureLayer, type GestureLayerHandle, type Measure } from "./gesture-layer";
 
 import { DataPanel, type SourceSample } from "./data-panel";
+import { ActionGraphEditor } from "./action-graph-editor";
+import { AnimationEditor, KeyframePanel, MotionEmpty, MotionLayerPanel, MotionLibrary } from "./motion-editor";
+import { MotionTimeline } from "./motion-timeline";
 import type { SourcePreviewer } from "./data-modal";
 import { type LibraryPage, type LibraryPick, LibraryPanel } from "./library";
 import {
@@ -161,6 +165,7 @@ import {
     SaveIndicator,
     SiteTransfer,
 } from "./parts";
+import { InsertSearch, type InsertView, InsertViewTabs } from "./ui/insert-panel";
 import { type DropPlan, resolveDrop } from "./drop-target";
 import { DragSession, type FlowInfo } from "./drag-session";
 import { useCanvasView } from "./use-canvas-view";
@@ -208,11 +213,10 @@ const LEFT_EDITOR_TABS = [
     "Pages",
     "History",
     "Settings",
+    "Actions",
+    "Motion",
 ] as const;
 
-/** The sections of the Insert panel. */
-const INSERT_VIEWS = ["Elements", "Components", "Icons"] as const;
-type InsertView = (typeof INSERT_VIEWS)[number];
 const RIGHT_EDITOR_TABS = INSPECTOR_TABS;
 
 type LeftEditorTab = (typeof LEFT_EDITOR_TABS)[number];
@@ -303,7 +307,7 @@ function leftTabFromPath(pathname: string): LeftEditorTab | undefined {
 function tabForDocumentMode(tab: LeftEditorTab, componentMode: boolean): LeftEditorTab {
     if (componentMode) {
         if (tab === "Assets") return "Components";
-        if (tab === "Pages" || tab === "Templates" || tab === "Settings") return "Layers";
+        if (tab === "Pages" || tab === "Templates" || tab === "Settings" || tab === "Actions" || tab === "Motion") return "Layers";
         return tab;
     }
     return tab === "Components" ? "Assets" : tab;
@@ -513,6 +517,15 @@ export default function Editor({
     const [breakpointPanel, setBreakpointPanel] = useState(false);
     const componentMode = rootStyle.documentMode === "component";
     const componentMasters = elements.filter((element) => element.componentRole === "master");
+    /** Layers an action can point at: the page's own, not component masters or the site chrome. */
+    const actionLayers = useMemo(() => {
+        const hidden = new Set<string>();
+        for (const root of elements.filter((element) => element.componentRole === "master" || element.layoutRole))
+            for (const id of subtreeIds(elements, root.id)) hidden.add(id);
+        return elements
+            .filter((element) => !hidden.has(element.id))
+            .map((element) => ({ id: element.id, label: `${displayName(element)} · ${element.type}` }));
+    }, [elements]);
     const componentAssets = useMemo<ComponentAsset[]>(() => {
         const grouped = new Map<string, ComponentAsset>();
         for (const master of componentMasters) {
@@ -2649,7 +2662,7 @@ export default function Editor({
     const railPrimary: LeftEditorTab[] = componentMode
         ? ["Layers", "Components", "Insert", "Pages", "Templates", "Assets"]
         : ["Layers", "Pages", "Insert", "Templates", "Assets"];
-    const railSecondary: LeftEditorTab[] = ["Data", "History"];
+    const railSecondary: LeftEditorTab[] = componentMode ? ["Data", "History"] : ["Data", "Actions", "Motion", "History"];
 
     /** Branches that can fold at all — the header's control is theirs. */
     const collapsibleLayerIds = useMemo(
@@ -2698,8 +2711,22 @@ export default function Editor({
         if (effectsPreview && viewportRef.current) return mountDisclosures(viewportRef.current);
     }, [effectsPreview, elements]);
     useEffect(() => {
-        if (effectsPreview && viewportRef.current) return mountActions(viewportRef.current);
-    }, [effectsPreview, elements]);
+        // The preview also runs the page's action graph and custom animations.
+        if (effectsPreview && viewportRef.current) return mountActions(viewportRef.current, rootStyle.actionGraph, rootStyle.animations);
+    }, [effectsPreview, elements, rootStyle.actionGraph, rootStyle.animations]);
+    // Motion: the custom animation open in the right panel, if any. Picking a
+    // layer on the canvas goes back to that layer's motion.
+    const [motionAnimationId, setMotionAnimationId] = useState<string | null>(null);
+    // The layer whose actions are open beside the canvas (Alt + double-click).
+    // While it is open, picking another layer follows with it.
+    const [actionsSplit, setActionsSplit] = useState<string | null>(null);
+    useEffect(() => {
+        const id = selectedIds[0];
+        if (actionsSplit && id && id !== actionsSplit) setActionsSplit(id);
+    }, [selectedIds, actionsSplit]);
+    useEffect(() => {
+        if (selectedIds.length) setMotionAnimationId(null);
+    }, [selectedIds]);
     const selectionSelector = selectedForChrome
         ? canvasTargetSelector(selectedForChrome, breakpoint, parkedSubtree.has(selectedForChrome))
         : null;
@@ -4482,6 +4509,12 @@ export default function Editor({
                 onDoubleClick={(event) => {
                     if (interactionElement.locked) return;
                     event.stopPropagation();
+                    // Alt + double-click opens the layer's actions beside the canvas.
+                    if (event.altKey && !componentMode) {
+                        setSelectedIds([interactionElement.id]);
+                        setActionsSplit(interactionElement.id);
+                        return;
+                    }
                     if (el.layoutRole === "layout") {
                         const master = componentMasters.find(candidate => candidate.isLayout && (candidate.componentId ?? candidate.id) === rootStyle.pageLayoutId);
                         if (master) openComponentEditor(master);
@@ -4529,7 +4562,7 @@ export default function Editor({
                         }}
                     />
                 ) : (
-                    el.childrenSlot && componentMode ? <span className="pointer-events-none p-5 text-[12px] text-[#7c3aed]">Children · Page content appears here</span> : <ElementBody element={el} entranceSplit={style.entranceSplit} effectsPreview={effectsPreview} />
+                    el.childrenSlot && componentMode ? <span className="pointer-events-none p-5 text-[12px] text-[#7c3aed]">Children · Page content appears here</span> : <ElementBody element={el} entranceSplit={el.motion ? (el.motion.split?.by ?? "none") : style.entranceSplit} effectsPreview={effectsPreview} />
                 )}
 
                 {el.interactive?.kind === "marquee" ? (
@@ -4725,6 +4758,10 @@ export default function Editor({
                                     ? IconComponents
                                     : tab === "Data"
                                         ? IconDatabase
+                                        : tab === "Actions"
+                                        ? IconBolt
+                                        : tab === "Motion"
+                                        ? IconMovie
                                         : tab === "Settings"
                                             ? IconSettings
                                             : tab === "History"
@@ -4772,7 +4809,7 @@ export default function Editor({
     }, [componentMode, componentMasters.length]);
     // Hiding the canvas behind a workspace page resets its scroll, so the
     // view is kept by hand and put back when the page closes.
-    const workspaceOpen = leftTab === "Settings" || leftTab === "Templates";
+    const workspaceOpen = leftTab === "Settings" || leftTab === "Templates" || leftTab === "Actions";
     const savedScrollRef = useRef<{ left: number; top: number } | null>(null);
     useEffect(() => {
         const viewport = viewportRef.current;
@@ -4801,7 +4838,7 @@ export default function Editor({
     componentModeRef.current = componentMode;
     gesturingRef.current = gesturing;
     leftTabRef.current = leftTab;
-    workspaceOpenRef.current = leftTab === "Settings" || leftTab === "Templates";
+    workspaceOpenRef.current = leftTab === "Settings" || leftTab === "Templates" || leftTab === "Actions";
     selectedCountRef.current = selectedIds.length;
     leaveComponentRef.current = leaveComponentMode;
     const openLeftPanel = (tab: LeftEditorTab) => {
@@ -4809,7 +4846,7 @@ export default function Editor({
         if (gesturingRef.current) return;
         // The view is taken now, while the canvas is still on screen.
         const viewport = viewportRef.current;
-        if ((tab === "Settings" || tab === "Templates") && viewport && viewport.clientWidth > 0) {
+        if ((tab === "Settings" || tab === "Templates" || tab === "Actions") && viewport && viewport.clientWidth > 0) {
             savedScrollRef.current = { left: viewport.scrollLeft, top: viewport.scrollTop };
         }
         // Anything that is about pages, not about the component on screen,
@@ -4864,7 +4901,9 @@ export default function Editor({
     };
     const ActiveLeftIcon = iconForRailTab(leftTab);
     /** Whether a panel has taken the sidebar over from the document lists. */
-    const panelOpen = !isLeftCollapsed;
+    // Motion gives the canvas and its timeline the room; its list of custom
+    // animations sits in the right panel while nothing is selected.
+    const panelOpen = !isLeftCollapsed && !(leftTab === "Motion" && !componentMode);
 
 
     // Where you are, and nothing else: the rail already lists every panel,
@@ -5174,44 +5213,27 @@ export default function Editor({
                             reserves room for its scrollbar, which left the strip
                             ten pixels narrower than the rows above it. */}
                         {leftTab === "Insert" && (
-                            <div className="mx-2 mt-2 grid shrink-0 grid-cols-3 gap-0.5 rounded-lg bg-ed-subtle p-0.5">
-                                {INSERT_VIEWS.map((view) => (
-                                    <button
-                                        type="button"
-                                        key={view}
-                                        onClick={() => {
-                                            setInsertView(view);
-                                            setSearch("");
-                                            // Each view is a different list; carrying the
-                                            // last one's scroll position into it drops the
-                                            // reader somewhere arbitrary.
-                                            leftPanelScrollRef.current?.scrollTo({ top: 0 });
-                                        }}
-                                        aria-pressed={insertView === view}
-                                        className={`rounded-[5px] py-1.5 text-[10px] font-medium transition-colors ${insertView === view ? "bg-ed-field-hover text-ed-text shadow-[0_1px_2px_rgb(0_0_0/0.35)]" : "text-ed-muted hover:bg-ed-field/60 hover:text-ed-text"}`}
-                                    >
-                                        {view}
-                                    </button>
-                                ))}
-                            </div>
+                            <InsertViewTabs
+                                value={insertView}
+                                onChange={(view) => {
+                                    setInsertView(view);
+                                    setSearch("");
+                                    // Each view is a different list; carrying the
+                                    // last one's scroll position into it drops the
+                                    // reader somewhere arbitrary.
+                                    leftPanelScrollRef.current?.scrollTo({ top: 0 });
+                                }}
+                            />
                         )}
 
                         {/* Only the lists that filter by name get a search box;
                             the Components view carries its own. */}
                         {leftTab === "Insert" && insertView !== "Components" && (
-                            <div className="border-b border-ed-border px-2 py-1.5">
-                                <div className="flex h-8 items-center gap-2 rounded-lg bg-ed-field px-2.5 transition-colors hover:border-[var(--ed-border-strong)] focus-within:border-ed-accent focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--ed-accent)]/35">
-                                    <IconSearch size={14} className="text-ed-faint" />
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(event) => setSearch(event.target.value)}
-                                        placeholder={`Search ${(leftTab === "Insert" ? insertView : leftTab).toLowerCase()}…`}
-                                        className="w-full bg-transparent text-xs text-ed-text outline-none placeholder:text-ed-faint"
-                                    />
-                                    <IconCommand size={12} className="text-ed-faint" />
-                                </div>
-                            </div>
+                            <InsertSearch
+                                value={search}
+                                onChange={setSearch}
+                                placeholder={`Search ${insertView.toLowerCase()}…`}
+                            />
                         )}
 
                         <div
@@ -5299,9 +5321,9 @@ export default function Editor({
                                         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                                     >
                                         {insertView === "Elements" ? (
-                                            <ElementsPanel search={search} onInsert={insertElement} />
+                                            <ElementsPanel search={search} onInsert={insertElement} onClearSearch={() => setSearch("")} />
                                         ) : insertView === "Icons" ? (
-                                            <IconsPanel search={search} onInsert={(props) => insertElement("Icon", props)} />
+                                            <IconsPanel search={search} onSearchChange={setSearch} onInsert={(props) => insertElement("Icon", props)} />
                                         ) : (
                                             <LibraryPanel
                                                 pages={library}
@@ -5390,7 +5412,19 @@ export default function Editor({
      * canvas: the shell sets the canvas, the panels and the dock aside while
      * one is open.
      */
-    const workspacePage = leftTab === "Settings" ? (
+    const workspacePage = leftTab === "Actions" ? (
+        // The graph needs the whole width: the page's actions are wired here,
+        // the layers they act on are picked from a list. The animations its
+        // nodes play are made in Motion.
+        <div className="flex h-full min-h-0 flex-col p-2">
+            <ActionGraphEditor
+                graph={rootStyle.actionGraph}
+                onChange={(actionGraph) => setRootStyle({ actionGraph })}
+                layers={actionLayers}
+                animations={rootStyle.animations ?? []}
+            />
+        </div>
+    ) : leftTab === "Settings" ? (
         <SettingsWorkspace section={settingsSection} onSection={setSettingsSection}>
                             {settingsSection === "ai" && <AiSettings mcp={adapters?.mcp} available={Boolean(adapters?.generate)} enterToSend={enterToSend} onEnterToSend={updateEnterToSend} />}
                             {settingsSection === "general" && <PageInspector rootStyle={rootStyle} onChange={updatePageSettings} layoutOptions={componentAssets.map((asset) => ({ label: asset.name, value: asset.id }))} />}
@@ -5833,6 +5867,73 @@ export default function Editor({
         </>
     );
 
+    const splitElement = actionsSplit && !componentMode ? byId.get(actionsSplit) : undefined;
+    const actionsSplitPane = splitElement ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex h-11 shrink-0 items-center gap-2 border-b border-ed-border pl-4 pr-2">
+                <IconBolt size={15} className="shrink-0 text-[var(--ed-accent)]" />
+                <span className="min-w-0 truncate text-[13px] font-semibold text-ed-text">{displayName(splitElement)}</span>
+                <span className="shrink-0 text-[12px] text-ed-faint">actions</span>
+                <span className="flex-1" />
+                <button
+                    type="button"
+                    onClick={() => { setActionsSplit(null); openLeftPanel("Actions"); }}
+                    className="rounded-md px-2 py-1 text-[11px] text-ed-muted hover:bg-ed-field hover:text-ed-text"
+                >
+                    Open all actions
+                </button>
+                <button type="button" aria-label="Close actions" title="Close" onClick={() => setActionsSplit(null)} className="grid size-7 place-items-center rounded-md text-ed-muted hover:bg-ed-field hover:text-ed-text">
+                    <IconX size={14} />
+                </button>
+            </div>
+            <div className="min-h-0 flex-1 p-1.5">
+                <ActionGraphEditor
+                    graph={rootStyle.actionGraph}
+                    onChange={(actionGraph) => setRootStyle({ actionGraph })}
+                    layers={actionLayers}
+                    animations={rootStyle.animations ?? []}
+                    scope={{ layer: splitElement.id, name: displayName(splitElement) }}
+                />
+            </div>
+        </div>
+    ) : undefined;
+
+    const motionAnimation = rootStyle.animations?.find((item) => item.id === motionAnimationId);
+    const motionInspector = motionAnimation ? (
+        <AnimationEditor
+            animation={motionAnimation}
+            animations={rootStyle.animations ?? []}
+            onAnimations={(animations) => setRootStyle({ animations })}
+            onEdit={setMotionAnimationId}
+        />
+    ) : selectedElement?.motion ? (
+        <KeyframePanel
+            key={selectedElement.id}
+            element={selectedElement}
+            motion={selectedElement.motion}
+            onMotion={(motion) => patchProps(selectedElement.id, { motion })}
+        />
+    ) : selectedElement ? (
+        <MotionLayerPanel
+            key={selectedElement.id}
+            element={selectedElement}
+            elements={visibleEditorElements}
+            style={resolveStyle(selectedElement, styleBreakpoint(selectedElement), cascade)}
+            onStyle={(patch) => patchStyle([selectedElement.id], patch)}
+            onCommitStart={beginTransaction}
+            onCommitEnd={endTransaction}
+        />
+    ) : (
+        <MotionEmpty>
+            <MotionLibrary
+                animations={rootStyle.animations ?? []}
+                onAnimations={(animations) => setRootStyle({ animations })}
+                editingAnimationId={motionAnimationId}
+                onEditAnimation={setMotionAnimationId}
+            />
+        </MotionEmpty>
+    );
+
     const inspector = (
         <>
                         {/* Two halves of one column. Luma is always reachable —
@@ -6209,6 +6310,11 @@ export default function Editor({
                         doReparent(menuElementId, grandparent);
                         setContextMenu(null);
                     }}
+                    onActions={componentMode ? undefined : () => {
+                        setSelectedIds([menuElementId]);
+                        setActionsSplit(menuElementId);
+                        setContextMenu(null);
+                    }}
                     onDuplicate={() => duplicateElements([menuElementId])}
                     onCopy={() => {
                         copyElements([menuElementId]);
@@ -6316,7 +6422,7 @@ export default function Editor({
     return (
         <EditorShell
             toolbarLeft={toolbarLeft}
-            dock={leftTab === "Templates" || leftTab === "Settings" ? undefined : toolbarDock}
+            dock={leftTab === "Templates" || leftTab === "Settings" || leftTab === "Actions" ? undefined : toolbarDock}
             toolbarRight={toolbarRight}
             rail={rail}
             panel={panel}
@@ -6325,8 +6431,21 @@ export default function Editor({
             onCanvasBackgroundMouseDown={(event) => {
                 if (event.target === event.currentTarget) setSelectedIds([]);
             }}
-            inspector={inspector}
-            inspectorVisible={!workspacePage}
+            inspector={leftTab === "Motion" && !componentMode ? motionInspector : inspector}
+            inspectorVisible={!workspacePage && !actionsSplitPane}
+            split={actionsSplitPane}
+            timeline={leftTab === "Motion" && !componentMode ? (
+                <MotionTimeline
+                    elements={visibleEditorElements}
+                    styleOf={(element) => resolveStyle(element, styleBreakpoint(element), cascade)}
+                    selectedId={selectedIds[0]}
+                    onSelect={(id) => { setSelectedIds([id]); setMotionAnimationId(null); }}
+                    onStyle={(id, patch) => patchStyle([id], patch)}
+                    onMotion={(id, motion) => patchProps(id, { motion })}
+                    onCommitStart={beginTransaction}
+                    onCommitEnd={endTransaction}
+                />
+            ) : undefined}
             page={workspacePage}
             overlays={overlays}
             focused={focusMode}
