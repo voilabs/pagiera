@@ -21,6 +21,7 @@ import {
   IconWorld,
   IconX,
 } from "@tabler/icons-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { SketchBook, SketchMotion } from "@/components/landing/visuals";
 import type { Locale, MenuIcon, NavCopy } from "@/lib/landing-copy";
@@ -57,6 +58,7 @@ export function SiteNav({
   cta: string;
 }) {
   const base = useId();
+  const pathname = usePathname();
   const tr = locale === "tr";
   const href = (path: string) => localizedHref(path, locale);
   const [open, setOpen] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export function SiteNav({
             {(["en", "tr"] as const).map((code, index) => (
               <li key={code}>
                 <a
-                  href={localizedHref("/", code)}
+                  href={localizedHref(pathname ?? "/", code)}
                   hrefLang={code}
                   lang={code}
                   aria-current={code === locale ? "true" : undefined}

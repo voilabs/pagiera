@@ -16,12 +16,15 @@ import {
   TemplatePreview,
   TemplatesIndex,
 } from "@/components/pages/template-pages";
+import { StructuredData } from "@/components/structured-data";
 import { guides, PAGE_UI } from "@/lib/content";
 import { COMPARE } from "@/lib/content/compare-copy";
 import { FEATURES } from "@/lib/features-copy";
 import { INTEGRATIONS_UI } from "@/lib/integrations";
-import { LANDING, type Locale } from "@/lib/landing-copy";
+import type { Locale } from "@/lib/landing-copy";
 import routes from "@/lib/reset-routes.json";
+import { pageMetadata, SITE_DESCRIPTION } from "@/lib/seo";
+import { type Breadcrumb, pageStructuredData } from "@/lib/structured-data";
 
 // Every marketing URL is listed in reset-routes.json; anything else is a 404.
 function resolve(path: string, locale: Locale) {
@@ -52,64 +55,101 @@ function resolve(path: string, locale: Locale) {
   return null;
 }
 
-export function marketingMetadata(path: string, locale: Locale): Metadata {
-  const page = resolve(path, locale);
+type MarketingRoute = NonNullable<ReturnType<typeof resolve>>;
+function describe(page: MarketingRoute, locale: Locale) {
+  const tr = locale === "tr";
   const ui = PAGE_UI[locale];
-  const robots = { index: false, follow: false };
-  const title = (name: string) => `${name} — Pagiera`;
-  switch (page?.kind) {
+  switch (page.kind) {
     case "home":
       return {
-        title: title(LANDING[locale].heroTitle.replace("\n", " ")),
-        robots,
+        title: tr
+          ? "React ve Next.js için açık kaynak site oluşturucu"
+          : "Open-source website builder for React & Next.js",
+        description: SITE_DESCRIPTION[locale],
       };
     case "features":
       return {
-        title: title(FEATURES[locale].ui.indexEyebrow),
+        title: tr
+          ? "Görsel site oluşturucu özellikleri"
+          : "Visual website builder features",
         description: FEATURES[locale].ui.indexLede,
-        robots,
       };
     case "integrations":
       return {
-        title: title(INTEGRATIONS_UI[locale].eyebrow),
+        title: tr
+          ? "Uygulama, veri ve yapay zekâ entegrasyonları"
+          : "Framework, data and AI integrations",
         description: INTEGRATIONS_UI[locale].lede,
-        robots,
       };
-    case "feature":
+    case "feature": {
+      const titles = {
+        data: tr
+          ? "Görsel sayfalarda dinamik veri bağlama"
+          : "Dynamic data binding for visual websites",
+        "action-workflow": tr
+          ? "Görsel aksiyon ve iş akışı oluşturucu"
+          : "Visual Action Workflow builder",
+        "motion-editor": tr
+          ? "Görsel animasyon ve Motion editörü"
+          : "Visual animation and Motion Editor",
+      };
       return {
-        title: title(page.feature.name),
+        title: titles[page.feature.slug],
         description: page.feature.lede,
-        robots,
       };
+    }
     case "guides":
-      return { title: title(ui.guides), description: ui.guidesLede, robots };
+      return {
+        title: tr
+          ? "React ve Next.js site geliştirme rehberleri"
+          : "React & Next.js website building guides",
+        description: ui.guidesLede,
+      };
     case "guide":
       return {
-        title: title(page.guide.title),
+        title: page.guide.title,
         description: page.guide.description,
-        robots,
+        modified: page.guide.updated,
       };
     case "compare":
-      return { title: title(ui.compare), description: ui.compareLede, robots };
+      return {
+        title: tr
+          ? "Görsel site oluşturucu karşılaştırmaları"
+          : "Visual website builder comparisons",
+        description: ui.compareLede,
+      };
     case "comparison":
       return {
-        title: title(`Pagiera vs ${page.item.name}`),
+        title: `Pagiera vs ${page.item.name}`,
         description: page.item.verdict,
-        robots,
       };
     case "templates":
       return {
-        title: title(ui.templates),
+        title: tr ? "Görsel site şablonları" : "Visual website templates",
         description: ui.templatesLede,
-        robots,
       };
     case "preview":
-      return { title: title(`${ui.preview} · ${page.id}`), robots };
+      return {
+        title: `${ui.preview} · ${page.id}`,
+        description: tr
+          ? "Pagiera site şablonunun önizlemesi."
+          : "Preview of a Pagiera website template.",
+        noIndex: true,
+      };
     case "faq":
-      return { title: title(ui.faq), description: ui.faqLede, robots };
-    default:
-      return { title: "Pagiera", robots };
+      return {
+        title: tr
+          ? "Pagiera hakkında sık sorulan sorular"
+          : "Frequently asked questions about Pagiera",
+        description: ui.faqLede,
+      };
   }
+}
+
+export function marketingMetadata(path: string, locale: Locale): Metadata {
+  const page = resolve(path, locale);
+  if (!page) notFound();
+  return pageMetadata({ path, locale, ...describe(page, locale) });
 }
 
 export function MarketingPage({
@@ -119,6 +159,47 @@ export function MarketingPage({
   path: string;
   locale: Locale;
 }) {
+  const page = resolve(path, locale);
+  if (!page) notFound();
+  const info = describe(page, locale);
+  const breadcrumbs: Breadcrumb[] = [{ name: "Pagiera", path: "/" }];
+  const section = path.split("/")[1];
+  const parent = routes.find((route) => route.path === `/${section}`);
+  if (path !== "/") {
+    if (parent && parent.path !== path)
+      breadcrumbs.push({ name: parent[locale], path: parent.path });
+    breadcrumbs.push({
+      name: page.kind === "feature" ? page.feature.name : info.title,
+      path,
+    });
+  }
+  return (
+    <>
+      {page.kind !== "preview" && (
+        <StructuredData
+          data={pageStructuredData({
+            path,
+            locale,
+            ...info,
+            breadcrumbs,
+            article: page.kind === "guide",
+            collection: [
+              "features",
+              "guides",
+              "compare",
+              "templates",
+              "integrations",
+            ].includes(page.kind),
+            sourceCode: page.kind === "home",
+          })}
+        />
+      )}
+      <MarketingContent path={path} locale={locale} />
+    </>
+  );
+}
+
+function MarketingContent({ path, locale }: { path: string; locale: Locale }) {
   const page = resolve(path, locale);
   switch (page?.kind) {
     case "home":
