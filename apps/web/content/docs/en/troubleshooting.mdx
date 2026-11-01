@@ -3,6 +3,19 @@ title: "Troubleshooting"
 description: "Fix the most common setup, CSS, database and AI failures."
 ---
 
+## Source build fails with TS5102 or TS5090
+
+This applies when building the repository with TypeScript 7, not when using the installed package in your application. TypeScript 7 removed `baseUrl`; the [migration notes](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) explain the change. In `packages/pagiera/tsconfig.json`, remove that option and keep path targets relative to the configuration file:
+
+```json
+"paths": {
+  "@/*": ["./src/internal/*"],
+  "pagiera/provider": ["./src/provider.tsx"]
+}
+```
+
+`tsconfig.build.json` inherits these mappings. From the repository root, run `bun run package:check` and then `bun run package:build`; both should finish successfully. If the error remains, check the effective `extends` chain for another `baseUrl` or a path target missing its `./` prefix. Do not edit generated `dist` files or disable type checks to hide the error.
+
 ## The health endpoint fails
 
 Open `/api/pagiera/health` and address the first failing dependency. Verify environment variables are available to the Next.js server process, then test PostgreSQL and Redis independently.

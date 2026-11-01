@@ -23,4 +23,7 @@ Bu notlar güncel kaynak ağacını anlatır. npm yayını duyurmaz veya sürüm
 
 ### Uyumluluk
 
+- Web sitesinin doküman, dil ve SEO kontrolleri doğrudan derleme bağımlılığı ve yalıtılmış bağlam testiyle `apps/web` içinde bağımsız hale getirildi. Docker derlemeleri artık depo kökündeki kontrol betiklerini gerektirmiyor; kök komutlar paket kaynağına karşı yerel blok kapsamını denetlemeyi sürdürüyor.
+- Devralınan `baseUrl` derleyici ayarı kaldırıldı ve paket yol eşlemeleri açıkça göreli yapıldı; tip kontrolü ve bildirim derlemesi TypeScript 7 ile uyumlu hale getirildi.
+
 Dokümantasyon kaynak özelliklerini anlatır. API kullanmadan önce kurulu sürümün dışa aktarımlarını kontrol edin. `document.version` serileştirme biçimidir; `expectedVersion` için kaydedilmiş sayfa revizyonu gerekir. Belge yayımlamak host uygulamayı dağıtmaz.

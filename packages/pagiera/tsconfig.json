@@ -9,10 +9,9 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/internal/*"],
-      "pagiera/provider": ["src/provider.tsx"]
+      "@/*": ["./src/internal/*"],
+      "pagiera/provider": ["./src/provider.tsx"]
     },
     "noEmit": true
   },

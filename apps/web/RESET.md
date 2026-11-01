@@ -29,6 +29,14 @@ Search is built locally from the MDX content and needs no hosted service or logi
 - `src/lib/docs-catalog.ts` and `docs-catalog-tr.ts`: matching public metadata.
 - `src/lib/reset-routes.json`: marketing URLs reserved during the redesign.
 
+## Isolated and Docker builds
+
+The deployment build context may be `apps/web` alone. From that directory, install dependencies (including build-time dev dependencies), run `bun run build`, then `bun run start`. Include `src`, `content`, `public`, `scripts`, the package manifest and Next/Fumadocs/PostCSS/TypeScript configuration in the build image. Never copy a host's `node_modules` directory into a Linux image; install dependencies inside the image.
+
+Documentation, locale and SEO checks live in this app's own `scripts` directory and resolve files relative to the app, independent of `WORKDIR`. `esbuild` is a direct build dependency. These checks do not require the monorepo's root `scripts` or `packages/pagiera` directories. The root check commands remain compatibility entry points; the root documentation check additionally verifies native block coverage against package source.
+
+If a deployment reports `Cannot find module '/scripts/check-docs.cjs'`, it is running an older parent-directory wrapper. Deploy the updated app-local scripts and package manifest together; copying only the old wrapper preserves the failure. Run `node scripts/check-web-build-context.mjs --build` from the repository root to reproduce a source tree containing only the web app. The default regression check reuses installed dependencies for quick script checks; `--build` installs independent dependencies and performs the full build. Both modes clean up the temporary directory. This does not replace Linux image validation.
+
 The marketing pages and documentation use the same SEO policy. Production builds are indexable by default; `next dev` and Vercel preview/development environments are excluded. For other staging hosts set `PAGIERA_SITE_INDEXABLE=false` before building. This policy changes crawl hints, not access permissions.
 
 ## Search and sharing configuration
@@ -57,6 +65,7 @@ Canonical and sitemap behavior follows [Google's sitemap guidance](https://devel
 node scripts/check-docs.cjs
 node scripts/check-i18n.cjs
 node scripts/check-seo.mjs
+node scripts/check-web-build-context.mjs
 bun run --cwd apps/web build
 node scripts/check-local-website.mjs
 node scripts/check-seo-http.mjs

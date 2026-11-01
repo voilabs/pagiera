@@ -23,4 +23,7 @@ These notes describe the current source tree. They do not announce an npm releas
 
 ### Compatibility
 
+- Made website documentation, locale and SEO checks self-contained in `apps/web`, with a direct build dependency and an isolated-context regression check. Docker builds no longer need repository-root check scripts; root commands still verify native block coverage against package source.
+- Removed the inherited `baseUrl` compiler option and made package path mappings explicitly relative, so type checking and declaration builds work with TypeScript 7.
+
 Documentation describes source capabilities. Check your installed version's exports before using an API. `document.version` is the serialization format; the saved page revision is the value needed for `expectedVersion`. Publishing a document does not deploy its host application.

@@ -3,6 +3,19 @@ title: "Sorun giderme"
 description: "En yaygın kurulum, CSS, veritabanı ve yapay zekâ hatalarını giderin."
 ---
 
+## Kaynak derlemesi TS5102 veya TS5090 ile duruyor
+
+Bu durum, kurulu paketi uygulamanızda kullanırken değil, depoyu TypeScript 7 ile derlerken geçerlidir. TypeScript 7 `baseUrl` ayarını kaldırdı; değişiklik [geçiş notlarında](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) açıklanır. `packages/pagiera/tsconfig.json` içinden bu ayarı kaldırıp yol hedeflerini yapılandırma dosyasına göre göreli bırakın:
+
+```json
+"paths": {
+  "@/*": ["./src/internal/*"],
+  "pagiera/provider": ["./src/provider.tsx"]
+}
+```
+
+`tsconfig.build.json` bu eşlemeleri devralır. Depo kökünden önce `bun run package:check`, ardından `bun run package:build` çalıştırın; ikisi de başarıyla tamamlanmalıdır. Hata sürerse etkin `extends` zincirinde başka bir `baseUrl` veya başında `./` olmayan yol hedefi arayın. Hatayı gizlemek için üretilmiş `dist` dosyalarını düzenlemeyin veya tip kontrolünü kapatmayın.
+
 ## Sağlık uç noktası başarısız oluyor
 
 `/api/pagiera/health` adresini açın ve ilk başarısız bağımlılığı ele alın. Ortam değişkenlerinin Next.js sunucu sürecinde kullanılabilir olduğunu doğrulayın, ardından PostgreSQL ve Redis'i birbirinden bağımsız test edin.
